@@ -1,0 +1,74 @@
+{
+  "name": "Database Connector MCP",
+  "description": "A powerful MCP server that provides database connectivity and query capabilities. Supports multiple database types including PostgreSQL, MySQL, and SQLite.",
+  "docker_image": "mcpplatform/database-connector-mcp",
+  "docker_tag": "v1.5.2",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "database_type": {
+        "type": "string",
+        "title": "Database Type",
+        "description": "Type of database to connect to",
+        "enum": ["postgresql", "mysql", "sqlite"],
+        "default": "postgresql"
+      },
+      "database_url": {
+        "type": "string",
+        "title": "Database URL",
+        "description": "Database connection URL (leave empty for SQLite file path)",
+        "default": ""
+      },
+      "sqlite_file_path": {
+        "type": "string",
+        "title": "SQLite File Path",
+        "description": "Path to SQLite database file (only for SQLite)",
+        "default": "/data/database.db"
+      },
+      "connection_pool_size": {
+        "type": "integer",
+        "title": "Connection Pool Size",
+        "description": "Maximum number of database connections",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 100
+      },
+      "query_timeout": {
+        "type": "integer",
+        "title": "Query Timeout (seconds)",
+        "description": "Maximum time to wait for query execution",
+        "default": 30,
+        "minimum": 5,
+        "maximum": 300
+      },
+      "read_only": {
+        "type": "boolean",
+        "title": "Read Only Mode",
+        "description": "Enable read-only mode to prevent data modifications",
+        "default": false
+      }
+    },
+    "required": ["database_type"]
+  },
+  "default_config": {
+    "database_type": "postgresql",
+    "database_url": "",
+    "sqlite_file_path": "/data/database.db",
+    "connection_pool_size": 10,
+    "query_timeout": 30,
+    "read_only": false
+  },
+  "exposed_port": 8080,
+  "environment_variables": {
+    "MCP_PORT": "8080",
+    "MCP_HOST": "0.0.0.0",
+    "DB_CONNECTOR_MODE": "secure"
+  },
+  "volume_mounts": [
+    "/app/data:/data"
+  ],
+  "version": "1.5.2",
+  "author": "Database Solutions Ltd.",
+  "documentation_url": "https://docs.dbsolutions.com/mcp-connector",
+  "source_url": "https://github.com/dbsolutions/mcp-db-connector"
+}

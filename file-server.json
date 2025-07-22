@@ -1,0 +1,57 @@
+{
+  "name": "File Server MCP",
+  "description": "An MCP server that provides file system access and manipulation capabilities. Allows reading, writing, and managing files through the MCP protocol.",
+  "docker_image": "mcpplatform/file-server-mcp",
+  "docker_tag": "v2.1.0",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "root_directory": {
+        "type": "string",
+        "title": "Root Directory",
+        "description": "Root directory for file operations",
+        "default": "/data"
+      },
+      "max_file_size": {
+        "type": "integer",
+        "title": "Maximum File Size (MB)",
+        "description": "Maximum file size in megabytes",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "allowed_extensions": {
+        "type": "string",
+        "title": "Allowed File Extensions",
+        "description": "Comma-separated list of allowed file extensions",
+        "default": "txt,json,md,py,js,html,css"
+      },
+      "read_only": {
+        "type": "boolean",
+        "title": "Read Only Mode",
+        "description": "Enable read-only mode to prevent file modifications",
+        "default": false
+      }
+    },
+    "required": ["root_directory", "max_file_size"]
+  },
+  "default_config": {
+    "root_directory": "/data",
+    "max_file_size": 100,
+    "allowed_extensions": "txt,json,md,py,js,html,css",
+    "read_only": false
+  },
+  "exposed_port": 8080,
+  "environment_variables": {
+    "MCP_PORT": "8080",
+    "MCP_HOST": "0.0.0.0",
+    "FILE_SERVER_MODE": "full"
+  },
+  "volume_mounts": [
+    "/app/data:/data"
+  ],
+  "version": "2.1.0",
+  "author": "File Systems Inc.",
+  "documentation_url": "https://docs.filesystems.com/mcp-server",
+  "source_url": "https://github.com/filesystems/mcp-file-server"
+}
