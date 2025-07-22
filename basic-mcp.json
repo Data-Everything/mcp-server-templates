@@ -42,6 +42,6 @@
   "volume_mounts": [],
   "version": "1.0.0",
   "author": "MCP Platform Team",
-  "documentation_url": "https://docs.mcpplatform.com/templates/basic",
+  "documentation_url": "https://data-everything.github.io/MCP-Manager/",
   "source_url": "https://github.com/mcpplatform/basic-mcp-server"
 }
