@@ -1,0 +1,85 @@
+{
+  "name": "GitHub MCP Server",
+  "description": "Official GitHub MCP server that provides comprehensive GitHub repository management, issue tracking, pull request handling, and repository exploration. Enables AI assistants to interact with GitHub's API for searching repositories, managing issues, creating PRs, and exploring codebases.",
+  "docker_image": "github/github-mcp-server",
+  "docker_tag": "latest",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "github_token": {
+        "type": "string",
+        "title": "GitHub Personal Access Token",
+        "description": "Your GitHub Personal Access Token with appropriate permissions for repository access",
+        "pattern": "^gh[pousr]_[A-Za-z0-9_]{36,255}$"
+      },
+      "default_owner": {
+        "type": "string",
+        "title": "Default Repository Owner",
+        "description": "Default GitHub username or organization name (optional)",
+        "default": ""
+      },
+      "default_repo": {
+        "type": "string",
+        "title": "Default Repository Name",
+        "description": "Default repository name to work with (optional)",
+        "default": ""
+      },
+      "api_base_url": {
+        "type": "string",
+        "title": "GitHub API Base URL",
+        "description": "GitHub API base URL (use for GitHub Enterprise)",
+        "default": "https://api.github.com",
+        "format": "uri"
+      },
+      "max_search_results": {
+        "type": "integer",
+        "title": "Maximum Search Results",
+        "description": "Maximum number of results to return from search operations",
+        "default": 30,
+        "minimum": 1,
+        "maximum": 100
+      },
+      "enable_webhook_events": {
+        "type": "boolean",
+        "title": "Enable Webhook Events",
+        "description": "Enable webhook event processing for real-time updates",
+        "default": false
+      },
+      "rate_limit_requests": {
+        "type": "integer",
+        "title": "Rate Limit (requests/hour)",
+        "description": "Maximum API requests per hour to respect GitHub rate limits",
+        "default": 5000,
+        "minimum": 100,
+        "maximum": 15000
+      }
+    },
+    "required": ["github_token"]
+  },
+  "default_config": {
+    "github_token": "",
+    "default_owner": "",
+    "default_repo": "",
+    "api_base_url": "https://api.github.com",
+    "max_search_results": 30,
+    "enable_webhook_events": false,
+    "rate_limit_requests": 5000
+  },
+  "exposed_port": 8080,
+  "environment_variables": {
+    "GITHUB_TOKEN": "${github_token}",
+    "GITHUB_API_URL": "${api_base_url}",
+    "DEFAULT_OWNER": "${default_owner}",
+    "DEFAULT_REPO": "${default_repo}",
+    "MAX_SEARCH_RESULTS": "${max_search_results}",
+    "RATE_LIMIT_REQUESTS": "${rate_limit_requests}",
+    "MCP_PORT": "8080",
+    "MCP_HOST": "0.0.0.0"
+  },
+  "volume_mounts": [],
+  "version": "1.0.0",
+  "author": "GitHub",
+  "documentation_url": "https://github.com/github/github-mcp-server",
+  "source_url": "https://github.com/github/github-mcp-server",
+  "is_active": true
+}
