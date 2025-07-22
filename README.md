@@ -1,56 +1,52 @@
 # MCP Server Templates
 
-This directory contains template definitions for MCP servers that can be deployed through the platform.
+Open source Model Context Protocol (MCP) server templates for integrating AI assistants with business tools.
 
-## Template Structure
+## 🚀 Available Templates
 
-Each template should be defined as a JSON file with the following structure:
+- **[GitHub](./github/)** - Repository management, issues, pull requests
+- **[Database](./database/)** - SQL database connectivity and operations  
+- **[File Server](./file-server/)** - File system access and operations
+- **[Basic](./basic/)** - Starter template for custom servers
+- **[Demo](./demo/)** - Example form handling demonstration
 
-```json
-{
-  "name": "Template Name",
-  "description": "Description of what this MCP server does",
-  "docker_image": "registry/image-name",
-  "docker_tag": "latest",
-  "config_schema": {
-    "type": "object",
-    "properties": {
-      "config_key": {
-        "type": "string",
-        "title": "Configuration Key",
-        "description": "Description of this configuration option",
-        "default": "default_value"
-      }
-    },
-    "required": ["config_key"]
-  },
-  "default_config": {
-    "config_key": "default_value"
-  },
-  "exposed_port": 8080,
-  "environment_variables": {
-    "ENV_VAR": "value"
-  },
-  "volume_mounts": [
-    "/host/path:/container/path"
-  ],
-  "version": "1.0.0",
-  "author": "Author Name",
-  "documentation_url": "https://docs.example.com",
-  "source_url": "https://github.com/author/repo"
-}
-```
+## 📋 Quick Start
 
-## Available Templates
+### Option 1: Use with MCP Platform (Recommended)
+1. Sign up at [MCP Platform](https://mcp-platform.dataeverything.ai)
+2. Choose a template from the dashboard
+3. Deploy in 60 seconds with one-click setup
+4. Connect your AI assistant
 
-- `basic-mcp.json` - Basic MCP server template
-- `file-server.json` - File server MCP template
-- `database-connector.json` - Database connector MCP template
+### Option 2: Self-Host (Advanced)
+1. Clone this repository
+2. Choose a template directory
+3. Follow the template's README for setup
+4. Use [MCP Deployment Tools](https://github.com/Data-Everything/mcp-deployment-tools) for infrastructure
 
-## Loading Templates
+## 🛠️ Creating Custom Templates
 
-Templates can be loaded into the platform using the Django management command:
+See our [Template Development Guide](./docs/creating-templates.md) for building your own MCP servers.
 
-```bash
-python manage.py load_templates templates/
-```
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contribution Guidelines](./CONTRIBUTING.md).
+
+## 📄 License
+
+MIT License - see [LICENSE](./LICENSE) file for details.
+
+## 🔗 Related Projects
+
+- [MCP Platform Core](https://github.com/Data-Everything/mcp-platform-core) - Managed hosting platform
+- [MCP Deployment Tools](https://github.com/Data-Everything/mcp-deployment-tools) - Self-hosting utilities
+- [MCP Protocol Specification](https://spec.modelcontextprotocol.io/) - Official MCP documentation
+
+## 💡 Why Open Source?
+
+These templates are open source because we believe in:
+- **Transparency**: You can inspect and modify the code
+- **Community**: Everyone can contribute new templates
+- **Trust**: No vendor lock-in for core functionality
+
+Our [MCP Platform](https://mcp-platform.dataeverything.ai) adds enterprise features like team management, monitoring, and managed hosting on top of these open source templates.
