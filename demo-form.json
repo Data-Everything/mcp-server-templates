@@ -1,0 +1,75 @@
+{
+  "name": "Demo Form Template",
+  "description": "A demonstration template to showcase dynamic form generation",
+  "image": "demo/form-test:latest",
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "server_name": {
+        "type": "string",
+        "title": "Server Name",
+        "description": "A friendly name for your MCP server instance",
+        "default": "My Demo Server",
+        "minLength": 3,
+        "maxLength": 50
+      },
+      "port": {
+        "type": "integer",
+        "title": "Port Number",
+        "description": "Port number for the server to listen on",
+        "default": 8080,
+        "minimum": 1024,
+        "maximum": 65535
+      },
+      "enable_logging": {
+        "type": "boolean",
+        "title": "Enable Logging",
+        "description": "Enable detailed logging for debugging",
+        "default": true
+      },
+      "log_level": {
+        "type": "string",
+        "title": "Log Level",
+        "description": "Verbosity level for logging",
+        "enum": ["DEBUG", "INFO", "WARNING", "ERROR"],
+        "default": "INFO"
+      },
+      "api_key": {
+        "type": "string",
+        "title": "API Key",
+        "description": "Secret API key for authentication",
+        "format": "password",
+        "minLength": 8
+      },
+      "allowed_hosts": {
+        "type": "array",
+        "title": "Allowed Hosts",
+        "description": "List of allowed hostnames (one per line)",
+        "default": ["localhost", "127.0.0.1"]
+      },
+      "timeout": {
+        "type": "number",
+        "title": "Timeout (seconds)",
+        "description": "Request timeout in seconds",
+        "default": 30.5,
+        "minimum": 0.1,
+        "maximum": 300.0
+      }
+    },
+    "required": ["server_name", "port", "api_key"]
+  },
+  "ports": [
+    {
+      "internal": 8080,
+      "external": "{{ port }}"
+    }
+  ],
+  "environment": {
+    "SERVER_NAME": "{{ server_name }}",
+    "LOG_LEVEL": "{{ log_level }}",
+    "ENABLE_LOGGING": "{{ enable_logging }}",
+    "API_KEY": "{{ api_key }}",
+    "TIMEOUT": "{{ timeout }}"
+  },
+  "volumes": []
+}
