@@ -1,57 +1,156 @@
 {
   "name": "File Server MCP",
-  "description": "An MCP server that provides file system access and manipulation capabilities. Allows reading, writing, and managing files through the MCP protocol.",
-  "docker_image": "mcpplatform/file-server-mcp",
-  "docker_tag": "v2.1.0",
+  "description": "Secure file system access for AI assistants using the official MCP filesystem server with additional platform integration and configuration options.",
+  "version": "1.0.0",
+  "author": "MCP Platform",
+  "category": "Utilities",
+  "tags": ["filesystem", "files", "storage", "security", "utilities"],
+  
+  "base_server": "@modelcontextprotocol/server-filesystem",
+  "base_version": "latest",
+  "docker_image": "mcpplatform/file-server",
+  "docker_tag": "latest",
+  
   "config_schema": {
     "type": "object",
     "properties": {
-      "root_directory": {
-        "type": "string",
-        "title": "Root Directory",
-        "description": "Root directory for file operations",
-        "default": "/data"
+      "allowed_directories": {
+        "type": "array",
+        "title": "Allowed Directories",
+        "description": "List of directories the server can access. Paths will be mounted and validated for security.",
+        "items": {"type": "string"},
+        "default": ["/data"]
+      },
+      "read_only_mode": {
+        "type": "boolean",
+        "title": "Read-Only Mode",
+        "description": "Enable read-only mode to prevent any file modifications",
+        "default": false
+      },
+      "enable_symlinks": {
+        "type": "boolean",
+        "title": "Enable Symlink Resolution",
+        "description": "Allow following symbolic links (with security validation)",
+        "default": true
       },
       "max_file_size": {
         "type": "integer",
-        "title": "Maximum File Size (MB)",
-        "description": "Maximum file size in megabytes",
+        "title": "Max File Size (MB)",
+        "description": "Maximum file size for read operations in megabytes",
         "default": 100,
         "minimum": 1,
         "maximum": 1000
       },
-      "allowed_extensions": {
-        "type": "string",
-        "title": "Allowed File Extensions",
-        "description": "Comma-separated list of allowed file extensions",
-        "default": "txt,json,md,py,js,html,css"
-      },
-      "read_only": {
-        "type": "boolean",
-        "title": "Read Only Mode",
-        "description": "Enable read-only mode to prevent file modifications",
-        "default": false
+      "exclude_patterns": {
+        "type": "array",
+        "title": "Exclude Patterns",
+        "description": "Glob patterns for files/directories to exclude from operations",
+        "items": {"type": "string"},
+        "default": ["**/.git/**", "**/node_modules/**", "**/.env*"]
       }
     },
-    "required": ["root_directory", "max_file_size"]
+    "required": ["allowed_directories"]
   },
-  "default_config": {
-    "root_directory": "/data",
-    "max_file_size": 100,
-    "allowed_extensions": "txt,json,md,py,js,html,css",
-    "read_only": false
-  },
-  "exposed_port": 8080,
-  "environment_variables": {
-    "MCP_PORT": "8080",
-    "MCP_HOST": "0.0.0.0",
-    "FILE_SERVER_MODE": "full"
-  },
-  "volume_mounts": [
-    "/app/data:/data"
+  
+  "capabilities": [
+    "file_read",
+    "file_write", 
+    "file_edit",
+    "directory_list",
+    "directory_create",
+    "file_search",
+    "file_move",
+    "file_info",
+    "security_validation",
+    "symlink_resolution"
   ],
-  "version": "2.1.0",
-  "author": "File Systems Inc.",
-  "documentation_url": "https://docs.filesystems.com/mcp-server",
-  "source_url": "https://github.com/filesystems/mcp-file-server"
+  
+  "tools": [
+    {
+      "name": "read_file",
+      "description": "Read complete contents of a file with support for head/tail operations"
+    },
+    {
+      "name": "read_multiple_files", 
+      "description": "Read multiple files simultaneously for efficient batch operations"
+    },
+    {
+      "name": "write_file",
+      "description": "Create new file or overwrite existing with security checks"
+    },
+    {
+      "name": "edit_file",
+      "description": "Make selective edits using advanced pattern matching with diff preview"
+    },
+    {
+      "name": "create_directory",
+      "description": "Create directories with recursive parent creation"
+    },
+    {
+      "name": "list_directory",
+      "description": "List directory contents with file type indicators"
+    },
+    {
+      "name": "list_directory_with_sizes",
+      "description": "List directory contents with detailed size information"
+    },
+    {
+      "name": "directory_tree",
+      "description": "Get recursive directory tree as JSON structure"
+    },
+    {
+      "name": "move_file",
+      "description": "Move or rename files and directories safely"
+    },
+    {
+      "name": "search_files",
+      "description": "Recursively search for files matching patterns with exclusion support"
+    },
+    {
+      "name": "get_file_info",
+      "description": "Get detailed metadata about files and directories"
+    },
+    {
+      "name": "list_allowed_directories",
+      "description": "Show currently accessible root directories"
+    }
+  ],
+  
+  "ports": [
+    {
+      "container": 8000,
+      "description": "MCP server stdio interface (typically not exposed)"
+    }
+  ],
+  
+  "volumes": [
+    {
+      "mount": "/data",
+      "description": "Primary file storage directory"
+    },
+    {
+      "mount": "/workspace", 
+      "description": "Additional workspace directory (optional)"
+    }
+  ],
+  
+  "environment_variables": {
+    "NODE_ENV": "production",
+    "MCP_ALLOWED_DIRS": "/data:/workspace",
+    "MCP_READ_ONLY": "false"
+  },
+  
+  "security_features": [
+    "Path traversal protection",
+    "Symlink validation", 
+    "Directory sandboxing",
+    "File size limits",
+    "Pattern-based exclusions",
+    "Atomic file operations"
+  ],
+  
+  "documentation_url": "https://docs.mcp-platform.ai/templates/file-server",
+  "source_url": "https://github.com/Data-Everything/mcp-server-templates/tree/main/file-server",
+  "upstream_url": "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
+  "license": "MIT"
 }

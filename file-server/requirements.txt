@@ -1,0 +1,4 @@
+# File Server MCP Requirements
+mcp>=1.0.0
+asyncio
+pathlib

@@ -1,0 +1,54 @@
+{
+  "name": "@mcpplatform/file-server",
+  "version": "1.0.0",
+  "description": "MCP Platform wrapper for filesystem server with enhanced security and configuration",
+  "main": "src/platform-wrapper.js",
+  "scripts": {
+    "start": "node src/platform-wrapper.js",
+    "dev": "node --inspect src/platform-wrapper.js",
+    "health": "node src/health-check.js",
+    "test": "node test/test-runner.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server-filesystem": "^0.5.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "nodemon": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Data-Everything/mcp-server-templates.git",
+    "directory": "file-server"
+  },
+  "keywords": [
+    "mcp",
+    "filesystem",
+    "files",
+    "ai",
+    "platform",
+    "security"
+  ],
+  "author": "MCP Platform <support@mcp-platform.ai>",
+  "license": "MIT",
+  "mcp": {
+    "template": "file-server",
+    "base_server": "@modelcontextprotocol/server-filesystem",
+    "capabilities": [
+      "file_read",
+      "file_write",
+      "file_edit",
+      "directory_list",
+      "directory_create",
+      "file_search",
+      "file_move",
+      "file_info"
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "name": "MCP Platform File Server Configuration",
+  "description": "Configuration template for the file server MCP template",
+  "version": "1.0.0",
+  
+  "server": {
+    "name": "file-server",
+    "description": "Secure file system access for AI assistants",
+    "base_server": "@modelcontextprotocol/server-filesystem"
+  },
+  
+  "security": {
+    "allowedDirs": [
+      "/data",
+      "/workspace"
+    ],
+    "readOnly": false,
+    "enableSymlinks": true,
+    "maxFileSize": 104857600,
+    "excludePatterns": [
+      "**/.git/**",
+      "**/node_modules/**",
+      "**/.env*",
+      "**/.*",
+      "**/__pycache__/**",
+      "**/target/**",
+      "**/build/**",
+      "**/dist/**"
+    ]
+  },
+  
+  "logging": {
+    "level": "info",
+    "enableAudit": true,
+    "logFile": "/logs/file-server.log",
+    "maxLogSize": "10MB",
+    "maxLogFiles": 5
+  },
+  
+  "performance": {
+    "maxConcurrentOperations": 10,
+    "timeoutMs": 30000,
+    "cacheEnabled": true,
+    "cacheTtlMs": 300000
+  },
+  
+  "monitoring": {
+    "healthCheckInterval": 30,
+    "metricsEnabled": true,
+    "alertThresholds": {
+      "memoryUsageMB": 512,
+      "diskUsagePercent": 90,
+      "errorRate": 0.05
+    }
+  },
+  
+  "platform": {
+    "integrationEnabled": true,
+    "apiEndpoint": "https://api.mcp-platform.ai",
+    "reportMetrics": true,
+    "enableUpdates": true
+  }
+}

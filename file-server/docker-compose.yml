@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  file-server-mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+      - ./logs:/logs
+      - ./src:/app/src  # For development
+    environment:
+      - ROOT_PATH=/data
+      - ALLOWED_EXTENSIONS=[".*"]
+      - MAX_FILE_SIZE=10
+      - READ_ONLY=false
+      - ENABLE_SUBDIRECTORIES=true
+      - LOG_FILE_OPERATIONS=true
+      - LOG_LEVEL=INFO
+      - AUDIT_LOG_PATH=/logs/file_operations.log
+    restart: unless-stopped
+
+  # Optional: Add a simple web interface for testing
+  web-interface:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+    depends_on:
+      - file-server-mcp
+    profiles:
+      - web
