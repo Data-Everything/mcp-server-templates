@@ -53,66 +53,62 @@
   },
   
   "capabilities": [
-    "file_read",
-    "file_write", 
-    "file_edit",
-    "directory_list",
-    "directory_create",
-    "file_search",
-    "file_move",
-    "file_info",
-    "security_validation",
-    "symlink_resolution"
+    {
+      "name": "File Operations",
+      "description": "Read, write, and edit files with security validation",
+      "example": "Read configuration files, create documents, update source code"
+    },
+    {
+      "name": "Directory Management",
+      "description": "List, create, and navigate directory structures",
+      "example": "Browse project folders, create new directories, organize files"
+    },
+    {
+      "name": "File Search",
+      "description": "Search for files by name, extension, or content patterns",
+      "example": "Find all .js files, locate configuration files, search by content"
+    },
+    {
+      "name": "Security & Validation",
+      "description": "Path traversal protection and security validation",
+      "example": "Prevent access to system files, validate file paths, enforce permissions"
+    }
   ],
   
   "tools": [
     {
       "name": "read_file",
-      "description": "Read complete contents of a file with support for head/tail operations"
-    },
-    {
-      "name": "read_multiple_files", 
-      "description": "Read multiple files simultaneously for efficient batch operations"
+      "description": "Read complete contents of a file with support for head/tail operations",
+      "parameters": [
+        {"name": "path", "description": "File path to read", "required": true},
+        {"name": "encoding", "description": "File encoding (default: utf-8)", "required": false}
+      ]
     },
     {
       "name": "write_file",
-      "description": "Create new file or overwrite existing with security checks"
-    },
-    {
-      "name": "edit_file",
-      "description": "Make selective edits using advanced pattern matching with diff preview"
-    },
-    {
-      "name": "create_directory",
-      "description": "Create directories with recursive parent creation"
+      "description": "Create new file or overwrite existing with security checks",
+      "parameters": [
+        {"name": "path", "description": "File path to write", "required": true},
+        {"name": "content", "description": "File content", "required": true},
+        {"name": "mode", "description": "File permissions (default: 644)", "required": false}
+      ]
     },
     {
       "name": "list_directory",
-      "description": "List directory contents with file type indicators"
-    },
-    {
-      "name": "list_directory_with_sizes",
-      "description": "List directory contents with detailed size information"
-    },
-    {
-      "name": "directory_tree",
-      "description": "Get recursive directory tree as JSON structure"
-    },
-    {
-      "name": "move_file",
-      "description": "Move or rename files and directories safely"
+      "description": "List directory contents with file type indicators",
+      "parameters": [
+        {"name": "path", "description": "Directory path to list", "required": true},
+        {"name": "recursive", "description": "Include subdirectories", "required": false}
+      ]
     },
     {
       "name": "search_files",
-      "description": "Recursively search for files matching patterns with exclusion support"
-    },
-    {
-      "name": "get_file_info",
-      "description": "Get detailed metadata about files and directories"
-    },
-    {
-      "name": "list_allowed_directories",
-      "description": "Show currently accessible root directories"
+      "description": "Recursively search for files matching patterns with exclusion support",
+      "parameters": [
+        {"name": "pattern", "description": "Search pattern or glob", "required": true},
+        {"name": "path", "description": "Search root path", "required": false},
+        {"name": "exclude", "description": "Exclusion patterns", "required": false}
+      ]
     }
   ],
   
@@ -140,14 +136,19 @@
     "MCP_READ_ONLY": "false"
   },
   
-  "security_features": [
-    "Path traversal protection",
-    "Symlink validation", 
-    "Directory sandboxing",
-    "File size limits",
-    "Pattern-based exclusions",
-    "Atomic file operations"
-  ],
+  "security_features": {
+    "authentication": false,
+    "encryption": false,
+    "sandboxed": true,
+    "permissions": [
+      "Path traversal protection",
+      "Symlink validation", 
+      "Directory sandboxing",
+      "File size limits",
+      "Pattern-based exclusions",
+      "Atomic file operations"
+    ]
+  },
   
   "documentation_url": "https://docs.mcp-platform.ai/templates/file-server",
   "source_url": "https://github.com/Data-Everything/mcp-server-templates/tree/main/file-server",
