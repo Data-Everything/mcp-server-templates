@@ -144,7 +144,8 @@ jobs:
             type=ref,event=branch
             type=ref,event=pr
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ steps.meta.outputs.version }}
+            type=raw,value=${{ steps.meta.outputs.version }}-{{sha}},enable={{is_default_branch}}
+            type=raw,value=${{ steps.meta.outputs.version }},enable={{is_default_branch}},priority=1000
           labels: |
             org.opencontainers.image.title=MCP ${{ matrix.template }} Server
             org.opencontainers.image.description=${{ steps.meta.outputs.description }}
@@ -163,6 +164,20 @@ jobs:
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Make package public
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IMAGE_NAME="mcp-${{ matrix.template }}"
+          echo "Making package $IMAGE_NAME public..."
+          
+          # Update package visibility to public
+          gh api --method PATCH "/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_NAME}" \
+            -f visibility=public || echo "Failed to make package public (may already be public or need manual intervention)"
+          
+          echo "Package visibility update completed"
 
       - name: Update template.json with new image reference
         if: github.ref == 'refs/heads/main'

@@ -1,7 +1,7 @@
 {
   "name": "File Server MCP",
   "description": "Secure file system access for AI assistants using the official MCP filesystem server with additional platform integration and configuration options.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "MCP Platform",
   "category": "Utilities",
   "tags": [
