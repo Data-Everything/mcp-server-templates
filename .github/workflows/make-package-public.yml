@@ -1,0 +1,162 @@
+name: Make Package Public
+
+on:
+  workflow_run:
+    workflows: ["Build Docker Images"]
+    types:
+      - completed
+    branches: [main]
+
+jobs:
+  make-public:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+      - name: Wait for package to be available
+        run: |
+          echo "Waiting for package to be fully available..."
+          sleep 60
+          
+      - name: Make package public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PACKAGE_NAME="mcp-file-server"
+          ORG_NAME="Data-Everything"
+          
+          echo "Making package $PACKAGE_NAME public for org $ORG_NAME..."
+          
+          # Function to make API call with retries
+          make_api_call() {
+            local endpoint="$1"
+            local data="$2"
+            local max_retries=5
+            local retry=0
+            
+            while [ $retry -lt $max_retries ]; do
+              echo "Attempt $((retry + 1))/$max_retries for endpoint: $endpoint"
+              
+              response=$(curl -s -w "%{http_code}" \
+                -X PATCH \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                -d "$data" \
+                "$endpoint")
+              
+              http_code="${response: -3}"
+              body="${response%???}"
+              
+              echo "HTTP Code: $http_code"
+              echo "Response: $body"
+              
+              if [ "$http_code" = "200" ] || [ "$http_code" = "204" ]; then
+                echo "✅ Successfully made package public!"
+                return 0
+              fi
+              
+              retry=$((retry + 1))
+              if [ $retry -lt $max_retries ]; then
+                echo "⏳ Waiting 30 seconds before retry..."
+                sleep 30
+              fi
+            done
+            
+            return 1
+          }
+          
+          # Try organization endpoint first
+          echo "🔄 Trying organization endpoint..."
+          if make_api_call "https://api.github.com/orgs/$ORG_NAME/packages/container/$PACKAGE_NAME" '{"visibility": "public"}'; then
+            exit 0
+          fi
+          
+          # Try user endpoint as fallback
+          echo "🔄 Trying user endpoint..."
+          if make_api_call "https://api.github.com/user/packages/container/$PACKAGE_NAME" '{"visibility": "public"}'; then
+            exit 0
+          fi
+          
+          # Try GraphQL API as final fallback
+          echo "🔄 Trying GraphQL API..."
+          
+          # First get the package ID
+          GRAPHQL_QUERY='{
+            "query": "query($owner: String!, $name: String!) { 
+              repository(owner: $owner, name: \\"mcp-server-templates\\") { 
+                packages(first: 10, names: [$name]) { 
+                  nodes { 
+                    id 
+                    name 
+                  } 
+                } 
+              } 
+            }",
+            "variables": {
+              "owner": "'$ORG_NAME'",
+              "name": "'$PACKAGE_NAME'"
+            }
+          }'
+          
+          package_id=$(curl -s \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$GRAPHQL_QUERY" \
+            https://api.github.com/graphql | \
+            jq -r '.data.repository.packages.nodes[0].id // empty')
+          
+          if [ -n "$package_id" ] && [ "$package_id" != "null" ]; then
+            echo "Found package ID: $package_id"
+            
+            MUTATION='{
+              "query": "mutation($packageId: ID!) { 
+                updatePackage(input: {packageId: $packageId, visibility: PUBLIC}) { 
+                  package { 
+                    id 
+                    visibility 
+                  } 
+                } 
+              }",
+              "variables": {
+                "packageId": "'$package_id'"
+              }
+            }'
+            
+            result=$(curl -s \
+              -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$MUTATION" \
+              https://api.github.com/graphql)
+            
+            echo "GraphQL result: $result"
+            
+            if echo "$result" | jq -e '.data.updatePackage.package.visibility == "PUBLIC"' > /dev/null; then
+              echo "✅ Package made public via GraphQL!"
+              exit 0
+            fi
+          fi
+          
+          echo "❌ All methods failed. Manual intervention required."
+          echo "Please manually set package visibility at:"
+          echo "https://github.com/orgs/$ORG_NAME/packages/container/$PACKAGE_NAME/settings"
+          
+          # Don't fail the workflow - just notify
+          exit 0
+
+      - name: Verify public access
+        run: |
+          echo "🧪 Testing public Docker pull..."
+          
+          # Wait a bit for changes to propagate
+          sleep 30
+          
+          # Test public access (this should work without authentication)
+          if timeout 60 docker pull ghcr.io/data-everything/mcp-file-server:latest; then
+            echo "✅ Package is now publicly accessible!"
+          else
+            echo "⚠️ Package may still require manual intervention"
+            echo "Check: https://github.com/orgs/Data-Everything/packages"
+          fi
