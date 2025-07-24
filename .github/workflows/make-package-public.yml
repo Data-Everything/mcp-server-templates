@@ -31,8 +31,22 @@ jobs:
         run: |
           PACKAGE_NAME="mcp-file-server"
           ORG_NAME="Data-Everything"
+          ORG_NAME_LOWER="data-everything"
           
           echo "Making package $PACKAGE_NAME public for org $ORG_NAME..."
+          
+          # Debug: List all packages to find the correct structure
+          echo "🔍 Debugging: Listing all org packages..."
+          curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/orgs/$ORG_NAME_LOWER/packages?package_type=container" | \
+            jq '.[0:3] | .[] | {name, html_url, visibility}' || echo "Org packages call failed"
+          
+          echo "🔍 Debugging: Listing all user packages..."
+          curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/user/packages?package_type=container" | \
+            jq '.[0:3] | .[] | {name, html_url, visibility}' || echo "User packages call failed"
           
           # Function to make API call with retries
           make_api_call() {
@@ -73,8 +87,14 @@ jobs:
             return 1
           }
           
-          # Try organization endpoint first
-          echo "🔄 Trying organization endpoint..."
+          # Try organization endpoint first (lowercase)
+          echo "🔄 Trying organization endpoint (lowercase)..."
+          if make_api_call "https://api.github.com/orgs/$ORG_NAME_LOWER/packages/container/$PACKAGE_NAME" '{"visibility": "public"}'; then
+            exit 0
+          fi
+          
+          # Try organization endpoint (original case)
+          echo "🔄 Trying organization endpoint (original case)..."
           if make_api_call "https://api.github.com/orgs/$ORG_NAME/packages/container/$PACKAGE_NAME" '{"visibility": "public"}'; then
             exit 0
           fi
@@ -88,6 +108,33 @@ jobs:
           # Try GraphQL API as final fallback
           echo "🔄 Trying GraphQL API..."
           
+          # Debug: First try to list all packages via GraphQL
+          echo "🔍 GraphQL Debug: Listing repository packages..."
+          GRAPHQL_LIST='{
+            "query": "query($owner: String!) { 
+              repository(owner: $owner, name: \\"mcp-server-templates\\") { 
+                packages(first: 10) { 
+                  nodes { 
+                    id 
+                    name 
+                    packageType
+                    visibility
+                  } 
+                } 
+              } 
+            }",
+            "variables": {
+              "owner": "'$ORG_NAME'"
+            }
+          }'
+          
+          curl -s \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$GRAPHQL_LIST" \
+            https://api.github.com/graphql | jq '.data.repository.packages.nodes' || echo "GraphQL list failed"
+          
           # First get the package ID
           GRAPHQL_QUERY='{
             "query": "query($owner: String!, $name: String!) { 
@@ -96,6 +143,7 @@ jobs:
                   nodes { 
                     id 
                     name 
+                    visibility
                   } 
                 } 
               } 
