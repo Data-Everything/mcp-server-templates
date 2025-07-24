@@ -4,15 +4,110 @@ on:
   push:
     branches: [ main ]
     paths: 
-      - 'templates/file-server/**'
+      - 'templates/**'
   pull_request:
     branches: [ main ]
     paths: 
-      - 'templates/file-server/**'
+      - 'templates/**'
+  workflow_dispatch:
 
 jobs:
-  docker-hub:
+  detect-changes:
     runs-on: ubuntu-latest
+    outputs:
+      templates: ${{ steps.changes.outputs.templates }}
+      matrix: ${{ steps.changes.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed templates
+        id: changes
+        run: |
+          # Get list of changed files
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            changed_files=$(git diff --name-only HEAD^ HEAD)
+          else
+            changed_files=$(git diff --name-only HEAD^ HEAD)
+          fi
+          
+          echo "Changed files:"
+          echo "$changed_files"
+          
+          # Find templates with changes and Dockerfiles
+          changed_templates=()
+          
+          for template_dir in templates/*/; do
+            if [[ -d "$template_dir" ]]; then
+              template_name=$(basename "$template_dir")
+              echo "Checking template: $template_name"
+              
+              # Check if template has a Dockerfile
+              if [[ -f "$template_dir/Dockerfile" ]]; then
+                echo "  ✅ Has Dockerfile"
+                
+                # Check if any files in this template directory changed
+                if echo "$changed_files" | grep -q "^templates/$template_name/"; then
+                  echo "  ✅ Has changes"
+                  changed_templates+=("$template_name")
+                else
+                  echo "  ⏭️  No changes"
+                fi
+              else
+                echo "  ⏭️  No Dockerfile"
+              fi
+            fi
+          done
+
+          # If no specific changes detected, build all templates with Dockerfiles (for workflow_dispatch)
+          if [[ ${#changed_templates[@]} -eq 0 && "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Manual trigger - building all templates with Dockerfiles"
+            for template_dir in templates/*/; do
+              if [[ -d "$template_dir" && -f "$template_dir/Dockerfile" ]]; then
+                template_name=$(basename "$template_dir")
+                changed_templates+=("$template_name")
+              fi
+            done
+          fi
+
+          # Create JSON array for output
+          if [[ ${#changed_templates[@]} -gt 0 ]]; then
+            templates_json="["
+            for i in "${!changed_templates[@]}"; do
+              if [ $i -gt 0 ]; then
+                templates_json+=","
+              fi
+              templates_json+="\"${changed_templates[$i]}\""
+            done
+            templates_json+="]"
+            echo "templates=$templates_json" >> $GITHUB_OUTPUT
+            
+            # Create matrix for parallel builds
+            matrix_json="{\"include\":["
+            for i in "${!changed_templates[@]}"; do
+              if [ $i -gt 0 ]; then
+                matrix_json+=","
+              fi
+              matrix_json+="{\"template\":\"${changed_templates[$i]}\"}"
+            done
+            matrix_json+="]}"
+            echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
+          else
+            echo "templates=[]" >> $GITHUB_OUTPUT
+            echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Changed templates: ${changed_templates[*]}"
+
+  build-and-push:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.templates != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+      fail-fast: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,7 +126,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: dataeverything/mcp-file-server
+          images: dataeverything/mcp-${{ matrix.template }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -42,7 +137,7 @@ jobs:
       - name: Build and push to Docker Hub
         uses: docker/build-push-action@v5
         with:
-          context: ./templates/file-server
+          context: ./templates/${{ matrix.template }}
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -50,9 +145,35 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Update README with Docker Hub instructions
-        if: github.event_name != 'pull_request'
+  summary:
+    needs: [detect-changes, build-and-push]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Summary
         run: |
-          echo "✅ Docker image published to Docker Hub!"
-          echo "📦 Pull the image: docker pull dataeverything/mcp-file-server:latest"
-          echo "🔗 Docker Hub: https://hub.docker.com/r/dataeverything/mcp-file-server"
+          if [[ "${{ needs.detect-changes.outputs.templates }}" == "[]" ]]; then
+            echo "## 🔍 No templates changed" >> $GITHUB_STEP_SUMMARY
+            echo "No MCP template images need to be built." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## 🚀 Docker Hub Build Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Built Templates:" >> $GITHUB_STEP_SUMMARY
+            
+            for template in $(echo '${{ needs.detect-changes.outputs.templates }}' | jq -r '.[]'); do
+              image_url="dataeverything/mcp-$template:latest"
+              echo "- **$template**: \`docker pull $image_url\`" >> $GITHUB_STEP_SUMMARY
+            done
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### � Docker Hub:" >> $GITHUB_STEP_SUMMARY
+            echo "Images are available at: [Docker Hub](https://hub.docker.com/u/dataeverything)" >> $GITHUB_STEP_SUMMARY
+            
+            if [[ "${{ needs.build-and-push.result }}" == "success" ]]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "✅ All images built and pushed successfully!" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "❌ Some builds failed. Check the job logs for details." >> $GITHUB_STEP_SUMMARY
+            fi
+          fi

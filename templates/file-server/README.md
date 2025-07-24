@@ -32,23 +32,19 @@ Following the principle "don't reinvent the wheel", this template:
 
 🛠️ **What you get**: Complete MCP server source code, Docker configurations, deployment guides, full customization freedom
 
+## 🐳 Docker Hub
+
+The latest version is available on Docker Hub:
+- **Image**: `dataeverything/mcp-file-server:latest`
+- **Platforms**: AMD64, ARM64
+- **Auto-updated**: Every commit to main branch
+- **Public access**: No authentication required
+
 ## 🔧 Configuration
 
+The file server supports comprehensive configuration through environment variables and JSON configuration files.
+
 ### Environment Variables
-
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| `ROOT_PATH` | Base directory for all file operations | `/data` | `/home/user/files` |
-| `MAX_FILE_SIZE` | Maximum file size in MB | `10` | `50` |
-| `READ_ONLY` | Enable read-only mode | `false` | `true` |
-| `ALLOWED_EXTENSIONS` | JSON array of allowed extensions | `[".*"]` | `[".txt", ".json", ".md"]` |
-| `ENABLE_SUBDIRECTORIES` | Allow subdirectory access | `true` | `false` |
-| `LOG_FILE_OPERATIONS` | Enable audit logging | `true` | `false` |
-| `AUDIT_LOG_PATH` | Path for audit logs | `/logs/file_operations.log` | `/var/log/mcp.log` |
-
-### Security Configuration Examples
-
-## Features
 
 ### File Operations
 - **Read files**: Complete file contents or partial reads (head/tail)
@@ -134,14 +130,16 @@ Following the principle "don't reinvent the wheel", this template:
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MCP_ALLOWED_DIRS` | Colon-separated list of allowed directories | `/data` |
-| `MCP_READ_ONLY` | Enable read-only mode | `false` |
-| `MCP_ENABLE_SYMLINKS` | Allow symlink resolution | `true` |
-| `MCP_MAX_FILE_SIZE` | Maximum file size in bytes | `104857600` (100MB) |
-| `MCP_EXCLUDE_PATTERNS` | Comma-separated exclusion patterns | `.git,.env` |
-| `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` |
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `ROOT_PATH` | Base directory for all file operations | `/data` | `/home/user/files` |
+| `MAX_FILE_SIZE` | Maximum file size in MB | `10` | `50` |
+| `READ_ONLY` | Enable read-only mode | `false` | `true` |
+| `ALLOWED_EXTENSIONS` | JSON array of allowed extensions | `[".*"]` | `[".txt", ".json", ".md"]` |
+| `ENABLE_SUBDIRECTORIES` | Allow subdirectory access | `true` | `false` |
+| `LOG_FILE_OPERATIONS` | Enable audit logging | `true` | `false` |
+| `AUDIT_LOG_PATH` | Path for audit logs | `/logs/file_operations.log` | `/var/log/mcp.log` |
+| `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` | `debug` |
 
 ### Configuration File
 
@@ -215,10 +213,10 @@ The server provides comprehensive health monitoring:
 
 ```bash
 # Check server health
-docker exec mcp-file-server node src/health-check.js
+docker exec mcp-file-server python -c "print('Server healthy')"
 
-# Verbose health information
-docker exec -e HEALTH_CHECK_VERBOSE=true mcp-file-server node src/health-check.js
+# View server logs
+docker logs mcp-file-server
 ```
 
 ### Metrics
