@@ -4,13 +4,17 @@
   "version": "1.0.0",
   "author": "MCP Platform",
   "category": "Utilities",
-  "tags": ["filesystem", "files", "storage", "security", "utilities"],
-  
+  "tags": [
+    "filesystem",
+    "files",
+    "storage",
+    "security",
+    "utilities"
+  ],
   "base_server": "@modelcontextprotocol/server-filesystem",
   "base_version": "latest",
   "docker_image": "ghcr.io/data-everything/mcp-file-server",
   "docker_tag": "latest",
-  
   "config_schema": {
     "type": "object",
     "properties": {
@@ -18,8 +22,12 @@
         "type": "array",
         "title": "Allowed Directories",
         "description": "List of directories the server can access. Paths will be mounted and validated for security.",
-        "items": {"type": "string"},
-        "default": ["/data"],
+        "items": {
+          "type": "string"
+        },
+        "default": [
+          "/data"
+        ],
         "env_mapping": "MCP_ALLOWED_DIRS",
         "env_separator": ":"
       },
@@ -50,8 +58,14 @@
         "type": "array",
         "title": "Exclude Patterns",
         "description": "Glob patterns for files/directories to exclude from operations",
-        "items": {"type": "string"},
-        "default": ["**/.git/**", "**/node_modules/**", "**/.env*"],
+        "items": {
+          "type": "string"
+        },
+        "default": [
+          "**/.git/**",
+          "**/node_modules/**",
+          "**/.env*"
+        ],
         "env_mapping": "MCP_EXCLUDE_PATTERNS",
         "env_separator": ","
       },
@@ -59,7 +73,12 @@
         "type": "string",
         "title": "Log Level",
         "description": "Logging level for the server",
-        "enum": ["debug", "info", "warn", "error"],
+        "enum": [
+          "debug",
+          "info",
+          "warn",
+          "error"
+        ],
         "default": "info",
         "env_mapping": "MCP_LOG_LEVEL"
       },
@@ -103,9 +122,10 @@
         "env_mapping": "MCP_METRICS_ENABLED"
       }
     },
-    "required": ["allowed_directories"]
+    "required": [
+      "allowed_directories"
+    ]
   },
-  
   "capabilities": [
     {
       "name": "File Operations",
@@ -128,62 +148,98 @@
       "example": "Prevent access to system files, validate file paths, enforce permissions"
     }
   ],
-  
   "tools": [
     {
       "name": "read_file",
       "description": "Read complete contents of a file with support for head/tail operations",
       "parameters": [
-        {"name": "path", "description": "File path to read", "required": true},
-        {"name": "encoding", "description": "File encoding (default: utf-8)", "required": false}
+        {
+          "name": "path",
+          "description": "File path to read",
+          "required": true
+        },
+        {
+          "name": "encoding",
+          "description": "File encoding (default: utf-8)",
+          "required": false
+        }
       ]
     },
     {
       "name": "write_file",
       "description": "Create new file or overwrite existing with security checks",
       "parameters": [
-        {"name": "path", "description": "File path to write", "required": true},
-        {"name": "content", "description": "File content", "required": true},
-        {"name": "mode", "description": "File permissions (default: 644)", "required": false}
+        {
+          "name": "path",
+          "description": "File path to write",
+          "required": true
+        },
+        {
+          "name": "content",
+          "description": "File content",
+          "required": true
+        },
+        {
+          "name": "mode",
+          "description": "File permissions (default: 644)",
+          "required": false
+        }
       ]
     },
     {
       "name": "list_directory",
       "description": "List directory contents with file type indicators",
       "parameters": [
-        {"name": "path", "description": "Directory path to list", "required": true},
-        {"name": "recursive", "description": "Include subdirectories", "required": false}
+        {
+          "name": "path",
+          "description": "Directory path to list",
+          "required": true
+        },
+        {
+          "name": "recursive",
+          "description": "Include subdirectories",
+          "required": false
+        }
       ]
     },
     {
       "name": "search_files",
       "description": "Recursively search for files matching patterns with exclusion support",
       "parameters": [
-        {"name": "pattern", "description": "Search pattern or glob", "required": true},
-        {"name": "path", "description": "Search root path", "required": false},
-        {"name": "exclude", "description": "Exclusion patterns", "required": false}
+        {
+          "name": "pattern",
+          "description": "Search pattern or glob",
+          "required": true
+        },
+        {
+          "name": "path",
+          "description": "Search root path",
+          "required": false
+        },
+        {
+          "name": "exclude",
+          "description": "Exclusion patterns",
+          "required": false
+        }
       ]
     }
   ],
-  
   "ports": [
     {
       "container": 8000,
       "description": "MCP server stdio interface (typically not exposed)"
     }
   ],
-  
   "volumes": [
     {
       "mount": "/data",
       "description": "Primary file storage directory"
     },
     {
-      "mount": "/workspace", 
+      "mount": "/workspace",
       "description": "Additional workspace directory (optional)"
     }
   ],
-  
   "environment_variables": {
     "NODE_ENV": "production",
     "MCP_ALLOWED_DIRS": "/data:/workspace",
@@ -206,21 +262,19 @@
     "MCP_DISK_THRESHOLD_PCT": "90",
     "MCP_ERROR_RATE_THRESHOLD": "0.05"
   },
-  
   "security_features": {
     "authentication": false,
     "encryption": false,
     "sandboxed": true,
     "permissions": [
       "Path traversal protection",
-      "Symlink validation", 
+      "Symlink validation",
       "Directory sandboxing",
       "File size limits",
       "Pattern-based exclusions",
       "Atomic file operations"
     ]
   },
-  
   "documentation_url": "https://docs.mcp-platform.ai/templates/file-server",
   "source_url": "https://github.com/Data-Everything/mcp-server-templates/tree/main/file-server",
   "upstream_url": "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
