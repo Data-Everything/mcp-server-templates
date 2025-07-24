@@ -222,13 +222,24 @@ jobs:
               # Update docker_image field to point to GHCR
               full_image="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/mcp-$template"
               
+              # Create backup to compare changes
+              cp "$template_json" "$template_json.backup"
+              
               jq --arg image "$full_image" \
                  '.docker_image = $image | .docker_tag = "latest"' \
                  "$template_json" > "$template_json.tmp" && \
                  mv "$template_json.tmp" "$template_json"
               
-              updated_files+=("$template_json")
-              echo "Updated $template_json with image: $full_image"
+              # Check if file actually changed
+              if ! cmp -s "$template_json.backup" "$template_json"; then
+                updated_files+=("$template_json")
+                echo "Updated $template_json with image: $full_image"
+              else
+                echo "No changes needed for $template_json (already has correct image reference)"
+              fi
+              
+              # Clean up backup
+              rm -f "$template_json.backup"
             fi
           done
 
@@ -244,8 +255,9 @@ jobs:
             - Automated update from GitHub Actions
             - Images pushed to ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}"
             git push
+            echo "Successfully committed changes to ${#updated_files[@]} template.json files"
           else
-            echo "No template.json files to update"
+            echo "No template.json files needed updates - all already have correct image references"
           fi
 
   summary:
