@@ -57,13 +57,28 @@ jobs:
           if [ ${#changed_templates[@]} -eq 0 ]; then
             echo "templates=[]" >> $GITHUB_OUTPUT
             echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+            echo "No templates to build"
           else
-            # Create JSON array for templates
-            templates_json=$(printf '%s\n' "${changed_templates[@]}" | jq -R . | jq -s .)
+            # Create JSON array for templates (more robust approach)
+            templates_json="["
+            for i in "${!changed_templates[@]}"; do
+              if [ $i -gt 0 ]; then
+                templates_json+=","
+              fi
+              templates_json+="\"${changed_templates[$i]}\""
+            done
+            templates_json+="]"
             echo "templates=$templates_json" >> $GITHUB_OUTPUT
             
             # Create matrix for parallel builds
-            matrix_json=$(printf '%s\n' "${changed_templates[@]}" | jq -R '{template: .}' | jq -s '{include: .}')
+            matrix_json="{\"include\":["
+            for i in "${!changed_templates[@]}"; do
+              if [ $i -gt 0 ]; then
+                matrix_json+=","
+              fi
+              matrix_json+="{\"template\":\"${changed_templates[$i]}\"}"
+            done
+            matrix_json+="]}"
             echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
           fi
 
