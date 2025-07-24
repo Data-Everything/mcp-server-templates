@@ -96,22 +96,26 @@ Following the principle "don't reinvent the wheel", this template:
 
 ### Self-Hosted Deployment
 
-1. **Clone and Build**:
+1. **Pull from Docker Hub** (Recommended):
    ```bash
-   git clone https://github.com/Data-Everything/mcp-server-templates.git
-   cd mcp-server-templates/file-server
-   docker build -t mcp-file-server .
-   ```
-
-2. **Run with Docker**:
-   ```bash
+   # Pull the latest image
+   docker pull dataeverything/mcp-file-server:latest
+   
+   # Run the server
    docker run -d \
      --name mcp-file-server \
      -v /path/to/your/data:/data \
      -v /path/to/logs:/logs \
-     -e MCP_ALLOWED_DIRS="/data" \
-     -e MCP_READ_ONLY=false \
-     mcp-file-server
+     -e ROOT_PATH=/data \
+     -e READ_ONLY=false \
+     dataeverything/mcp-file-server:latest
+   ```
+
+2. **Or build from source**:
+   ```bash
+   git clone https://github.com/Data-Everything/mcp-server-templates.git
+   cd mcp-server-templates/templates/file-server
+   docker build -t mcp-file-server .
    ```
 
 3. **Connect to MCP Client**:
@@ -120,7 +124,7 @@ Following the principle "don't reinvent the wheel", this template:
      "servers": {
        "file-server": {
          "command": "docker",
-         "args": ["exec", "-i", "mcp-file-server", "node", "src/platform-wrapper.js"]
+         "args": ["run", "--rm", "-i", "-v", "/path/to/data:/data", "dataeverything/mcp-file-server:latest"]
        }
      }
    }
