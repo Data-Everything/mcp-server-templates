@@ -1,0 +1,154 @@
+name: Bug Report
+description: Report a bug in an existing template
+title: "[BUG] Brief description of the issue"
+labels: ["bug", "needs-triage"]
+body:
+  - type: dropdown
+    id: template
+    attributes:
+      label: Template Name
+      description: Which template is affected?
+      options:
+        - file-server
+        - database
+        - github
+        - demo
+        - basic
+        - other
+    validations:
+      required: true
+  
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the issue you're experiencing...
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment Method
+      description: How are you deploying the template?
+      options:
+        - MCP Platform
+        - Docker
+        - Docker Compose
+        - Kubernetes
+        - Other
+    validations:
+      required: true
+  
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you running on?
+      placeholder: "e.g., Ubuntu 20.04, macOS 12.0, Windows 11"
+    validations:
+      required: true
+  
+  - type: input
+    id: docker-version
+    attributes:
+      label: Docker Version
+      description: Docker version (if applicable)
+      placeholder: "e.g., 20.10.21"
+  
+  - type: input
+    id: template-version
+    attributes:
+      label: Template Version/Image Tag
+      description: Which version of the template are you using?
+      placeholder: "e.g., latest, v1.0.0"
+    validations:
+      required: true
+  
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. Go to '...'
+        2. Configure with '...'
+        3. Run command '...'
+        4. See error
+    validations:
+      required: true
+  
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: A clear description of what you expected to happen.
+    validations:
+      required: true
+  
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: A clear description of what actually happened.
+    validations:
+      required: true
+  
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Your configuration (remove any secrets!)
+      placeholder: |
+        Environment Variables:
+        MCP_SETTING_1=value1
+        MCP_SETTING_2=value2
+        
+        Config File (if used):
+        ```yaml
+        # Paste config here
+        ```
+  
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Messages/Logs
+      description: Container logs and error messages
+      placeholder: |
+        Container Logs:
+        ```
+        Paste container logs here
+        ```
+        
+        Error Messages:
+        ```
+        Paste error messages here
+        ```
+  
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context about the problem
+      placeholder: |
+        - Health check status: [passing/failing]
+        - Any custom modifications made
+        - Related issues or discussions
+  
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched for existing issues that might be related
+          required: true
+        - label: I have included all relevant configuration details
+          required: true
+        - label: I have removed any sensitive information (passwords, API keys, etc.)
+          required: true
+        - label: I can reproduce this issue consistently
+          required: false

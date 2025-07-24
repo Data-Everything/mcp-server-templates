@@ -1,0 +1,121 @@
+# Example: Complex Configuration via YAML File
+
+# This example shows how complex configurations that don't fit well
+# in environment variables can be handled via mounted config files
+
+# Security Configuration
+security:
+  allowedDirs:
+    - "/data"
+    - "/workspace"
+    - "/projects"
+  readOnly: false
+  enableSymlinks: true
+  maxFileSize: 104857600  # 100MB in bytes
+  excludePatterns:
+    - "**/.git/**"
+    - "**/node_modules/**" 
+    - "**/.env*"
+    - "**/__pycache__/**"
+    - "**/target/**"
+    - "**/build/**"
+    - "**/dist/**"
+  
+  # Advanced security rules
+  pathValidation:
+    allowAbsolutePaths: false
+    preventTraversal: true
+    maxPathLength: 4096
+  
+  fileTypeRestrictions:
+    allowedExtensions: ["*"]  # Allow all by default
+    blockedExtensions: [".exe", ".bat", ".sh", ".ps1"]
+    maxFileNameLength: 255
+
+# Logging Configuration  
+logging:
+  level: "info"
+  enableAudit: true
+  logFile: "/logs/file-server.log"
+  maxLogSize: "10MB"
+  maxLogFiles: 5
+  
+  # Structured logging
+  format: "json"
+  timestampFormat: "iso8601"
+  
+  # Audit configuration
+  auditSettings:
+    logReadOperations: false
+    logWriteOperations: true
+    logDirectoryListing: false
+    logSearchOperations: true
+    sensitiveDataMasking: true
+
+# Performance Configuration
+performance:
+  maxConcurrentOperations: 10
+  timeoutMs: 30000
+  cacheEnabled: true
+  cacheTtlMs: 300000
+  
+  # Advanced performance settings
+  bufferSizes:
+    readBuffer: 65536
+    writeBuffer: 65536
+  
+  rateLimiting:
+    enabled: true
+    maxRequestsPerMinute: 1000
+    burstLimit: 50
+  
+  compression:
+    enabled: true
+    algorithms: ["gzip", "deflate"]
+    minSize: 1024
+
+# Monitoring Configuration
+monitoring:
+  healthCheckInterval: 30
+  metricsEnabled: true
+  
+  alertThresholds:
+    memoryUsageMB: 512
+    diskUsagePercent: 90
+    errorRate: 0.05
+    responseTimeMs: 5000
+  
+  # Detailed monitoring
+  metrics:
+    collectSystemMetrics: true
+    collectApplicationMetrics: true
+    metricsExportInterval: 60
+    
+  healthChecks:
+    - name: "disk_space"
+      threshold: "90%"
+      critical: true
+    - name: "memory_usage" 
+      threshold: "512MB"
+      critical: false
+    - name: "file_permissions"
+      paths: ["/data", "/workspace"]
+      critical: true
+
+# Platform Integration
+platform:
+  integrationEnabled: true
+  apiEndpoint: "https://api.mcp-platform.ai"
+  reportMetrics: true
+  enableUpdates: true
+  
+  # Authentication for platform integration
+  authentication:
+    method: "api_key"
+    apiKey: "${PLATFORM_API_KEY}"  # Environment variable reference
+    
+  # Feature flags
+  features:
+    autoUpdate: true
+    telemetry: true
+    remoteConfiguration: false

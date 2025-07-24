@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # File Server - Production Configuration
+  file-server:
+    image: ghcr.io/data-everything/mcp-file-server:latest
+    container_name: mcp-file-server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Basic Configuration
+      - MCP_ALLOWED_DIRS=/data,/workspace,/uploads
+      - MCP_READ_ONLY=false
+      - MCP_LOG_LEVEL=info
+      
+      # Security Settings
+      - MCP_MAX_FILE_SIZE=100MB
+      - MCP_ALLOWED_EXTENSIONS=.txt,.json,.yaml,.yml,.md,.py,.js,.ts
+      
+      # Performance Settings
+      - MCP_CACHE_SIZE=128MB
+      - MCP_WORKER_THREADS=4
+    volumes:
+      # Data directories
+      - ./data:/data
+      - ./workspace:/workspace
+      - ./uploads:/uploads
+      
+      # Optional: Mount config file for complex settings
+      - ./config/file-server.yaml:/app/config/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mcp-network
+
+  # Example: Database Server (when available)
+  # database-server:
+  #   image: ghcr.io/data-everything/mcp-database:latest
+  #   container_name: mcp-database-server
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8001:8000"
+  #   environment:
+  #     - MCP_DB_TYPE=postgresql
+  #     - MCP_DB_HOST=postgres
+  #     - MCP_DB_PORT=5432
+  #     - MCP_DB_NAME=myapp
+  #     - MCP_DB_USER=dbuser
+  #     - MCP_DB_PASSWORD=dbpass
+  #   depends_on:
+  #     - postgres
+  #   networks:
+  #     - mcp-network
+
+  # Example: Supporting PostgreSQL Database
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: mcp-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     - POSTGRES_DB=myapp
+  #     - POSTGRES_USER=dbuser
+  #     - POSTGRES_PASSWORD=dbpass
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - mcp-network
+
+  # Example: Reverse Proxy with SSL
+  nginx:
+    image: nginx:alpine
+    container_name: mcp-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - file-server
+    networks:
+      - mcp-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  mcp-network:
+    driver: bridge

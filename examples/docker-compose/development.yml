@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # Development File Server with Hot Reload
+  file-server-dev:
+    build:
+      context: ../../templates/file-server
+      dockerfile: Dockerfile
+    container_name: mcp-file-server-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - MCP_ALLOWED_DIRS=/data,/workspace
+      - MCP_READ_ONLY=false
+      - MCP_LOG_LEVEL=debug
+      - NODE_ENV=development
+    volumes:
+      # Mount source code for development
+      - ../../templates/file-server/src:/app/src
+      - ../../templates/file-server/config:/app/config
+      
+      # Data directories
+      - ./dev-data:/data
+      - ./dev-workspace:/workspace
+    networks:
+      - mcp-dev-network
+
+  # Test Database for Development
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: mcp-postgres-dev
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=mcp_dev
+      - POSTGRES_USER=dev_user
+      - POSTGRES_PASSWORD=dev_pass
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - mcp-dev-network
+
+  # Redis for Caching (Development)
+  redis-dev:
+    image: redis:7-alpine
+    container_name: mcp-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - mcp-dev-network
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+
+networks:
+  mcp-dev-network:
+    driver: bridge

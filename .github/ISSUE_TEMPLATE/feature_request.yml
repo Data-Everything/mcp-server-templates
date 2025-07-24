@@ -1,0 +1,114 @@
+name: Feature Request
+description: Suggest a new template or enhancement
+title: "[FEATURE] Brief description of the feature"
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Feature Type
+      description: What type of feature are you requesting?
+      options:
+        - New Template
+        - Template Enhancement
+        - Platform Integration
+        - Documentation
+        - Other
+    validations:
+      required: true
+  
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: A clear and concise description of what you want to happen.
+      placeholder: Describe the feature you'd like to see...
+    validations:
+      required: true
+  
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: Explain the problem or use case this addresses...
+    validations:
+      required: true
+  
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How do you envision this feature working?
+      placeholder: Describe your proposed solution...
+    validations:
+      required: true
+  
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other solutions have you considered?
+      placeholder: Describe any alternative solutions or workarounds...
+  
+  - type: textarea
+    id: config-example
+    attributes:
+      label: Configuration Example (if applicable)
+      description: Show how this feature would be configured
+      placeholder: |
+        Environment Variables:
+        ```bash
+        MCP_NEW_FEATURE=enabled
+        MCP_FEATURE_SETTING=value
+        ```
+        
+        Config File:
+        ```yaml
+        new_feature:
+          enabled: true
+          setting: value
+        ```
+  
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: What are the specific use cases for this feature?
+      placeholder: |
+        1. Use case 1: Description
+        2. Use case 2: Description
+        3. Use case 3: Description
+  
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would be helpful
+        - High - Important for my workflow
+        - Critical - Blocking my use case
+    validations:
+      required: true
+  
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context or screenshots about the feature request
+      placeholder: Add any other context, links, or screenshots...
+  
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched for existing feature requests that might be related
+          required: true
+        - label: I have clearly described the problem this feature would solve
+          required: true
+        - label: I have provided enough detail for the maintainers to understand the request
+          required: true

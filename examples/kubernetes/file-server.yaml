@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-file-server
+  labels:
+    app: mcp-file-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mcp-file-server
+  template:
+    metadata:
+      labels:
+        app: mcp-file-server
+    spec:
+      containers:
+      - name: file-server
+        image: ghcr.io/data-everything/mcp-file-server:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: MCP_ALLOWED_DIRS
+          value: "/data,/shared"
+        - name: MCP_READ_ONLY
+          value: "false"
+        - name: MCP_LOG_LEVEL
+          value: "info"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /data
+        - name: shared-volume
+          mountPath: /shared
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: mcp-data-pvc
+      - name: shared-volume
+        persistentVolumeClaim:
+          claimName: mcp-shared-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-file-server-service
+spec:
+  selector:
+    app: mcp-file-server
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mcp-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mcp-shared-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi

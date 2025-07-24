@@ -8,7 +8,7 @@
   
   "base_server": "@modelcontextprotocol/server-filesystem",
   "base_version": "latest",
-  "docker_image": "mcpplatform/file-server",
+  "docker_image": "ghcr.io/data-everything/mcp-file-server",
   "docker_tag": "latest",
   
   "config_schema": {
@@ -19,19 +19,23 @@
         "title": "Allowed Directories",
         "description": "List of directories the server can access. Paths will be mounted and validated for security.",
         "items": {"type": "string"},
-        "default": ["/data"]
+        "default": ["/data"],
+        "env_mapping": "MCP_ALLOWED_DIRS",
+        "env_separator": ":"
       },
       "read_only_mode": {
         "type": "boolean",
         "title": "Read-Only Mode",
         "description": "Enable read-only mode to prevent any file modifications",
-        "default": false
+        "default": false,
+        "env_mapping": "MCP_READ_ONLY"
       },
       "enable_symlinks": {
         "type": "boolean",
         "title": "Enable Symlink Resolution",
         "description": "Allow following symbolic links (with security validation)",
-        "default": true
+        "default": true,
+        "env_mapping": "MCP_ENABLE_SYMLINKS"
       },
       "max_file_size": {
         "type": "integer",
@@ -39,14 +43,64 @@
         "description": "Maximum file size for read operations in megabytes",
         "default": 100,
         "minimum": 1,
-        "maximum": 1000
+        "maximum": 1000,
+        "env_mapping": "MCP_MAX_FILE_SIZE"
       },
       "exclude_patterns": {
         "type": "array",
         "title": "Exclude Patterns",
         "description": "Glob patterns for files/directories to exclude from operations",
         "items": {"type": "string"},
-        "default": ["**/.git/**", "**/node_modules/**", "**/.env*"]
+        "default": ["**/.git/**", "**/node_modules/**", "**/.env*"],
+        "env_mapping": "MCP_EXCLUDE_PATTERNS",
+        "env_separator": ","
+      },
+      "log_level": {
+        "type": "string",
+        "title": "Log Level",
+        "description": "Logging level for the server",
+        "enum": ["debug", "info", "warn", "error"],
+        "default": "info",
+        "env_mapping": "MCP_LOG_LEVEL"
+      },
+      "enable_audit": {
+        "type": "boolean",
+        "title": "Enable Audit Logging",
+        "description": "Enable detailed audit logging of file operations",
+        "default": true,
+        "env_mapping": "MCP_ENABLE_AUDIT"
+      },
+      "max_concurrent_operations": {
+        "type": "integer",
+        "title": "Max Concurrent Operations",
+        "description": "Maximum number of concurrent file operations",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 100,
+        "env_mapping": "MCP_MAX_CONCURRENT_OPS"
+      },
+      "timeout_ms": {
+        "type": "integer",
+        "title": "Operation Timeout (ms)",
+        "description": "Timeout for file operations in milliseconds",
+        "default": 30000,
+        "minimum": 1000,
+        "maximum": 300000,
+        "env_mapping": "MCP_TIMEOUT_MS"
+      },
+      "cache_enabled": {
+        "type": "boolean",
+        "title": "Enable Caching",
+        "description": "Enable file content caching for better performance",
+        "default": true,
+        "env_mapping": "MCP_CACHE_ENABLED"
+      },
+      "metrics_enabled": {
+        "type": "boolean",
+        "title": "Enable Metrics",
+        "description": "Enable performance and health metrics collection",
+        "default": true,
+        "env_mapping": "MCP_METRICS_ENABLED"
       }
     },
     "required": ["allowed_directories"]
@@ -133,7 +187,24 @@
   "environment_variables": {
     "NODE_ENV": "production",
     "MCP_ALLOWED_DIRS": "/data:/workspace",
-    "MCP_READ_ONLY": "false"
+    "MCP_READ_ONLY": "false",
+    "MCP_MAX_FILE_SIZE": "104857600",
+    "MCP_ENABLE_SYMLINKS": "true",
+    "MCP_EXCLUDE_PATTERNS": "**/.git/**,**/node_modules/**,**/.env*",
+    "MCP_LOG_LEVEL": "info",
+    "MCP_ENABLE_AUDIT": "true",
+    "MCP_LOG_FILE": "/logs/file-server.log",
+    "MCP_MAX_LOG_SIZE": "10MB",
+    "MCP_MAX_LOG_FILES": "5",
+    "MCP_MAX_CONCURRENT_OPS": "10",
+    "MCP_TIMEOUT_MS": "30000",
+    "MCP_CACHE_ENABLED": "true",
+    "MCP_CACHE_TTL_MS": "300000",
+    "MCP_HEALTH_CHECK_INTERVAL": "30",
+    "MCP_METRICS_ENABLED": "true",
+    "MCP_MEMORY_THRESHOLD_MB": "512",
+    "MCP_DISK_THRESHOLD_PCT": "90",
+    "MCP_ERROR_RATE_THRESHOLD": "0.05"
   },
   
   "security_features": {
