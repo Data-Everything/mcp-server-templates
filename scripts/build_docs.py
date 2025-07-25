@@ -9,31 +9,27 @@ This script:
 4. Builds the documentation with mkdocs
 """
 
-import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 import yaml
 
 
-def clean_docs_directory(docs_dir: Path):
-    """Clean the docs directory of generated content."""
-    print("🧹 Cleaning docs directory...")
+def cleanup_old_docs(docs_dir: Path):
+    """Clean up old generated documentation."""
+    print("🧹 Cleaning up old docs...")
 
-    # Remove template-specific docs
-    templates_docs_dir = docs_dir / "templates"
+    templates_docs_dir = docs_dir / "server-templates"
     if templates_docs_dir.exists():
         for item in templates_docs_dir.iterdir():
-            if item.name not in ["index.md", "available.md", ".pages"]:
-                if item.is_dir():
-                    shutil.rmtree(item)
-                else:
-                    item.unlink()
-
-    print("✅ Docs directory cleaned")
+            if item.is_dir():
+                shutil.rmtree(item)
+            else:
+                item.unlink()
+        print("  🗑️  Cleaned up old server-templates docs")
 
 
 def scan_template_docs(templates_dir: Path) -> Dict[str, Dict]:
@@ -76,9 +72,9 @@ def scan_template_docs(templates_dir: Path) -> Dict[str, Dict]:
 
 def copy_template_docs(template_docs: Dict[str, Dict], docs_dir: Path):
     """Copy template documentation to docs directory."""
-    print("📄 Copying template documentation...")
+    print("� Copying template documentation...")
 
-    templates_docs_dir = docs_dir / "templates"
+    templates_docs_dir = docs_dir / "server-templates"
     templates_docs_dir.mkdir(exist_ok=True)
 
     for template_id, template_info in template_docs.items():
@@ -102,7 +98,63 @@ def generate_templates_index(template_docs: Dict[str, Dict], docs_dir: Path):
     """Generate an index page for all templates."""
     print("📝 Generating templates index...")
 
-    templates_docs_dir = docs_dir / "templates"
+    templates_docs_dir = docs_dir / "server-templates"
+
+    # Generate the main index.md for the templates section
+    index_md = templates_docs_dir / "index.md"
+    index_content = """# MCP Server Templates
+
+Welcome to the MCP Server Templates documentation! This section provides comprehensive information about available Model Context Protocol (MCP) server templates that you can use to quickly deploy MCP servers for various use cases.
+
+## What are MCP Server Templates?
+
+MCP Server Templates are pre-configured, production-ready templates that implement the Model Context Protocol specification. Each template is designed for specific use cases and comes with:
+
+- 🔧 **Complete configuration files**
+- 📖 **Comprehensive documentation**
+- 🧪 **Built-in tests**
+- 🐳 **Docker support**
+- ☸️ **Kubernetes deployment manifests**
+
+## Available Templates
+
+Browse our collection of templates:
+
+- [Available Templates](available.md) - Complete list of all available templates
+
+## Quick Start
+
+1. **Choose a template** from our [available templates](available.md)
+2. **Deploy locally** using Docker Compose or our deployment tools
+3. **Configure** the template for your specific needs
+4. **Deploy to production** using Kubernetes or your preferred platform
+
+## Template Categories
+
+Our templates are organized by functionality:
+
+- **Database Connectors** - Connect to various database systems
+- **File Servers** - File management and sharing capabilities
+- **API Integrations** - Third-party service integrations
+- **Demo Servers** - Learning and testing examples
+
+## Getting Help
+
+If you need assistance with any template:
+
+1. Check the template-specific documentation
+2. Review the troubleshooting guides
+3. Visit our GitHub repository for issues and discussions
+
+## Contributing
+
+Interested in contributing a new template? See our contribution guidelines to get started.
+"""
+
+    with open(index_md, "w", encoding="utf-8") as f:
+        f.write(index_content)
+
+    # Generate the available.md file
     available_md = templates_docs_dir / "available.md"
 
     content = """# Available Templates
@@ -147,15 +199,15 @@ def update_mkdocs_nav(template_docs: Dict[str, Dict], mkdocs_file: Path):
 
     # Build template navigation
     template_nav_items = [
-        {"Overview": "templates/index.md"},
-        {"Available Templates": "templates/available.md"},
+        {"Overview": "server-templates/index.md"},
+        {"Available Templates": "server-templates/available.md"},
     ]
 
     # Add individual template pages
     sorted_templates = sorted(template_docs.items(), key=lambda x: x[1]["name"])
     for template_id, template_info in sorted_templates:
         template_nav_items.append(
-            {template_info["name"]: f"templates/{template_id}/index.md"}
+            {template_info["name"]: f"server-templates/{template_id}/index.md"}
         )
 
     # Update the nav structure
@@ -166,7 +218,14 @@ def update_mkdocs_nav(template_docs: Dict[str, Dict], mkdocs_file: Path):
 
     # Write back the updated config
     with open(mkdocs_file, "w", encoding="utf-8") as f:
-        yaml.dump(mkdocs_config, f, default_flow_style=False, sort_keys=False)
+        yaml.dump(
+            mkdocs_config,
+            f,
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True,
+            width=1000,
+        )
 
     print("✅ MkDocs navigation updated")
 
@@ -206,7 +265,7 @@ def main():
     docs_dir.mkdir(exist_ok=True)
 
     # Clean docs directory
-    clean_docs_directory(docs_dir)
+    cleanup_old_docs(docs_dir)
 
     # Scan for template documentation
     template_docs = scan_template_docs(templates_dir)

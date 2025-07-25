@@ -76,7 +76,7 @@ The system consists of several key components:
 
 ## Templates
 
-Browse our [available templates](templates/available.md) or learn how to [create your own](guides/creating-templates.md).
+Browse our [available templates](server-templates/available.md) or learn how to [create your own](guides/creating-templates.md).
 
 ## Contributing
 
