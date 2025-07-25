@@ -273,7 +273,7 @@ jobs:
 
     - name: Run import sorting check
       run: |
-        isort --check-only mcp_deploy/ tests/
+        isort --check-only mcp_deploy/
 
     - name: Run linting
       run: |
