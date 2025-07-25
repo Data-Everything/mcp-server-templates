@@ -58,7 +58,7 @@ Edit `template.json` to define what settings your template needs:
   "description": "Brief description of what this template does",
   "version": "1.0.0",
   "author": "Your Name <your.email@domain.com>",
-  "docker_image": "ghcr.io/data-everything/mcp-my-new-template",
+  "docker_image": "data-everything/mcp-my-new-template",
   "categories": ["productivity", "development"],
   "config_schema": {
     "type": "object",
@@ -602,7 +602,7 @@ docker run -d \
   --env=MCP_API_KEY=your-api-key \
   --env=MCP_FEATURES=feature1,feature2 \
   -p 8000:8000 \
-  ghcr.io/data-everything/mcp-my-new-template:latest
+  data-everything/mcp-my-new-template:latest
 ```
 
 ### Docker Compose
@@ -611,7 +611,7 @@ docker run -d \
 version: '3.8'
 services:
   my-template:
-    image: ghcr.io/data-everything/mcp-my-new-template:latest
+    image: data-everything/mcp-my-new-template:latest
     environment:
       - MCP_API_KEY=your-api-key
       - MCP_BASE_URL=https://api.service.com
@@ -732,7 +732,7 @@ docker run --rm \
   --env=MCP_API_KEY=test-key \
   --env=MCP_FEATURES=feature1,feature2 \
   -p 8000:8000 \
-  ghcr.io/data-everything/mcp-my-new-template:latest
+  data-everything/mcp-my-new-template:latest
 
 # Test health check
 curl http://localhost:8000/health
@@ -741,7 +741,7 @@ curl http://localhost:8000/health
 docker run --rm \
   --volume=$(pwd)/templates/my-new-template/config:/app/config \
   -p 8000:8000 \
-  ghcr.io/data-everything/mcp-my-new-template:latest
+  data-everything/mcp-my-new-template:latest
 ```
 
 ## 🔧 Best Practices

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: file-server
-        image: ghcr.io/data-everything/mcp-file-server:latest
+        image: data-everything/mcp-file-server:latest
         ports:
         - containerPort: 8000
         env:

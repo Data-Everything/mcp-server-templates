@@ -46,7 +46,7 @@ Describe the tests you ran and provide instructions so reviewers can reproduce:
 docker run --rm \
   --env=MCP_SETTING=value \
   -p 8000:8000 \
-  ghcr.io/data-everything/mcp-template-name:latest
+  data-everything/mcp-template-name:latest
 
 curl http://localhost:8000/health
 ```

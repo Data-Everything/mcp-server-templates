@@ -194,7 +194,7 @@ def demonstrate_deployment_command():
     docker_cmd.extend(volumes)
     docker_cmd.extend(["--volume", "/tmp/mcp-file-server-data:/data"])
     docker_cmd.extend(["-p", "8001:8000"])
-    docker_cmd.append("ghcr.io/data-everything/mcp-file-server:latest")
+    docker_cmd.append("data-everything/mcp-file-server:latest")
     
     print("Generated Docker Command:")
     print(" \\\n  ".join(docker_cmd))

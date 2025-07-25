@@ -1,153 +1,153 @@
 # Test utilities for MCP Server Templates
 
-import os
-import json
-import tempfile
-import subprocess
+
 import contextlib
-import time
-import requests
-from typing import Dict, Any, Optional, Generator
+import json
 from pathlib import Path
+import socket
+import subprocess
+import sys
+import time
+from typing import Dict, Any, Optional, Generator
+
+import pytest
+
+
+class TestBackendUnavailable(Exception):
+    pass
 
 class TemplateTestError(Exception):
     """Exception raised during template testing."""
     pass
 
+# Detect container CLI (docker or nerdctl)
+def detect_container_cli() -> str:
+    import shutil
+    for cli in ["docker", "nerdctl"]:
+        if shutil.which(cli):
+            return cli
+    return None
+
+CONTAINER_CLI = detect_container_cli()
+if not CONTAINER_CLI:
+    print("WARNING: Neither 'docker' nor 'nerdctl' found in PATH. Integration tests will be skipped.")
+
+def find_free_port() -> int:
+    """Find a free port for testing."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+    return port
+
+
 class TemplateTestContainer:
     """Context manager for testing template containers."""
-    
-    def __init__(self, template_name: str, config: Dict[str, Any], port: int = 8000):
+    def __init__(self, template_name: str, config: Dict[str, Any], port: int = None):
         self.template_name = template_name
         self.config = config
-        self.port = port
+        self.port = port if port is not None else find_free_port()
         self.container_id: Optional[str] = None
         self.image_name = f"mcp-{template_name}-test"
-    
+        if not CONTAINER_CLI:
+            raise TestBackendUnavailable("No container CLI available")
+
     def __enter__(self):
         self.start()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanup()
-    
+
     def start(self):
-        """Build and start the container."""
         try:
-            # Build the container
             self._build_container()
-            
-            # Start the container
             self._start_container()
-            
-            # Wait for health check
             self._wait_for_healthy()
-            
         except Exception as e:
             self.cleanup()
             raise TemplateTestError(f"Failed to start container: {e}")
-    
+
     def _build_container(self):
-        """Build the Docker container."""
         template_dir = Path(__file__).parent.parent / "templates" / self.template_name
-        
         if not template_dir.exists():
             raise TemplateTestError(f"Template directory not found: {template_dir}")
-        
-        cmd = [
-            "docker", "build",
-            "-t", self.image_name,
-            str(template_dir)
-        ]
-        
+        cmd = [CONTAINER_CLI, "build", "-t", self.image_name, str(template_dir)]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise TemplateTestError(f"Build failed: {result.stderr}")
-    
+
     def _start_container(self):
-        """Start the Docker container."""
-        cmd = [
-            "docker", "run", "-d",
-            "--name", f"{self.image_name}-{int(time.time())}",
-            "-p", f"{self.port}:8000"
-        ]
-        
-        # Add environment variables
+        cmd = [CONTAINER_CLI, "run", "-d", "--name", f"{self.image_name}-{int(time.time())}"]
         for key, value in self.config.items():
             if isinstance(value, list):
                 value = ",".join(str(v) for v in value)
             cmd.extend(["--env", f"{key}={value}"])
-        
         cmd.append(self.image_name)
-        
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise TemplateTestError(f"Failed to start container: {result.stderr}")
-        
         self.container_id = result.stdout.strip()
-    
+
     def _wait_for_healthy(self, timeout: int = 60):
-        """Wait for the container to become healthy."""
         start_time = time.time()
-        
         while time.time() - start_time < timeout:
             try:
-                response = requests.get(f"http://localhost:{self.port}/health", timeout=5)
-                if response.status_code == 200:
+                result = subprocess.run([
+                    CONTAINER_CLI, "inspect", "--format", "{{.State.Status}} {{.State.ExitCode}}",
+                    self.container_id
+                ], capture_output=True, text=True, check=True)
+                status_info = result.stdout.strip().split()
+                status = status_info[0]
+                exit_code = int(status_info[1]) if len(status_info) > 1 else 0
+                if status == "running":
+                    time.sleep(2)
                     return
-            except requests.RequestException:
-                pass
-            
+                elif status == "exited" and exit_code == 0:
+                    logs = self.get_logs()
+                    if "Starting MCP server" in logs and "with transport 'stdio'" in logs:
+                        return
+                    else:
+                        raise TemplateTestError(f"Container exited without proper MCP initialization. Logs: {logs}")
+                elif status in ["exited", "dead"] and exit_code != 0:
+                    logs = self.get_logs()
+                    raise TemplateTestError(f"Container failed with exit code {exit_code}. Logs: {logs}")
+            except subprocess.CalledProcessError as e:
+                raise TemplateTestError(f"Failed to check container status: {e}")
             time.sleep(2)
-        
         raise TemplateTestError(f"Container did not become healthy within {timeout} seconds")
-    
+
     def cleanup(self):
-        """Clean up the container and image."""
         if self.container_id:
-            # Stop and remove container
-            subprocess.run(["docker", "rm", "-f", self.container_id], 
-                         capture_output=True)
-        
-        # Remove test image
-        subprocess.run(["docker", "rmi", "-f", self.image_name], 
-                     capture_output=True)
-    
+            subprocess.run([CONTAINER_CLI, "rm", "-f", self.container_id], capture_output=True)
+        subprocess.run([CONTAINER_CLI, "rmi", "-f", self.image_name], capture_output=True)
+
     def get_logs(self) -> str:
-        """Get container logs."""
         if not self.container_id:
             return ""
-        
-        result = subprocess.run([
-            "docker", "logs", self.container_id
-        ], capture_output=True, text=True)
-        
+        result = subprocess.run([CONTAINER_CLI, "logs", self.container_id], capture_output=True, text=True)
         return result.stdout + result.stderr
-    
+
     def exec_command(self, command: str) -> str:
-        """Execute a command in the container."""
         if not self.container_id:
             raise TemplateTestError("Container not running")
-        
-        result = subprocess.run([
-            "docker", "exec", self.container_id, "sh", "-c", command
-        ], capture_output=True, text=True)
-        
+        result = subprocess.run([CONTAINER_CLI, "exec", self.container_id, "sh", "-c", command], capture_output=True, text=True)
         return result.stdout
 
 @contextlib.contextmanager
 def build_and_run_template(
-    template_name: str, 
+    template_name: str,
     config: Optional[Dict[str, Any]] = None,
-    port: int = 8000
+    port: int = None
 ) -> Generator[TemplateTestContainer, None, None]:
     """Context manager for building and running a template for testing."""
-    
+    if not CONTAINER_CLI:
+        pytest.skip("No container CLI (docker/nerdctl) available, skipping integration test.")
     if config is None:
         config = get_default_test_config(template_name)
-    
+    if port is None:
+        port = find_free_port()
     container = TemplateTestContainer(template_name, config, port)
-    
     with container:
         yield container
 
@@ -246,10 +246,31 @@ def run_template_tests(template_name: str) -> Dict[str, Any]:
             results["build_successful"] = True
             results["container_starts"] = True
             
-            # Test health check
-            response = requests.get(f"http://localhost:{container.port}/health")
-            if response.status_code == 200:
-                results["health_check_passes"] = True
+            # For MCP servers, we check if the container initialized properly
+            # STDIO-based servers may exit with code 0 after initialization - this is OK
+            try:
+                result = subprocess.run([
+                    "docker", "inspect", "--format", "{{.State.Status}} {{.State.ExitCode}}", 
+                    container.container_id
+                ], capture_output=True, text=True, check=True)
+                
+                status_info = result.stdout.strip().split()
+                status = status_info[0]
+                exit_code = int(status_info[1]) if len(status_info) > 1 else 0
+                
+                if status == "running":
+                    results["health_check_passes"] = True
+                elif status == "exited" and exit_code == 0:
+                    # For STDIO servers, this might be expected - check logs for proper initialization
+                    logs = container.get_logs()
+                    if "Starting MCP server" in logs and "with transport 'stdio'" in logs:
+                        results["health_check_passes"] = True
+                    else:
+                        results["errors"].append(f"Container exited without proper MCP initialization")
+                else:
+                    results["errors"].append(f"Container failed with status: {status}, exit code: {exit_code}")
+            except subprocess.CalledProcessError as e:
+                results["errors"].append(f"Failed to check container status: {e}")
             
             # Test various configuration scenarios
             results["config_validation"] = test_configuration_scenarios(
@@ -261,19 +282,17 @@ def run_template_tests(template_name: str) -> Dict[str, Any]:
     
     return results
 
+@pytest.mark.skip(reason="Utility function, not a test.")
 def test_configuration_scenarios(template_name: str, container: TemplateTestContainer) -> Dict[str, Any]:
     """Test various configuration scenarios."""
-    
     scenarios = {
         "default_config": True,  # Already tested by getting here
         "empty_config": False,
         "invalid_config": False,
         "config_file": False
     }
-    
     # Additional test scenarios would go here
     # This is a placeholder for more comprehensive testing
-    
     return scenarios
 
 class MockMCPClient:
@@ -294,12 +313,13 @@ class MockMCPClient:
 
 # Utility functions for common test operations
 def get_template_list() -> list[str]:
-    """Get list of available templates."""
-    templates_dir = Path(__file__).parent.parent / "templates"
+    """Get list of available templates using the discover_templates function."""
+    # Import here to avoid circular imports
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from mcp_deploy import TemplateDiscovery
     
-    templates = []
-    for item in templates_dir.iterdir():
-        if item.is_dir() and (item / "template.json").exists():
-            templates.append(item.name)
+    # Use the actual template discovery logic
+    discovery = TemplateDiscovery()
+    templates = discovery.discover_templates()
     
-    return sorted(templates)
+    return sorted(templates.keys())

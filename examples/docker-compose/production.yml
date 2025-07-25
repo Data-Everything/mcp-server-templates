@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # File Server - Production Configuration
   file-server:
-    image: ghcr.io/data-everything/mcp-file-server:latest
+    image: data-everything/mcp-file-server:latest
     container_name: mcp-file-server
     restart: unless-stopped
     ports:
@@ -40,7 +40,7 @@ services:
 
   # Example: Database Server (when available)
   # database-server:
-  #   image: ghcr.io/data-everything/mcp-database:latest
+  #   image: data-everything/mcp-database:latest
   #   container_name: mcp-database-server
   #   restart: unless-stopped
   #   ports:

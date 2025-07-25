@@ -116,8 +116,8 @@ class TestTemplateMetadata:
                     template_data = json.load(f)
                 
                 assert "docker_image" in template_data, f"{template_name}: Missing docker_image"
-                assert template_data["docker_image"].startswith("ghcr.io/data-everything/"), \
-                    f"{template_name}: Docker image should use GHCR registry"
+                assert template_data["docker_image"].startswith("dataeverything/"), \
+                    f"{template_name}: Docker image should use dataeverything registry"
 
 
 if __name__ == "__main__":

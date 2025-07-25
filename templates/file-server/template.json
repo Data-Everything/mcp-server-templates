@@ -13,7 +13,7 @@
   ],
   "base_server": "@modelcontextprotocol/server-filesystem",
   "base_version": "latest",
-  "docker_image": "ghcr.io/data-everything/mcp-file-server",
+  "docker_image": "dataeverything/mcp-file-server",
   "docker_tag": "latest",
   "config_schema": {
     "type": "object",

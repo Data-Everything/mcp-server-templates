@@ -1,7 +1,7 @@
 {
   "name": "Basic MCP Server",
   "description": "A basic Model Context Protocol server template that provides simple text processing capabilities. Perfect for getting started with MCP development.",
-  "docker_image": "mcpplatform/basic-mcp",
+  "docker_image": "dataeverything/mcp-basic",
   "docker_tag": "latest",
   "config_schema": {
     "type": "object",

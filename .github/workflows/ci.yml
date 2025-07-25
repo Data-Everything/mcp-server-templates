@@ -1,0 +1,226 @@
+name: MCP Server Templates CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Quick validation - runs on every commit
+  quick-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run quick tests
+      run: |
+        python tests/test_runner.py quick
+
+  # Unit tests - fast, no Docker required
+  unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run unit tests
+      run: |
+        python tests/test_runner.py unit
+    
+    - name: Generate coverage report
+      run: |
+        pip install pytest-cov
+        python -m pytest tests/test_deployment_units.py -m unit --cov=mcp_deploy --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unit-tests
+        name: codecov-${{ matrix.python-version }}
+
+  # Integration tests - require Docker
+  integration-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]  # Limit to reduce CI time
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run integration tests
+      run: |
+        python tests/test_runner.py integration
+      timeout-minutes: 15  # Prevent hanging Docker operations
+
+  # Template validation - check all templates are valid
+  template-validation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Validate templates
+      run: |
+        python -c "
+        from mcp_deploy import TemplateDiscovery
+        import sys
+        
+        discovery = TemplateDiscovery()
+        templates = discovery.discover_templates()
+        
+        if not templates:
+            print('❌ No templates found!')
+            sys.exit(1)
+        
+        print(f'✅ Found {len(templates)} valid templates:')
+        for name, template in templates.items():
+            print(f'  - {name}: {template[\"name\"]}')
+        
+        print('✅ All templates validated successfully!')
+        "
+
+  # Pre-release tests - comprehensive testing before release
+  pre-release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [quick-tests, unit-tests, integration-tests, template-validation]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run comprehensive tests
+      run: |
+        python tests/test_runner.py all
+      timeout-minutes: 20
+    
+    - name: Build package
+      run: |
+        pip install build
+        python -m build
+    
+    - name: Test package installation
+      run: |
+        pip install dist/*.whl
+        mcp-deploy list  # Test CLI works after installation
+
+  # Security scanning
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Bandit security scan
+      uses: securecodewarrior/github-action-bandit@v1
+      with:
+        config_file: .bandit
+        exit_zero: true
+    
+    - name: Run Safety check
+      run: |
+        pip install safety
+        safety check --ignore 70612  # Ignore jinja2 vulnerability (not applicable)
+
+  # Code quality checks
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+    
+    - name: Run code formatting check
+      run: |
+        black --check mcp_deploy/ tests/
+    
+    - name: Run import sorting check
+      run: |
+        isort --check-only mcp_deploy/ tests/
+    
+    - name: Run linting
+      run: |
+        flake8 mcp_deploy/ tests/ --max-line-length=100
+    
+    - name: Run type checking
+      run: |
+        mypy mcp_deploy/ --ignore-missing-imports

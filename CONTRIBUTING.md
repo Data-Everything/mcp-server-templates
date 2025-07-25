@@ -63,7 +63,7 @@ Your `template.json` must include:
   "description": "Brief description of what this template does",
   "version": "1.0.0",
   "author": "Your Name <your.email@domain.com>",
-  "docker_image": "ghcr.io/data-everything/mcp-your-template",
+  "docker_image": "data-everything/mcp-your-template",
   "categories": ["category1", "category2"],
   "config_schema": {
     "type": "object",
@@ -149,13 +149,13 @@ docker run --rm \
   --env=MCP_YOUR_SETTING=test_value \
   --env=MCP_LOG_LEVEL=debug \
   -p 8000:8000 \
-  ghcr.io/data-everything/mcp-your-template:latest
+  data-everything/mcp-your-template:latest
 
 # Test with config file
 docker run --rm \
   --volume=$(pwd)/templates/your-template/config:/app/config \
   -p 8000:8000 \
-  ghcr.io/data-everything/mcp-your-template:latest
+  data-everything/mcp-your-template:latest
 ```
 
 ### Integration Testing
@@ -216,7 +216,7 @@ nested:
 docker run -d \
   --env=MCP_SETTING=value \
   -p 8000:8000 \
-  ghcr.io/data-everything/mcp-template-name:latest
+  data-everything/mcp-template-name:latest
 ```
 
 ### Docker Compose
@@ -224,7 +224,7 @@ docker run -d \
 version: '3.8'
 services:
   template:
-    image: ghcr.io/data-everything/mcp-template-name:latest
+    image: data-everything/mcp-template-name:latest
     environment:
       - MCP_SETTING=value
     ports:
