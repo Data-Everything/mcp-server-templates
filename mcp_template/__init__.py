@@ -14,7 +14,6 @@ import argparse
 import json
 import logging
 import os
-import re
 import subprocess  # nosec B404
 import sys
 import uuid
@@ -26,7 +25,6 @@ import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
 from .create_template import TemplateCreator
