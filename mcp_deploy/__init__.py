@@ -124,6 +124,9 @@ class TemplateDiscovery:
         # Required tokens/secrets
         config.update(self._extract_requirements(template_data))
         
+        # Include the original config schema for CLI usage
+        config["config_schema"] = template_data.get("config_schema", {})
+        
         # Generate MCP client configuration
         config["example_config"] = self._generate_mcp_config(template_data, template_dir.name)
         
@@ -319,19 +322,19 @@ class DockerDeploymentService:
     def _run_command(self, command: List[str], check: bool = True) -> subprocess.CompletedProcess:
         """Run a command and return the result."""
         try:
-            logger.debug(f"Running command: {' '.join(command)}")
+            logger.debug("Running command: %s", ' '.join(command))
             result = subprocess.run(
                 command, capture_output=True, text=True, check=check
             )
-            logger.debug(f"Command output: {result.stdout}")
+            logger.debug("Command output: %s", result.stdout)
             if result.stderr:
-                logger.debug(f"Command stderr: {result.stderr}")
+                logger.debug("Command stderr: %s", result.stderr)
             return result
         except subprocess.CalledProcessError as e:
-            logger.error(f"Command failed: {' '.join(command)}")
-            logger.error(f"Exit code: {e.returncode}")
-            logger.error(f"Stdout: {e.stdout}")
-            logger.error(f"Stderr: {e.stderr}")
+            logger.error("Command failed: %s", ' '.join(command))
+            logger.error("Exit code: %d", e.returncode)
+            logger.error("Stdout: %s", e.stdout)
+            logger.error("Stderr: %s", e.stderr)
             raise
 
     def _ensure_docker_available(self):
@@ -339,15 +342,11 @@ class DockerDeploymentService:
         try:
             result = self._run_command(["docker", "version", "--format", "json"])
             version_info = json.loads(result.stdout)
-            logger.info(
-                f"Docker client version: {version_info.get('Client', {}).get('Version', 'unknown')}"
-            )
-            logger.info(
-                f"Docker server version: {version_info.get('Server', {}).get('Version', 'unknown')}"
-            )
-        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-            logger.error(f"Docker is not available or not running: {e}")
-            raise RuntimeError("Docker daemon is not available or not running")
+            logger.info("Docker client version: %s", version_info.get('Client', {}).get('Version', 'unknown'))
+            logger.info("Docker server version: %s", version_info.get('Server', {}).get('Version', 'unknown'))
+        except (subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+            logger.error("Docker is not available or not running: %s", exc)
+            raise RuntimeError("Docker daemon is not available or not running") from exc
 
     def deploy_template(
         self, template_id: str, config: Dict[str, Any], template_data: Dict[str, Any]
@@ -360,7 +359,12 @@ class DockerDeploymentService:
         # Prepare environment variables
         env_vars = []
         for key, value in config.items():
-            env_key = f"MCP_{key.upper().replace(' ', '_').replace('-', '_')}"
+            # Avoid double MCP_ prefix
+            if key.startswith("MCP_"):
+                env_key = key
+            else:
+                env_key = f"MCP_{key.upper().replace(' ', '_').replace('-', '_')}"
+            
             if isinstance(value, bool):
                 env_value = 'true' if value else 'false'
             elif isinstance(value, list):
@@ -414,7 +418,7 @@ class DockerDeploymentService:
             result = self._run_command(docker_command)
             container_id = result.stdout.strip()
 
-            logger.info(f"Started container {container_name} with ID {container_id}")
+            logger.info("Started container %s with ID %s", container_name, container_id)
 
             # Wait a moment for container to start
             import time
@@ -482,7 +486,7 @@ class DockerDeploymentService:
             return deployments
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to list deployments: {e}")
+            logger.error("Failed to list deployments: %s", e)
             return []
 
     def delete_deployment(self, deployment_name: str) -> bool:
@@ -491,10 +495,10 @@ class DockerDeploymentService:
             # Stop and remove the container
             self._run_command(["docker", "stop", deployment_name], check=False)
             self._run_command(["docker", "rm", deployment_name], check=False)
-            logger.info(f"Deleted deployment {deployment_name}")
+            logger.info("Deleted deployment %s", deployment_name)
             return True
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to delete deployment {deployment_name}: {e}")
+            logger.error("Failed to delete deployment %s: %s", deployment_name, e)
             return False
 
     def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:
@@ -523,9 +527,9 @@ class DockerDeploymentService:
                 "image": container_data["Config"]["Image"],
                 "logs": logs,
             }
-        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Failed to get container info for {deployment_name}: {e}")
-            raise ValueError(f"Deployment {deployment_name} not found")
+        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as exc:
+            logger.error("Failed to get container info for %s: %s", deployment_name, exc)
+            raise ValueError(f"Deployment {deployment_name} not found") from exc
 
 
 class KubernetesDeploymentService:
@@ -652,7 +656,8 @@ class MCPDeployer:
         console.print(table)
 
     def deploy(self, template_name: str, data_dir: Optional[str] = None, 
-               config_dir: Optional[str] = None, env_vars: Optional[Dict[str, str]] = None):
+               config_dir: Optional[str] = None, env_vars: Optional[Dict[str, str]] = None,
+               config_file: Optional[str] = None, config_values: Optional[Dict[str, str]] = None):
         """Deploy a template using the unified deployment manager."""
         if template_name not in self.templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
@@ -672,10 +677,10 @@ class MCPDeployer:
             task = progress.add_task(f"Deploying {template_name}...", total=None)
 
             try:
-                # Prepare configuration
-                config = {}
-                if env_vars:
-                    config.update(env_vars)
+                # Prepare configuration from multiple sources
+                config = self._prepare_configuration(
+                    template, env_vars, config_file, config_values
+                )
 
                 # Check for required tokens
                 if "requires_token" in template:
@@ -888,6 +893,258 @@ class MCPDeployer:
             console.print(f"[red]❌ Error during cleanup: {e}[/red]")
             return False
 
+    def _prepare_configuration(self, template: Dict[str, Any], 
+                              env_vars: Optional[Dict[str, str]] = None,
+                              config_file: Optional[str] = None,
+                              config_values: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+        """Prepare configuration from multiple sources with proper type conversion."""
+        config = {}
+        
+        # Start with template defaults
+        template_env = template.get("env_vars", {})
+        for key, value in template_env.items():
+            config[key] = value
+        
+        # Load from config file if provided
+        if config_file:
+            config.update(self._load_config_file(config_file, template))
+        
+        # Apply CLI config values with type conversion
+        if config_values:
+            config.update(self._convert_config_values(config_values, template))
+        
+        # Apply environment variables (highest priority)
+        if env_vars:
+            config.update(env_vars)
+        
+        return config
+
+    def _load_config_file(self, config_file: str, template: Dict[str, Any]) -> Dict[str, Any]:
+        """Load configuration from JSON/YAML file and map to environment variables."""
+        try:
+            config_path = Path(config_file)
+            if not config_path.exists():
+                # Try relative to template directory
+                template_dir = Path(__file__).parent.parent / "templates" / template.get("name", "")
+                config_path = template_dir / "config" / config_file
+                if not config_path.exists():
+                    raise FileNotFoundError(f"Config file not found: {config_file}")
+            
+            with open(config_path, encoding="utf-8") as f:
+                if config_path.suffix.lower() in ['.yaml', '.yml']:
+                    import yaml
+                    file_config = yaml.safe_load(f)
+                else:
+                    file_config = json.load(f)
+            
+            # Map config file values to environment variables based on template schema
+            return self._map_file_config_to_env(file_config, template)
+            
+        except Exception as e:
+            console.print(f"[red]❌ Failed to load config file {config_file}: {e}[/red]")
+            raise
+
+    def _map_file_config_to_env(self, file_config: Dict[str, Any], template: Dict[str, Any]) -> Dict[str, Any]:
+        """Map config file values to environment variables based on template schema."""
+        env_config = {}
+        
+        # Get the config schema from template
+        config_schema = template.get("config_schema", {})
+        properties = config_schema.get("properties", {})
+        
+        # Generic mapping: try to map config values directly to properties
+        # First, try direct property name mapping
+        for prop_name, prop_config in properties.items():
+            env_mapping = prop_config.get("env_mapping")
+            if not env_mapping:
+                continue
+                
+            # Try direct property name match in config
+            if prop_name in file_config:
+                value = file_config[prop_name]
+                env_config[env_mapping] = self._convert_value_to_env_string(value, prop_config)
+                continue
+            
+            # Try snake_case to camelCase conversion
+            camel_name = self._snake_to_camel(prop_name)
+            if camel_name in file_config:
+                value = file_config[camel_name]
+                env_config[env_mapping] = self._convert_value_to_env_string(value, prop_config)
+                continue
+            
+            # Try nested path mapping (e.g., "security.readOnly" -> "read_only_mode")
+            nested_value = self._find_nested_config_value(file_config, prop_name, prop_config)
+            if nested_value is not None:
+                env_config[env_mapping] = self._convert_value_to_env_string(nested_value, prop_config)
+        
+        return env_config
+
+    def _snake_to_camel(self, snake_str: str) -> str:
+        """Convert snake_case to camelCase."""
+        components = snake_str.split('_')
+        return components[0] + ''.join(word.capitalize() for word in components[1:])
+
+    def _find_nested_config_value(self, file_config: Dict[str, Any], prop_name: str, prop_config: Dict[str, Any]) -> Any:
+        """Find config value using common nested patterns."""
+        # Check if property config has a file_mapping hint
+        if "file_mapping" in prop_config:
+            return self._get_nested_value(file_config, prop_config["file_mapping"])
+        
+        # Try common nested patterns based on property name
+        common_patterns = self._generate_common_patterns(prop_name)
+        for pattern in common_patterns:
+            value = self._get_nested_value(file_config, pattern)
+            if value is not None:
+                return value
+        
+        return None
+
+    def _generate_common_patterns(self, prop_name: str) -> List[str]:
+        """Generate common nested configuration patterns for a property."""
+        patterns = []
+        
+        # Common category mappings
+        category_mappings = {
+            'log_level': ['logging.level', 'log.level'],
+            'enable_audit_logging': ['logging.enableAudit', 'logging.audit', 'log.audit'],
+            'read_only_mode': ['security.readOnly', 'security.readonly', 'readonly'],
+            'max_file_size': ['security.maxFileSize', 'limits.maxFileSize', 'performance.maxFileSize'],
+            'allowed_directories': ['security.allowedDirs', 'security.directories', 'paths.allowed'],
+            'exclude_patterns': ['security.excludePatterns', 'security.exclude', 'filters.exclude'],
+            'max_concurrent_operations': ['performance.maxConcurrentOperations', 'limits.concurrent'],
+            'timeout_ms': ['performance.timeoutMs', 'performance.timeout', 'limits.timeout'],
+        }
+        
+        if prop_name in category_mappings:
+            patterns.extend(category_mappings[prop_name])
+        
+        # Generate generic patterns
+        camel_name = self._snake_to_camel(prop_name)
+        patterns.extend([
+            f"config.{prop_name}",
+            f"settings.{prop_name}",
+            f"options.{prop_name}",
+            f"config.{camel_name}",
+            f"settings.{camel_name}",
+            f"options.{camel_name}",
+        ])
+        
+        return patterns
+
+    def _convert_value_to_env_string(self, value: Any, prop_config: Dict[str, Any]) -> str:
+        """Convert a value to environment variable string format."""
+        if isinstance(value, list):
+            separator = prop_config.get("env_separator", ",")
+            return separator.join(str(item) for item in value)
+        elif isinstance(value, bool):
+            return 'true' if value else 'false'
+        else:
+            return str(value)
+
+    def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
+        """Get nested value from dictionary using dot notation."""
+        keys = path.split('.')
+        value = data
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+        return value
+
+    def _convert_config_values(self, config_values: Dict[str, str], template: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert CLI config values to proper types based on template schema."""
+        converted_config = {}
+        
+        # Get the config schema from template
+        config_schema = template.get("config_schema", {})
+        properties = config_schema.get("properties", {})
+        
+        for key, value in config_values.items():
+            # Handle nested configuration with double underscore notation
+            # e.g., security__read_only -> security.readOnly
+            if '__' in key:
+                env_mapping = self._handle_nested_cli_config(key, value, properties)
+                if env_mapping:
+                    converted_config[env_mapping] = value
+                    continue
+            
+            # Find the property in schema by name or env_mapping
+            prop_config = None
+            env_mapping = None
+            
+            # First try direct property name match
+            if key in properties:
+                prop_config = properties[key]
+                env_mapping = prop_config.get("env_mapping", f"MCP_{key.upper()}")
+            else:
+                # Then try to find by env_mapping
+                for prop_name, prop_data in properties.items():
+                    if prop_data.get("env_mapping") == key:
+                        prop_config = prop_data
+                        env_mapping = key
+                        break
+            
+            if prop_config and env_mapping:
+                # Convert based on type
+                prop_type = prop_config.get("type", "string")
+                try:
+                    if prop_type == "boolean":
+                        converted_value = value.lower() in ("true", "1", "yes", "on")
+                    elif prop_type == "integer":
+                        converted_value = int(value)
+                    elif prop_type == "number":
+                        converted_value = float(value)
+                    elif prop_type == "array":
+                        separator = prop_config.get("env_separator", ",")
+                        converted_value = value.split(separator)
+                    else:
+                        converted_value = value
+                    
+                    # Store as string for environment variable
+                    if isinstance(converted_value, list):
+                        separator = prop_config.get("env_separator", ",")
+                        converted_config[env_mapping] = separator.join(str(item) for item in converted_value)
+                    else:
+                        converted_config[env_mapping] = str(converted_value)
+                        
+                except (ValueError, TypeError) as e:
+                    console.print(f"[yellow]⚠️  Failed to convert {key}={value} to {prop_type}: {e}[/yellow]")
+                    converted_config[env_mapping] = str(value)
+            else:
+                # Unknown property, store as-is with MCP_ prefix if not already present
+                env_key = key if key.startswith("MCP_") else f"MCP_{key.upper()}"
+                converted_config[env_key] = value
+        
+        return converted_config
+
+    def _handle_nested_cli_config(self, nested_key: str, value: str, properties: Dict[str, Any]) -> Optional[str]:
+        """Handle nested CLI configuration using double underscore notation."""
+        # Convert security__read_only to find read_only_mode in properties
+        parts = nested_key.split('__')
+        if len(parts) != 2:
+            return None
+        
+        category, prop_name = parts
+        
+        # Try different property name patterns
+        possible_names = [
+            f"{category}_{prop_name}",           # security__read_only -> security_read_only  
+            f"{prop_name}_mode",                 # security__read_only -> read_only_mode
+            f"{category}_{prop_name}_mode",      # security__read_only -> security_read_only_mode
+            prop_name,                           # security__read_only -> read_only
+        ]
+        
+        for prop_name_candidate in possible_names:
+            if prop_name_candidate in properties:
+                prop_config = properties[prop_name_candidate]
+                env_mapping = prop_config.get("env_mapping")
+                if env_mapping:
+                    return env_mapping
+        
+        # If no direct match, try to construct environment variable name
+        return f"MCP_{category.upper()}_{prop_name.upper()}"
+
     def _generate_mcp_config(self, template_name: str, container_name: str, template: Dict):
         """Generate MCP configuration file."""
         config_file = self.config_dir / f"{template_name}.json"
@@ -906,6 +1163,70 @@ class MCPDeployer:
         
         config_file.write_text(json.dumps(config, indent=2))
         console.print(f"[green]📝 MCP config saved to: {config_file}[/green]")
+
+    def _show_config_options(self, template_name: str):
+        """Show available configuration options for a template."""
+        if template_name not in self.templates:
+            console.print(f"[red]❌ Template '{template_name}' not found[/red]")
+            return
+        
+        template = self.templates[template_name]
+        config_schema = template.get("config_schema", {})
+        properties = config_schema.get("properties", {})
+        required = config_schema.get("required", [])
+        
+        if not properties:
+            console.print(f"[yellow]⚠️  No configuration options available for {template_name}[/yellow]")
+            return
+        
+        console.print(f"\n[cyan]📋 Configuration Options for {template_name}:[/cyan]\n")
+        
+        table = Table(title=f"{template_name} Configuration")
+        table.add_column("Property", style="cyan")
+        table.add_column("Type", style="yellow") 
+        table.add_column("Env Variable", style="green")
+        table.add_column("Default", style="blue")
+        table.add_column("Required", style="red")
+        table.add_column("Description", style="white")
+        
+        for prop_name, prop_config in properties.items():
+            prop_type = prop_config.get("type", "string")
+            env_mapping = prop_config.get("env_mapping", "")
+            default = str(prop_config.get("default", ""))
+            is_required = "✓" if prop_name in required else ""
+            description = prop_config.get("description", "")
+            
+            table.add_row(
+                prop_name,
+                prop_type,
+                env_mapping,
+                default,
+                is_required,
+                description
+            )
+        
+        console.print(table)
+        
+        console.print(f"\n[cyan]💡 Usage Examples:[/cyan]")
+        console.print(f"  # Using config file:")
+        console.print(f"  python -m mcp_deploy {template_name} --config-file config.json")
+        console.print(f"  # Using CLI options:")
+        example_configs = []
+        for prop_name, prop_config in list(properties.items())[:2]:  # Show first 2 as examples
+            if prop_config.get("default"):
+                example_configs.append(f"{prop_name}={prop_config['default']}")
+        if example_configs:
+            config_str = " ".join([f"--config {cfg}" for cfg in example_configs])
+            console.print(f"  python -m mcp_deploy {template_name} {config_str}")
+        console.print(f"  # Using environment variables:")
+        example_envs = []
+        for prop_name, prop_config in list(properties.items())[:2]:  # Show first 2 as examples
+            env_mapping = prop_config.get("env_mapping")
+            if env_mapping and prop_config.get("default"):
+                example_envs.append(f"{env_mapping}={prop_config['default']}")
+        if example_envs:
+            env_str = " ".join([f"--env {env}" for env in example_envs])
+            console.print(f"  python -m mcp_deploy {template_name} {env_str}")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -934,6 +1255,9 @@ Examples:
     deploy_parser.add_argument("--data-dir", help="Custom data directory")
     deploy_parser.add_argument("--config-dir", help="Custom config directory")
     deploy_parser.add_argument("--env", action="append", help="Environment variables (KEY=VALUE)")
+    deploy_parser.add_argument("--config-file", help="Path to JSON/YAML configuration file")
+    deploy_parser.add_argument("--config", action="append", help="Configuration values (KEY=VALUE)")
+    deploy_parser.add_argument("--show-config", action="store_true", help="Show available configuration options")
     
     # Stop command
     stop_parser = subparsers.add_parser("stop", help="Stop a deployed template")
@@ -980,17 +1304,30 @@ Examples:
         elif args.command == "deploy" or args.command in available_templates:
             template = args.template if hasattr(args, 'template') else args.command
             
+            # Show configuration options if requested
+            if hasattr(args, 'show_config') and args.show_config:
+                deployer._show_config_options(template)
+                return
+            
             env_vars = {}
             if hasattr(args, 'env') and args.env:
                 for env_var in args.env:
                     key, value = env_var.split('=', 1)
                     env_vars[key] = value
             
+            config_values = {}
+            if hasattr(args, 'config') and args.config:
+                for config_var in args.config:
+                    key, value = config_var.split('=', 1)
+                    config_values[key] = value
+            
             deployer.deploy(
                 template,
                 data_dir=getattr(args, 'data_dir', None),
                 config_dir=getattr(args, 'config_dir', None),
-                env_vars=env_vars
+                env_vars=env_vars,
+                config_file=getattr(args, 'config_file', None),
+                config_values=config_values
             )
         elif args.command == "stop":
             deployer.stop(args.template, custom_name=getattr(args, 'name', None))

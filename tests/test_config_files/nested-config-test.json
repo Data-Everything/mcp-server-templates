@@ -1,0 +1,23 @@
+{
+  "security": {
+    "readOnly": false,
+    "maxFileSize": 75,
+    "allowedDirs": ["/data", "/workspace", "/tmp/nested"],
+    "excludePatterns": [
+      "**/.git/**",
+      "**/node_modules/**",
+      "**/.env*",
+      "**/test/**",
+      "**/.pytest_cache/**"
+    ]
+  },
+  "logging": {
+    "level": "info",
+    "enableAudit": true
+  },
+  "performance": {
+    "maxConcurrentOperations": 8,
+    "timeoutMs": 20000,
+    "cacheEnabled": true
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "security": {
+    "allowedDirs": ["/data", "/workspace", "/tmp/test"],
+    "readOnly": true,
+    "maxFileSize": 50,
+    "excludePatterns": [
+      "**/.git/**",
+      "**/node_modules/**",
+      "**/.env*",
+      "**/test/**"
+    ]
+  },
+  "logging": {
+    "level": "debug",
+    "enableAudit": false
+  },
+  "performance": {
+    "maxConcurrentOperations": 5,
+    "timeoutMs": 15000,
+    "cacheEnabled": false
+  }
+}

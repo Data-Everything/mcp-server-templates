@@ -1,10 +1,57 @@
 # Template Development Guide
 
-This guide walks you through creating a new MCP server template from scratch.
+This guide walks you through creating new MCP server templates with the comprehensive configuration system and deployment support.
 
 ## 🎯 Overview
 
-MCP Server Templates provide a standardized way to create Model Context Protocol servers that can be easily deployed and configured through the MCP Platform or self-hosted environments.
+MCP Server Templates provide a standardized way to create Model Context Protocol servers with:
+- **Generic Configuration System**: Automatic mapping from nested JSON/YAML to environment variables
+- **Multi-Source Configuration**: Template defaults → Config files → CLI options → Environment variables  
+- **Type Conversion**: Schema-based automatic type conversion
+- **Deployment Flexibility**: Support for Docker, Kubernetes, and Mock backends
+
+## 🔧 New Configuration System Features
+
+### Generic Configuration Mapping
+The system automatically maps configuration from various sources:
+
+```python
+# Config file: {"security": {"readOnly": true}}
+# Automatically maps to: MCP_READ_ONLY=true
+
+# Config file: {"logging": {"level": "debug"}}  
+# Automatically maps to: MCP_LOG_LEVEL=debug
+
+# CLI: --config read_only_mode=true
+# Maps to: MCP_READ_ONLY=true
+
+# CLI: --config security__read_only=true (nested notation)
+# Maps to: MCP_READ_ONLY=true
+```
+
+### Nested Configuration Support
+The CLI supports nested configuration using double underscore (`__`) notation:
+
+```bash
+# These are equivalent:
+--config read_only_mode=true
+--config security__read_only=true
+
+# Both map to the same environment variable: MCP_READ_ONLY=true
+```
+
+### Configuration Precedence (Highest to Lowest)
+1. **Environment Variables** (`--env MCP_READ_ONLY=true`)
+2. **CLI Options** (`--config read_only_mode=true`) 
+3. **Config Files** (`--config-file config.json`)
+4. **Template Defaults** (from `template.json`)
+
+### Common Pattern Recognition
+The system recognizes common configuration patterns across templates:
+- `log_level` → `logging.level`, `log.level`
+- `read_only_mode` → `security.readOnly`, `security.readonly`
+- `max_file_size` → `security.maxFileSize`, `limits.maxFileSize`
+- `allowed_directories` → `security.allowedDirs`, `paths.allowed`
 
 ## 🏗️ Architecture
 

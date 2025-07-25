@@ -105,17 +105,10 @@ python -m mcp_deploy file-server --config-file ./config.yml
 
 **3. Deploy with CLI Options:**
 ```bash
-# Direct property names
 python -m mcp_deploy file-server \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
-
-# Nested configuration using double underscore notation
-python -m mcp_deploy file-server \
-  --config security__read_only=true \
-  --config security__max_file_size=50 \
-  --config logging__level=debug
 ```
 
 **4. Deploy with Environment Variables:**
