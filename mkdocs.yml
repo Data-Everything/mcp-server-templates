@@ -56,6 +56,7 @@ nav:
   - Demo Hello MCP Server: server-templates/demo/index.md
   - File Server MCP: server-templates/file-server/index.md
 - Guides:
+  - Usage Guide: guides/usage.md
   - Creating Templates: guides/creating-templates.md
   - Testing Templates: guides/testing.md
   - Deployment: guides/deployment.md

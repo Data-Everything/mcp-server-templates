@@ -85,13 +85,18 @@ class DemoServer:
                 "status": "running",
             }
 
-    async def run(self):
+    def run(self):
         """Run the MCP server."""
         self.config.logger.info("Starting Demo Hello MCP Server")
-        await self.mcp.run()
+        # FastMCP handles its own event loop
+        self.mcp.run(transport="stdio")
 
 
 def main():
     """Main entry point."""
     server = DemoServer()
-    asyncio.run(server.run())
+    server.run()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -1,7 +1,7 @@
 {
   "name": "Demo Hello MCP Server",
   "description": "A simple demonstration MCP server that provides greeting tools",
-  "docker_image": "dataeverything/mcp-demo-hello",
+  "docker_image": "dataeverything/mcp-demo",
   "docker_tag": "latest",
   "config_schema": {
     "type": "object",
