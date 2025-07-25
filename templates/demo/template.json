@@ -1,75 +1,56 @@
 {
-  "name": "Demo Form Template",
-  "description": "A demonstration template to showcase dynamic form generation",
-  "image": "demo/form-test:latest",
+  "name": "Demo Hello MCP Server",
+  "description": "A simple demonstration MCP server that provides greeting tools",
+  "docker_image": "dataeverything/mcp-demo-hello",
+  "docker_tag": "latest",
   "config_schema": {
     "type": "object",
     "properties": {
-      "server_name": {
+      "hello_from": {
         "type": "string",
-        "title": "Server Name",
-        "description": "A friendly name for your MCP server instance",
-        "default": "My Demo Server",
-        "minLength": 3,
-        "maxLength": 50
-      },
-      "port": {
-        "type": "integer",
-        "title": "Port Number",
-        "description": "Port number for the server to listen on",
-        "default": 8080,
-        "minimum": 1024,
-        "maximum": 65535
-      },
-      "enable_logging": {
-        "type": "boolean",
-        "title": "Enable Logging",
-        "description": "Enable detailed logging for debugging",
-        "default": true
+        "title": "Greeting Source",
+        "description": "Name or message to include in greetings",
+        "default": "MCP Platform",
+        "env_mapping": "MCP_HELLO_FROM"
       },
       "log_level": {
         "type": "string",
         "title": "Log Level",
-        "description": "Verbosity level for logging",
-        "enum": ["DEBUG", "INFO", "WARNING", "ERROR"],
-        "default": "INFO"
-      },
-      "api_key": {
-        "type": "string",
-        "title": "API Key",
-        "description": "Secret API key for authentication",
-        "format": "password",
-        "minLength": 8
-      },
-      "allowed_hosts": {
-        "type": "array",
-        "title": "Allowed Hosts",
-        "description": "List of allowed hostnames (one per line)",
-        "default": ["localhost", "127.0.0.1"]
-      },
-      "timeout": {
-        "type": "number",
-        "title": "Timeout (seconds)",
-        "description": "Request timeout in seconds",
-        "default": 30.5,
-        "minimum": 0.1,
-        "maximum": 300.0
+        "description": "Logging level for the server",
+        "enum": [
+          "debug",
+          "info",
+          "warn",
+          "error"
+        ],
+        "default": "info",
+        "env_mapping": "MCP_LOG_LEVEL"
       }
-    },
-    "required": ["server_name", "port", "api_key"]
+    }
   },
-  "ports": [
+  "capabilities": [
     {
-      "internal": 8080,
-      "external": "{{ port }}"
+      "name": "Greeting Tools",
+      "description": "Generate personalized greetings and messages",
+      "example": "Say hello, create custom messages, demonstrate MCP capabilities"
     }
   ],
-  "environment": {
-    "SERVER_NAME": "{{ server_name }}",
-    "LOG_LEVEL": "{{ log_level }}",
-    "ENABLE_LOGGING": "{{ enable_logging }}",
-    "API_KEY": "{{ api_key }}",
-    "TIMEOUT": "{{ timeout }}"
-  },
-  "volumes": []
+  "tools": [
+    {
+      "name": "say_hello",
+      "description": "Generate a personalized greeting message",
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Name of the person to greet (optional)",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_server_info",
+      "description": "Get information about the demo server",
+      "parameters": []
+    }
+  ]
 }

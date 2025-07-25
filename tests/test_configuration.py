@@ -169,7 +169,7 @@ class TestConfigurationMapping:
         result = self.deployer._convert_config_values(config_values, self.mock_template)
 
         assert result["MCP_LOG_LEVEL"] == "debug"
-        assert result["MCP_READ_ONLY"] == "true"
+        assert result["MCP_READ_ONLY"] == "True"
         assert result["MCP_MAX_FILE_SIZE"] == "50"
         assert result["MCP_ALLOWED_DIRS"] == "/data,/config"
 
@@ -196,7 +196,7 @@ class TestConfigurationMapping:
             # Environment variable should override file
             assert result["MCP_LOG_LEVEL"] == "error"
             # CLI config should override file
-            assert result["MCP_READ_ONLY"] == "false"
+            assert result["MCP_READ_ONLY"] == "False"
 
         finally:
             Path(config_file_path).unlink()
