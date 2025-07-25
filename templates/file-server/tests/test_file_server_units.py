@@ -30,8 +30,6 @@ class TestFileServerTemplate:
             "author": "MCP Platform",
             "category": "Utilities",
             "tags": ["filesystem", "files", "storage", "security", "utilities"],
-            "base_server": "@modelcontextprotocol/server-filesystem",
-            "base_version": "latest",
             "docker_image": "dataeverything/mcp-file-server",
             "docker_tag": "latest",
             "config_schema": {

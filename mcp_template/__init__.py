@@ -1388,7 +1388,7 @@ class MCPDeployer:
         console.print("\n[cyan]💡 Usage Examples:[/cyan]")
         console.print("  # Using config file:")
         console.print(
-            f"  python -m mcp_template {template_name} --config-file config.json"
+            f"  python -m mcp_template deploy {template_name} --config-file config.json"
         )
         console.print("  # Using CLI options:")
         example_configs = []
@@ -1399,7 +1399,46 @@ class MCPDeployer:
                 example_configs.append(f"{prop_name}={prop_config['default']}")
         if example_configs:
             config_str = " ".join([f"--config {cfg}" for cfg in example_configs])
-            console.print(f"  python -m mcp_template {template_name} {config_str}")
+            console.print(
+                f"  python -m mcp_template deploy {template_name} {config_str}"
+            )
+
+        console.print("  # Using double underscore notation for nested config:")
+        nested_examples = []
+
+        # Generate some common nested notation examples based on actual properties
+        for prop_name, prop_config in properties.items():
+            if len(nested_examples) >= 2:  # Limit to 2 examples
+                break
+            if prop_config.get("default"):
+                # Map properties to their nested equivalents
+                nested_mapping = {
+                    "read_only_mode": "security__read_only",
+                    "log_level": "logging__level",
+                    "max_file_size": "security__max_file_size",
+                    "enable_audit": "logging__enable_audit",
+                    "allowed_directories": "security__allowed_dirs",
+                    "max_concurrent_operations": "performance__max_concurrent",
+                    "timeout_ms": "performance__timeout_ms",
+                    "cache_enabled": "performance__cache_enabled",
+                }
+
+                if prop_name in nested_mapping:
+                    nested_examples.append(
+                        f"{nested_mapping[prop_name]}={prop_config['default']}"
+                    )
+
+        if nested_examples:
+            nested_str = " ".join([f"--config {cfg}" for cfg in nested_examples])
+            console.print(
+                f"  python -m mcp_template deploy {template_name} {nested_str}"
+            )
+        else:
+            # Fallback examples if no specific mappings found
+            console.print(
+                f"  python -m mcp_template deploy {template_name} --config security__read_only=true --config logging__level=debug"
+            )
+
         console.print("  # Using environment variables:")
         example_envs = []
         for prop_name, prop_config in list(properties.items())[
@@ -1410,7 +1449,7 @@ class MCPDeployer:
                 example_envs.append(f"{env_mapping}={prop_config['default']}")
         if example_envs:
             env_str = " ".join([f"--env {env}" for env in example_envs])
-            console.print(f"  python -m mcp_template {template_name} {env_str}")
+            console.print(f"  python -m mcp_template deploy {template_name} {env_str}")
 
 
 def main():

@@ -1,6 +1,6 @@
 # CLI Commands
 
-Complete reference for the `mcp-template` command-line interface.
+Complete reference for the `python -m mcp_template` command-line interface.
 
 ## Global Options
 
@@ -18,7 +18,7 @@ Complete reference for the `mcp-template` command-line interface.
 List available templates.
 
 ```bash
-mcp-template list [OPTIONS]
+python -m mcp_template list [OPTIONS]
 ```
 
 **Options:**
@@ -27,9 +27,9 @@ mcp-template list [OPTIONS]
 
 **Examples:**
 ```bash
-mcp-template list
-mcp-template list --format json
-mcp-template list --filter database
+python -m mcp_template list
+python -m mcp_template list --format json
+python -m mcp_template list --filter database
 ```
 
 ### `deploy`
@@ -37,7 +37,7 @@ mcp-template list --filter database
 Deploy a template.
 
 ```bash
-mcp-template deploy TEMPLATE [OPTIONS]
+python -m mcp_template deploy TEMPLATE [OPTIONS]
 ```
 
 **Arguments:**
@@ -52,9 +52,9 @@ mcp-template deploy TEMPLATE [OPTIONS]
 
 **Examples:**
 ```bash
-mcp-template deploy demo
-mcp-template deploy demo --port 8080
-mcp-template deploy demo --env DEBUG=true --env LOG_LEVEL=debug
+python -m mcp_template deploy demo
+python -m mcp_template deploy demo --port 8080
+python -m mcp_template deploy demo --env DEBUG=true --env LOG_LEVEL=debug
 ```
 
 ### `stop`
@@ -62,7 +62,7 @@ mcp-template deploy demo --env DEBUG=true --env LOG_LEVEL=debug
 Stop a running deployment.
 
 ```bash
-mcp-template stop NAME [OPTIONS]
+python -m mcp_template stop NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -76,7 +76,7 @@ mcp-template stop NAME [OPTIONS]
 Remove a deployment.
 
 ```bash
-mcp-template remove NAME [OPTIONS]
+python -m mcp_template remove NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -90,7 +90,7 @@ mcp-template remove NAME [OPTIONS]
 View deployment logs.
 
 ```bash
-mcp-template logs NAME [OPTIONS]
+python -m mcp_template logs NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -106,7 +106,7 @@ mcp-template logs NAME [OPTIONS]
 Check deployment status.
 
 ```bash
-mcp-template status [NAME] [OPTIONS]
+python -m mcp_template status [NAME] [OPTIONS]
 ```
 
 **Arguments:**
@@ -117,7 +117,7 @@ mcp-template status [NAME] [OPTIONS]
 Create a new template.
 
 ```bash
-mcp-template create NAME [OPTIONS]
+python -m mcp_template create NAME [OPTIONS]
 ```
 
 **Arguments:**

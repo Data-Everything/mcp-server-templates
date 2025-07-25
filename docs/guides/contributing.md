@@ -48,7 +48,7 @@ flake8 mcp_template/ tests/
 ## Template Contributions
 
 ### New Templates
-1. Create template using: `mcp-template create your-template`
+1. Create template using: `python -m mcp_template create your-template`
 2. Implement MCP server in `src/server.py`
 3. Add comprehensive tests
 4. Write clear documentation

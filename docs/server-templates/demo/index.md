@@ -9,16 +9,31 @@ A simple demonstration MCP server that provides greeting tools
 Deploy this template:
 
 ```bash
-mcp-template deploy demo
+python -m mcp_template deploy demo
 ```
 
-## Configuration
+## Configuration Options
 
-This template supports the following configuration parameters:
+| Property | Type | Environment Variable | Default | Description |
+|----------|------|---------------------|---------|-------------|
+| `hello_from` | string | `MCP_HELLO_FROM` | `MCP Platform` | Name or message to include in greetings |
+| `log_level` | string | `MCP_LOG_LEVEL` | `info` | Logging level for the server |
 
-- LOG_LEVEL: Logging level (default: INFO)
+### Usage Examples
 
-## Development
+```bash
+# Deploy with configuration
+python -m mcp_template deploy demo --show-config
+
+# Using environment variables
+python -m mcp_template deploy demo --env MCP_HELLO_FROM=value
+
+# Using CLI configuration
+python -m mcp_template deploy demo --config hello_from=value
+
+# Using nested configuration
+python -m mcp_template deploy demo --config category__property=value
+```## Development
 
 ### Local Testing
 

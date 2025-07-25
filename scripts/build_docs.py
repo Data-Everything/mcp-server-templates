@@ -3,7 +3,7 @@
 Documentation builder for MCP Server Templates.
 
 This script:
-1. Scans all template directories for docs/index.md files
+1. Uses the existing TemplateDiscovery utility to find usable templates
 2. Generates navigation for template documentation
 3. Copies template docs to the main docs directory
 4. Builds the documentation with mkdocs
@@ -16,6 +16,10 @@ from pathlib import Path
 from typing import Dict
 
 import yaml
+
+# Import the TemplateDiscovery utility
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from mcp_template import TemplateDiscovery
 
 
 def cleanup_old_docs(docs_dir: Path):
@@ -33,46 +37,42 @@ def cleanup_old_docs(docs_dir: Path):
 
 
 def scan_template_docs(templates_dir: Path) -> Dict[str, Dict]:
-    """Scan template directories for documentation."""
-    print("🔍 Scanning template directories for documentation...")
+    """Scan template directories for documentation using TemplateDiscovery."""
+    print("🔍 Using TemplateDiscovery to find usable templates...")
 
     template_docs = {}
 
-    for template_dir in templates_dir.iterdir():
-        if not template_dir.is_dir():
-            continue
+    # Use the existing TemplateDiscovery utility to find working templates
+    discovery = TemplateDiscovery()
+    try:
+        templates = discovery.discover_templates()
+        print(f"✅ TemplateDiscovery found {len(templates)} usable templates")
+    except Exception as e:
+        print(f"❌ Error using TemplateDiscovery: {e}")
+        return {}
 
-        template_name = template_dir.name
+    for template_name, template_config in templates.items():
+        template_dir = templates_dir / template_name
         docs_index = template_dir / "docs" / "index.md"
-        template_json = template_dir / "template.json"
 
-        if docs_index.exists() and template_json.exists():
-            # Load template metadata
-            try:
-                import json
-
-                with open(template_json) as f:
-                    template_config = json.load(f)
-
-                template_docs[template_name] = {
-                    "name": template_config.get("name", template_name.title()),
-                    "description": template_config.get("description", ""),
-                    "docs_file": docs_index,
-                    "config": template_config,
-                }
-                print(f"  ✅ Found docs for {template_name}")
-            except Exception as e:
-                print(f"  ⚠️  Error reading {template_name} config: {e}")
+        if docs_index.exists():
+            template_docs[template_name] = {
+                "name": template_config.get("name", template_name.title()),
+                "description": template_config.get("description", ""),
+                "docs_file": docs_index,
+                "config": template_config,
+            }
+            print(f"  ✅ Found docs for {template_name}")
         else:
-            print(f"  ❌ Missing docs for {template_name}")
+            print(f"  ⚠️  Template {template_name} is usable but missing docs/index.md")
 
     print(f"📋 Found documentation for {len(template_docs)} templates")
     return template_docs
 
 
 def copy_template_docs(template_docs: Dict[str, Dict], docs_dir: Path):
-    """Copy template documentation to docs directory."""
-    print("� Copying template documentation...")
+    """Copy template documentation to docs directory and fix CLI commands."""
+    print("📄 Copying template documentation...")
 
     templates_docs_dir = docs_dir / "server-templates"
     templates_docs_dir.mkdir(exist_ok=True)
@@ -81,9 +81,91 @@ def copy_template_docs(template_docs: Dict[str, Dict], docs_dir: Path):
         template_doc_dir = templates_docs_dir / template_id
         template_doc_dir.mkdir(exist_ok=True)
 
-        # Copy the index.md file
+        # Copy the index.md file and fix CLI commands
         dest_file = template_doc_dir / "index.md"
-        shutil.copy2(template_info["docs_file"], dest_file)
+        with open(template_info["docs_file"], "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Fix CLI commands - add 'python -m' prefix and 'deploy' command
+        content = content.replace(
+            f"mcp-template deploy {template_id}",
+            f"python -m mcp_template deploy {template_id}",
+        )
+        content = content.replace(
+            f"mcp-template {template_id}",
+            f"python -m mcp_template deploy {template_id}",
+        )
+        content = content.replace(
+            "mcp-template create", "python -m mcp_template create"
+        )
+        content = content.replace("mcp-template list", "python -m mcp_template list")
+        content = content.replace("mcp-template stop", "python -m mcp_template stop")
+        content = content.replace("mcp-template logs", "python -m mcp_template logs")
+        content = content.replace("mcp-template shell", "python -m mcp_template shell")
+        content = content.replace(
+            "mcp-template cleanup", "python -m mcp_template cleanup"
+        )
+
+        # Add configuration information from template schema if not present
+        config_schema = template_info["config"].get("config_schema", {})
+        properties = config_schema.get("properties", {})
+
+        if properties and "## Configuration" in content:
+            # Generate configuration table
+            config_section = "\n## Configuration Options\n\n"
+            config_section += (
+                "| Property | Type | Environment Variable | Default | Description |\n"
+            )
+            config_section += (
+                "|----------|------|---------------------|---------|-------------|\n"
+            )
+
+            for prop_name, prop_config in properties.items():
+                prop_type = prop_config.get("type", "string")
+                env_mapping = prop_config.get("env_mapping", "")
+                default = str(prop_config.get("default", ""))
+                description = prop_config.get("description", "")
+
+                config_section += f"| `{prop_name}` | {prop_type} | `{env_mapping}` | `{default}` | {description} |\n"
+
+            config_section += "\n### Usage Examples\n\n"
+            config_section += "```bash\n"
+            config_section += "# Deploy with configuration\n"
+            config_section += (
+                f"python -m mcp_template deploy {template_id} --show-config\n\n"
+            )
+            if properties:
+                first_prop = next(iter(properties.keys()))
+                first_prop_config = properties[first_prop]
+                if first_prop_config.get("env_mapping"):
+                    config_section += "# Using environment variables\n"
+                    config_section += f"python -m mcp_template deploy {template_id} --env {first_prop_config['env_mapping']}=value\n\n"
+                config_section += "# Using CLI configuration\n"
+                config_section += "python -m mcp_template deploy {template_id} --config {first_prop}=value\n\n"
+                config_section += "# Using nested configuration\n"
+                config_section += "python -m mcp_template deploy {template_id} --config category__property=value\n"
+            config_section += "```\n"
+
+            # Replace or append configuration section
+            if "## Configuration" in content and "This template supports" in content:
+                # Replace simple configuration section with detailed one
+                import re
+
+                pattern = r"## Configuration.*?(?=##|\Z)"
+                content = re.sub(
+                    pattern, config_section.strip(), content, flags=re.DOTALL
+                )
+            else:
+                # Append before Development section or at end
+                if "## Development" in content:
+                    content = content.replace(
+                        "## Development", config_section + "\n## Development"
+                    )
+                else:
+                    content += "\n" + config_section
+
+        with open(dest_file, "w", encoding="utf-8") as f:
+            f.write(content)
 
         # Copy any other documentation files if they exist
         template_docs_source = template_info["docs_file"].parent
@@ -91,7 +173,7 @@ def copy_template_docs(template_docs: Dict[str, Dict], docs_dir: Path):
             if doc_file.name != "index.md" and doc_file.is_file():
                 shutil.copy2(doc_file, template_doc_dir / doc_file.name)
 
-        print(f"  📄 Copied docs for {template_id}")
+        print(f"  📄 Copied and enhanced docs for {template_id}")
 
 
 def generate_templates_index(template_docs: Dict[str, Dict], docs_dir: Path):

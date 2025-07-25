@@ -308,14 +308,14 @@ Each template includes:
 ### Quick Start
 
 ```bash
-# 1. Install
-pip install mcp-deploy
+# 1. Install from PyPI
+pip install mcp-templates
 
 # 2. List available templates
 python -m mcp_template list
 
 # 3. Deploy with defaults
-python -m mcp_template file-server
+python -m mcp_template deploy file-server
 
 # 4. Deploy with custom config
 python -m mcp_template file-server --config-file ./my-config.json

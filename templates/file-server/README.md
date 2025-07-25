@@ -1,6 +1,6 @@
 # File Server MCP Template
 
-A secure file system access server for AI assistants, built on top of the official [@modelcontextprotocol/server-filesystem](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem) with enhanced platform integration, security features, and monitoring capabilities.
+A secure, Python-based file system access server for AI assistants, designed specifically for the Model Context Protocol with enhanced platform integration, security features, and monitoring capabilities.
 
 ## Overview
 
@@ -12,17 +12,17 @@ This template extends the robust, battle-tested official MCP filesystem server w
 - **Audit Logging**: Comprehensive logging of all file operations for compliance
 - **Health Monitoring**: Built-in health checks and performance metrics
 
-## Based on Official MCP Filesystem Server
+## Pure Python MCP File Server
 
-This template leverages the official `@modelcontextprotocol/server-filesystem` which provides:
+This template provides a secure, Python-based file system server implementation that offers:
 
 - ✅ **Robust file operations**: Read, write, edit, list, search, move
-- ✅ **Security by design**: Path traversal protection, symlink validation
+- ✅ **Security by design**: Path traversal protection, access controls
 - ✅ **Performance optimized**: Efficient file handling and streaming
-- ✅ **Well tested**: Comprehensive test suite and real-world usage
-- ✅ **Active maintenance**: Regular updates and security patches
+- ✅ **Well tested**: Comprehensive test suite and validation
+- ✅ **Python-native**: Built specifically for Python MCP environments
 
-### Why extend instead of rebuild?
+### Why Python-native?
 
 Following the principle "don't reinvent the wheel", this template:
 - Reuses the proven filesystem server implementation
@@ -96,7 +96,7 @@ The file server supports comprehensive configuration through environment variabl
    ```bash
    # Pull the latest image
    docker pull dataeverything/mcp-file-server:latest
-   
+
    # Run the server
    docker run -d \
      --name mcp-file-server \
@@ -174,7 +174,7 @@ Create `/app/config/file-server.json`:
 - `write_file` - Create or overwrite files with validation
 - `edit_file` - Smart file editing with pattern matching
 
-### Directory Operations  
+### Directory Operations
 - `list_directory` - List directory contents with metadata
 - `create_directory` - Create directories recursively
 - `directory_tree` - Get complete directory structure as JSON
@@ -290,12 +290,12 @@ await mcp.callTool('edit_file', {
 - 📖 **Documentation**: [Template Development Guide](https://docs.mcp-platform.ai/templates/file-server)
 - 🐛 **Issues**: [GitHub Issues](https://github.com/Data-Everything/mcp-server-templates/issues)
 - 💬 **Community**: [MCP Platform Discord](https://discord.gg/mcp-platform)
-- 🔧 **Base Server**: [@modelcontextprotocol/server-filesystem](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem)
+- � **Language**: Pure Python MCP server implementation
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-This template builds upon the official MCP filesystem server which is also MIT licensed.
+This template is a native Python implementation designed for MCP platform integration.
 # Last updated: Thu 24 Jul 2025 18:16:58 AEST
 # Updated: Thu 24 Jul 2025 18:34:55 AEST
