@@ -1,9 +1,6 @@
 # MCP Server Templates - Development Dependencies
-# Pure Python FastMCP-based implementation (no JavaScript!)
-
-# Core FastMCP framework
-fastmcp>=2.10.0
-aiofiles>=23.1.0
+# Template deployment system - does not require fastmcp directly
+# (fastmcp is only needed inside the Docker containers for individual templates)
 
 # Testing framework  
 pytest>=7.0.0

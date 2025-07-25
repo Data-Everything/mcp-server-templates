@@ -564,7 +564,7 @@ class MockDeploymentService:
         self.deployments = {}
 
     def deploy_template(
-        self, template_id: str, config: Dict[str, Any]
+        self, template_id: str, config: Dict[str, Any], template_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Mock template deployment."""
         deployment_name = f"mcp-{template_id}-{datetime.now().strftime('%m%d-%H%M')}-{str(uuid.uuid4())[:8]}"
@@ -573,6 +573,7 @@ class MockDeploymentService:
             "deployment_name": deployment_name,
             "template_id": template_id,
             "configuration": config,
+            "template_data": template_data,
             "status": "deployed",
             "created_at": datetime.now().isoformat(),
             "mock": True,
