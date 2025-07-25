@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 90
+extend-ignore = E203, W503, E501, F401, F811, F841, F403, E402, E902, W293, E722
+exclude =
+    backend/*/migrations/*.py,
+    backend/manage.py,
+    venv,
+    .venv,
+    __pycache__,
+    .git,
+    .tox,
+    dist,
+    build,
+    *.egg-info,
+    node_modules
+per-file-ignores =
+    backend/mcp_platform/test_settings.py:F401,F403
+    backend/tests/*.py:F401,F841
+    backend/*/tests/*.py:F401,F841

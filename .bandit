@@ -1,0 +1,10 @@
+exclude_dirs:
+  - tests
+skips:
+  - B101
+  - B110
+  - B404
+  - B603
+  - B607
+severity: low
+confidence: low

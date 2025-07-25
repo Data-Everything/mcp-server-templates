@@ -5,7 +5,7 @@ Test utilities and framework for MCP Server Templates.
 
 This module provides utilities for testing MCP server templates including:
 - Container building and testing
-- Configuration validation  
+- Configuration validation
 - Health check verification
 - MCP protocol testing
 """

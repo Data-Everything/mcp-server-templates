@@ -13,21 +13,21 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    
+
     - name: Run quick tests
       run: |
         python tests/test_runner.py quick
@@ -38,30 +38,30 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    
+
     - name: Run unit tests
       run: |
         python tests/test_runner.py unit
-    
+
     - name: Generate coverage report
       run: |
         pip install pytest-cov
         python -m pytest tests/test_deployment_units.py -m unit --cov=mcp_deploy --cov-report=xml
-    
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -75,53 +75,53 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11"]  # Limit to reduce CI time
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    
+
     - name: Install containerd and nerdctl
       run: |
         # Install containerd
         sudo apt-get update
         sudo apt-get install -y containerd.io
-        
+
         # Download and install nerdctl
         NERDCTL_VERSION=1.7.2
         wget -qO nerdctl.tar.gz "https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz"
         sudo tar -xzf nerdctl.tar.gz -C /usr/local/bin/
-        
+
         # Configure containerd
         sudo mkdir -p /etc/containerd
         containerd config default | sudo tee /etc/containerd/config.toml
-        
+
         # Start containerd
         sudo systemctl enable containerd
         sudo systemctl start containerd
-        
+
         # Verify installation
         sudo nerdctl version
-        
+
         # Create symbolic link for docker compatibility (for our deployment system)
         sudo ln -sf /usr/local/bin/nerdctl /usr/local/bin/docker
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    
+
     - name: Test container runtime detection
       run: |
         # Test that our deployment system can detect container runtime
         python -c "
         from mcp_deploy import DockerDeploymentService
         import subprocess
-        
+
         # Check if nerdctl works
         result = subprocess.run(['sudo', 'nerdctl', 'version'], capture_output=True, text=True)
         if result.returncode == 0:
@@ -130,27 +130,27 @@ jobs:
             print('❌ Container runtime not available:', result.stderr)
             exit(1)
         "
-    
+
     - name: Run integration tests with mock backend
       run: |
         # Use mock backend for tests to avoid container runtime dependencies
         python -c "
         from mcp_deploy import DeploymentManager
-        
+
         # Test with mock backend
         manager = DeploymentManager(backend_type='mock')
-        
+
         result = manager.deploy_template(
             template_id='file-server',
             configuration={'test': 'value'},
             template_data={'image': 'test-image', 'env_vars': {}}
         )
-        
+
         print('✅ Mock deployment test passed:', result['deployment_name'])
-        
+
         deployments = manager.list_deployments()
         print('✅ List deployments test passed:', len(deployments))
-        
+
         manager.delete_deployment(result['deployment_name'])
         print('✅ Delete deployment test passed')
         "
@@ -159,38 +159,38 @@ jobs:
   # Template validation - check all templates are valid
   template-validation:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: "3.11"
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    
+
     - name: Validate templates
       run: |
         python -c "
         from mcp_deploy import TemplateDiscovery
         import sys
-        
+
         discovery = TemplateDiscovery()
         templates = discovery.discover_templates()
-        
+
         if not templates:
             print('❌ No templates found!')
             sys.exit(1)
-        
+
         print(f'✅ Found {len(templates)} valid templates:')
         for name, template in templates.items():
             print(f'  - {name}: {template[\"name\"]}')
-        
+
         print('✅ All templates validated successfully!')
         "
 
@@ -199,34 +199,34 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     needs: [quick-tests, unit-tests, integration-tests, template-validation]
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: "3.11"
-    
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    
+
     - name: Run comprehensive tests
       run: |
         python tests/test_runner.py all
       timeout-minutes: 20
-    
+
     - name: Build package
       run: |
         pip install build
         python -m build
-    
+
     - name: Test package installation
       run: |
         pip install dist/*.whl
@@ -235,16 +235,16 @@ jobs:
   # Security scanning
   security-scan:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
+    - name: Install Bandit
+      run: pip install bandit
+
     - name: Run Bandit security scan
-      uses: securecodewarrior/github-action-bandit@v1
-      with:
-        config_file: .bandit
-        exit_zero: true
-    
+      run: bandit -c .bandit -r mcp_deploy/ --exit-zero
+
     - name: Run Safety check
       run: |
         pip install safety
@@ -253,32 +253,32 @@ jobs:
   # Code quality checks
   code-quality:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: "3.11"
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
-    
+
     - name: Run code formatting check
       run: |
         black --check mcp_deploy/ tests/
-    
+
     - name: Run import sorting check
       run: |
         isort --check-only mcp_deploy/ tests/
-    
+
     - name: Run linting
       run: |
         flake8 mcp_deploy/ tests/ --max-line-length=100
-    
+
     - name: Run type checking
       run: |
         mypy mcp_deploy/ --ignore-missing-imports
