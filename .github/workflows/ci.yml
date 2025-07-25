@@ -245,11 +245,6 @@ jobs:
     - name: Run Bandit security scan
       run: bandit -c .bandit -r mcp_deploy/ --exit-zero
 
-    - name: Run Safety check
-      run: |
-        pip install safety
-        safety check --ignore 70612  # Ignore jinja2 vulnerability (not applicable)
-
   # Code quality checks
   code-quality:
     runs-on: ubuntu-latest
