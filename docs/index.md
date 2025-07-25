@@ -1,5 +1,90 @@
 ---
-# MCP Server Templates Documentation Hub
+# MCP Server Templates
+
+Deploy MCP (Model Context Protocol) server templates with zero configuration.
+
+## Overview
+
+MCP Server Templates is a comprehensive toolkit for deploying and managing MCP servers. It provides:
+
+- **Zero-configuration deployment** - Deploy templates instantly with sensible defaults
+- **Template management** - Create, test, and validate MCP server templates
+- **Multiple backends** - Support for Docker, Kubernetes, and more
+- **Rich CLI** - Beautiful command-line interface with progress indicators
+- **Testing framework** - Built-in testing utilities for template validation
+
+## Quick Start
+
+### Installation
+
+```bash
+pip install mcp-templates
+```
+
+### List Available Templates
+
+```bash
+mcp-template list
+```
+
+### Deploy a Template
+
+```bash
+mcp-template deploy file-server
+```
+
+### Create a New Template
+
+```bash
+mcp-template create my-template
+```
+
+## Features
+
+### 🚀 Zero Configuration
+
+Deploy any template with a single command. All templates include sensible defaults and automatic configuration.
+
+### 📦 Template Management
+
+- Discover available templates
+- Validate template structure
+- Create new templates with guided prompts
+- Test templates locally
+
+### 🐳 Multiple Backends
+
+- **Docker** - Local container deployment
+- **Kubernetes** - Scalable cluster deployment
+- **Mock** - Testing and development
+
+### 🧪 Testing Framework
+
+- Comprehensive test utilities
+- Template validation
+- Integration testing
+- Coverage reporting
+
+## Architecture
+
+The system consists of several key components:
+
+- **CLI Interface** - Rich command-line interface for users
+- **Template Discovery** - Automatic detection and validation of templates
+- **Deployment Backends** - Pluggable deployment targets
+- **Testing Framework** - Built-in testing and validation
+
+## Templates
+
+Browse our [available templates](templates/available.md) or learn how to [create your own](guides/creating-templates.md).
+
+## Contributing
+
+We welcome contributions! See our [contributing guide](guides/contributing.md) for details.
+
+## License
+
+This project is licensed under the MIT License. Hub
 
 Welcome to the documentation hub for MCP Server Templates - a production-ready deployment system for Model Context Protocol servers with unified architecture and advanced configuration support.
 
@@ -12,7 +97,7 @@ Welcome to the documentation hub for MCP Server Templates - a production-ready d
 - **[Configuration Guide](../README.md#configuration-options)**: Master the flexible configuration system
 - **[CLI Reference](../README.md#cli-usage)**: Complete command reference
 
-### For Developers  
+### For Developers
 - **[Template Development Guide](template-development-guide.md)**: Create new MCP server templates
 - **[Configuration Strategy](CONFIGURATION_FINAL_RECOMMENDATIONS.md)**: Deep dive into config system design
 - **[Testing Guide](TESTING.md)**: Testing strategies and tools
@@ -22,7 +107,7 @@ Welcome to the documentation hub for MCP Server Templates - a production-ready d
 ## 📋 Core Documentation
 
 ### Architecture & Design
-- **[Configuration Strategy](CONFIGURATION_FINAL_RECOMMENDATIONS.md)**: 
+- **[Configuration Strategy](CONFIGURATION_FINAL_RECOMMENDATIONS.md)**:
   - Multi-source configuration precedence
   - Generic mapping system design
   - Type conversion and validation strategies
@@ -57,11 +142,11 @@ The MCP deployment system features a sophisticated configuration management syst
 ```bash
 # Configuration precedence (highest to lowest):
 # 1. Environment variables (--env)
-# 2. CLI options (--config)  
+# 2. CLI options (--config)
 # 3. Config files (--config-file)
 # 4. Template defaults
 
-python -m mcp_deploy file-server 
+python -m mcp_template file-server
   --config-file ./base.json \    # Loads base configuration
   --config log_level=warning \   # Overrides file setting
   --env MCP_READ_ONLY=true       # Highest priority
@@ -103,7 +188,7 @@ Every template must include:
 ```
 templates/{template-name}/
 ├── template.json          # Metadata and config schema
-├── Dockerfile            # Container build instructions  
+├── Dockerfile            # Container build instructions
 ├── README.md             # Usage documentation
 └── src/                  # Implementation code
 ```
@@ -153,9 +238,9 @@ templates/{template-name}/
 ```
 tests/
 ├── test_configuration.py      # Configuration system tests
-├── test_deployment_*.py       # Deployment backend tests  
+├── test_deployment_*.py       # Deployment backend tests
 ├── test_all_templates.py      # Template validation tests
-├── test_config_files/         # Sample configuration files
+├── examples/config/           # Sample configuration files
 │   ├── file-server-config.json
 │   └── __init__.py
 └── __pycache__/
@@ -181,7 +266,7 @@ pytest tests/test_configuration.py -v
 pytest tests/test_all_templates.py -v
 
 # With coverage
-pytest --cov=mcp_deploy tests/
+pytest --cov=mcp_template tests/
 ```
 
 ---
@@ -194,7 +279,7 @@ pytest --cov=mcp_deploy tests/
 ┌─────────────────┐    ┌──────────────────────┐    ┌────────────────────────┐
 │   CLI Interface │────│  DeploymentManager   │────│  Backend Services      │
 │                 │    │                      │    │                        │
-│ • Argument      │    │ • Template Discovery │    │ • DockerDeployment     │  
+│ • Argument      │    │ • Template Discovery │    │ • DockerDeployment     │
 │   Parsing       │    │ • Config Preparation │    │ • KubernetesDeployment │
 │ • Config        │    │ • Backend Abstraction│    │ • MockDeployment       │
 │   Discovery     │    │                      │    │                        │
@@ -264,7 +349,7 @@ Template auto-discovery and metadata loading.
 ### Template Examples
 Each template serves as a reference implementation:
 - **file-server**: Secure file system access
-- **github**: GitHub API integration  
+- **github**: GitHub API integration
 - **database**: Database connectivity
 - **demo**: Simple example template
 

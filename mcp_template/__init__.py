@@ -14,6 +14,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import subprocess  # nosec B404
 import sys
 import uuid
@@ -25,7 +26,10 @@ import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.prompt import Confirm, Prompt
 from rich.table import Table
+
+from .create_template import TemplateCreator
 
 # Constants
 DEFAULT_DATA_PATH = "/data"
@@ -447,7 +451,7 @@ class DockerDeploymentService:
                     "--label",
                     f"template={template_id}",
                     "--label",
-                    "managed-by=mcp-deploy",
+                    "managed-by=mcp-template",
                 ]
                 + env_vars
                 + volumes
@@ -493,7 +497,7 @@ class DockerDeploymentService:
                     "ps",
                     "-a",
                     "--filter",
-                    "label=managed-by=mcp-deploy",
+                    "label=managed-by=mcp-template",
                     "--format",
                     "json",
                 ]
@@ -802,9 +806,9 @@ class MCPDeployer:
                         f"[cyan]🔧 MCP Configuration:[/cyan]\n"
                         f"Config saved to: ~/.mcp/{template_name}.json\n\n"
                         f"[cyan]💡 Management:[/cyan]\n"
-                        f"• View logs: mcp-deploy logs {template_name}\n"
-                        f"• Stop: mcp-deploy stop {template_name}\n"
-                        f"• Shell: mcp-deploy shell {template_name}",
+                        f"• View logs: mcp-template logs {template_name}\n"
+                        f"• Stop: mcp-template stop {template_name}\n"
+                        f"• Shell: mcp-template shell {template_name}",
                         title="🎉 Deployment Complete",
                         border_style="green",
                     )
@@ -1386,7 +1390,7 @@ class MCPDeployer:
         console.print("\n[cyan]💡 Usage Examples:[/cyan]")
         console.print("  # Using config file:")
         console.print(
-            f"  python -m mcp_deploy {template_name} --config-file config.json"
+            f"  python -m mcp_template {template_name} --config-file config.json"
         )
         console.print("  # Using CLI options:")
         example_configs = []
@@ -1397,7 +1401,7 @@ class MCPDeployer:
                 example_configs.append(f"{prop_name}={prop_config['default']}")
         if example_configs:
             config_str = " ".join([f"--config {cfg}" for cfg in example_configs])
-            console.print(f"  python -m mcp_deploy {template_name} {config_str}")
+            console.print(f"  python -m mcp_template {template_name} {config_str}")
         console.print("  # Using environment variables:")
         example_envs = []
         for prop_name, prop_config in list(properties.items())[
@@ -1408,21 +1412,25 @@ class MCPDeployer:
                 example_envs.append(f"{env_mapping}={prop_config['default']}")
         if example_envs:
             env_str = " ".join([f"--env {env}" for env in example_envs])
-            console.print(f"  python -m mcp_deploy {template_name} {env_str}")
+            console.print(f"  python -m mcp_template {template_name} {env_str}")
 
 
 def main():
+    """
+    Main entry point for the MCP deployer CLI.
+    """
+
     parser = argparse.ArgumentParser(
         description="Deploy MCP server templates with zero configuration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  mcp-deploy list                    # List available templates
-  mcp-deploy file-server             # Deploy file server with defaults
-  mcp-deploy file-server --name fs   # Deploy with custom name
-  mcp-deploy logs file-server        # View logs
-  mcp-deploy stop file-server        # Stop deployment
-  mcp-deploy shell file-server       # Open shell in container
+  mcp-template list                    # List available templates
+  mcp-template file-server             # Deploy file server with defaults
+  mcp-template file-server --name fs   # Deploy with custom name
+  mcp-template logs file-server        # View logs
+  mcp-template stop file-server        # Stop deployment
+  mcp-template shell file-server       # Open shell in container
         """,
     )
 
@@ -1430,6 +1438,18 @@ Examples:
 
     # List command
     subparsers.add_parser("list", help="List available templates")
+
+    # Create command
+    create_parser = subparsers.add_parser("create", help="Create a new template")
+    create_parser.add_argument(
+        "template_id", nargs="?", help="Template ID (e.g., 'my-api-server')"
+    )
+    create_parser.add_argument(
+        "--config-file", help="Path to template configuration file"
+    )
+    create_parser.add_argument(
+        "--non-interactive", action="store_true", help="Run in non-interactive mode"
+    )
 
     # Deploy command (default)
     deploy_parser = subparsers.add_parser("deploy", help="Deploy a template")
@@ -1500,6 +1520,14 @@ Examples:
     try:
         if args.command == "list":
             deployer.list_templates()
+        elif args.command == "create":
+            creator = TemplateCreator()
+            success = creator.create_template_interactive(
+                template_id=getattr(args, "template_id", None),
+                config_file=getattr(args, "config_file", None),
+            )
+            if not success:
+                sys.exit(1)
         elif args.command == "deploy" or args.command in available_templates:
             template = args.template if hasattr(args, "template") else args.command
 

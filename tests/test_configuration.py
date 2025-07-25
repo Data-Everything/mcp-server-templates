@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from mcp_deploy import MCPDeployer
+from mcp_template import MCPDeployer
 
 
 class TestConfigurationMapping:

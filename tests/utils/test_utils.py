@@ -371,17 +371,3 @@ class MockMCPClient:
         """Test calling a tool."""
         # Implementation would go here
         pass
-
-
-# Utility functions for common test operations
-def get_template_list() -> list[str]:
-    """Get list of available templates using the discover_templates function."""
-    # Import here to avoid circular imports
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from mcp_deploy import TemplateDiscovery
-
-    # Use the actual template discovery logic
-    discovery = TemplateDiscovery()
-    templates = discovery.discover_templates()
-
-    return sorted(templates.keys())

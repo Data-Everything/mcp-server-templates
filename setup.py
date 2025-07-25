@@ -2,7 +2,7 @@
 Setup script for MCP server templates package.
 """
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -35,7 +35,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "mcp-deploy=mcp_deploy:main",
+            "mcp-template=mcp_template:main",
         ],
     },
     keywords="mcp, model-context-protocol, ai, deployment, docker, templates",

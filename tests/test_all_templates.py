@@ -8,7 +8,7 @@ import pytest
 # Add src to Python path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tests.test_utils import (
+from tests.utils.mcp_test_utils import (
     get_template_list,
     run_template_tests,
     validate_template_structure,

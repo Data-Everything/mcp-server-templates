@@ -13,10 +13,10 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-# Add mcp_deploy to path for testing
+# Add mcp_template to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mcp_deploy import (
+from mcp_template import (
     DeploymentManager,
     DockerDeploymentService,
     MCPDeployer,
@@ -134,8 +134,8 @@ class TestTemplateDiscovery:
 class TestMCPDeployer:
     """Unit tests for MCPDeployer class."""
 
-    @patch("mcp_deploy.DeploymentManager")
-    @patch("mcp_deploy.TemplateDiscovery")
+    @patch("mcp_template.DeploymentManager")
+    @patch("mcp_template.TemplateDiscovery")
     def test_init(self, mock_discovery, mock_manager):
         """Test MCPDeployer initialization."""
         mock_discovery.return_value.discover_templates.return_value = {"test": {}}
@@ -146,8 +146,8 @@ class TestMCPDeployer:
         mock_discovery.assert_called_once()
         mock_manager.assert_called_once_with(backend_type="docker")
 
-    @patch("mcp_deploy.DeploymentManager")
-    @patch("mcp_deploy.TemplateDiscovery")
+    @patch("mcp_template.DeploymentManager")
+    @patch("mcp_template.TemplateDiscovery")
     def test_deploy_invalid_template(self, mock_discovery, mock_manager):
         """Test deployment with invalid template name."""
         mock_discovery.return_value.discover_templates.return_value = {}
@@ -157,9 +157,9 @@ class TestMCPDeployer:
 
         assert result is False
 
-    @patch("mcp_deploy.console")
-    @patch("mcp_deploy.DeploymentManager")
-    @patch("mcp_deploy.TemplateDiscovery")
+    @patch("mcp_template.console")
+    @patch("mcp_template.DeploymentManager")
+    @patch("mcp_template.TemplateDiscovery")
     def test_deploy_success(self, mock_discovery, mock_manager, mock_console):
         """Test successful deployment."""
         # Setup mocks
@@ -201,7 +201,7 @@ class TestDeploymentManager:
         assert manager.backend_type == "docker"
         assert isinstance(manager.deployment_backend, DockerDeploymentService)
 
-    @patch("mcp_deploy.KubernetesDeploymentService")
+    @patch("mcp_template.KubernetesDeploymentService")
     def test_init_kubernetes_backend(self, mock_k8s):
         """Test initialization with Kubernetes backend."""
         manager = DeploymentManager(backend_type="kubernetes")
@@ -210,7 +210,7 @@ class TestDeploymentManager:
     def test_init_mock_backend(self):
         """Test initialization with mock backend."""
         manager = DeploymentManager(backend_type="mock")
-        from mcp_deploy import MockDeploymentService
+        from mcp_template import MockDeploymentService
 
         assert isinstance(manager.deployment_backend, MockDeploymentService)
 
@@ -227,7 +227,7 @@ class TestDockerDeploymentService:
         # Should not raise exception
         DockerDeploymentService()
 
-    @patch("mcp_deploy.DockerDeploymentService._ensure_docker_available")
+    @patch("mcp_template.DockerDeploymentService._ensure_docker_available")
     @patch("subprocess.run")
     def test_ensure_docker_available_failure(self, mock_run, mock_ensure):
         """Test Docker availability check failure."""
@@ -236,7 +236,7 @@ class TestDockerDeploymentService:
         with pytest.raises(RuntimeError, match="Docker daemon is not available"):
             DockerDeploymentService()
 
-    @patch("mcp_deploy.DockerDeploymentService._ensure_docker_available")
+    @patch("mcp_template.DockerDeploymentService._ensure_docker_available")
     @patch("subprocess.run")
     def test_run_command_success(self, mock_run, mock_ensure):
         """Test successful command execution."""
@@ -249,7 +249,7 @@ class TestDockerDeploymentService:
         assert result.stdout == "success"
         mock_run.assert_called_once()
 
-    @patch("mcp_deploy.DockerDeploymentService._ensure_docker_available")
+    @patch("mcp_template.DockerDeploymentService._ensure_docker_available")
     @patch("subprocess.run")
     def test_list_deployments_empty(self, mock_run, mock_ensure):
         """Test listing deployments with no results."""
@@ -260,7 +260,7 @@ class TestDockerDeploymentService:
 
         assert deployments == []
 
-    @patch("mcp_deploy.DockerDeploymentService._ensure_docker_available")
+    @patch("mcp_template.DockerDeploymentService._ensure_docker_available")
     @patch("subprocess.run")
     def test_list_deployments_with_containers(self, mock_run, mock_ensure):
         """Test listing deployments with containers."""

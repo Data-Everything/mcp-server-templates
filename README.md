@@ -22,8 +22,8 @@ Production-ready Model Context Protocol (MCP) server templates with a **unified 
 **Configuration Flow:**
 1. **Template Defaults** → 2. **Config File** → 3. **CLI Options** → 4. **Environment Variables**
 
-- **CLI Tool**: `python -m mcp_deploy` with comprehensive config support
-- **DeploymentManager**: Unified interface for Docker, Kubernetes, or Mock backends  
+- **CLI Tool**: `python -m mcp_template` with comprehensive config support
+- **DeploymentManager**: Unified interface for Docker, Kubernetes, or Mock backends
 - **TemplateDiscovery**: Auto-discovers templates with config schema validation
 - **ConfigMapping**: Generic mapping system supporting nested JSON/YAML configs
 - **Multi-source Configuration**: File-based, CLI options, and environment variables
@@ -56,14 +56,14 @@ Each template must include:
         "description": "Allowed directories for file access"
       },
       "read_only_mode": {
-        "type": "boolean", 
+        "type": "boolean",
         "env_mapping": "MCP_READ_ONLY",
         "default": false,
         "description": "Enable read-only mode"
       },
       "log_level": {
         "type": "string",
-        "env_mapping": "MCP_LOG_LEVEL", 
+        "env_mapping": "MCP_LOG_LEVEL",
         "default": "info",
         "description": "Logging level (debug, info, warning, error)"
       }
@@ -80,39 +80,39 @@ Each template must include:
 
 | Command | Description |
 |---------|-------------|
-| `python -m mcp_deploy list` | List available templates |
-| `python -m mcp_deploy <template>` | Deploy template with defaults |
-| `python -m mcp_deploy logs <template>` | View deployment logs |
-| `python -m mcp_deploy stop <template>` | Stop deployment |
-| `python -m mcp_deploy shell <template>` | Open shell in container |
-| `python -m mcp_deploy cleanup` | Clean up stopped/failed deployments |
+| `python -m mcp_template list` | List available templates |
+| `python -m mcp_template <template>` | Deploy template with defaults |
+| `python -m mcp_template logs <template>` | View deployment logs |
+| `python -m mcp_template stop <template>` | Stop deployment |
+| `python -m mcp_template shell <template>` | Open shell in container |
+| `python -m mcp_template cleanup` | Clean up stopped/failed deployments |
 
 ### Configuration Options
 
 **1. Show Available Config Options:**
 ```bash
-python -m mcp_deploy file-server --show-config
+python -m mcp_template file-server --show-config
 ```
 
 **2. Deploy with Config File:**
 ```bash
 # JSON config file
-python -m mcp_deploy file-server --config-file ./config.json
+python -m mcp_template file-server --config-file ./config.json
 
-# YAML config file  
-python -m mcp_deploy file-server --config-file ./config.yml
+# YAML config file
+python -m mcp_template file-server --config-file ./config.yml
 ```
 
 **3. Deploy with CLI Options:**
 ```bash
 # Direct property names
-python -m mcp_deploy file-server \
+python -m mcp_template file-server \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
 
 # Nested configuration using double underscore notation
-python -m mcp_deploy file-server \
+python -m mcp_template file-server \
   --config security__read_only=true \
   --config security__max_file_size=50 \
   --config logging__level=debug
@@ -120,7 +120,7 @@ python -m mcp_deploy file-server \
 
 **4. Deploy with Environment Variables:**
 ```bash
-python -m mcp_deploy file-server \
+python -m mcp_template file-server \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50 \
   --env MCP_LOG_LEVEL=debug
@@ -128,7 +128,7 @@ python -m mcp_deploy file-server \
 
 **5. Mixed Configuration (precedence: env > cli > file > defaults):**
 ```bash
-python -m mcp_deploy file-server \
+python -m mcp_template file-server \
   --config-file ./base-config.json \
   --config log_level=warning \
   --env MCP_READ_ONLY=true
@@ -161,7 +161,7 @@ python -m mcp_deploy file-server \
 security:
   allowedDirs:
     - "/data"
-    - "/workspace" 
+    - "/workspace"
   readOnly: false
   maxFileSize: 100
   excludePatterns:
@@ -194,7 +194,7 @@ Templates automatically build and tag images as:
 - Auto-pull: Images are pulled automatically during deployment
 
 ---
-## 🏗️ Architecture & Extensibility  
+## 🏗️ Architecture & Extensibility
 
 ### Core Components
 
@@ -209,7 +209,7 @@ Templates automatically build and tag images as:
 1. Create `templates/{name}/` directory
 2. Add `template.json` with config schema and environment mappings
 3. Add `Dockerfile` for container build
-4. Test with `python -m mcp_deploy {name} --show-config`
+4. Test with `python -m mcp_template {name} --show-config`
 
 ### Adding New Backends
 
@@ -237,7 +237,7 @@ pytest tests/test_all_templates.py  # Template validation tests
 
 ### Test Configuration Files
 
-Sample configuration files are available in `tests/test_config_files/`:
+Sample configuration files are available in `examples/config/`:
 - `file-server-config.json`: Example file-server configuration
 - Additional template configs as they're added
 
@@ -250,7 +250,39 @@ cd mcp-server-templates
 pip install -e .
 
 # Run in development mode
-python -m mcp_deploy list
+python -m mcp_template list
+```
+
+### Testing
+
+```bash
+# Run all tests
+make test
+
+# Run tests for all templates
+make test-templates
+
+# Run tests for a specific template
+make test-template TEMPLATE=file-server
+
+# Run unit tests only
+make test-unit
+
+# Run integration tests
+make test-integration
+```
+
+### Documentation
+
+```bash
+# Build documentation
+make docs
+
+# Serve documentation locally
+make docs-serve
+
+# Clean documentation build
+make docs-clean
 ```
 
 ---
@@ -267,7 +299,7 @@ python -m mcp_deploy list
 
 Each template includes:
 - `README.md`: Overview and basic usage
-- `USAGE.md`: Detailed configuration and examples  
+- `USAGE.md`: Detailed configuration and examples
 - `tests/`: Template-specific test suites
 
 ---
@@ -280,28 +312,28 @@ Each template includes:
 pip install mcp-deploy
 
 # 2. List available templates
-python -m mcp_deploy list
+python -m mcp_template list
 
-# 3. Deploy with defaults  
-python -m mcp_deploy file-server
+# 3. Deploy with defaults
+python -m mcp_template file-server
 
 # 4. Deploy with custom config
-python -m mcp_deploy file-server --config-file ./my-config.json
+python -m mcp_template file-server --config-file ./my-config.json
 
 # 5. View logs
-python -m mcp_deploy logs file-server
+python -m mcp_template logs file-server
 
 # 6. Stop when done
-python -m mcp_deploy stop file-server
+python -m mcp_template stop file-server
 ```
 
 ### Configuration Discovery
 
 ```bash
 # See all available configuration options for any template
-python -m mcp_deploy file-server --show-config
-python -m mcp_deploy github --show-config
-python -m mcp_deploy database --show-config
+python -m mcp_template file-server --show-config
+python -m mcp_template github --show-config
+python -m mcp_template database --show-config
 ```
 
 ---

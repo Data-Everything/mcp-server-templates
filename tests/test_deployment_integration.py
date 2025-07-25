@@ -20,10 +20,10 @@ from typing import Dict, List, Optional
 
 import pytest
 
-# Add mcp_deploy to path for testing
+# Add mcp_template to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mcp_deploy import MCPDeployer, TemplateDiscovery, console
+from mcp_template import MCPDeployer, TemplateDiscovery, console
 
 
 @pytest.mark.integration
@@ -203,7 +203,7 @@ class TestCLIInterface:
     def test_cli_list_command(self):
         """Test CLI list command."""
         result = subprocess.run(
-            [sys.executable, "-m", "mcp_deploy", "list"],
+            [sys.executable, "-m", "mcp_template", "list"],
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent,
@@ -214,7 +214,7 @@ class TestCLIInterface:
     def test_cli_help_command(self):
         """Test CLI help command."""
         result = subprocess.run(
-            [sys.executable, "-m", "mcp_deploy", "--help"],
+            [sys.executable, "-m", "mcp_template", "--help"],
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent,

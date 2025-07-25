@@ -18,6 +18,11 @@ requests>=2.28.0
 # YAML parsing for configuration
 PyYAML>=6.0
 
+# Documentation
+mkdocs>=1.5.0
+mkdocs-material>=9.0.0
+mkdocs-awesome-pages-plugin>=2.9.0
+
 # Code quality tools
 black>=23.0.0
 isort>=5.12.0
@@ -33,10 +38,3 @@ wheel>=0.40.0
 
 # Rich console output (for tests)
 rich>=13.0.0
-
-# Docker Python client (for container testing)
-docker>=6.0.0
-
-# Documentation
-mkdocs>=1.5.0
-mkdocs-material>=9.0.0

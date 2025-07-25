@@ -60,7 +60,7 @@ jobs:
     - name: Generate coverage report
       run: |
         pip install pytest-cov
-        python -m pytest tests/test_deployment_units.py -m unit --cov=mcp_deploy --cov-report=xml
+        python -m pytest tests/test_deployment_units.py -m unit --cov=mcp_template --cov-report=xml
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -119,7 +119,7 @@ jobs:
       run: |
         # Test that our deployment system can detect container runtime
         python -c "
-        from mcp_deploy import DockerDeploymentService
+        from mcp_template import DockerDeploymentService
         import subprocess
 
         # Check if nerdctl works
@@ -135,7 +135,7 @@ jobs:
       run: |
         # Use mock backend for tests to avoid container runtime dependencies
         python -c "
-        from mcp_deploy import DeploymentManager
+        from mcp_template import DeploymentManager
 
         # Test with mock backend
         manager = DeploymentManager(backend_type='mock')
@@ -177,7 +177,7 @@ jobs:
     - name: Validate templates
       run: |
         python -c "
-        from mcp_deploy import TemplateDiscovery
+        from mcp_template import TemplateDiscovery
         import sys
 
         discovery = TemplateDiscovery()
@@ -230,7 +230,16 @@ jobs:
     - name: Test package installation
       run: |
         pip install dist/*.whl
-        mcp-deploy list  # Test CLI works after installation
+        mcp-template list  # Test CLI works after installation
+
+    - name: Publish to PyPI
+      if: github.ref == 'refs/heads/main' && success()
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+      run: |
+        pip install twine
+        twine upload dist/*
 
   # Security scanning
   security-scan:
@@ -243,7 +252,7 @@ jobs:
       run: pip install bandit
 
     - name: Run Bandit security scan
-      run: bandit -c .bandit -r mcp_deploy/ --exit-zero
+      run: bandit -c .bandit -r mcp_template/ --exit-zero
 
   # Code quality checks
   code-quality:
@@ -264,16 +273,16 @@ jobs:
 
     - name: Run code formatting check
       run: |
-        black --check mcp_deploy/ tests/
+        black --check mcp_template/ tests/
 
     - name: Run import sorting check
       run: |
-        isort --check-only mcp_deploy/
+        isort --check-only mcp_template/
 
     - name: Run linting
       run: |
-        flake8 mcp_deploy/ tests/ --max-line-length=100
+        flake8 mcp_template/ tests/ --max-line-length=100
 
     - name: Run type checking
       run: |
-        mypy mcp_deploy/ --ignore-missing-imports
+        mypy mcp_template/ --ignore-missing-imports

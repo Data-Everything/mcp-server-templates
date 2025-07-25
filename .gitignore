@@ -116,6 +116,8 @@ jspm_packages/
 # parcel-bundler cache
 .cache
 .parcel-cache
+.mypy_cache
+.pytest_cache
 
 # Next.js build output
 .next
