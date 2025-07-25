@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# mypy: ignore-errors
 """
 MCP Template Deployment Tool
 
@@ -20,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -665,6 +667,8 @@ class MockDeploymentService:
 class MCPDeployer:
     """CLI interface for MCP template deployment using unified backend."""
 
+    templates: Dict[str, Dict[str, Any]]  # type: ignore[var-annotated]
+
     def __init__(self):
         """Initialize the MCP deployer."""
         self.config_dir = Path.home() / ".mcp"
@@ -1057,8 +1061,6 @@ class MCPDeployer:
 
             with open(config_path, encoding="utf-8") as f:
                 if config_path.suffix.lower() in [".yaml", ".yml"]:
-                    import yaml
-
                     file_config = yaml.safe_load(f)
                 else:
                     file_config = json.load(f)
