@@ -198,7 +198,7 @@ jobs:
   pre-release:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    needs: [quick-tests, unit-tests, integration-tests, template-validation]
+    needs: [quick-tests, unit-tests, integration-tests, template-validation, security-scan, code-quality]
 
     steps:
     - uses: actions/checkout@v4
@@ -222,13 +222,68 @@ jobs:
         python tests/test_runner.py all
       timeout-minutes: 20
 
-    - name: Build package
+    - name: Wait for docs workflow (if running)
+      if: github.ref == 'refs/heads/main' && success()
       run: |
-        pip install build
+        echo "🔍 Checking if docs workflow is running..."
+
+        # Get the current commit SHA
+        COMMIT_SHA="${{ github.sha }}"
+
+        # Check for running docs workflow
+        DOCS_STATUS=$(gh api "repos/${{ github.repository }}/actions/runs" \
+          --jq ".workflow_runs[] | select(.head_sha == \"$COMMIT_SHA\" and .name == \"Deploy Documentation\") | .status" \
+          | head -1 || echo "not_found")
+
+        if [ "$DOCS_STATUS" = "in_progress" ] || [ "$DOCS_STATUS" = "queued" ]; then
+          echo "📝 Docs workflow is running, waiting for completion..."
+
+          # Wait for docs workflow to complete
+          while true; do
+            DOCS_STATUS=$(gh api "repos/${{ github.repository }}/actions/runs" \
+              --jq ".workflow_runs[] | select(.head_sha == \"$COMMIT_SHA\" and .name == \"Deploy Documentation\") | .status" \
+              | head -1 || echo "completed")
+
+            DOCS_CONCLUSION=$(gh api "repos/${{ github.repository }}/actions/runs" \
+              --jq ".workflow_runs[] | select(.head_sha == \"$COMMIT_SHA\" and .name == \"Deploy Documentation\") | .conclusion" \
+              | head -1 || echo "success")
+
+            if [ "$DOCS_STATUS" = "completed" ]; then
+              if [ "$DOCS_CONCLUSION" = "success" ]; then
+                echo "✅ Docs workflow completed successfully"
+                break
+              else
+                echo "❌ Docs workflow failed with conclusion: $DOCS_CONCLUSION"
+                exit 1
+              fi
+            fi
+
+            echo "⏳ Still waiting for docs workflow..."
+            sleep 30
+          done
+        else
+          echo "✅ No docs workflow running or docs workflow already completed"
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Check and update version for PyPI
+      if: github.ref == 'refs/heads/main' && success()
+      run: |
+        python scripts/check_pypi_version.py
+
+    - name: Rebuild package with updated version
+      if: github.ref == 'refs/heads/main' && success()
+      run: |
+        # Clean previous build
+        rm -rf dist/ build/ *.egg-info/
+        # Rebuild with potentially updated version
         python -m build
 
-    - name: Test package installation
+    - name: Test updated package installation
+      if: github.ref == 'refs/heads/main' && success()
       run: |
+        pip uninstall -y mcp-templates || true  # Remove if previously installed
         pip install dist/*.whl
         mcp-template list  # Test CLI works after installation
 
@@ -239,7 +294,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
       run: |
         pip install twine
-        twine upload dist/*
+        twine upload dist/* --verbose
 
   # Security scanning
   security-scan:

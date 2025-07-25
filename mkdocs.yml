@@ -2,84 +2,79 @@ site_name: MCP Server Templates
 site_description: Deploy MCP server templates with zero configuration
 site_author: Data Everything
 site_url: https://data-everything.github.io/mcp-server-templates
-
 repo_name: Data-Everything/mcp-server-templates
 repo_url: https://github.com/Data-Everything/mcp-server-templates
-
 copyright: Copyright &copy; 2025 Data Everything
-
 theme:
   name: material
   palette:
-    - scheme: default
-      primary: blue
-      accent: blue
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - scheme: slate
-      primary: blue
-      accent: blue
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+  - scheme: default
+    primary: blue
+    accent: blue
+    toggle:
+      icon: material/brightness-7
+      name: Switch to dark mode
+  - scheme: slate
+    primary: blue
+    accent: blue
+    toggle:
+      icon: material/brightness-4
+      name: Switch to light mode
   features:
-    - navigation.tabs
-    - navigation.sections
-    - navigation.expand
-    - navigation.top
-    - search.highlight
-    - search.share
-    - content.code.copy
-
+  - navigation.tabs
+  - navigation.sections
+  - navigation.expand
+  - navigation.top
+  - search.highlight
+  - search.share
+  - content.code.copy
 plugins:
-  - search
-  - awesome-pages
-
+- search
+- awesome-pages
 markdown_extensions:
-  - admonition
-  - pymdownx.details
-  - pymdownx.superfences
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - pymdownx.tabbed:
-      alternate_style: true
-  - attr_list
-  - md_in_html
-  - toc:
-      permalink: true
-
+- admonition
+- pymdownx.details
+- pymdownx.superfences
+- pymdownx.highlight:
+    anchor_linenums: true
+- pymdownx.inlinehilite
+- pymdownx.snippets
+- pymdownx.tabbed:
+    alternate_style: true
+- attr_list
+- md_in_html
+- toc:
+    permalink: true
 nav:
-  - Home: index.md
-  - Getting Started:
-    - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quickstart.md
-    - Configuration: getting-started/configuration.md
-  - Templates:
-    - Overview: templates/index.md
-    - Available Templates: templates/available.md
-    # Template-specific pages will be auto-generated
-  - Guides:
-    - Creating Templates: guides/creating-templates.md
-    - Testing Templates: guides/testing.md
-    - Deployment: guides/deployment.md
-    - Contributing: guides/contributing.md
-  - API Reference:
-    - CLI Commands: api/cli.md
-    - Template Schema: api/schema.md
-  - Development:
-    - Setup: development/setup.md
-    - Architecture: development/architecture.md
-    - Testing: development/testing.md
-
+- Home: index.md
+- Getting Started:
+  - Installation: getting-started/installation.md
+  - Quick Start: getting-started/quickstart.md
+  - Configuration: getting-started/configuration.md
+- Templates:
+  - Overview: templates/index.md
+  - Available Templates: templates/available.md
+  - Database Connector MCP: templates/database/index.md
+  - Demo Hello MCP Server: templates/demo/index.md
+  - File Server MCP: templates/file-server/index.md
+  - GitHub MCP Server: templates/github/index.md
+- Guides:
+  - Creating Templates: guides/creating-templates.md
+  - Testing Templates: guides/testing.md
+  - Deployment: guides/deployment.md
+  - Contributing: guides/contributing.md
+- API Reference:
+  - CLI Commands: api/cli.md
+  - Template Schema: api/schema.md
+- Development:
+  - Setup: development/setup.md
+  - Architecture: development/architecture.md
+  - Testing: development/testing.md
 extra:
   social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/Data-Everything
-    - icon: fontawesome/brands/python
-      link: https://pypi.org/project/mcp-templates/
-
+  - icon: fontawesome/brands/github
+    link: https://github.com/Data-Everything
+  - icon: fontawesome/brands/python
+    link: https://pypi.org/project/mcp-templates/
 extra_css:
-  - stylesheets/extra.css
+- stylesheets/extra.css

@@ -195,7 +195,7 @@ def build_docs():
 
 def main():
     """Main function to build documentation."""
-    project_root = Path(__file__).parent
+    project_root = Path(__file__).parent.parent  # Go up one level from scripts/
     templates_dir = project_root / "templates"
     docs_dir = project_root / "docs"
     mkdocs_file = project_root / "mkdocs.yml"

@@ -219,3 +219,4 @@ Thumbs.db
 # MCP Platform specific
 mcp_instances/
 user_data/
+site/
