@@ -1,20 +1,74 @@
-# Testing
+# Template Testing Guide
 
-Comprehensive testing methodology and practices for MCP Server Templates development.
+Comprehensive guide for testing MCP server templates at all levels.
+
+## 🎯 Testing Philosophy
+
+The MCP Server Templates testing framework provides multi-level validation:
+
+1. **Quick Tests** (< 5 seconds): Basic validation and syntax checks
+2. **Unit Tests** (< 30 seconds): Individual component testing
+3. **Integration Tests** (< 2 minutes): Full template deployment and interaction
+4. **Template-Specific Tests**: Custom validation for each template
+
+## 🚀 Getting Started
+
+### Running Tests Locally
+
+```bash
+# Run all tests for all templates
+make test
+
+# Run quick tests only (great for development)
+make test-quick
+
+# Run tests for specific template
+make test TEMPLATE=file-server
+
+# Run with verbose output
+make test VERBOSE=1
+
+# Run integration tests only
+make test-integration
+
+# Run with coverage report
+make test-coverage
+```
+
+### Test Categories
+
+#### Quick Tests
+- **Purpose**: Fast feedback during development
+- **Runtime**: < 5 seconds per template
+- **Validates**:
+  - `template.json` structure and schema
+  - Required files presence
+  - Documentation format
+  - Basic configuration validity
+
+#### Unit Tests
+- **Purpose**: Component-level validation
+- **Runtime**: < 30 seconds per template
+- **Validates**:
+  - Configuration parsing logic
+  - Tool implementations
+  - Error handling
+  - Edge cases
+
+#### Integration Tests
+- **Purpose**: End-to-end template functionality
+- **Runtime**: < 2 minutes per template
+- **Validates**:
+  - Docker build and container startup
+  - MCP server protocol compliance
+  - Tool execution and responses
+  - Configuration application
 
 ## Testing Architecture
 
 Our testing strategy follows a multi-tiered approach with different test categories optimized for speed and coverage:
 
-### Test Categories
-
-1. **Quick Tests** - Fast validation (< 30 seconds)
-2. **Unit Tests** - Component testing without Docker
-3. **Integration Tests** - Full deployment testing with containers
-4. **Template Tests** - Individual template validation
-5. **Security Tests** - Security scanning and validation
-
-## Test Structure
+### Test Structure
 
 ```
 tests/

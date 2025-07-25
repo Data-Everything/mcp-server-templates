@@ -36,6 +36,15 @@ This repository provides the open-source tools for self-managing MCP server depl
 #### Installation
 
 ```bash
+# Install from PyPI (recommended)
+pip install mcp-templates
+
+# Verify installation
+python -m mcp_template --version
+```
+
+**Alternative - From Source:**
+```bash
 # Clone the repository
 git clone https://github.com/Data-Everything/mcp-server-templates
 cd mcp-server-templates

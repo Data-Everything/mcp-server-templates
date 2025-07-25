@@ -249,7 +249,7 @@ This page lists all available MCP server templates.
     sorted_templates = sorted(template_docs.items(), key=lambda x: x[1]["name"])
 
     for template_id, template_info in sorted_templates:
-        content += f"""## [{template_info["name"]}]({template_id}/)
+        content += f"""## [{template_info["name"]}]({template_id}/index.md)
 
 {template_info["description"]}
 

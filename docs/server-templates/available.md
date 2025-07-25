@@ -2,7 +2,7 @@
 
 This page lists all available MCP server templates.
 
-## [Demo Hello MCP Server](demo/)
+## [Demo Hello MCP Server](demo/index.md)
 
 A simple demonstration MCP server that provides greeting tools
 
@@ -14,7 +14,7 @@ A simple demonstration MCP server that provides greeting tools
 
 ---
 
-## [File Server MCP](file-server/)
+## [File Server MCP](file-server/index.md)
 
 Secure file system access for AI assistants using the official MCP filesystem server with additional platform integration and configuration options.
 

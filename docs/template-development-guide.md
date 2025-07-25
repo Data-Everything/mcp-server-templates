@@ -6,7 +6,7 @@ This guide walks you through creating new MCP server templates with the comprehe
 
 MCP Server Templates provide a standardized way to create Model Context Protocol servers with:
 - **Generic Configuration System**: Automatic mapping from nested JSON/YAML to environment variables
-- **Multi-Source Configuration**: Template defaults → Config files → CLI options → Environment variables  
+- **Multi-Source Configuration**: Template defaults → Config files → CLI options → Environment variables
 - **Type Conversion**: Schema-based automatic type conversion
 - **Deployment Flexibility**: Support for Docker, Kubernetes, and Mock backends
 
@@ -19,7 +19,7 @@ The system automatically maps configuration from various sources:
 # Config file: {"security": {"readOnly": true}}
 # Automatically maps to: MCP_READ_ONLY=true
 
-# Config file: {"logging": {"level": "debug"}}  
+# Config file: {"logging": {"level": "debug"}}
 # Automatically maps to: MCP_LOG_LEVEL=debug
 
 # CLI: --config read_only_mode=true
@@ -42,7 +42,7 @@ The CLI supports nested configuration using double underscore (`__`) notation:
 
 ### Configuration Precedence (Highest to Lowest)
 1. **Environment Variables** (`--env MCP_READ_ONLY=true`)
-2. **CLI Options** (`--config read_only_mode=true`) 
+2. **CLI Options** (`--config read_only_mode=true`)
 3. **Config Files** (`--config-file config.json`)
 4. **Template Defaults** (from `template.json`)
 
@@ -206,7 +206,7 @@ class MyTemplateServer:
         self.config = config
         self.server = Server("my-template-server")
         self.setup_handlers()
-    
+
     def setup_handlers(self):
         @self.server.list_resources()
         async def handle_list_resources() -> list[Resource]:
@@ -219,7 +219,7 @@ class MyTemplateServer:
                     mimeType="text/plain"
                 )
             ]
-        
+
         @self.server.read_resource()
         async def handle_read_resource(uri: str) -> str:
             """Read a specific resource."""
@@ -227,7 +227,7 @@ class MyTemplateServer:
                 return "This is example resource content"
             else:
                 raise ValueError(f"Unknown resource: {uri}")
-        
+
         @self.server.list_tools()
         async def handle_list_tools() -> list[Tool]:
             """List available tools."""
@@ -247,7 +247,7 @@ class MyTemplateServer:
                     }
                 )
             ]
-        
+
         @self.server.call_tool()
         async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
             """Handle tool calls."""
@@ -257,17 +257,17 @@ class MyTemplateServer:
                 return [types.TextContent(type="text", text=result)]
             else:
                 raise ValueError(f"Unknown tool: {name}")
-    
+
     async def process_query(self, query: str) -> str:
         """Process a query using your service."""
         # Implement your logic here
         api_key = self.config.get('api_key')
         base_url = self.config.get('base_url')
         timeout = self.config.get('timeout', 30)
-        
+
         # Example API call logic
         return f"Processed query '{query}' with config: {self.config}"
-    
+
     async def run(self):
         """Run the server."""
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
@@ -288,18 +288,18 @@ def load_config() -> dict:
     """Load configuration from environment variables and config files."""
     import os
     import yaml
-    
+
     config = {}
-    
+
     # Load from environment variables
     config['api_key'] = os.getenv('MCP_API_KEY')
     config['base_url'] = os.getenv('MCP_BASE_URL', 'https://api.service.com')
     config['timeout'] = int(os.getenv('MCP_TIMEOUT', '30'))
-    
+
     # Parse array from environment
     features_str = os.getenv('MCP_FEATURES', 'feature1')
     config['features'] = [f.strip() for f in features_str.split(',')]
-    
+
     # Parse nested config
     config['advanced_config'] = {
         'cache_size': int(os.getenv('MCP_ADVANCED__CACHE_SIZE', '100')),
@@ -307,14 +307,14 @@ def load_config() -> dict:
             'max_attempts': int(os.getenv('MCP_ADVANCED__RETRY_MAX_ATTEMPTS', '3'))
         }
     }
-    
+
     # Merge with config file if present
     config_file = '/app/config/config.yaml'
     if os.path.exists(config_file):
         with open(config_file, 'r') as f:
             file_config = yaml.safe_load(f)
             config.update(file_config)
-    
+
     return config
 
 async def main():
@@ -386,14 +386,14 @@ class PlatformWrapper {
             if (key.startsWith(prefix + separator)) {
                 const parts = key.substring(prefix.length + separator.length).split(separator);
                 let current = config;
-                
+
                 // Navigate/create nested structure
                 for (let i = 0; i < parts.length - 1; i++) {
                     const part = parts[i].toLowerCase();
                     if (!current[part]) current[part] = {};
                     current = current[part];
                 }
-                
+
                 // Set the final value
                 const finalKey = parts[parts.length - 1].toLowerCase();
                 current[finalKey] = this.parseEnvValue(env[key]);
@@ -406,11 +406,11 @@ class PlatformWrapper {
         if (/^\d+$/.test(value)) {
             return parseInt(value);
         }
-        
+
         // Try to parse as boolean
         if (value.toLowerCase() === 'true') return true;
         if (value.toLowerCase() === 'false') return false;
-        
+
         // Return as string
         return value;
     }
@@ -428,7 +428,7 @@ class PlatformWrapper {
 
     async startServer() {
         await this.loadConfiguration();
-        
+
         console.log('Starting MCP server with configuration:', JSON.stringify(this.config, null, 2));
 
         // Set environment variables for the Python server
@@ -460,7 +460,7 @@ class PlatformWrapper {
         Object.keys(config).forEach(key => {
             const envKey = `${prefix}_${key.toUpperCase()}`;
             const value = config[key];
-            
+
             if (Array.isArray(value)) {
                 env[envKey] = value.join(',');
             } else if (typeof value === 'object' && value !== null) {
@@ -583,7 +583,7 @@ services:
       # Mount source for development
       - ./src:/app/src
       - ./config:/app/config
-      
+
       # Optional: mount config file
       - ./config/config.yaml.example:/app/config/config.yaml:ro
     restart: unless-stopped
@@ -601,7 +601,7 @@ Brief description of what this template does and its main features.
 ## Features
 
 - Feature 1: Description
-- Feature 2: Description  
+- Feature 2: Description
 - Feature 3: Description
 
 ## Configuration
@@ -696,7 +696,7 @@ python -m pytest tests/test_integration.py
 **Issue**: Server fails to start
 - **Solution**: Check that all required environment variables are set
 
-**Issue**: API authentication errors  
+**Issue**: API authentication errors
 - **Solution**: Verify your API key is correct and has necessary permissions
 
 ## Support
@@ -736,15 +736,15 @@ class TestMyTemplateServer:
                 'retry_policy': {'max_attempts': 3}
             }
         }
-    
+
     @pytest.fixture
     def server(self, config):
         return MyTemplateServer(config)
-    
+
     def test_server_initialization(self, server, config):
         assert server.config == config
         assert server.server is not None
-    
+
     @pytest.mark.asyncio
     async def test_process_query(self, server):
         result = await server.process_query("test query")
@@ -760,7 +760,7 @@ class TestMyTemplateServer:
 })
 def test_load_config_from_env():
     config = load_config()
-    
+
     assert config['api_key'] == 'env-key'
     assert config['base_url'] == 'https://env.api.com'
     assert config['timeout'] == 60
@@ -796,7 +796,7 @@ docker run --rm \
 ### Configuration Design
 
 1. **Environment Variables First**: Support env vars for all settings
-2. **Sensible Defaults**: Provide good defaults for optional settings  
+2. **Sensible Defaults**: Provide good defaults for optional settings
 3. **Validation**: Validate configuration on startup
 4. **Documentation**: Document all configuration options clearly
 
@@ -825,8 +825,6 @@ docker run --rm \
 
 - [MCP Protocol Specification](https://modelcontextprotocol.io)
 - [Template Examples](../templates/)
-- [Configuration Strategy](../docs/CONFIGURATION_STRATEGY.md)
-- [Contributing Guide](../CONTRIBUTING.md)
 - [GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
 
 ## 🤝 Getting Help

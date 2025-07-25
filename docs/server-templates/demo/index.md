@@ -29,10 +29,10 @@ python -m mcp_template deploy demo --show-config
 python -m mcp_template deploy demo --env MCP_HELLO_FROM=value
 
 # Using CLI configuration
-python -m mcp_template deploy demo --config hello_from=value
+python -m mcp_template deploy {template_id} --config {first_prop}=value
 
 # Using nested configuration
-python -m mcp_template deploy demo --config category__property=value
+python -m mcp_template deploy {template_id} --config category__property=value
 ```## Development
 
 ### Local Testing

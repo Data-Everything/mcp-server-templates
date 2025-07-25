@@ -65,6 +65,7 @@ nav:
   - Template Schema: api/schema.md
 - Development:
   - Setup: development/setup.md
+  - Template Development: development/template-development.md
   - Architecture: development/architecture.md
   - Testing: development/testing.md
 extra:

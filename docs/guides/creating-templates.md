@@ -51,6 +51,6 @@ This will prompt you for template details and generate the structure.
 
 ## Next Steps
 
-- See [Template Development Guide](../template-development-guide.md) for detailed instructions
+- See the development guides for detailed instructions
 - Check [Testing Templates](testing.md) for testing guidelines
 - Review existing templates in the `templates/` directory

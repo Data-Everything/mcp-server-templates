@@ -1,0 +1,48 @@
+/* Extra CSS for MCP Server Templates Documentation */
+
+/* Custom styling for configuration tables */
+.config-table {
+  font-size: 0.9em;
+}
+
+/* Styling for CLI examples */
+.cli-example {
+  background-color: #f8f9fa;
+  border-left: 4px solid #007acc;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+/* Template cards styling */
+.template-card {
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+/* Status badges */
+.status-ready {
+  background-color: #28a745;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+}
+
+/* Highlight important notes */
+.note-important {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 12px;
+  margin: 16px 0;
+}
+
+/* Configuration examples */
+.config-example {
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+}
