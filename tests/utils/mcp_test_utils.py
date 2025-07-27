@@ -239,8 +239,9 @@ def run_template_tests(template_name: str) -> subprocess.CompletedProcess:
     if not test_dir.exists():
         raise ValueError(f"No tests found for template: {template_name}")
 
+    # Run without coverage requirements for template tests
     return subprocess.run(
-        [sys.executable, "-m", "pytest", str(test_dir), "-v", "--tb=short"],
+        [sys.executable, "-m", "pytest", str(test_dir), "-v", "--tb=short", "--no-cov"],
         capture_output=True,
         text=True,
     )

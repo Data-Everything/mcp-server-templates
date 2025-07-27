@@ -80,6 +80,23 @@ class TemplateCreator:
         # Create the template
         return self._create_template_structure()
 
+    def create_template(self) -> bool:
+        """Create a template using the current template_data."""
+        if not self.template_data:
+            raise ValueError(
+                "No template data provided. Set template_data before calling create_template()"
+            )
+
+        # Set template directory
+        template_id = self.template_data.get("id")
+        if not template_id:
+            raise ValueError("Template ID is required in template_data")
+
+        self.template_dir = self.templates_dir / template_id
+
+        # Create the template structure
+        return self._create_template_structure()
+
     def _create_from_config_file(
         self, config_file: str, template_id: str = None
     ) -> bool:
@@ -267,13 +284,20 @@ class TemplateCreator:
     def _create_template_json(self):
         """Create template.json configuration file."""
         template_config = {
-            "id": self.template_data["id"],
             "name": self.template_data["name"],
             "description": self.template_data["description"],
             "version": self.template_data["version"],
             "author": self.template_data["author"],
+            "category": self.template_data.get("category", "General"),
+            "tags": self.template_data.get("tags", []),
             "docker_image": self.template_data.get(
                 "docker_image", f"dataeverything/mcp-{self.template_data['id']}"
+            ),
+            "docker_tag": self.template_data.get("docker_tag", "latest"),
+            "ports": self.template_data.get("ports", {}),
+            "command": self.template_data.get("command", []),
+            "transport": self.template_data.get(
+                "transport", {"default": "stdio", "supported": ["stdio"]}
             ),
             "capabilities": self.template_data.get("capabilities", []),
             "config_schema": self.template_data.get(
@@ -1042,3 +1066,39 @@ def mock_env_vars(monkeypatch):
 
         with open(test_dir / "conftest.py", "w", encoding="utf-8") as f:
             f.write(conftest_content)
+
+
+def validate_template_data(template_data: dict) -> None:
+    """Validate template data contains required fields and formats."""
+    required_fields = ["id", "name", "description", "version", "author"]
+
+    for field in required_fields:
+        if field not in template_data:
+            raise ValueError(f"Missing required field: {field}")
+
+    # Validate template ID format
+    template_id = template_data["id"]
+    if not re.match(r"^[a-z0-9_-]+$", template_id):
+        raise ValueError(
+            f"Invalid template ID: {template_id}. Use lowercase letters, numbers, underscores, and hyphens only."
+        )
+
+    # Validate version format
+    version = template_data["version"]
+    if not re.match(r"^\d+\.\d+\.\d+(-[\w\.-]+)?$", version):
+        raise ValueError(
+            f"Invalid version format: {version}. Use semantic versioning (e.g., 1.0.0)"
+        )
+
+
+def create_template_interactive(
+    template_id: str = None, config_file: str = None, output_dir: Path = None
+) -> bool:
+    """Standalone function to create a template interactively."""
+    templates_dir = output_dir or Path(__file__).parent.parent / "templates"
+    tests_dir = Path(__file__).parent.parent / "tests"
+
+    creator = TemplateCreator(templates_dir=templates_dir, tests_dir=tests_dir)
+    return creator.create_template_interactive(
+        template_id=template_id, config_file=config_file
+    )

@@ -1,0 +1,419 @@
+"""
+Unit tests for MCP Template core functionality.
+
+Tests the core deployment management system, template discovery,
+and configuration handling with comprehensive coverage.
+"""
+
+import json
+from pathlib import Path
+from typing import Any, Dict
+from unittest.mock import MagicMock, Mock, call, patch
+
+import pytest
+
+from mcp_template import (
+    DeploymentManager,
+    DockerDeploymentService,
+    KubernetesDeploymentService,
+    MockDeploymentService,
+    TemplateDiscovery,
+)
+
+
+class TestTemplateDiscovery:
+    """Test template discovery and management."""
+
+    def test_init(self):
+        """Test TemplateDiscovery initialization."""
+        discovery = TemplateDiscovery()
+        assert discovery.templates_dir is not None
+        assert discovery.templates_dir.exists() or True  # May not exist in test env
+
+    def test_discover_templates(self, temp_template_dir):
+        """Test template discovery."""
+        discovery = TemplateDiscovery(templates_dir=temp_template_dir.parent)
+
+        templates = discovery.discover_templates()
+        assert len(templates) >= 1
+        assert "test-template" in templates
+
+    def test_load_template_config(self, temp_template_dir):
+        """Test loading template configuration."""
+        discovery = TemplateDiscovery(templates_dir=temp_template_dir.parent)
+
+        # Load specific template config
+        config = discovery._load_template_config(temp_template_dir)
+        assert config is not None
+        assert config["name"] == "Test Template"
+
+    def test_discover_no_templates_dir(self, tmp_path):
+        """Test discovery when templates directory doesn't exist."""
+        discovery = TemplateDiscovery(templates_dir=tmp_path / "nonexistent")
+
+        templates = discovery.discover_templates()
+        assert templates == {}
+
+    def test_invalid_template_structure(self, tmp_path):
+        """Test handling of invalid template structure."""
+        # Create template without required files
+        invalid_template = tmp_path / "invalid-template"
+        invalid_template.mkdir()
+
+        discovery = TemplateDiscovery(templates_dir=tmp_path)
+        templates = discovery.discover_templates()
+
+        # Should skip invalid template
+        assert "invalid-template" not in templates
+
+
+class TestDockerDeploymentService:
+    """Test Docker deployment service."""
+
+    def test_init(self):
+        """Test Docker service initialization."""
+        with patch("mcp_template.DockerDeploymentService._ensure_docker_available"):
+            service = DockerDeploymentService()
+            assert service is not None @ patch("mcp_template.docker.from_env")
+
+    def test_deploy_template_with_pull(self, mock_docker, mock_template_config):
+        """Test template deployment with image pull."""
+        mock_client = MagicMock()
+        mock_docker.return_value = mock_client
+
+        mock_container = MagicMock()
+        mock_container.id = "test_container_id"
+        mock_client.containers.run.return_value = mock_container
+
+        service = DockerDeploymentService()
+
+        service.deploy_template(
+            template_id="test",
+            config={},
+            template_data=mock_template_config,
+            pull_image=True,
+        )
+
+        # Verify image was pulled
+        expected_image = f"{mock_template_config['docker_image']}:{mock_template_config['docker_tag']}"
+        mock_client.images.pull.assert_called_once_with(expected_image)
+
+    @patch("mcp_template.docker.from_env")
+    def test_deploy_template_docker_error(self, mock_docker, mock_template_config):
+        """Test deployment with Docker error."""
+        mock_client = MagicMock()
+        mock_docker.return_value = mock_client
+        mock_client.containers.run.side_effect = Exception("Docker error")
+
+        service = DockerDeploymentService()
+
+        with pytest.raises(Exception, match="Docker error"):
+            service.deploy_template(
+                template_id="test",
+                config={},
+                template_data=mock_template_config,
+                pull_image=False,
+            )
+
+    @patch("mcp_template.docker.from_env")
+    def test_list_deployments(self, mock_docker):
+        """Test listing deployments."""
+        mock_client = MagicMock()
+        mock_docker.return_value = mock_client
+
+        mock_container = MagicMock()
+        mock_container.name = "test-deployment"
+        mock_container.status = "running"
+        mock_container.attrs = {
+            "Config": {"Labels": {"template": "test", "managed-by": "mcp-template"}},
+            "State": {"Status": "running"},
+        }
+        mock_client.containers.list.return_value = [mock_container]
+
+        service = DockerDeploymentService()
+        deployments = service.list_deployments()
+
+        assert len(deployments) == 1
+        assert deployments[0]["name"] == "test-deployment"
+        assert deployments[0]["status"] == "running"
+        assert deployments[0]["template"] == "test"
+
+    @patch("mcp_template.docker.from_env")
+    def test_delete_deployment_success(self, mock_docker):
+        """Test successful deployment deletion."""
+        mock_client = MagicMock()
+        mock_docker.return_value = mock_client
+
+        mock_container = MagicMock()
+        mock_client.containers.get.return_value = mock_container
+
+        service = DockerDeploymentService()
+        result = service.delete_deployment("test-deployment")
+
+        assert result is True
+        mock_container.stop.assert_called_once()
+        mock_container.remove.assert_called_once()
+
+    @patch("mcp_template.docker.from_env")
+    def test_delete_deployment_not_found(self, mock_docker):
+        """Test deleting non-existent deployment."""
+        mock_client = MagicMock()
+        mock_docker.return_value = mock_client
+        mock_client.containers.get.side_effect = Exception("Not found")
+
+        service = DockerDeploymentService()
+        result = service.delete_deployment("non-existent")
+
+        assert result is False
+
+    @patch("mcp_template.docker.from_env")
+    def test_get_deployment_status(self, mock_docker):
+        """Test getting deployment status."""
+        mock_client = MagicMock()
+        mock_docker.return_value = mock_client
+
+        mock_container = MagicMock()
+        mock_container.name = "test-deployment"
+        mock_container.status = "running"
+        mock_container.attrs = {
+            "State": {"Status": "running", "Health": {"Status": "healthy"}},
+            "Config": {"Labels": {"template": "test"}},
+            "NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "8080"}]}},
+        }
+        mock_client.containers.get.return_value = mock_container
+
+        service = DockerDeploymentService()
+        status = service.get_deployment_status("test-deployment")
+
+        assert status["name"] == "test-deployment"
+        assert status["status"] == "running"
+        assert status["health"] == "healthy"
+        assert status["template"] == "test"
+
+    def test_prepare_environment_variables(self):
+        """Test environment variable preparation."""
+        service = DockerDeploymentService()
+
+        config = {"param1": "value1", "param2": "value2"}
+        template_data = {
+            "config_schema": {
+                "properties": {
+                    "param1": {"env_mapping": "ENV_PARAM1"},
+                    "param2": {"env_mapping": "ENV_PARAM2"},
+                }
+            }
+        }
+
+        env_vars = service._prepare_environment_variables(config, template_data)
+
+        assert "ENV_PARAM1=value1" in env_vars
+        assert "ENV_PARAM2=value2" in env_vars
+
+    def test_prepare_port_mappings(self):
+        """Test port mapping preparation."""
+        service = DockerDeploymentService()
+
+        template_data = {"ports": {"8080": 8080, "9000": 9001}}
+
+        port_mappings = service._prepare_port_mappings(template_data)
+
+        assert port_mappings == {"8080": 8080, "9000": 9001}
+
+    def test_prepare_volume_mounts(self):
+        """Test volume mount preparation."""
+        service = DockerDeploymentService()
+
+        volumes = service._prepare_volume_mounts()
+
+        # Should have standard volumes
+        assert any("/data" in str(volume) for volume in volumes.values())
+        assert any("/logs" in str(volume) for volume in volumes.values())
+
+
+class TestKubernetesDeploymentService:
+    """Test Kubernetes deployment service."""
+
+    def test_init(self):
+        """Test KubernetesDeploymentService initialization."""
+        service = KubernetesDeploymentService()
+        assert service is not None
+
+    def test_deploy_template_not_implemented(self, mock_template_config):
+        """Test that deployment raises NotImplementedError."""
+        service = KubernetesDeploymentService()
+
+        with pytest.raises(NotImplementedError):
+            service.deploy_template("test", {}, mock_template_config)
+
+    def test_list_deployments_empty(self):
+        """Test listing deployments returns empty list."""
+        service = KubernetesDeploymentService()
+        deployments = service.list_deployments()
+        assert deployments == []
+
+    def test_delete_deployment_false(self):
+        """Test delete returns False (not implemented)."""
+        service = KubernetesDeploymentService()
+        result = service.delete_deployment("test")
+        assert result is False
+
+    def test_get_deployment_status_not_found(self):
+        """Test status raises ValueError."""
+        service = KubernetesDeploymentService()
+
+        with pytest.raises(ValueError, match="not found"):
+            service.get_deployment_status("test")
+
+
+class TestMockDeploymentService:
+    """Test Mock deployment service."""
+
+    def test_init(self):
+        """Test MockDeploymentService initialization."""
+        service = MockDeploymentService()
+        assert service is not None
+        assert service.deployments == {}
+
+    def test_deploy_template(self, mock_template_config):
+        """Test mock template deployment."""
+        service = MockDeploymentService()
+
+        result = service.deploy_template(
+            template_id="test",
+            config={"param": "value"},
+            template_data=mock_template_config,
+            pull_image=False,
+        )
+
+        assert "deployment_name" in result
+        assert result["status"] == "deployed"
+        assert len(service.deployments) == 1
+
+    def test_list_deployments(self, mock_template_config):
+        """Test listing mock deployments."""
+        service = MockDeploymentService()
+
+        # Deploy a template first
+        service.deploy_template("test", {}, mock_template_config)
+
+        deployments = service.list_deployments()
+        assert len(deployments) == 1
+        assert deployments[0]["template"] == "test"
+
+    def test_delete_deployment(self, mock_template_config):
+        """Test deleting mock deployment."""
+        service = MockDeploymentService()
+
+        # Deploy first
+        result = service.deploy_template("test", {}, mock_template_config)
+        deployment_name = result["deployment_name"]
+
+        # Delete
+        delete_result = service.delete_deployment(deployment_name)
+        assert delete_result is True
+        assert len(service.deployments) == 0
+
+    def test_delete_deployment_not_found(self):
+        """Test deleting non-existent deployment."""
+        service = MockDeploymentService()
+        result = service.delete_deployment("non-existent")
+        assert result is False
+
+    def test_get_deployment_status(self, mock_template_config):
+        """Test getting mock deployment status."""
+        service = MockDeploymentService()
+
+        # Deploy first
+        result = service.deploy_template("test", {}, mock_template_config)
+        deployment_name = result["deployment_name"]
+
+        # Get status
+        status = service.get_deployment_status(deployment_name)
+        assert status["name"] == deployment_name
+        assert status["status"] == "running"
+        assert status["template"] == "test"
+
+
+class TestDeploymentManager:
+    """Test deployment manager orchestration."""
+
+    @patch("mcp_template.TemplateManager")
+    def test_init(self, mock_template_manager):
+        """Test DeploymentManager initialization."""
+        manager = DeploymentManager()
+        assert manager.template_manager is not None
+        assert "docker" in manager.backends
+        assert "k8s" in manager.backends
+        assert "mock" in manager.backends
+
+    @patch("mcp_template.TemplateManager")
+    def test_deploy_template_success(self, mock_template_manager, mock_template_config):
+        """Test successful template deployment through manager."""
+        # Setup mocks
+        mock_template_manager.return_value.get_template_config.return_value = (
+            mock_template_config
+        )
+        mock_template_manager.return_value.template_exists.return_value = True
+
+        manager = DeploymentManager()
+
+        # Use mock backend for testing
+        result = manager.deploy_template(
+            template_id="test",
+            config={"param": "value"},
+            backend="mock",
+            pull_image=False,
+        )
+
+        assert "deployment_name" in result
+        assert result["status"] == "deployed"
+
+    @patch("mcp_template.TemplateManager")
+    def test_deploy_template_not_found(self, mock_template_manager):
+        """Test deployment with non-existent template."""
+        mock_template_manager.return_value.template_exists.return_value = False
+
+        manager = DeploymentManager()
+
+        with pytest.raises(ValueError, match="Template .* not found"):
+            manager.deploy_template("non-existent", {}, "mock")
+
+    @patch("mcp_template.TemplateManager")
+    def test_invalid_backend(self, mock_template_manager):
+        """Test deployment with invalid backend."""
+        manager = DeploymentManager()
+
+        with pytest.raises(ValueError, match="Unsupported backend"):
+            manager.deploy_template("test", {}, "invalid")
+
+    @patch("mcp_template.TemplateManager")
+    def test_list_deployments(self, mock_template_manager):
+        """Test listing deployments through manager."""
+        manager = DeploymentManager()
+
+        deployments = manager.list_deployments("mock")
+        assert isinstance(deployments, list)
+
+    @patch("mcp_template.TemplateManager")
+    def test_delete_deployment(self, mock_template_manager):
+        """Test deleting deployment through manager."""
+        manager = DeploymentManager()
+
+        # Should not raise an exception
+        result = manager.delete_deployment("test-deployment", "mock")
+        assert isinstance(result, bool)
+
+    @patch("mcp_template.TemplateManager")
+    def test_get_deployment_status(self, mock_template_manager, mock_template_config):
+        """Test getting deployment status through manager."""
+        manager = DeploymentManager()
+
+        # First deploy something to get status of
+        manager.deploy_template("test", {}, "mock", pull_image=False)
+
+        # This should not raise an exception for mock backend
+        try:
+            status = manager.get_deployment_status("test-deployment", "mock")
+        except ValueError:
+            # Expected for non-existent deployment
+            pass

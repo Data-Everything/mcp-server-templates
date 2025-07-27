@@ -1,3 +1,0 @@
-# File Server MCP Requirements
-fastmcp>=2.10.0
-aiofiles>=23.1.0

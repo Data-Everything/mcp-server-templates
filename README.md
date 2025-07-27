@@ -43,8 +43,21 @@ Each template must include:
 {
   "name": "File Server MCP",
   "description": "Secure file system access for AI assistants...",
+  "version": "1.0.0",
+  "author": "Data Everything",
+  "category": "File System",
+  "tags": ["filesystem", "files", "security"],
   "docker_image": "dataeverything/mcp-file-server",
   "docker_tag": "latest",
+  "ports": {
+    "8080": 8080
+  },
+  "command": ["python", "server.py"],
+  "transport": {
+    "default": "stdio",
+    "supported": ["stdio", "http"],
+    "port": 8080
+  },
   "config_schema": {
     "type": "object",
     "properties": {
@@ -80,39 +93,46 @@ Each template must include:
 
 | Command | Description |
 |---------|-------------|
-| `python -m mcp_template list` | List available templates |
-| `python -m mcp_template <template>` | Deploy template with defaults |
-| `python -m mcp_template logs <template>` | View deployment logs |
-| `python -m mcp_template stop <template>` | Stop deployment |
-| `python -m mcp_template shell <template>` | Open shell in container |
-| `python -m mcp_template cleanup` | Clean up stopped/failed deployments |
+| `python -m mcp_template list` | List all deployments |
+| `python -m mcp_template deploy <template>` | Deploy template with defaults |
+| `python -m mcp_template deploy <template> --no-pull` | Deploy without pulling image (use local) |
+| `python -m mcp_template status <deployment>` | View deployment status |
+| `python -m mcp_template delete <deployment>` | Delete deployment |
+| `python -m mcp_template create <template-id>` | Create new template |
 
 ### Configuration Options
 
-**1. Show Available Config Options:**
+**1. Check Template Configuration:**
 ```bash
-python -m mcp_template file-server --show-config
+# View template.json to see available config options
+cat templates/file-server/template.json
 ```
 
 **2. Deploy with Config File:**
 ```bash
 # JSON config file
-python -m mcp_template file-server --config-file ./config.json
+python -m mcp_template deploy file-server --config-file ./config.json
 
 # YAML config file
-python -m mcp_template file-server --config-file ./config.yml
+python -m mcp_template deploy file-server --config-file ./config.yml
 ```
 
 **3. Deploy with CLI Options:**
 ```bash
 # Direct property names
-python -m mcp_template file-server \
+python -m mcp_template deploy file-server \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
 
+# With custom name and skip image pull
+python -m mcp_template deploy file-server \
+  --name my-file-server \
+  --no-pull \
+  --config read_only_mode=true
+
 # Nested configuration using double underscore notation
-python -m mcp_template file-server \
+python -m mcp_template deploy file-server \
   --config security__read_only=true \
   --config security__max_file_size=50 \
   --config logging__level=debug
@@ -120,7 +140,7 @@ python -m mcp_template file-server \
 
 **4. Deploy with Environment Variables:**
 ```bash
-python -m mcp_template file-server \
+python -m mcp_template deploy file-server \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50 \
   --env MCP_LOG_LEVEL=debug
@@ -128,7 +148,7 @@ python -m mcp_template file-server \
 
 **5. Mixed Configuration (precedence: env > cli > file > defaults):**
 ```bash
-python -m mcp_template file-server \
+python -m mcp_template deploy file-server \
   --config-file ./base-config.json \
   --config log_level=warning \
   --env MCP_READ_ONLY=true
@@ -311,29 +331,30 @@ Each template includes:
 # 1. Install from PyPI
 pip install mcp-templates
 
-# 2. List available templates
+# 2. List available deployments
 python -m mcp_template list
 
 # 3. Deploy with defaults
 python -m mcp_template deploy file-server
 
-# 4. Deploy with custom config
-python -m mcp_template file-server --config-file ./my-config.json
+# 4. Deploy with custom config and skip image pull
+python -m mcp_template deploy file-server --config-file ./my-config.json --no-pull
 
-# 5. View logs
-python -m mcp_template logs file-server
+# 5. View deployment status
+python -m mcp_template status file-server-deployment
 
-# 6. Stop when done
-python -m mcp_template stop file-server
+# 6. Delete when done
+python -m mcp_template delete file-server-deployment
 ```
 
-### Configuration Discovery
+### Template Discovery
 
 ```bash
-# See all available configuration options for any template
-python -m mcp_template file-server --show-config
-python -m mcp_template github --show-config
-python -m mcp_template database --show-config
+# List all available templates
+python -m mcp_template create --help
+
+# Create new template interactively
+python -m mcp_template create my-custom-template
 ```
 
 ---

@@ -25,7 +25,19 @@ python -m mcp_template create my-template --config-file config.json --non-intera
   "description": "A custom MCP server template",
   "version": "1.0.0",
   "author": "Your Name",
+  "category": "General",
+  "tags": ["custom", "example"],
   "docker_image": "dataeverything/mcp-my-template",
+  "docker_tag": "latest",
+  "ports": {
+    "8080": 8080
+  },
+  "command": ["python", "server.py"],
+  "transport": {
+    "default": "stdio",
+    "supported": ["stdio", "http"],
+    "port": 8080
+  },
   "capabilities": [
     {
       "name": "my_tool",

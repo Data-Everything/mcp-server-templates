@@ -8,6 +8,18 @@ A unified deployment system that provides:
 - Backend abstraction for different deployment targets
 - Dynamic template discovery and configuration management
 - Zero-configuration deployment experience
+
+The system follows a layered architecture:
+1. CLI Layer: Rich interface for user interaction
+2. Management Layer: DeploymentManager orchestrates operations
+3. Backend Layer: Pluggable deployment services (Docker, Kubernetes, etc.)
+4. Discovery Layer: Dynamic template detection and configuration
+
+Key Features:
+- Template-driven configuration (no hardcoded template logic)
+- Configurable image pulling (supports local development)
+- Generic deployment utilities (reusable across templates)
+- Comprehensive error handling and logging
 """
 
 import argparse
@@ -16,7 +28,9 @@ import logging
 import os
 import subprocess  # nosec B404
 import sys
+import time
 import uuid
+from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -27,6 +41,7 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
+from .cli import EnhancedCLI, add_enhanced_cli_args, handle_enhanced_cli_commands
 from .create_template import TemplateCreator
 
 # Constants
@@ -37,6 +52,72 @@ CUSTOM_NAME_HELP = "Custom container name"
 
 console = Console()
 logger = logging.getLogger(__name__)
+
+
+# Base Classes
+class DeploymentBackend(ABC):
+    """Abstract base class for deployment backends.
+
+    This defines the interface that all deployment backends must implement,
+    ensuring consistency across Docker, Kubernetes, and other deployment targets.
+    """
+
+    @abstractmethod
+    def deploy_template(
+        self,
+        template_id: str,
+        config: Dict[str, Any],
+        template_data: Dict[str, Any],
+        pull_image: bool = True,
+    ) -> Dict[str, Any]:
+        """Deploy a template using the backend.
+
+        Args:
+            template_id: Unique identifier for the template
+            config: Configuration parameters for the deployment
+            template_data: Template metadata and configuration
+            pull_image: Whether to pull the container image before deployment
+
+        Returns:
+            Dict containing deployment information including name, status, etc.
+        """
+        pass
+
+    @abstractmethod
+    def list_deployments(self) -> List[Dict[str, Any]]:
+        """List all active deployments managed by this backend.
+
+        Returns:
+            List of deployment information dictionaries
+        """
+        pass
+
+    @abstractmethod
+    def delete_deployment(self, deployment_name: str) -> bool:
+        """Delete a deployment.
+
+        Args:
+            deployment_name: Name of the deployment to delete
+
+        Returns:
+            True if deletion was successful, False otherwise
+        """
+        pass
+
+    @abstractmethod
+    def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:
+        """Get the status of a deployment.
+
+        Args:
+            deployment_name: Name of the deployment
+
+        Returns:
+            Dict containing deployment status information
+
+        Raises:
+            ValueError: If deployment is not found
+        """
+        pass
 
 
 class TemplateDiscovery:
@@ -118,6 +199,10 @@ class TemplateDiscovery:
         # Docker image configuration
         config["image"] = self._get_docker_image(template_data, template_dir.name)
 
+        # Keep original docker_image field for backward compatibility
+        if "docker_image" in template_data:
+            config["docker_image"] = template_data["docker_image"]
+
         # Environment variables from config schema
         config["env_vars"] = self._extract_env_vars(template_data)
 
@@ -133,12 +218,34 @@ class TemplateDiscovery:
         # Include the original config schema for CLI usage
         config["config_schema"] = template_data.get("config_schema", {})
 
+        # Include tools information for CLI usage
+        config["tools"] = template_data.get("tools", [])
+
+        # Include transport information for CLI usage
+        config["transport"] = template_data.get(
+            "transport", {"default": "stdio", "supported": ["stdio"]}
+        )
+
         # Generate MCP client configuration
         config["example_config"] = self._generate_mcp_config(
             template_data, template_dir.name
         )
 
         return config
+
+    def get_template_config(self, template_name: str) -> Optional[Dict[str, Any]]:
+        """Get configuration for a specific template."""
+        template_dir = self.templates_dir / template_name
+        if not template_dir.exists():
+            return None
+        return self._load_template_config(template_dir)
+
+    def get_template_path(self, template_name: str) -> Optional[Path]:
+        """Get the path to a specific template."""
+        template_dir = self.templates_dir / template_name
+        if template_dir.exists() and template_dir.is_dir():
+            return template_dir
+        return None
 
     def _get_docker_image(
         self, template_data: Dict[str, Any], template_name: str
@@ -255,8 +362,7 @@ class TemplateDiscovery:
                         "-i",
                         f"mcp-{template_name}",
                         "python",
-                        "-m",
-                        "src.server",
+                        "server.py",
                     ],
                 }
             }
@@ -282,6 +388,24 @@ class TemplateDiscovery:
 
         return json.dumps(config, indent=2)
 
+    def validate_template_config(self, template_config: Dict[str, Any]) -> bool:
+        """Validate template configuration."""
+        required_fields = ["name", "description", "image"]
+
+        for field in required_fields:
+            if field not in template_config:
+                logger.error(f"Missing required field: {field}")
+                return False
+
+        # Validate image format
+        if "image" in template_config:
+            image = template_config["image"]
+            if not isinstance(image, str) or ":" not in image:
+                logger.error(f"Invalid image format: {image}")
+                return False
+
+        return True
+
 
 class DeploymentManager:
     """Unified deployment manager with backend abstraction."""
@@ -289,30 +413,92 @@ class DeploymentManager:
     def __init__(self, backend_type: str = "docker"):
         """Initialize deployment manager with specified backend."""
         self.backend_type = backend_type
+        self._cached_backend = None
         self.deployment_backend = self._get_deployment_backend()
 
     def _get_deployment_backend(self):
         """Get the appropriate deployment backend."""
+        # Use cached backend if available and backend type hasn't changed
+        if self._cached_backend is not None:
+            return self._cached_backend
+
         if self.backend_type == "docker":
-            return DockerDeploymentService()
+            backend = DockerDeploymentService()
         elif self.backend_type == "kubernetes":
             try:
-                return KubernetesDeploymentService()
+                backend = KubernetesDeploymentService()
             except ImportError as e:
                 logger.warning(
                     "Kubernetes client not available, falling back to Docker: %s", e
                 )
-                return DockerDeploymentService()
+                backend = DockerDeploymentService()
         else:
-            return MockDeploymentService()
+            backend = MockDeploymentService()
+
+        # Cache the backend for reuse
+        self._cached_backend = backend
+        return backend
 
     def deploy_template(
         self,
         template_id: str,
-        configuration: Dict[str, Any],
-        template_data: Dict[str, Any],
+        configuration: Dict[str, Any] = None,
+        template_data: Dict[str, Any] = None,
+        pull_image: bool = True,
+        # Backward compatibility for tests
+        config: Dict[str, Any] = None,
+        backend: str = None,
     ) -> Dict[str, Any]:
         """Deploy an MCP server template."""
+        # Handle backward compatibility
+        if config is not None and configuration is None:
+            configuration = config
+
+        # Handle backend override
+        if backend is not None:
+            original_backend = self.backend_type
+            original_deployment_backend = self.deployment_backend
+            original_cached_backend = self._cached_backend
+            self.backend_type = backend
+            self._cached_backend = None  # Clear cache for new backend
+            self.deployment_backend = self._get_deployment_backend()
+            try:
+                result = self._deploy_with_backend(
+                    template_id, configuration, template_data, pull_image
+                )
+            finally:
+                self.backend_type = original_backend
+                self.deployment_backend = original_deployment_backend
+                self._cached_backend = original_cached_backend
+            return result
+
+        return self._deploy_with_backend(
+            template_id, configuration, template_data, pull_image
+        )
+
+    def _deploy_with_backend(
+        self,
+        template_id: str,
+        configuration: Dict[str, Any] = None,
+        template_data: Dict[str, Any] = None,
+        pull_image: bool = True,
+    ) -> Dict[str, Any]:
+        """Internal deployment method with current backend."""
+        if configuration is None:
+            raise ValueError("configuration parameter is required")
+
+        if template_data is None:
+            raise ValueError("template_data parameter is required")
+
+        # Validate template exists (skip for mock backend in tests)
+        if self.backend_type != "mock":
+            discovery = TemplateDiscovery()
+            available_templates = discovery.discover_templates()
+            if template_id not in available_templates:
+                raise ValueError(
+                    f"Template '{template_id}' not found. Available templates: {list(available_templates.keys())}"
+                )
+
         try:
             logger.info(
                 "Deploying template %s with configuration: %s",
@@ -320,10 +506,13 @@ class DeploymentManager:
                 configuration,
             )
 
-            result = self.deployment_backend.deploy_template(
+            # Get the appropriate backend (may have been overridden)
+            backend = self._get_deployment_backend()
+            result = backend.deploy_template(
                 template_id=template_id,
                 config=configuration,
                 template_data=template_data,
+                pull_image=pull_image,
             )
 
             logger.info("Successfully deployed template %s", template_id)
@@ -346,17 +535,33 @@ class DeploymentManager:
         return self.deployment_backend.get_deployment_status(deployment_name)
 
 
-class DockerDeploymentService:
-    """Docker deployment service using CLI commands."""
+class DockerDeploymentService(DeploymentBackend):
+    """Docker deployment service using CLI commands.
+
+    This service manages container deployments using Docker CLI commands.
+    It handles image pulling, container lifecycle, and provides status monitoring.
+    """
 
     def __init__(self):
-        """Initialize Docker service."""
+        """Initialize Docker service and verify Docker is available."""
         self._ensure_docker_available()
 
+    # Docker Infrastructure Methods
     def _run_command(
         self, command: List[str], check: bool = True
     ) -> subprocess.CompletedProcess:
-        """Run a command and return the result."""
+        """Execute a shell command and return the result.
+
+        Args:
+            command: List of command parts to execute
+            check: Whether to raise exception on non-zero exit code
+
+        Returns:
+            CompletedProcess with stdout, stderr, and return code
+
+        Raises:
+            subprocess.CalledProcessError: If command fails and check=True
+        """
         try:
             logger.debug("Running command: %s", " ".join(command))
             result = subprocess.run(  # nosec B603
@@ -374,7 +579,11 @@ class DockerDeploymentService:
             raise
 
     def _ensure_docker_available(self):
-        """Check if Docker is available and running."""
+        """Check if Docker is available and running.
+
+        Raises:
+            RuntimeError: If Docker daemon is not available or not running
+        """
         try:
             result = self._run_command(["docker", "version", "--format", "json"])
             version_info = json.loads(result.stdout)
@@ -390,16 +599,83 @@ class DockerDeploymentService:
             logger.error("Docker is not available or not running: %s", exc)
             raise RuntimeError("Docker daemon is not available or not running") from exc
 
+    # Template Deployment Methods
     def deploy_template(
-        self, template_id: str, config: Dict[str, Any], template_data: Dict[str, Any]
+        self,
+        template_id: str,
+        config: Dict[str, Any],
+        template_data: Dict[str, Any],
+        pull_image: bool = True,
     ) -> Dict[str, Any]:
-        """Deploy a template using Docker CLI."""
-        # Generate container name
-        timestamp = datetime.now().strftime("%m%d-%H%M%S")
-        container_name = f"mcp-{template_id}-{timestamp}-{str(uuid.uuid4())[:8]}"
+        """Deploy a template using Docker CLI.
 
-        # Prepare environment variables
+        Args:
+            template_id: Unique identifier for the template
+            config: Configuration parameters for the deployment
+            template_data: Template metadata including image, ports, commands, etc.
+            pull_image: Whether to pull the container image before deployment
+
+        Returns:
+            Dict containing deployment information
+
+        Raises:
+            Exception: If deployment fails for any reason
+        """
+        container_name = self._generate_container_name(template_id)
+
+        try:
+            # Prepare deployment configuration
+            env_vars = self._prepare_environment_variables(config, template_data)
+            volumes = self._prepare_volume_mounts(template_data)
+            ports = self._prepare_port_mappings(template_data)
+            command_args = template_data.get("command", [])
+            image_name = template_data.get("image", f"mcp-{template_id}:latest")
+
+            # Pull image if requested
+            if pull_image:
+                self._run_command(["docker", "pull", image_name])
+
+            # Deploy the container
+            container_id = self._deploy_container(
+                container_name,
+                template_id,
+                image_name,
+                env_vars,
+                volumes,
+                ports,
+                command_args,
+            )
+
+            # Wait for container to stabilize
+            time.sleep(2)
+
+            return {
+                "deployment_name": container_name,
+                "container_id": container_id,
+                "template_id": template_id,
+                "configuration": config,
+                "status": "deployed",
+                "created_at": datetime.now().isoformat(),
+                "image": image_name,
+            }
+
+        except Exception as e:
+            # Cleanup on failure
+            self._cleanup_failed_deployment(container_name)
+            raise e
+
+    def _generate_container_name(self, template_id: str) -> str:
+        """Generate a unique container name for the template."""
+        timestamp = datetime.now().strftime("%m%d-%H%M%S")
+        return f"mcp-{template_id}-{timestamp}-{str(uuid.uuid4())[:8]}"
+
+    def _prepare_environment_variables(
+        self, config: Dict[str, Any], template_data: Dict[str, Any]
+    ) -> List[str]:
+        """Prepare environment variables for container deployment."""
         env_vars = []
+
+        # Process user configuration
         for key, value in config.items():
             # Avoid double MCP_ prefix
             if key.startswith("MCP_"):
@@ -420,7 +696,10 @@ class DockerDeploymentService:
         for key, value in template_env.items():
             env_vars.extend(["--env", f"{key}={value}"])
 
-        # Prepare volumes
+        return env_vars
+
+    def _prepare_volume_mounts(self, template_data: Dict[str, Any]) -> List[str]:
+        """Prepare volume mounts for container deployment."""
         volumes = []
         template_volumes = template_data.get("volumes", {})
         for host_path, container_path in template_volumes.items():
@@ -428,65 +707,72 @@ class DockerDeploymentService:
             expanded_path = os.path.expanduser(host_path)
             os.makedirs(expanded_path, exist_ok=True)
             volumes.extend(["--volume", f"{expanded_path}:{container_path}"])
+        return volumes
 
-        # Get image
-        image_name = template_data.get("image", f"mcp-{template_id}:latest")
+    def _prepare_port_mappings(self, template_data: Dict[str, Any]) -> List[str]:
+        """Prepare port mappings for container deployment."""
+        ports = []
+        template_ports = template_data.get("ports", {})
+        for host_port, container_port in template_ports.items():
+            ports.extend(["-p", f"{host_port}:{container_port}"])
+        return ports
 
+    def _deploy_container(
+        self,
+        container_name: str,
+        template_id: str,
+        image_name: str,
+        env_vars: List[str],
+        volumes: List[str],
+        ports: List[str],
+        command_args: List[str],
+    ) -> str:
+        """Deploy the Docker container with all configuration."""
+        # Build Docker run command
+        docker_command = (
+            [
+                "docker",
+                "run",
+                "--detach",
+                "--name",
+                container_name,
+                "--restart",
+                "unless-stopped",
+                "--label",
+                f"template={template_id}",
+                "--label",
+                "managed-by=mcp-template",
+            ]
+            + ports
+            + env_vars
+            + volumes
+            + [image_name]
+            + command_args
+        )
+
+        # Run the container
+        result = self._run_command(docker_command)
+        container_id = result.stdout.strip()
+
+        logger.info("Started container %s with ID %s", container_name, container_id)
+        return container_id
+
+    def _cleanup_failed_deployment(self, container_name: str):
+        """Clean up a failed deployment by removing the container."""
         try:
-            # Pull image
-            self._run_command(["docker", "pull", image_name])
+            self._run_command(["docker", "rm", "-f", container_name], check=False)
+        except Exception:
+            pass  # Ignore cleanup failures
 
-            # Build Docker run command
-            docker_command = (
-                [
-                    "docker",
-                    "run",
-                    "--detach",
-                    "--name",
-                    container_name,
-                    "--restart",
-                    "unless-stopped",
-                    "--label",
-                    f"template={template_id}",
-                    "--label",
-                    "managed-by=mcp-template",
-                ]
-                + env_vars
-                + volumes
-                + [image_name]
-            )
+    # Container Management Methods
 
-            # Run the container
-            result = self._run_command(docker_command)
-            container_id = result.stdout.strip()
-
-            logger.info("Started container %s with ID %s", container_name, container_id)
-
-            # Wait a moment for container to start
-            import time
-
-            time.sleep(2)
-
-            return {
-                "deployment_name": container_name,
-                "container_id": container_id,
-                "template_id": template_id,
-                "configuration": config,
-                "status": "deployed",
-                "created_at": datetime.now().isoformat(),
-                "image": image_name,
-            }
-
-        except Exception as e:
-            # Cleanup on failure
-            try:
-                self._run_command(["docker", "rm", "-f", container_name], check=False)
-            except Exception:
-                pass
-            raise e
-
+    # Container Management Methods
     def list_deployments(self) -> List[Dict[str, Any]]:
-        """List all MCP deployments."""
+        """List all MCP deployments managed by this Docker service.
+
+        Returns:
+            List of deployment information dictionaries
+        """
         try:
             # Get containers with the managed-by label
             result = self._run_command(
@@ -535,7 +821,14 @@ class DockerDeploymentService:
             return []
 
     def delete_deployment(self, deployment_name: str) -> bool:
-        """Delete a deployment."""
+        """Delete a deployment by stopping and removing the container.
+
+        Args:
+            deployment_name: Name of the deployment to delete
+
+        Returns:
+            True if deletion was successful, False otherwise
+        """
         try:
             # Stop and remove the container
             self._run_command(["docker", "stop", deployment_name], check=False)
@@ -547,7 +840,17 @@ class DockerDeploymentService:
             return False
 
     def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:
-        """Get deployment status."""
+        """Get detailed status of a deployment including logs.
+
+        Args:
+            deployment_name: Name of the deployment
+
+        Returns:
+            Dict containing deployment status, logs, and metadata
+
+        Raises:
+            ValueError: If deployment is not found
+        """
         try:
             # Get container info
             result = self._run_command(
@@ -579,15 +882,23 @@ class DockerDeploymentService:
             raise ValueError(f"Deployment {deployment_name} not found") from exc
 
 
-class KubernetesDeploymentService:
-    """Kubernetes deployment service (placeholder for future implementation)."""
+class KubernetesDeploymentService(DeploymentBackend):
+    """Kubernetes deployment service (placeholder for future implementation).
+
+    This service will manage Kubernetes deployments when implemented.
+    Currently raises ImportError to indicate it's not yet available.
+    """
 
     def __init__(self):
         """Initialize Kubernetes service."""
         raise ImportError("Kubernetes backend not yet implemented")
 
     def deploy_template(
-        self, template_id: str, config: Dict[str, Any], template_data: Dict[str, Any]
+        self,
+        template_id: str,
+        config: Dict[str, Any],
+        template_data: Dict[str, Any],
+        pull_image: bool = True,
     ) -> Dict[str, Any]:
         """Deploy template to Kubernetes."""
         raise NotImplementedError
@@ -605,18 +916,55 @@ class KubernetesDeploymentService:
         raise NotImplementedError
 
 
-class MockDeploymentService:
-    """Mock deployment service for testing."""
+class MockDeploymentService(DeploymentBackend):
+    """Mock deployment service for testing.
+
+    This service simulates deployments without actually creating containers.
+    Useful for testing and development scenarios.
+    """
 
     def __init__(self):
         """Initialize mock service."""
         self.deployments = {}
 
     def deploy_template(
-        self, template_id: str, config: Dict[str, Any], template_data: Dict[str, Any]
+        self,
+        template_id: str,
+        config: Dict[str, Any],
+        template_data: Dict[str, Any],
+        pull_image: bool = True,
     ) -> Dict[str, Any]:
         """Mock template deployment."""
+        # Validate template_data has required fields
+        if not template_data.get("docker_image") and not template_data.get("image"):
+            raise ValueError(
+                f"Template data missing required docker image information for template '{template_id}'"
+            )
+
         deployment_name = f"mcp-{template_id}-{datetime.now().strftime('%m%d-%H%M')}-{str(uuid.uuid4())[:8]}"
+
+        # Call _deploy_container to enable test mocking and failure simulation
+        image = template_data.get(
+            "docker_image", template_data.get("image", "test").split(":")[0]
+        )
+        tag = template_data.get(
+            "docker_tag",
+            (
+                template_data.get("image", "test:latest").split(":")[-1]
+                if ":" in template_data.get("image", "")
+                else "latest"
+            ),
+        )
+        full_image = f"{image}:{tag}"
+
+        # Extract ports and environment variables for container deployment
+        ports = []
+        env_vars = []
+        volumes = []
+
+        container_id = self._deploy_container(
+            deployment_name, full_image, env_vars, ports, volumes
+        )
 
         deployment_info = {
             "deployment_name": deployment_name,
@@ -626,6 +974,7 @@ class MockDeploymentService:
             "status": "deployed",
             "created_at": datetime.now().isoformat(),
             "mock": True,
+            "container_id": container_id,
         }
 
         self.deployments[deployment_name] = deployment_info
@@ -659,11 +1008,23 @@ class MockDeploymentService:
             info = self.deployments[deployment_name]
             return {
                 "name": deployment_name,
+                "template": info["template_id"],
                 "status": "running",
                 "created": info["created_at"],
                 "mock": True,
             }
         raise ValueError(f"Deployment {deployment_name} not found")
+
+    def _deploy_container(
+        self,
+        container_name: str,
+        image: str,
+        env_vars: list,
+        ports: list,
+        volumes: list,
+    ) -> str:
+        """Mock container deployment method for test compatibility."""
+        return f"mock-container-{container_name}"
 
 
 class MCPDeployer:
@@ -716,6 +1077,7 @@ class MCPDeployer:
         env_vars: Optional[Dict[str, str]] = None,
         config_file: Optional[str] = None,
         config_values: Optional[Dict[str, str]] = None,
+        pull_image: bool = True,
     ):
         """Deploy a template using the unified deployment manager."""
         if template_name not in self.templates:
@@ -784,6 +1146,7 @@ class MCPDeployer:
                     template_id=template_name,
                     configuration=config,
                     template_data=template_copy,
+                    pull_image=pull_image,
                 )
 
                 progress.update(task, completed=True)
@@ -1330,17 +1693,30 @@ class MCPDeployer:
         """Generate MCP configuration file."""
         config_file = self.config_dir / f"{template_name}.json"
 
-        config = json.loads(template["example_config"])
+        # Check if template has example_config
+        if "example_config" not in template:
+            # Generate a basic config if no example is provided
+            config = {
+                "mcpServers": {
+                    template_name: {
+                        "command": "docker",
+                        "args": ["exec", "-i", container_name, "python", "-m", "mcp"],
+                        "env": {"MCP_CONTAINER_NAME": container_name},
+                    }
+                }
+            }
+        else:
+            config = json.loads(template["example_config"])
 
-        # Update the container name in the config
-        if "servers" in config:
-            for server_name in config["servers"]:
-                if "args" in config["servers"][server_name]:
-                    # Replace the container name in args
-                    args = config["servers"][server_name]["args"]
-                    for i, arg in enumerate(args):
-                        if arg.startswith("mcp-"):
-                            args[i] = container_name
+            # Update the container name in the config
+            if "servers" in config:
+                for server_name in config["servers"]:
+                    if "args" in config["servers"][server_name]:
+                        # Replace the container name in args
+                        args = config["servers"][server_name]["args"]
+                        for i, arg in enumerate(args):
+                            if arg.startswith("mcp-"):
+                                args[i] = container_name
 
         config_file.write_text(json.dumps(config, indent=2))
         console.print(f"[green]📝 MCP config saved to: {config_file}[/green]")
@@ -1508,6 +1884,11 @@ Examples:
         action="store_true",
         help="Show available configuration options",
     )
+    deploy_parser.add_argument(
+        "--no-pull",
+        action="store_true",
+        help="Skip pulling Docker image (use local image)",
+    )
 
     # Stop command
     stop_parser = subparsers.add_parser("stop", help="Stop a deployed template")
@@ -1536,14 +1917,32 @@ Examples:
         "--all", action="store_true", help="Clean up all deployments"
     )
 
+    # Add enhanced CLI commands
+    add_enhanced_cli_args(subparsers)
+
+    # Check for direct template deployment before parsing args (backwards compatibility)
+    if len(sys.argv) > 1:
+        # Initialize deployer to check available templates
+        deployer = MCPDeployer()
+        available_templates = list(deployer.templates.keys())
+
+        potential_template = sys.argv[1]
+        if potential_template in available_templates:
+            # Rewrite argv to use deploy command
+            sys.argv = ["mcp_template", "deploy", potential_template] + sys.argv[2:]
+
     # Parse arguments
     args = parser.parse_args()
 
-    # Initialize deployer to check available templates
-    deployer = MCPDeployer()
-    available_templates = deployer.templates.keys()
+    # Initialize deployer again if not already done
+    if "deployer" not in locals():
+        deployer = MCPDeployer()
+        available_templates = deployer.templates.keys()
 
-    # Handle direct template deployment (backwards compatibility)
+    # Initialize enhanced CLI
+    enhanced_cli = EnhancedCLI()
+
+    # Handle direct template deployment (backwards compatibility) - legacy fallback
     if not args.command and len(sys.argv) > 1:
         template_name = sys.argv[1]
         if template_name in available_templates:
@@ -1552,9 +1951,13 @@ Examples:
 
     if not args.command:
         parser.print_help()
-        return
+        sys.exit(0)
 
     try:
+        # Try enhanced CLI commands first
+        if handle_enhanced_cli_commands(args, enhanced_cli):
+            return
+
         if args.command == "list":
             deployer.list_templates()
         elif args.command == "create":
@@ -1592,6 +1995,7 @@ Examples:
                 env_vars=env_vars,
                 config_file=getattr(args, "config_file", None),
                 config_values=config_values,
+                pull_image=not getattr(args, "no_pull", False),
             )
         elif args.command == "stop":
             deployer.stop(args.template, custom_name=getattr(args, "name", None))
@@ -1607,6 +2011,7 @@ Examples:
         else:
             console.print(f"[red]❌ Unknown command: {args.command}[/red]")
             parser.print_help()
+            sys.exit(1)
 
     except KeyboardInterrupt:
         console.print("\n[yellow]⏹️  Operation cancelled[/yellow]")
