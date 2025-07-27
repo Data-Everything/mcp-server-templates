@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-Base MCP Server class for consistent template implementation.
+Base FastMCP class for consistent template implementation.
 
-This module provides the BaseMCPServer class that all MCP server templates
-should inherit from to ensure consistency and shared functionality.
+This module provides the BaseFastMCP class that extends FastMCP with
+package-specific functionality for MCP server templates.
 """
 
 import logging
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 try:
     from fastmcp import FastMCP
@@ -18,43 +17,39 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class BaseMCPServer(ABC):
+class BaseFastMCP(FastMCP):
     """
-    Base class for all MCP server templates.
+    Base class that extends FastMCP with package-specific functionality.
 
     Provides common functionality including:
-    - FastMCP integration
+    - Enhanced tool introspection
     - Configuration management
-    - Transport handling (HTTP/stdio)
     - Logging setup
+    - Server information methods
     """
 
     def __init__(self, name: str, config: Optional[Dict[str, Any]] = None):
         """
-        Initialize the base MCP server.
+        Initialize the base FastMCP server.
 
         Args:
             name: Server name for identification
             config: Server configuration dictionary
         """
-        self.name = name
-        self.config = config or {}
-
-        # Setup logging
-        self._setup_logging()
-
-        # Initialize FastMCP if available
         if FastMCP is None:
             raise ImportError(
                 "FastMCP is required but not installed. "
                 "Install with: pip install fastmcp>=2.10.0"
             )
 
-        self.mcp = FastMCP(name=name)
-        logger.info("Initialized %s MCP server", name)
+        # Initialize FastMCP
+        super().__init__(name=name)
 
-        # Register tools (implemented by subclasses)
-        self.register_tools()
+        self.config = config or {}
+        logger.info("Initialized %s FastMCP server", name)
+
+        # Setup logging
+        self._setup_logging()
 
     def _setup_logging(self) -> None:
         """Setup logging configuration."""
@@ -64,45 +59,50 @@ class BaseMCPServer(ABC):
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
-    @abstractmethod
-    def register_tools(self) -> None:
+    async def get_tool_names(self) -> List[str]:
         """
-        Register tools with the MCP server.
+        Get list of available tool names.
 
-        This method must be implemented by subclasses to define
-        the specific tools available for the template.
-        """
+        Uses FastMCP's native introspection capabilities.
 
-    def run(
-        self, transport: str = "http", host: str = "0.0.0.0", port: int = 7071, **kwargs
-    ) -> None:
+        Returns:
+            List of tool names
         """
-        Run the MCP server.
+        try:
+            tools_dict = await self.get_tools()
+            return list(tools_dict.keys())
+        except Exception as e:
+            logger.warning("Failed to get tools from FastMCP: %s", e)
+            return []
+
+    async def get_tool_info(self, tool_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get detailed information about a specific tool.
 
         Args:
-            transport: Transport type ("http" or "stdio")
-            host: Host to bind to (for HTTP transport)
-            port: Port to bind to (for HTTP transport)
-            **kwargs: Additional arguments passed to FastMCP run
-        """
-        logger.info(
-            "Starting %s server on %s://%s:%d", self.name, transport, host, port
-        )
+            tool_name: Name of the tool to get info for
 
+        Returns:
+            Dictionary with tool information or None if not found
+        """
         try:
-            if transport == "http":
-                self.mcp.run(transport="http", host=host, port=port, **kwargs)
-            elif transport == "stdio":
-                self.mcp.run(transport="stdio", **kwargs)
-            else:
-                raise ValueError(f"Unsupported transport: {transport}")
+            tools_dict = await self.get_tools()
+            if tool_name in tools_dict:
+                tool = tools_dict[tool_name]
+                return {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.parameters,
+                    "enabled": tool.enabled,
+                }
         except Exception as e:
-            logger.error("Failed to start server: %s", e)
-            raise
+            logger.warning("Failed to get tool info from FastMCP: %s", e)
 
-    def get_server_info(self) -> Dict[str, Any]:
+        return None
+
+    async def get_server_info(self) -> Dict[str, Any]:
         """
-        Get server information.
+        Get server information including available tools.
 
         Returns:
             Dictionary containing server metadata
@@ -110,5 +110,5 @@ class BaseMCPServer(ABC):
         return {
             "name": self.name,
             "config": self.config,
-            "tools": [tool for tool in dir(self.mcp) if not tool.startswith("_")],
+            "tools": await self.get_tool_names(),
         }

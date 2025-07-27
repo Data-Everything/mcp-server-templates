@@ -6,84 +6,99 @@ A demonstration MCP server that showcases FastMCP best practices
 following the official FastMCP documentation patterns.
 """
 
-from fastmcp import FastMCP
-
 # Import configuration for testing compatibility
 try:
     from .config import DemoServerConfig
 except ImportError:
     from config import DemoServerConfig
 
-# Import BaseMCPServer from the correct location
+# Import BaseFastMCP from the correct location
 try:
-    from ...mcp_template.base import BaseMCPServer
+    from ...mcp_template.base import BaseFastMCP
 except ImportError:
     try:
-        from mcp_template.base import BaseMCPServer
+        from mcp_template.base import BaseFastMCP
     except ImportError:
         # Fallback for standalone usage
         import sys
 
         sys.path.append("../..")
-        from mcp_template.base import BaseMCPServer
-
-# Create the server instance
-mcp = FastMCP(name="Demo MCP Server 🚀")
+        from mcp_template.base import BaseFastMCP
 
 
-def register_tools(mcp_server, config):
-    """Register tools function for compatibility with tests."""
-    # Import and call the actual register_tools from tools module
-    try:
-        from .tools import register_tools as tools_register
-    except ImportError:
-        from tools import register_tools as tools_register
-
-    return tools_register(mcp_server, config)
-
-
-class DemoServer(BaseMCPServer):
-    """Demo MCP Server class that extends BaseMCPServer."""
+class DemoServer(BaseFastMCP):
+    """Demo MCP Server class that extends BaseFastMCP."""
 
     def __init__(self, config=None):
         # Initialize demo-specific configuration
         self.demo_config = DemoServerConfig(config)
 
-        # Initialize the base server
+        # Initialize the base FastMCP server
         super().__init__("demo-server", config)
 
-    def register_tools(self):
-        """Register demo-specific tools with the MCP server."""
-        return register_tools(self.mcp, self.demo_config)
+        # Register demo-specific tools
+        self.register_demo_tools()
 
-    def get_tools(self):
-        """Get available tools."""
-        return ["say_hello", "get_server_info", "echo_message"]
+    def register_demo_tools(self):
+        """Register demo-specific tools with the FastMCP server."""
+
+        @self.tool
+        def say_hello(name: str = "World") -> str:
+            """
+            Generate a personalized greeting message.
+
+            Args:
+                name: Name of the person to greet (optional)
+
+            Returns:
+                A personalized greeting message
+            """
+            if name and name != "World":
+                greeting = (
+                    f"Hello {name}! Greetings from {self.demo_config.hello_from}!"
+                )
+            else:
+                greeting = f"Hello! Greetings from {self.demo_config.hello_from}!"
+            return greeting
+
+        @self.tool
+        def get_server_info() -> dict:
+            """
+            Get information about the demo MCP server.
+
+            Returns:
+                Dictionary containing server information
+            """
+            return {
+                "name": "Demo MCP Server",
+                "version": "1.0.0",
+                "description": "A simple demonstration MCP server that provides greeting tools",
+                "hello_from": self.demo_config.hello_from,
+                "log_level": self.demo_config.log_level,
+                "capabilities": ["Greeting Tools", "Server Information"],
+                "transport": "http",
+                "port": 7071,
+            }
+
+        @self.tool
+        def echo_message(message: str) -> str:
+            """
+            Echo back a message with server identification.
+
+            Args:
+                message: Message to echo back
+
+            Returns:
+                Echoed message with server identification
+            """
+            echoed = f"[{self.demo_config.hello_from}] Echo: {message}"
+            return echoed
 
 
-@mcp.tool
-def say_hello(name: str = "World") -> str:
-    """Say hello to someone."""
-    return f"Hello, {name}!"
-
-
-@mcp.tool
-def get_server_info() -> dict:
-    """Get information about the server."""
-    return {
-        "name": "Demo MCP Server",
-        "version": "1.0.0",
-        "transport": "http",
-        "port": 7071,
-    }
-
-
-@mcp.tool
-def echo_message(message: str) -> str:
-    """Echo back the provided message."""
-    return f"You said: {message}"
-
-
+# Create the server instance for standalone usage
 if __name__ == "__main__":
+    # Create a DemoServer instance for direct usage
+    server = DemoServer()
+
     # Run with HTTP transport on port 7071 as specified in Dockerfile
-    mcp.run(transport="http", host="0.0.0.0", port=7071)
+    server.run(transport="http", host="0.0.0.0", port=7071)

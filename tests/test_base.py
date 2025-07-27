@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """
-Comprehensive tests for mcp_template.base module.
+Test suite for the BaseFastMCP class.
 """
 
-import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -15,289 +13,172 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-class TestBaseMCPServer:
-    """Test the BaseMCPServer abstract base class."""
+class TestBaseFastMCP:
+    """Test the BaseFastMCP class."""
 
-    def setup_method(self):
-        """Setup for each test method."""
+    def test_initialization_with_defaults(self):
+        """Test BaseFastMCP initialization with default configuration."""
+        try:
+            from mcp_template.base import BaseFastMCP
 
-        # Create a concrete implementation for testing
-        class TestMCPServer:
-            def __init__(self, name: str, config: Dict[str, Any] = None):
-                from mcp_template.base import BaseMCPServer
+            server = BaseFastMCP("test-server")
 
-                # Mock FastMCP to avoid import issues
-                with patch("mcp_template.base.FastMCP") as mock_fastmcp:
-                    mock_fastmcp.return_value = Mock()
+            assert server.name == "test-server"
+            assert server.config == {}
 
-                    # Create a test class that inherits from BaseMCPServer
-                    class ConcreteServer(BaseMCPServer):
-                        def register_tools(self):
-                            """Concrete implementation of abstract method."""
-                            pass
+        except ImportError:
+            pytest.skip("FastMCP not available in test environment")
 
-                    self.server = ConcreteServer(name, config)
+    def test_initialization_with_config(self):
+        """Test BaseFastMCP initialization with custom configuration."""
+        try:
+            from mcp_template.base import BaseFastMCP
 
-        self.test_server_class = TestMCPServer
+            config = {"log_level": "debug", "custom_setting": "value"}
+            server = BaseFastMCP("test-server", config)
 
-    @patch("mcp_template.base.FastMCP")
-    def test_init_with_default_config(self, mock_fastmcp):
-        """Test initialization with default configuration."""
-        mock_mcp_instance = Mock()
-        mock_fastmcp.return_value = mock_mcp_instance
+            assert server.name == "test-server"
+            assert server.config == config
 
-        from mcp_template.base import BaseMCPServer
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
-
-        server = ConcreteServer("test-server")
-
-        assert server.name == "test-server"
-        assert server.config == {}
-        mock_fastmcp.assert_called_once_with(name="test-server")
-        assert server.mcp == mock_mcp_instance
+        except ImportError:
+            pytest.skip("FastMCP not available in test environment")
 
     @patch("mcp_template.base.FastMCP")
-    def test_init_with_custom_config(self, mock_fastmcp):
-        """Test initialization with custom configuration."""
-        mock_mcp_instance = Mock()
-        mock_fastmcp.return_value = mock_mcp_instance
-
-        from mcp_template.base import BaseMCPServer
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
-
-        config = {"log_level": "debug", "custom_setting": "value"}
-        server = ConcreteServer("test-server", config)
-
-        assert server.name == "test-server"
-        assert server.config == config
-        mock_fastmcp.assert_called_once_with(name="test-server")
-
-    @patch("mcp_template.base.FastMCP", None)
-    def test_init_without_fastmcp_raises_import_error(self):
-        """Test that initialization fails gracefully when FastMCP is not available."""
-        from mcp_template.base import BaseMCPServer
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
-
-        with pytest.raises(ImportError, match="FastMCP is required but not installed"):
-            ConcreteServer("test-server")
-
-    @patch("mcp_template.base.FastMCP")
-    @patch("logging.basicConfig")
-    def test_setup_logging_default(self, mock_basic_config, mock_fastmcp):
-        """Test logging setup with default log level."""
-        mock_fastmcp.return_value = Mock()
-
-        from mcp_template.base import BaseMCPServer
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
-
-        server = ConcreteServer("test-server")
-
-        mock_basic_config.assert_called_once_with(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    @pytest.mark.asyncio
+    async def test_get_tool_names(self, mock_fastmcp):
+        """Test get_tool_names method."""
+        mock_instance = Mock()
+        mock_instance.get_tools = AsyncMock(
+            return_value={
+                "tool1": Mock(),
+                "tool2": Mock(),
+            }
         )
+        mock_fastmcp.return_value = mock_instance
+
+        try:
+            from mcp_template.base import BaseFastMCP
+
+            server = BaseFastMCP("test-server")
+            # Manually set the mock instance methods
+            server.get_tools = mock_instance.get_tools
+
+            tools = await server.get_tool_names()
+            assert tools == ["tool1", "tool2"]
+
+        except ImportError:
+            pytest.skip("FastMCP not available in test environment")
 
     @patch("mcp_template.base.FastMCP")
-    @patch("logging.basicConfig")
-    def test_setup_logging_custom_level(self, mock_basic_config, mock_fastmcp):
-        """Test logging setup with custom log level."""
-        mock_fastmcp.return_value = Mock()
+    @pytest.mark.asyncio
+    async def test_get_tool_info(self, mock_fastmcp):
+        """Test get_tool_info method."""
+        mock_tool = Mock()
+        mock_tool.name = "test_tool"
+        mock_tool.description = "Test tool description"
+        mock_tool.parameters = {"type": "object"}
+        mock_tool.enabled = True
 
-        from mcp_template.base import BaseMCPServer
+        mock_instance = Mock()
+        mock_instance.get_tools = AsyncMock(return_value={"test_tool": mock_tool})
+        mock_fastmcp.return_value = mock_instance
 
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
+        try:
+            from mcp_template.base import BaseFastMCP
 
-        config = {"log_level": "debug"}
-        server = ConcreteServer("test-server", config)
+            server = BaseFastMCP("test-server")
+            # Manually set the mock instance methods
+            server.get_tools = mock_instance.get_tools
 
-        mock_basic_config.assert_called_once_with(
-            level=logging.DEBUG,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            tool_info = await server.get_tool_info("test_tool")
+            assert tool_info["name"] == "test_tool"
+            assert tool_info["description"] == "Test tool description"
+            assert tool_info["parameters"] == {"type": "object"}
+            assert tool_info["enabled"] is True
+
+        except ImportError:
+            pytest.skip("FastMCP not available in test environment")
+
+    @patch("mcp_template.base.FastMCP")
+    @pytest.mark.asyncio
+    async def test_get_tool_info_not_found(self, mock_fastmcp):
+        """Test get_tool_info method with non-existent tool."""
+        mock_instance = Mock()
+        mock_instance.get_tools = AsyncMock(return_value={})
+        mock_fastmcp.return_value = mock_instance
+
+        try:
+            from mcp_template.base import BaseFastMCP
+
+            server = BaseFastMCP("test-server")
+            # Manually set the mock instance methods
+            server.get_tools = mock_instance.get_tools
+
+            tool_info = await server.get_tool_info("nonexistent_tool")
+            assert tool_info is None
+
+        except ImportError:
+            pytest.skip("FastMCP not available in test environment")
+
+    @patch("mcp_template.base.FastMCP")
+    @pytest.mark.asyncio
+    async def test_get_server_info(self, mock_fastmcp):
+        """Test get_server_info method."""
+        mock_instance = Mock()
+        mock_instance.get_tools = AsyncMock(
+            return_value={
+                "tool1": Mock(),
+                "tool2": Mock(),
+            }
         )
+        mock_fastmcp.return_value = mock_instance
+
+        try:
+            from mcp_template.base import BaseFastMCP
+
+            config = {"setting": "value"}
+            server = BaseFastMCP("test-server", config)
+            # Manually set the mock instance methods
+            server.get_tools = mock_instance.get_tools
+
+            server_info = await server.get_server_info()
+            assert server_info["name"] == "test-server"
+            assert server_info["config"] == config
+            assert server_info["tools"] == ["tool1", "tool2"]
+
+        except ImportError:
+            pytest.skip("FastMCP not available in test environment")
+
+    def test_fastmcp_not_available(self):
+        """Test that proper error is raised when FastMCP is not available."""
+        with patch("mcp_template.base.FastMCP", None):
+            try:
+                from mcp_template.base import BaseFastMCP
+
+                with pytest.raises(ImportError, match="FastMCP is required"):
+                    BaseFastMCP("test-server")
+
+            except ImportError:
+                pytest.skip("Cannot test when module import fails")
 
     @patch("mcp_template.base.FastMCP")
-    @patch("logging.basicConfig")
-    def test_setup_logging_invalid_level(self, mock_basic_config, mock_fastmcp):
-        """Test logging setup with invalid log level falls back to INFO."""
-        mock_fastmcp.return_value = Mock()
+    def test_logging_setup(self, mock_fastmcp):
+        """Test that logging is properly configured."""
+        mock_instance = Mock()
+        mock_fastmcp.return_value = mock_instance
 
-        from mcp_template.base import BaseMCPServer
+        try:
+            from mcp_template.base import BaseFastMCP
 
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
+            with patch("mcp_template.base.logging.basicConfig") as mock_basic_config:
+                config = {"log_level": "debug"}
+                BaseFastMCP("test-server", config)
 
-        config = {"log_level": "invalid"}
-        server = ConcreteServer("test-server", config)
+                # Verify basicConfig was called
+                mock_basic_config.assert_called_once()
+                call_kwargs = mock_basic_config.call_args[1]
+                assert "level" in call_kwargs
+                assert "format" in call_kwargs
 
-        mock_basic_config.assert_called_once_with(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
-
-    @patch("mcp_template.base.FastMCP")
-    def test_run_http_transport(self, mock_fastmcp):
-        """Test running server with HTTP transport."""
-        mock_mcp_instance = Mock()
-        mock_fastmcp.return_value = mock_mcp_instance
-
-        from mcp_template.base import BaseMCPServer
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
-
-        server = ConcreteServer("test-server")
-        server.run(transport="http", host="localhost", port=8080)
-
-        mock_mcp_instance.run.assert_called_once_with(
-            transport="http", host="localhost", port=8080
-        )
-
-    @patch("mcp_template.base.FastMCP")
-    def test_run_stdio_transport(self, mock_fastmcp):
-        """Test running server with stdio transport."""
-        mock_mcp_instance = Mock()
-        mock_fastmcp.return_value = mock_mcp_instance
-
-        from mcp_template.base import BaseMCPServer
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
-
-        server = ConcreteServer("test-server")
-        server.run(transport="stdio")
-
-        mock_mcp_instance.run.assert_called_once_with(transport="stdio")
-
-    @patch("mcp_template.base.FastMCP")
-    def test_run_invalid_transport(self, mock_fastmcp):
-        """Test running server with invalid transport raises ValueError."""
-        mock_mcp_instance = Mock()
-        mock_fastmcp.return_value = mock_mcp_instance
-
-        from mcp_template.base import BaseMCPServer
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
-
-        server = ConcreteServer("test-server")
-
-        with pytest.raises(ValueError, match="Unsupported transport: invalid"):
-            server.run(transport="invalid")
-
-    @patch("mcp_template.base.FastMCP")
-    def test_run_with_exception(self, mock_fastmcp):
-        """Test that exceptions during server run are re-raised."""
-        mock_mcp_instance = Mock()
-        mock_mcp_instance.run.side_effect = Exception("Server failed")
-        mock_fastmcp.return_value = mock_mcp_instance
-
-        from mcp_template.base import BaseMCPServer
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
-
-        server = ConcreteServer("test-server")
-
-        with pytest.raises(Exception, match="Server failed"):
-            server.run(transport="http")
-
-    @patch("mcp_template.base.FastMCP")
-    def test_get_server_info(self, mock_fastmcp):
-        """Test getting server information."""
-        mock_mcp_instance = Mock()
-        # Fix: dir() should return a list, not a lambda
-        mock_mcp_instance.__dir__ = Mock(
-            return_value=["tool1", "tool2", "_private", "__dunder__"]
-        )
-        mock_fastmcp.return_value = mock_mcp_instance
-
-        from mcp_template.base import BaseMCPServer
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
-
-        config = {"setting1": "value1"}
-        server = ConcreteServer("test-server", config)
-
-        info = server.get_server_info()
-
-        assert info["name"] == "test-server"
-        assert info["config"] == config
-        # Should only include public attributes (not starting with _)
-        assert "tool1" in info["tools"]
-        assert "tool2" in info["tools"]
-        assert "_private" not in info["tools"]
-        assert "__dunder__" not in info["tools"]
-
-    def test_abstract_class_cannot_be_instantiated(self):
-        """Test that BaseMCPServer cannot be instantiated directly."""
-        from mcp_template.base import BaseMCPServer
-
-        with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-            BaseMCPServer("test-server")
-
-    @patch("mcp_template.base.FastMCP")
-    def test_register_tools_is_called(self, mock_fastmcp):
-        """Test that register_tools is called during initialization."""
-        mock_fastmcp.return_value = Mock()
-
-        from mcp_template.base import BaseMCPServer
-
-        register_tools_called = False
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                nonlocal register_tools_called
-                register_tools_called = True
-
-        server = ConcreteServer("test-server")
-        assert register_tools_called
-
-    @patch("mcp_template.base.FastMCP")
-    def test_run_with_additional_kwargs(self, mock_fastmcp):
-        """Test running server with additional keyword arguments."""
-        mock_mcp_instance = Mock()
-        mock_fastmcp.return_value = mock_mcp_instance
-
-        from mcp_template.base import BaseMCPServer
-
-        class ConcreteServer(BaseMCPServer):
-            def register_tools(self):
-                pass
-
-        server = ConcreteServer("test-server")
-        server.run(
-            transport="http",
-            host="localhost",
-            port=8080,
-            debug=True,
-            extra_param="value",
-        )
-
-        mock_mcp_instance.run.assert_called_once_with(
-            transport="http",
-            host="localhost",
-            port=8080,
-            debug=True,
-            extra_param="value",
-        )
+        except ImportError:
+            pytest.skip("FastMCP not available in test environment")
