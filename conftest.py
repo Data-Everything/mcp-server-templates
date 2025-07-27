@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any, Dict, Generator, Optional
 from unittest.mock import MagicMock, patch
 
-import docker
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -26,17 +25,6 @@ from mcp_template import (
     MockDeploymentService,
     TemplateDiscovery,
 )
-
-
-@pytest.fixture(scope="session")
-def docker_client():
-    """Docker client fixture for integration tests."""
-    try:
-        client = docker.from_env()
-        client.ping()  # Test connection
-        return client
-    except Exception:
-        pytest.skip("Docker not available")
 
 
 @pytest.fixture(scope="session")
