@@ -2,7 +2,7 @@ name: Template Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, refactor ]
   pull_request:
     branches: [ main ]
 

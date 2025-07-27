@@ -2,7 +2,7 @@ name: MCP Server Templates CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, refactor ]
   pull_request:
     branches: [ main ]
 
