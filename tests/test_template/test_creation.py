@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 """
-Comprehensive tests for mcp_template.create_template module.
+Comprehensive tests for mcp_template.template.creation.TemplateCreator.create_template module.
 """
 
 import json
-import sys
-import tempfile
+import shutil
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
-# Add src to Python path for testing
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from mcp_template.template.creation import TEMPLATES_DIR, TESTS_DIR, TemplateCreator
 
 
 class TestTemplateCreator(unittest.TestCase):
@@ -21,13 +19,11 @@ class TestTemplateCreator(unittest.TestCase):
 
     def setup_method(self, method):
         """Set up test fixtures before each test method."""
-        from mcp_template.template.creation import TemplateCreator
 
         self.creator = TemplateCreator()
 
     def test_init_default_paths(self):
         """Test TemplateCreator initialization with default paths."""
-        from mcp_template.template.creation import TemplateCreator
 
         creator = TemplateCreator()
 
@@ -39,7 +35,6 @@ class TestTemplateCreator(unittest.TestCase):
 
     def test_init_custom_paths(self):
         """Test TemplateCreator initialization with custom paths."""
-        from mcp_template.template.creation import TemplateCreator
 
         custom_templates = Path("/custom/templates")
         custom_tests = Path("/custom/tests")
@@ -84,12 +79,11 @@ class TestTemplateCreator(unittest.TestCase):
             assert self.creator.template_dir.name == "test-template"
             mock_create.assert_called_once()
 
-    @patch("mcp_template.create_template.console")
+    @patch("mcp_template.template.creation.console")
     def test_prompt_template_id_valid(self, mock_console):
         """Test prompting for template ID with valid input."""
-        from mcp_template.template.creation import TemplateCreator
 
-        with patch("mcp_template.create_template.Prompt") as mock_prompt:
+        with patch("mcp_template.template.creation.Prompt") as mock_prompt:
             mock_prompt.ask.return_value = "valid-template-id"
 
             creator = TemplateCreator()
@@ -97,12 +91,11 @@ class TestTemplateCreator(unittest.TestCase):
 
             assert result == "valid-template-id"
 
-    @patch("mcp_template.create_template.console")
+    @patch("mcp_template.template.creation.console")
     def test_prompt_template_id_invalid_then_valid(self, mock_console):
         """Test prompting for template ID with invalid input first, then valid."""
-        from mcp_template.template.creation import TemplateCreator
 
-        with patch("mcp_template.create_template.Prompt") as mock_prompt:
+        with patch("mcp_template.template.creation.Prompt") as mock_prompt:
             # First return invalid, then valid
             mock_prompt.ask.side_effect = ["Invalid Template!", "valid-template-id"]
 
@@ -152,7 +145,7 @@ class TestTemplateCreator(unittest.TestCase):
                 else:
                     assert result is False
 
-    @patch("mcp_template.create_template.Prompt.ask")
+    @patch("mcp_template.template.creation.Prompt.ask")
     def test_gather_template_info(self, mock_ask):
         """Test gathering template information from user input."""
         # Set up template_data with id first
@@ -202,8 +195,8 @@ class TestTemplateCreator(unittest.TestCase):
 
         assert self.creator.template_data == expected_data
 
-    @patch("mcp_template.create_template.console")
-    @patch("mcp_template.create_template.Confirm")
+    @patch("mcp_template.template.creation.console")
+    @patch("mcp_template.template.creation.Confirm")
     def test_confirm_creation_yes(self, mock_confirm, mock_console):
         """Test confirmation dialog when user confirms creation."""
         mock_confirm.ask.return_value = True
@@ -223,8 +216,8 @@ class TestTemplateCreator(unittest.TestCase):
         result = self.creator._confirm_creation()
         assert result is True
 
-    @patch("mcp_template.create_template.console")
-    @patch("mcp_template.create_template.Confirm")
+    @patch("mcp_template.template.creation.console")
+    @patch("mcp_template.template.creation.Confirm")
     def test_confirm_creation_no(self, mock_confirm, mock_console):
         """Test confirmation dialog when user declines creation."""
         mock_confirm.ask.return_value = False
@@ -295,7 +288,7 @@ class TestTemplateCreator(unittest.TestCase):
         invalid_json = "{ invalid json }"
 
         with patch("builtins.open", mock_open(read_data=invalid_json)):
-            with patch("mcp_template.create_template.console") as mock_console:
+            with patch("mcp_template.template.creation.console") as mock_console:
                 result = self.creator._create_from_config_file("config.json")
 
                 assert result is False
@@ -304,7 +297,7 @@ class TestTemplateCreator(unittest.TestCase):
     def test_create_from_config_file_missing_file(self):
         """Test creating template from missing config file."""
         with patch("builtins.open", side_effect=FileNotFoundError):
-            with patch("mcp_template.create_template.console") as mock_console:
+            with patch("mcp_template.template.creation.console") as mock_console:
                 result = self.creator._create_from_config_file("missing.json")
 
                 assert result is False
@@ -327,8 +320,6 @@ class TestTemplateCreator(unittest.TestCase):
         finally:
             # Clean up
             if self.creator.template_dir.exists():
-                import shutil
-
                 shutil.rmtree(self.creator.template_dir)
 
     def test_create_requirements_txt(self):
@@ -347,8 +338,6 @@ class TestTemplateCreator(unittest.TestCase):
         finally:
             # Clean up
             if self.creator.template_dir.exists():
-                import shutil
-
                 shutil.rmtree(self.creator.template_dir)
 
     def test_create_template_json(self):
@@ -382,8 +371,6 @@ class TestTemplateCreator(unittest.TestCase):
         finally:
             # Clean up
             if self.creator.template_dir.exists():
-                import shutil
-
                 shutil.rmtree(self.creator.template_dir)
 
 
@@ -392,15 +379,7 @@ class TestTemplateCreatorUtilityFunctions:
 
     def test_constants_are_defined(self):
         """Test that module constants are properly defined."""
-        from mcp_template.template.creation import (
-            PROJECT_ROOT,
-            SCRIPT_DIR,
-            TEMPLATES_DIR,
-            TESTS_DIR,
-        )
 
-        assert isinstance(SCRIPT_DIR, Path)
-        assert isinstance(PROJECT_ROOT, Path)
         assert isinstance(TEMPLATES_DIR, Path)
         assert isinstance(TESTS_DIR, Path)
 

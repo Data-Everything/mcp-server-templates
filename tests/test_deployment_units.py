@@ -6,22 +6,16 @@ Tests individual classes and methods in isolation.
 """
 
 import json
-import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
-# Add mcp_template to path for testing
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from mcp_template import (
-    DeploymentManager,
-    DockerDeploymentService,
-    MCPDeployer,
-    TemplateDiscovery,
-)
+from mcp_template import MCPDeployer
+from mcp_template.backends import DockerDeploymentService, MockDeploymentService
+from mcp_template.manager import DeploymentManager
+from mcp_template.template.discovery import TemplateDiscovery
 
 
 @pytest.mark.unit
@@ -201,7 +195,7 @@ class TestDeploymentManager:
         assert manager.backend_type == "docker"
         assert isinstance(manager.deployment_backend, DockerDeploymentService)
 
-    @patch("mcp_template.KubernetesDeploymentService")
+    @patch("mcp_template.backends.kubernetes.KubernetesDeploymentService")
     def test_init_kubernetes_backend(self, mock_k8s):
         """Test initialization with Kubernetes backend."""
         manager = DeploymentManager(backend_type="kubernetes")
@@ -210,7 +204,6 @@ class TestDeploymentManager:
     def test_init_mock_backend(self):
         """Test initialization with mock backend."""
         manager = DeploymentManager(backend_type="mock")
-        from mcp_template import MockDeploymentService
 
         assert isinstance(manager.deployment_backend, MockDeploymentService)
 
@@ -227,7 +220,7 @@ class TestDockerDeploymentService:
         # Should not raise exception
         DockerDeploymentService()
 
-    @patch("mcp_template.DockerDeploymentService._ensure_docker_available")
+    @patch("mcp_template.backends.DockerDeploymentService._ensure_docker_available")
     @patch("subprocess.run")
     def test_ensure_docker_available_failure(self, mock_run, mock_ensure):
         """Test Docker availability check failure."""
@@ -236,7 +229,7 @@ class TestDockerDeploymentService:
         with pytest.raises(RuntimeError, match="Docker daemon is not available"):
             DockerDeploymentService()
 
-    @patch("mcp_template.DockerDeploymentService._ensure_docker_available")
+    @patch("mcp_template.backends.DockerDeploymentService._ensure_docker_available")
     @patch("subprocess.run")
     def test_run_command_success(self, mock_run, mock_ensure):
         """Test successful command execution."""
@@ -249,7 +242,7 @@ class TestDockerDeploymentService:
         assert result.stdout == "success"
         mock_run.assert_called_once()
 
-    @patch("mcp_template.DockerDeploymentService._ensure_docker_available")
+    @patch("mcp_template.backends.DockerDeploymentService._ensure_docker_available")
     @patch("subprocess.run")
     def test_list_deployments_empty(self, mock_run, mock_ensure):
         """Test listing deployments with no results."""
@@ -260,7 +253,7 @@ class TestDockerDeploymentService:
 
         assert deployments == []
 
-    @patch("mcp_template.DockerDeploymentService._ensure_docker_available")
+    @patch("mcp_template.backends.DockerDeploymentService._ensure_docker_available")
     @patch("subprocess.run")
     def test_list_deployments_with_containers(self, mock_run, mock_ensure):
         """Test listing deployments with containers."""

@@ -11,12 +11,12 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List
 
-from mcp_template.backends import DeploymentBackend
+from mcp_template.backends import BaseDeploymentBackend
 
 logger = logging.getLogger(__name__)
 
 
-class DockerDeploymentService(DeploymentBackend):
+class DockerDeploymentService(BaseDeploymentBackend):
     """Docker deployment service using CLI commands.
 
     This service manages container deployments using Docker CLI commands.

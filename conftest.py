@@ -16,12 +16,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-
-from mcp_template.backends.docker import DockerDeploymentService
-from mcp_template.backends.kubernetes import KubernetesDeploymentService
-from mcp_template.backends.mock import MockDeploymentService
+from mcp_template.backends import (
+    DockerDeploymentService,
+    KubernetesDeploymentService,
+    MockDeploymentService,
+)
 from mcp_template.template.discovery import TemplateDiscovery
 
 
@@ -137,7 +137,7 @@ def mock_deployment_service():
 
 
 @pytest.fixture
-def docker_client():
+def mock_docker_client():
     """Mock Docker client for unit tests."""
     with patch("docker.from_env") as mock_docker:
         mock_client = MagicMock()
@@ -173,14 +173,14 @@ def sample_deployment_config():
 
 
 @pytest.fixture(autouse=True)
-def cleanup_test_containers(docker_client):
+def cleanup_test_containers(mock_docker_client):
     """Automatically cleanup test containers after each test."""
     yield
 
-    if docker_client:
+    if mock_docker_client:
         try:
             # Clean up any test containers
-            containers = docker_client.containers.list(
+            containers = mock_docker_client.containers.list(
                 all=True, filters={"label": "test=true"}
             )
             for container in containers:

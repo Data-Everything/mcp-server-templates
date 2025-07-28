@@ -5,13 +5,10 @@ Tests the command-line interface functionality including argument parsing,
 command dispatch, and error handling.
 """
 
-import json
 import sys
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-from click.testing import CliRunner
 
 from mcp_template import MCPDeployer, main
 
@@ -161,6 +158,7 @@ class TestMCPDeployer:
     @patch("mcp_template.manager.DeploymentManager")
     def test_init(self, mock_manager_class, mock_discovery_class):
         """Test MCPDeployer initialization."""
+
         mock_discovery = Mock()
         mock_discovery.discover_templates.return_value = {"demo": {"name": "Demo"}}
         mock_discovery_class.return_value = mock_discovery
@@ -191,7 +189,7 @@ class TestMCPDeployer:
 
     @patch("mcp_template.template.discovery.TemplateDiscovery")
     @patch("mcp_template.manager.DeploymentManager")
-    @patch("mcp_template.Progress")
+    @patch("mcp_template.deployer.Progress")
     def test_deploy_template(
         self, mock_progress, mock_manager_class, mock_discovery_class
     ):

@@ -143,10 +143,13 @@ class TestDemoServerIntegration:
 
     def test_import_dependencies(self):
         """Test that all required dependencies can be imported."""
+
         try:
             # Try to import dependencies
             base_path = (
-                Path(__file__).parent.parent.parent.parent / "mcp_template" / "base.py"
+                Path(__file__).parent.parent.parent.parent
+                / "mcp_template/backends"
+                / "base.py"
             )
             base_spec = importlib.util.spec_from_file_location("base", base_path)
             base_module = importlib.util.module_from_spec(base_spec)

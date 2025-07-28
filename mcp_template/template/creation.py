@@ -17,13 +17,11 @@ from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from mcp_template.utils import TEMPLATES_DIR, TESTS_DIR
+
 console = Console()
 
 # Constants
-SCRIPT_DIR = Path(__file__).parent
-PROJECT_ROOT = SCRIPT_DIR.parent
-TEMPLATES_DIR = PROJECT_ROOT / "templates"
-TESTS_DIR = PROJECT_ROOT / "tests"
 
 
 class TemplateCreator:
@@ -34,8 +32,8 @@ class TemplateCreator:
     ):
         self.template_data = {}
         self.template_dir = None
-        self.templates_dir = templates_dir or Path(__file__).parent.parent / "templates"
-        self.tests_dir = tests_dir or Path(__file__).parent.parent / "tests"
+        self.templates_dir = templates_dir or TEMPLATES_DIR
+        self.tests_dir = tests_dir or TESTS_DIR
 
     def create_template_interactive(
         self, template_id: str = None, config_file: str = None

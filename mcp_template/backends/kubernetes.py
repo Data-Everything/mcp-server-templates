@@ -4,10 +4,10 @@ Kubernetes deployment backend for managing deployments on Kubernetes clusters.
 
 from typing import Any, Dict, List
 
-from mcp_template.backends import DeploymentBackend
+from mcp_template.backends import BaseDeploymentBackend
 
 
-class KubernetesDeploymentService(DeploymentBackend):
+class KubernetesDeploymentService(BaseDeploymentBackend):
     """Kubernetes deployment service (placeholder for future implementation).
 
     This service will manage Kubernetes deployments when implemented.

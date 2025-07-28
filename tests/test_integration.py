@@ -8,15 +8,19 @@ template discovery, and end-to-end deployment scenarios.
 import json
 import subprocess
 import time
-from pathlib import Path
-from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import docker
 import pytest
 
-from conftest import assert_deployment_success, create_test_template
-from mcp_template import DeploymentManager, TemplateDiscovery
+from conftest import assert_deployment_success
+from mcp_template.backends import (
+    DockerDeploymentService,
+    KubernetesDeploymentService,
+    MockDeploymentService,
+)
+from mcp_template.manager import DeploymentManager
+from mcp_template.template.discovery import TemplateDiscovery
 
 
 class TestTemplateDiscoveryIntegration:
@@ -76,9 +80,8 @@ class TestDockerIntegrationReal:
         except Exception:
             pass  # Ignore cleanup errors
 
-    def test_docker_service_real_deployment(self, docker_client):
+    def test_docker_service_real_deployment(self, mock_docker_client):
         """Test actual Docker deployment with mock image."""
-        from mcp_template import DockerDeploymentService
 
         service = DockerDeploymentService()
 
@@ -104,7 +107,7 @@ class TestDockerIntegrationReal:
         assert "container_id" in result
 
         # Verify container exists
-        container = docker_client.containers.get(result["container_id"])
+        container = mock_docker_client.containers.get(result["container_id"])
         assert container is not None
 
         # Test listing deployments
@@ -123,9 +126,8 @@ class TestDockerIntegrationReal:
         # Remove from cleanup list since we deleted it
         self.cleanup_containers.remove(result["deployment_name"])
 
-    def test_docker_service_with_ports(self, docker_client):
+    def test_docker_service_with_ports(self, mock_docker_client):
         """Test Docker deployment with port mapping."""
-        from mcp_template import DockerDeploymentService
 
         service = DockerDeploymentService()
 
@@ -146,7 +148,7 @@ class TestDockerIntegrationReal:
         self.cleanup_containers.append(result["deployment_name"])
 
         # Verify port mapping - handle cases where ports might not be exposed
-        container = docker_client.containers.get(result["container_id"])
+        container = mock_docker_client.containers.get(result["container_id"])
         # For nginx containers, just verify the container exists and is running
         assert container.status in ["running", "created"]
 
@@ -194,7 +196,7 @@ class TestEndToEndDeployment:
         assert cleanup_success
 
     @pytest.mark.docker
-    def test_deploy_demo_template_docker_no_pull(self, docker_client):
+    def test_deploy_demo_template_docker_no_pull(self, mock_docker_client):
         """Test deploying demo template without pulling image."""
         manager = DeploymentManager()
 
@@ -277,7 +279,6 @@ class TestConfigurationIntegration:
 
     def test_environment_variable_mapping(self):
         """Test environment variable mapping from config."""
-        from mcp_template import DockerDeploymentService
 
         service = DockerDeploymentService()
 
@@ -453,9 +454,8 @@ class TestErrorHandlingIntegration:
     @pytest.mark.docker
     def test_docker_service_unavailable(self):
         """Test handling when Docker service is unavailable."""
-        from mcp_template import DockerDeploymentService
 
-        with patch("mcp_template.subprocess.run") as mock_run:
+        with patch("mcp_template.backends.docker.subprocess.run") as mock_run:
             # Mock docker version command to fail
             mock_run.side_effect = subprocess.CalledProcessError(
                 1, ["docker", "version"]
@@ -468,7 +468,6 @@ class TestErrorHandlingIntegration:
 
     def test_deployment_cleanup_on_failure(self):
         """Test that failed deployments are properly cleaned up."""
-        from mcp_template import MockDeploymentService
 
         service = MockDeploymentService()
 

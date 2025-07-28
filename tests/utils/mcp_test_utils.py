@@ -12,6 +12,9 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
+from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.utils import TEMPLATES_DIR
+
 
 class MCPTestClient:
     """Test client for MCP servers."""
@@ -197,7 +200,6 @@ def build_and_run_template(template_name: str, config: Dict[str, Any]):
 def get_template_list() -> List[str]:
     """Get list of available templates using TemplateDiscovery."""
     # Import here to avoid circular imports
-    from mcp_template.template.discovery import TemplateDiscovery
 
     discovery = TemplateDiscovery()
     templates = discovery.discover_templates()
@@ -230,9 +232,7 @@ def validate_template_structure(template_name: str) -> bool:
 def run_template_tests(template_name: str) -> subprocess.CompletedProcess:
     """Run pytest tests for a specific template."""
     # Tests are now located in templates/{template_name}/tests/
-    test_dir = (
-        Path(__file__).parent.parent.parent / "templates" / template_name / "tests"
-    )
+    test_dir = TEMPLATES_DIR / template_name / "tests"
     if not test_dir.exists():
         raise ValueError(f"No tests found for template: {template_name}")
 

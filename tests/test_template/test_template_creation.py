@@ -3,7 +3,6 @@
 Test script to verify template creation functionality.
 """
 
-import os
 import shutil
 import subprocess
 import sys

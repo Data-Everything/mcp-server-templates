@@ -7,12 +7,12 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List
 
-from mcp_template.backends import DeploymentBackend
+from mcp_template.backends import BaseDeploymentBackend
 
 logger = logging.getLogger(__name__)
 
 
-class MockDeploymentService(DeploymentBackend):
+class MockDeploymentService(BaseDeploymentBackend):
     """Mock deployment service for testing.
 
     This service simulates deployments without actually creating containers.
