@@ -7,24 +7,22 @@ testing of the MCP template system with proper isolation and cleanup.
 
 import asyncio
 import json
-import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional
+from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mcp_template import (
-    DeploymentManager,
-    DockerDeploymentService,
-    KubernetesDeploymentService,
-    MockDeploymentService,
-    TemplateDiscovery,
-)
+
+from mcp_template.backends.docker import DockerDeploymentService
+from mcp_template.backends.kubernetes import KubernetesDeploymentService
+from mcp_template.backends.mock import MockDeploymentService
+from mcp_template.template.discovery import TemplateDiscovery
 
 
 @pytest.fixture(scope="session")

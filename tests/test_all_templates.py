@@ -1,5 +1,6 @@
 # Test all templates in the repository
 
+import json
 import sys
 from pathlib import Path
 
@@ -26,12 +27,8 @@ class TestAllTemplates:
     def test_all_templates_have_required_structure(self, template_list):
         """Test that all templates have required files and structure."""
         for template_name in template_list:
-            try:
-                validate_template_structure(template_name)
-            except Exception as e:
-                pytest.fail(
-                    f"Template {template_name} structure validation failed: {e}"
-                )
+            validated = validate_template_structure(template_name)
+            assert validated, f"Template {template_name} structure validation failed"
 
     @pytest.mark.slow
     def test_all_templates_build_successfully(self, template_list):
@@ -74,9 +71,8 @@ class TestProductionTemplates:
 
     def _get_production_templates(self):
         """Discover production templates dynamically."""
-        import json
 
-        from mcp_template import TemplateDiscovery
+        from mcp_template.template.discovery import TemplateDiscovery
 
         # Use TemplateDiscovery to find all templates
         discovery = TemplateDiscovery()
@@ -109,6 +105,7 @@ class TestProductionTemplates:
 
     def test_production_templates_discovered(self):
         """Test that we can discover production templates."""
+
         production_templates = self._get_production_templates()
         assert (
             len(production_templates) > 0
@@ -134,7 +131,6 @@ class TestTemplateMetadata:
 
     def test_all_templates_have_valid_json(self):
         """Test that all template.json files are valid JSON."""
-        import json
 
         for template_name in get_template_list():
             template_dir = Path(__file__).parent.parent / "templates" / template_name
@@ -149,7 +145,6 @@ class TestTemplateMetadata:
 
     def test_all_templates_have_docker_images(self):
         """Test that all templates specify Docker images."""
-        import json
 
         for template_name in get_template_list():
             template_dir = Path(__file__).parent.parent / "templates" / template_name

@@ -21,13 +21,13 @@ class TestTemplateCreator(unittest.TestCase):
 
     def setup_method(self, method):
         """Set up test fixtures before each test method."""
-        from mcp_template.create_template import TemplateCreator
+        from mcp_template.template.creation import TemplateCreator
 
         self.creator = TemplateCreator()
 
     def test_init_default_paths(self):
         """Test TemplateCreator initialization with default paths."""
-        from mcp_template.create_template import TemplateCreator
+        from mcp_template.template.creation import TemplateCreator
 
         creator = TemplateCreator()
 
@@ -39,7 +39,7 @@ class TestTemplateCreator(unittest.TestCase):
 
     def test_init_custom_paths(self):
         """Test TemplateCreator initialization with custom paths."""
-        from mcp_template.create_template import TemplateCreator
+        from mcp_template.template.creation import TemplateCreator
 
         custom_templates = Path("/custom/templates")
         custom_tests = Path("/custom/tests")
@@ -87,7 +87,7 @@ class TestTemplateCreator(unittest.TestCase):
     @patch("mcp_template.create_template.console")
     def test_prompt_template_id_valid(self, mock_console):
         """Test prompting for template ID with valid input."""
-        from mcp_template.create_template import TemplateCreator
+        from mcp_template.template.creation import TemplateCreator
 
         with patch("mcp_template.create_template.Prompt") as mock_prompt:
             mock_prompt.ask.return_value = "valid-template-id"
@@ -100,7 +100,7 @@ class TestTemplateCreator(unittest.TestCase):
     @patch("mcp_template.create_template.console")
     def test_prompt_template_id_invalid_then_valid(self, mock_console):
         """Test prompting for template ID with invalid input first, then valid."""
-        from mcp_template.create_template import TemplateCreator
+        from mcp_template.template.creation import TemplateCreator
 
         with patch("mcp_template.create_template.Prompt") as mock_prompt:
             # First return invalid, then valid
@@ -392,7 +392,7 @@ class TestTemplateCreatorUtilityFunctions:
 
     def test_constants_are_defined(self):
         """Test that module constants are properly defined."""
-        from mcp_template.create_template import (
+        from mcp_template.template.creation import (
             PROJECT_ROOT,
             SCRIPT_DIR,
             TEMPLATES_DIR,

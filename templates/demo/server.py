@@ -12,18 +12,14 @@ try:
 except ImportError:
     from config import DemoServerConfig
 
-# Import BaseFastMCP from the correct location
 try:
-    from ...mcp_template.base import BaseFastMCP
+    from mcp_template.servers import BaseFastMCP
 except ImportError:
-    try:
-        from mcp_template.base import BaseFastMCP
-    except ImportError:
-        # Fallback for standalone usage
-        import sys
+    # Fallback for standalone usage
+    import sys
 
-        sys.path.append("../..")
-        from mcp_template.base import BaseFastMCP
+    sys.path.append("../..")
+    from mcp_template.servers import BaseFastMCP
 
 
 class DemoServer(BaseFastMCP):

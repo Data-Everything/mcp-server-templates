@@ -10,28 +10,19 @@ This module extends the existing CLI with new commands for:
 - HTTP-first transport with stdio fallback
 """
 
-import argparse
-import json
 import logging
 import subprocess
-import sys
-from pathlib import Path
 
 # Import existing components
 # Note: Import classes directly to avoid circular import
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Optional
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
-if TYPE_CHECKING:
-    from . import MCPDeployer, TemplateDiscovery
-else:
-    # Import at runtime to avoid circular imports
-    MCPDeployer = None
-    TemplateDiscovery = None
+from mcp_template.deployer import MCPDeployer
+from mcp_template.template.discovery import TemplateDiscovery
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -43,7 +34,6 @@ class EnhancedCLI:
     def __init__(self):
         """Initialize the enhanced CLI."""
         # Import at runtime to avoid circular imports
-        from . import MCPDeployer, TemplateDiscovery
 
         self.deployer = MCPDeployer()
         self.template_discovery = TemplateDiscovery()

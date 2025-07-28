@@ -3,14 +3,11 @@
 Test suite for the BaseFastMCP class.
 """
 
-import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-# Add src to Python path for testing
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from mcp_template.servers.fastmcp import BaseFastMCP
 
 
 class TestBaseFastMCP:
@@ -19,8 +16,6 @@ class TestBaseFastMCP:
     def test_initialization_with_defaults(self):
         """Test BaseFastMCP initialization with default configuration."""
         try:
-            from mcp_template.base import BaseFastMCP
-
             server = BaseFastMCP("test-server")
 
             assert server.name == "test-server"
@@ -32,7 +27,6 @@ class TestBaseFastMCP:
     def test_initialization_with_config(self):
         """Test BaseFastMCP initialization with custom configuration."""
         try:
-            from mcp_template.base import BaseFastMCP
 
             config = {"log_level": "debug", "custom_setting": "value"}
             server = BaseFastMCP("test-server", config)
@@ -43,7 +37,7 @@ class TestBaseFastMCP:
         except ImportError:
             pytest.skip("FastMCP not available in test environment")
 
-    @patch("mcp_template.base.FastMCP")
+    @patch("mcp_template.servers.fastmcp.FastMCP")
     @pytest.mark.asyncio
     async def test_get_tool_names(self, mock_fastmcp):
         """Test get_tool_names method."""
@@ -57,7 +51,6 @@ class TestBaseFastMCP:
         mock_fastmcp.return_value = mock_instance
 
         try:
-            from mcp_template.base import BaseFastMCP
 
             server = BaseFastMCP("test-server")
             # Manually set the mock instance methods
@@ -69,7 +62,7 @@ class TestBaseFastMCP:
         except ImportError:
             pytest.skip("FastMCP not available in test environment")
 
-    @patch("mcp_template.base.FastMCP")
+    @patch("mcp_template.servers.fastmcp.FastMCP")
     @pytest.mark.asyncio
     async def test_get_tool_info(self, mock_fastmcp):
         """Test get_tool_info method."""
@@ -84,7 +77,6 @@ class TestBaseFastMCP:
         mock_fastmcp.return_value = mock_instance
 
         try:
-            from mcp_template.base import BaseFastMCP
 
             server = BaseFastMCP("test-server")
             # Manually set the mock instance methods
@@ -99,7 +91,7 @@ class TestBaseFastMCP:
         except ImportError:
             pytest.skip("FastMCP not available in test environment")
 
-    @patch("mcp_template.base.FastMCP")
+    @patch("mcp_template.servers.fastmcp.FastMCP")
     @pytest.mark.asyncio
     async def test_get_tool_info_not_found(self, mock_fastmcp):
         """Test get_tool_info method with non-existent tool."""
@@ -108,7 +100,6 @@ class TestBaseFastMCP:
         mock_fastmcp.return_value = mock_instance
 
         try:
-            from mcp_template.base import BaseFastMCP
 
             server = BaseFastMCP("test-server")
             # Manually set the mock instance methods
@@ -120,7 +111,7 @@ class TestBaseFastMCP:
         except ImportError:
             pytest.skip("FastMCP not available in test environment")
 
-    @patch("mcp_template.base.FastMCP")
+    @patch("mcp_template.servers.fastmcp.FastMCP")
     @pytest.mark.asyncio
     async def test_get_server_info(self, mock_fastmcp):
         """Test get_server_info method."""
@@ -134,8 +125,6 @@ class TestBaseFastMCP:
         mock_fastmcp.return_value = mock_instance
 
         try:
-            from mcp_template.base import BaseFastMCP
-
             config = {"setting": "value"}
             server = BaseFastMCP("test-server", config)
             # Manually set the mock instance methods
@@ -151,26 +140,24 @@ class TestBaseFastMCP:
 
     def test_fastmcp_not_available(self):
         """Test that proper error is raised when FastMCP is not available."""
-        with patch("mcp_template.base.FastMCP", None):
+        with patch("mcp_template.servers.fastmcp.FastMCP", None):
             try:
-                from mcp_template.base import BaseFastMCP
-
                 with pytest.raises(ImportError, match="FastMCP is required"):
                     BaseFastMCP("test-server")
 
             except ImportError:
                 pytest.skip("Cannot test when module import fails")
 
-    @patch("mcp_template.base.FastMCP")
+    @patch("mcp_template.servers.fastmcp.FastMCP")
     def test_logging_setup(self, mock_fastmcp):
         """Test that logging is properly configured."""
         mock_instance = Mock()
         mock_fastmcp.return_value = mock_instance
 
         try:
-            from mcp_template.base import BaseFastMCP
-
-            with patch("mcp_template.base.logging.basicConfig") as mock_basic_config:
+            with patch(
+                "mcp_template.servers.base.logging.basicConfig"
+            ) as mock_basic_config:
                 config = {"log_level": "debug"}
                 BaseFastMCP("test-server", config)
 

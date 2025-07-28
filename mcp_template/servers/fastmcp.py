@@ -1,25 +1,18 @@
-#!/usr/bin/env python3
 """
-Base FastMCP class for consistent template implementation.
-
-This module provides the BaseFastMCP class that extends FastMCP with
-package-specific functionality for MCP server templates.
+FastMCP server implementation.
 """
 
-import logging
 from typing import Any, Dict, List, Optional
 
-try:
-    from fastmcp import FastMCP
-except ImportError:
-    FastMCP = None
+from fastmcp import FastMCP
 
-logger = logging.getLogger(__name__)
+from mcp_template.servers.base import BaseMCP
 
 
-class BaseFastMCP(FastMCP):
+class BaseFastMCP(FastMCP, BaseMCP):
     """
     Base class that extends FastMCP with package-specific functionality.
+    Also extends BaseMCP for consistent template implementation.
 
     Provides common functionality including:
     - Enhanced tool introspection
@@ -28,7 +21,7 @@ class BaseFastMCP(FastMCP):
     - Server information methods
     """
 
-    def __init__(self, name: str, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, name: str, config: Optional[Dict[str, Any]] = None, **kwargs):
         """
         Initialize the base FastMCP server.
 
@@ -36,6 +29,7 @@ class BaseFastMCP(FastMCP):
             name: Server name for identification
             config: Server configuration dictionary
         """
+
         if FastMCP is None:
             raise ImportError(
                 "FastMCP is required but not installed. "
@@ -43,21 +37,9 @@ class BaseFastMCP(FastMCP):
             )
 
         # Initialize FastMCP
-        super().__init__(name=name)
-
-        self.config = config or {}
-        logger.info("Initialized %s FastMCP server", name)
-
-        # Setup logging
-        self._setup_logging()
-
-    def _setup_logging(self) -> None:
-        """Setup logging configuration."""
-        log_level = self.config.get("log_level", "info").upper()
-        logging.basicConfig(
-            level=getattr(logging, log_level, logging.INFO),
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
+        BaseMCP.__init__(self, name=name, config=config)
+        super().__init__(name=name, **kwargs)
+        self.logger.info("Initialized %s FastMCP server", name)
 
     async def get_tool_names(self) -> List[str]:
         """
@@ -72,7 +54,7 @@ class BaseFastMCP(FastMCP):
             tools_dict = await self.get_tools()
             return list(tools_dict.keys())
         except Exception as e:
-            logger.warning("Failed to get tools from FastMCP: %s", e)
+            self.logger.warning("Failed to get tools from FastMCP: %s", e)
             return []
 
     async def get_tool_info(self, tool_name: str) -> Optional[Dict[str, Any]]:
@@ -96,19 +78,6 @@ class BaseFastMCP(FastMCP):
                     "enabled": tool.enabled,
                 }
         except Exception as e:
-            logger.warning("Failed to get tool info from FastMCP: %s", e)
+            self.logger.warning("Failed to get tool info from FastMCP: %s", e)
 
         return None
-
-    async def get_server_info(self) -> Dict[str, Any]:
-        """
-        Get server information including available tools.
-
-        Returns:
-            Dictionary containing server metadata
-        """
-        return {
-            "name": self.name,
-            "config": self.config,
-            "tools": await self.get_tool_names(),
-        }

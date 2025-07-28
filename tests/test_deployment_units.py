@@ -134,8 +134,8 @@ class TestTemplateDiscovery:
 class TestMCPDeployer:
     """Unit tests for MCPDeployer class."""
 
-    @patch("mcp_template.DeploymentManager")
-    @patch("mcp_template.TemplateDiscovery")
+    @patch("mcp_template.manager.DeploymentManager")
+    @patch("mcp_template.template.discovery.TemplateDiscovery")
     def test_init(self, mock_discovery, mock_manager):
         """Test MCPDeployer initialization."""
         mock_discovery.return_value.discover_templates.return_value = {"test": {}}
@@ -146,8 +146,8 @@ class TestMCPDeployer:
         mock_discovery.assert_called_once()
         mock_manager.assert_called_once_with(backend_type="docker")
 
-    @patch("mcp_template.DeploymentManager")
-    @patch("mcp_template.TemplateDiscovery")
+    @patch("mcp_template.manager.DeploymentManager")
+    @patch("mcp_template.template.discovery.TemplateDiscovery")
     def test_deploy_invalid_template(self, mock_discovery, mock_manager):
         """Test deployment with invalid template name."""
         mock_discovery.return_value.discover_templates.return_value = {}
@@ -158,8 +158,8 @@ class TestMCPDeployer:
         assert result is False
 
     @patch("mcp_template.console")
-    @patch("mcp_template.DeploymentManager")
-    @patch("mcp_template.TemplateDiscovery")
+    @patch("mcp_template.manager.DeploymentManager")
+    @patch("mcp_template.template.discovery.TemplateDiscovery")
     def test_deploy_success(self, mock_discovery, mock_manager, mock_console):
         """Test successful deployment."""
         # Setup mocks

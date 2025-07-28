@@ -4,14 +4,11 @@ MCP Test Utilities for template testing.
 Provides common testing utilities for MCP server templates.
 """
 
-import asyncio
 import json
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from unittest.mock import Mock
 
 import pytest
 
@@ -200,7 +197,7 @@ def build_and_run_template(template_name: str, config: Dict[str, Any]):
 def get_template_list() -> List[str]:
     """Get list of available templates using TemplateDiscovery."""
     # Import here to avoid circular imports
-    from mcp_template import TemplateDiscovery
+    from mcp_template.template.discovery import TemplateDiscovery
 
     discovery = TemplateDiscovery()
     templates = discovery.discover_templates()

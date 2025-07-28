@@ -157,8 +157,8 @@ class TestMainCLI:
 class TestMCPDeployer:
     """Test MCPDeployer class functionality."""
 
-    @patch("mcp_template.TemplateDiscovery")
-    @patch("mcp_template.DeploymentManager")
+    @patch("mcp_template.template.discovery.TemplateDiscovery")
+    @patch("mcp_template.manager.DeploymentManager")
     def test_init(self, mock_manager_class, mock_discovery_class):
         """Test MCPDeployer initialization."""
         mock_discovery = Mock()
@@ -171,8 +171,8 @@ class TestMCPDeployer:
         deployer = MCPDeployer()
         assert deployer.templates == {"demo": {"name": "Demo"}}
 
-    @patch("mcp_template.TemplateDiscovery")
-    @patch("mcp_template.DeploymentManager")
+    @patch("mcp_template.template.discovery.TemplateDiscovery")
+    @patch("mcp_template.manager.DeploymentManager")
     def test_list_templates(self, mock_manager_class, mock_discovery_class):
         """Test template listing."""
         mock_discovery = Mock()
@@ -189,8 +189,8 @@ class TestMCPDeployer:
         with patch("mcp_template.console"):
             deployer.list_templates()
 
-    @patch("mcp_template.TemplateDiscovery")
-    @patch("mcp_template.DeploymentManager")
+    @patch("mcp_template.template.discovery.TemplateDiscovery")
+    @patch("mcp_template.manager.DeploymentManager")
     @patch("mcp_template.Progress")
     def test_deploy_template(
         self, mock_progress, mock_manager_class, mock_discovery_class
@@ -220,8 +220,8 @@ class TestMCPDeployer:
 
         mock_manager.deploy_template.assert_called_once()
 
-    @patch("mcp_template.TemplateDiscovery")
-    @patch("mcp_template.DeploymentManager")
+    @patch("mcp_template.template.discovery.TemplateDiscovery")
+    @patch("mcp_template.manager.DeploymentManager")
     def test_deploy_nonexistent_template(
         self, mock_manager_class, mock_discovery_class
     ):
