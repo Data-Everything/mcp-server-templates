@@ -139,7 +139,7 @@ def mock_deployment_service():
 
 
 @pytest.fixture
-def mock_docker_client():
+def docker_client():
     """Mock Docker client for unit tests."""
     with patch("docker.from_env") as mock_docker:
         mock_client = MagicMock()
