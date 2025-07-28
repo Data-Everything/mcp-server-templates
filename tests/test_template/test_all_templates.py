@@ -1,14 +1,13 @@
 # Test all templates in the repository
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
 # Add src to Python path for testing
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.utils import TEMPLATES_DIR
 from tests.utils.mcp_test_utils import (
     get_template_list,
     run_template_tests,
@@ -72,8 +71,6 @@ class TestProductionTemplates:
     def _get_production_templates(self):
         """Discover production templates dynamically."""
 
-        from mcp_template.template.discovery import TemplateDiscovery
-
         # Use TemplateDiscovery to find all templates
         discovery = TemplateDiscovery()
         templates = discovery.discover_templates()
@@ -97,7 +94,7 @@ class TestProductionTemplates:
         has_required_fields = all(field in template_data for field in required_fields)
 
         # Check if template has tests
-        template_dir = Path(__file__).parent.parent / "templates" / template_name
+        template_dir = TEMPLATES_DIR / template_name
         has_tests = (template_dir / "tests").exists()
 
         # For now, consider templates with tests as production-ready
