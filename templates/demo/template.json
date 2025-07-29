@@ -90,6 +90,10 @@
       ]
     }
   ],
+  "tool_discovery": "static",
+  "tool_endpoint": "/tools",
+  "has_image": true,
+  "origin": "internal",
   "examples": {
     "http_endpoint": "http://localhost:7071",
     "cli_usage": [

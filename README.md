@@ -378,4 +378,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
 
 - **Issues**: [GitHub Issues](https://github.com/Data-Everything/mcp-server-templates/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/Data-Everything/mcp-server-templates/discussions)
+- **Community Slack**: [Join mcp-platform workspace](https://join.slack.com/t/mcp-platform/shared_invite/zt-2p9h8k8xr-example)
 - **Documentation**: [docs/index.md](docs/index.md)
