@@ -351,7 +351,7 @@ python -m mcp_template logs deployment --follow
 2. **Community Support:**
    - GitHub Issues: Report bugs and feature requests
    - GitHub Discussions: Ask questions and share solutions
-   - Community Slack: [Join mcp-platform workspace](https://join.slack.com/t/mcp-platform/shared_invite/zt-2p9h8k8xr-example) for real-time community chat
+   - Community Slack: [Join mcp-platform workspace](https://join.slack.com/t/mcp-platform/shared_invite/zt-39z1p559j-8aWEML~IsSPwFFgr7anHRA) for real-time community chat
 
 3. **Professional Support:**
    - Enterprise support available

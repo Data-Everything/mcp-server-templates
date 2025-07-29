@@ -289,7 +289,7 @@ class TestDockerProbe:
         result = self.docker_probe.discover_tools_from_image("test-image")
 
         assert result is not None
-        assert result["discovery_method"] == "docker_probe"
+        assert result["discovery_method"] == "docker_http_probe"
         assert len(result["tools"]) == 1
         assert result["tools"][0]["name"] == "docker_tool"
 
@@ -297,8 +297,8 @@ class TestDockerProbe:
         """Test container name generation."""
         name = self.docker_probe._generate_container_name("test/image:latest")
 
-        assert name.startswith("mcp-tool-discovery-image-")
-        assert len(name.split("-")) >= 4  # Should have timestamp and random suffix
+        assert name.startswith("mcp-tool-discovery-test-image-latest-")
+        assert len(name.split("-")) >= 5  # Should have timestamp and random suffix
 
     @patch("socket.socket")
     def test_find_available_port(self, mock_socket):

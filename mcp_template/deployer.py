@@ -72,6 +72,7 @@ class MCPDeployer:
         env_vars: Optional[Dict[str, str]] = None,
         config_file: Optional[str] = None,
         config_values: Optional[Dict[str, str]] = None,
+        override_values: Optional[Dict[str, str]] = None,
         pull_image: bool = True,
     ):
         """Deploy a template using the unified deployment manager."""
@@ -135,6 +136,12 @@ class MCPDeployer:
                                 template_copy["volumes"][key] = template_copy[
                                     "volumes"
                                 ][key].replace("/config", config_dir)
+
+                # Apply template data overrides with double underscore notation
+                if override_values:
+                    template_copy = self._apply_template_overrides(
+                        template_copy, override_values
+                    )
 
                 # Deploy using unified manager
                 result = self.deployment_manager.deploy_template(
@@ -658,29 +665,62 @@ class MCPDeployer:
     ) -> Optional[str]:
         """Handle nested CLI configuration using double underscore notation."""
         # Convert security__read_only to find read_only_mode in properties
+        # Also supports template__property notation for template-level overrides
         parts = nested_key.split("__")
-        if len(parts) != 2:
+        if len(parts) < 2:
             return None
 
-        category, prop_name = parts
+        # Handle template-level overrides (template_name__property)
+        if len(parts) == 2:
+            category, prop_name = parts
 
-        # Try different property name patterns
-        possible_names = [
-            f"{category}_{prop_name}",  # security__read_only -> security_read_only
-            f"{prop_name}_mode",  # security__read_only -> read_only_mode
-            f"{category}_{prop_name}_mode",  # security__read_only -> security_read_only_mode
-            prop_name,  # security__read_only -> read_only
-        ]
-
-        for prop_name_candidate in possible_names:
-            if prop_name_candidate in properties:
-                prop_config = properties[prop_name_candidate]
+            # Check if this is a template-level override
+            # This allows any property to be overridden with template_name__property=value
+            if prop_name in properties:
+                prop_config = properties[prop_name]
                 env_mapping = prop_config.get("env_mapping")
                 if env_mapping:
                     return env_mapping
 
-        # If no direct match, try to construct environment variable name
-        return f"MCP_{category.upper()}_{prop_name.upper()}"
+            # Try different property name patterns for nested configurations
+            possible_names = [
+                f"{category}_{prop_name}",  # security__read_only -> security_read_only
+                f"{prop_name}_mode",  # security__read_only -> read_only_mode
+                f"{category}_{prop_name}_mode",  # security__read_only -> security_read_only_mode
+                prop_name,  # security__read_only -> read_only
+            ]
+
+            for prop_name_candidate in possible_names:
+                if prop_name_candidate in properties:
+                    prop_config = properties[prop_name_candidate]
+                    env_mapping = prop_config.get("env_mapping")
+                    if env_mapping:
+                        return env_mapping
+
+            # If no direct match, construct environment variable name
+            return f"MCP_{category.upper()}_{prop_name.upper()}"
+
+        # Handle deeper nesting (category__subcategory__property)
+        elif len(parts) == 3:
+            category, subcategory, prop_name = parts
+            # Try to find matching property with deeper nesting
+            possible_names = [
+                f"{category}_{subcategory}_{prop_name}",
+                f"{subcategory}_{prop_name}",
+                prop_name,
+            ]
+
+            for prop_name_candidate in possible_names:
+                if prop_name_candidate in properties:
+                    prop_config = properties[prop_name_candidate]
+                    env_mapping = prop_config.get("env_mapping")
+                    if env_mapping:
+                        return env_mapping
+
+            # Construct nested environment variable name
+            return f"MCP_{category.upper()}_{subcategory.upper()}_{prop_name.upper()}"
+
+        return None
 
     def _generate_mcp_config(
         self, template_name: str, container_name: str, template: Dict
@@ -818,6 +858,101 @@ class MCPDeployer:
             env_mapping = prop_config.get("env_mapping")
             if env_mapping and prop_config.get("default"):
                 example_envs.append(f"{env_mapping}={prop_config['default']}")
+
         if example_envs:
             env_str = " ".join([f"--env {env}" for env in example_envs])
             console.print(f"  python -m mcp_template deploy {template_name} {env_str}")
+
+    def _apply_template_overrides(
+        self, template_data: Dict[str, Any], override_values: Optional[Dict[str, str]]
+    ) -> Dict[str, Any]:
+        """Apply template data overrides using double underscore notation."""
+        import copy
+
+        if not override_values:
+            return copy.deepcopy(template_data)
+
+        template_copy = copy.deepcopy(template_data)
+
+        for key, value in override_values.items():
+            # Split on double underscores to create nested path
+            key_parts = key.split("__")
+
+            # Navigate/create the nested structure
+            current = template_copy
+            for i, part in enumerate(key_parts[:-1]):
+                # Check if this part is a numeric index for array access
+                if part.isdigit():
+                    index = int(part)
+                    if isinstance(current, list):
+                        # Extend list if needed
+                        while len(current) <= index:
+                            current.append({})
+                        if i == len(key_parts) - 2:  # This is the parent of final key
+                            if not isinstance(current[index], dict):
+                                current[index] = {}
+                        current = current[index]
+                    else:
+                        console.print(
+                            f"[yellow]⚠️ Warning: Cannot index non-list field with {part}[/yellow]"
+                        )
+                        break
+                else:
+                    # Regular dictionary key access
+                    if part not in current:
+                        current[part] = {}
+                    elif not isinstance(current[part], (dict, list)):
+                        # Can't override non-dict/list with nested structure
+                        console.print(
+                            f"[yellow]⚠️ Warning: Cannot override non-dict field {'.'.join(key_parts[:i+1])} with nested structure[/yellow]"
+                        )
+                        break
+                    current = current[part]
+            else:
+                # Set the final value, converting types appropriately
+                final_key = key_parts[-1]
+                converted_value = self._convert_override_value(value)
+
+                # Handle final array index
+                if final_key.isdigit() and isinstance(current, list):
+                    index = int(final_key)
+                    while len(current) <= index:
+                        current.append(None)
+                    current[index] = converted_value
+                else:
+                    current[final_key] = converted_value
+
+        return template_copy
+
+    def _convert_override_value(self, value: str) -> Any:
+        """Convert string override value to appropriate type."""
+        # Handle boolean values
+        if value.lower() in ("true", "false"):
+            return value.lower() == "true"
+
+        # Handle numeric values
+        try:
+            if "." in value:
+                return float(value)
+            return int(value)
+        except ValueError:
+            pass
+
+        # Handle JSON structures
+        if value.startswith(("{", "[")):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                pass
+
+        # Default to string
+        return value
+        # Handle JSON structures
+        if value.startswith(("{", "[")):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                pass
+
+        # Default to string
+        return value

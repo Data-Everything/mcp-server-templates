@@ -46,17 +46,22 @@ class TestMainCLI:
         main()
         mock_deployer.list_templates.assert_called_once()
 
+    @patch("mcp_template.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
-    def test_deploy_command(self, mock_deployer_class):
+    def test_deploy_command(self, mock_deployer_class, mock_enhanced_cli_class):
         """Test deploy command."""
         mock_deployer = Mock()
         mock_deployer.templates.keys.return_value = ["demo"]
         mock_deployer_class.return_value = mock_deployer
 
+        mock_enhanced_cli = Mock()
+        mock_enhanced_cli.deploy_with_transport.return_value = True
+        mock_enhanced_cli_class.return_value = mock_enhanced_cli
+
         sys.argv = ["mcp_template", "deploy", "demo"]
 
         main()
-        mock_deployer.deploy.assert_called_once()
+        mock_enhanced_cli.deploy_with_transport.assert_called_once()
 
     @patch("mcp_template.MCPDeployer")
     def test_stop_command(self, mock_deployer_class):
@@ -118,13 +123,17 @@ class TestMainCLI:
         main()
         mock_creator.create_template_interactive.assert_called_once()
 
+    @patch("mcp_template.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
-    def test_error_handling(self, mock_deployer_class):
+    def test_error_handling(self, mock_deployer_class, mock_enhanced_cli_class):
         """Test error handling in main CLI."""
         mock_deployer = Mock()
         mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer.deploy.side_effect = Exception("Test error")
         mock_deployer_class.return_value = mock_deployer
+
+        mock_enhanced_cli = Mock()
+        mock_enhanced_cli.deploy_with_transport.return_value = False  # Simulate failure
+        mock_enhanced_cli_class.return_value = mock_enhanced_cli
 
         sys.argv = ["mcp_template", "deploy", "demo"]
 
