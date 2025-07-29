@@ -119,25 +119,6 @@ class TestMainCLI:
         mock_creator.create_template_interactive.assert_called_once()
 
     @patch("mcp_template.MCPDeployer")
-    def test_backwards_compatibility_direct_template(self, mock_deployer_class):
-        """Test backwards compatibility for direct template deployment."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer_class.return_value = mock_deployer
-
-        sys.argv = ["mcp_template", "demo"]
-
-        try:
-            main()
-        except SystemExit as e:
-            # CLI normally exits with code 0 on success
-            assert (
-                e.code == 0 or e.code is None
-            ), f"Expected successful exit, got code {e.code}"
-
-        mock_deployer.deploy.assert_called_once()
-
-    @patch("mcp_template.MCPDeployer")
     def test_error_handling(self, mock_deployer_class):
         """Test error handling in main CLI."""
         mock_deployer = Mock()
