@@ -33,7 +33,8 @@ The `deploy` command is the core functionality of MCP Templates, allowing you to
 
 | Option | Description | Format |
 |--------|-------------|--------|
-| `--config KEY=VALUE` | Set configuration value | `--config debug=true` |
+| `--config KEY=VALUE` | Set configuration value (for config_schema properties) | `--config debug=true` |
+| `--override KEY=VALUE` | Override template data (supports double underscore notation, type conversion) | `--override metadata__version=2.0.0` |
 | `--config-file PATH` | Load configuration from file | JSON/YAML supported |
 | `--env KEY=VALUE` | Set environment variable | `--env MCP_DEBUG=1` |
 | `--show-config` | Display configuration options and exit | Boolean flag |
@@ -51,7 +52,7 @@ The `deploy` command is the core functionality of MCP Templates, allowing you to
 Configuration values are resolved in the following order (highest to lowest priority):
 
 1. **Environment Variables** (`--env` or system)
-2. **CLI Options** (`--config`)
+2. **CLI Options** (`--config`, `--override`)
 3. **Configuration File** (`--config-file`)
 4. **Template Defaults**
 
@@ -70,7 +71,7 @@ python -m mcp_template deploy demo --name my-demo-server
 ### Configuration Examples
 
 ```bash
-# Using CLI configuration
+# Using CLI configuration (config_schema properties)
 python -m mcp_template deploy file-server \
   --config read_only_mode=true \
   --config max_file_size=100 \
@@ -86,6 +87,22 @@ python -m mcp_template deploy file-server \
 python -m mcp_template deploy file-server \
   --config file-server__security__read_only=true \
   --config file-server__logging__level=debug
+
+# Using template data overrides (modifies template.json structure)
+python -m mcp_template deploy file-server \
+  --override "metadata__version=2.0.0" \
+  --override "metadata__author=Your Name" \
+  --override "tools__0__enabled=false" \
+  --override "config__custom_setting=value"
+
+# Advanced: Array and nested overrides with type conversion
+python -m mcp_template deploy demo \
+  --override "tools__0__enabled=false" \
+  --override "tools__1__timeout=30.5" \
+  --override "metadata__tags=[\"custom\",\"modified\"]" \
+  --override "config__database__connection__host=localhost" \
+  --override "config__database__connection__port=5432" \
+  --override "config__security__enabled=true"
 ```
 
 ### Configuration File
