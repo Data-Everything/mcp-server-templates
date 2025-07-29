@@ -11,7 +11,7 @@
     "fastmcp",
     "http"
   ],
-  "docker_image": "hello-world",
+  "docker_image": "dataeverything/mcp-demo",
   "docker_tag": "latest",
   "ports": {
     "7071": 7071

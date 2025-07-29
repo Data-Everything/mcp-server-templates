@@ -132,20 +132,8 @@ Examples:
     cleanup_parser.add_argument(
         "--all", action="store_true", help="Clean up all deployments"
     )
-
     # Add enhanced CLI commands
     add_enhanced_cli_args(subparsers)
-
-    # Check for direct template deployment before parsing args (backwards compatibility)
-    if len(sys.argv) > 1:
-        # Initialize deployer to check available templates
-        deployer = MCPDeployer()
-        available_templates = list(deployer.templates.keys())
-
-        potential_template = sys.argv[1]
-        if potential_template in available_templates:
-            # Rewrite argv to use deploy command
-            sys.argv = ["mcp_template", "deploy", potential_template] + sys.argv[2:]
 
     # Parse arguments
     args = parser.parse_args()
@@ -184,7 +172,7 @@ Examples:
             )
             if not success:
                 sys.exit(1)
-        elif args.command == "deploy" or args.command in available_templates:
+        elif args.command == "deploy":
             template = args.template if hasattr(args, "template") else args.command
 
             # Show configuration options if requested

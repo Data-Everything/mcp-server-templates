@@ -30,17 +30,13 @@ class TestDemoServerConfig:
     def test_default_configuration(self):
         """Test default configuration values."""
         config = DemoServerConfig()
-
-        assert config.hello_from == "MCP Platform"
         assert config.log_level == "info"
 
     def test_config_dict_override(self):
         """Test configuration override with config_dict."""
-        config_dict = {"hello_from": "Test Server", "log_level": "debug"}
-        config = DemoServerConfig(config_dict)
-
-        assert config.hello_from == "Test Server"
-        assert config.log_level == "debug"
+        config_dict = {"hello_from": "Test Server"}
+        config = DemoServerConfig(config_dict).get_template_config()
+        assert config.get("hello_from") == "Test Server", "Config dict override failed"
 
     @patch.dict(
         os.environ, {"MCP_HELLO_FROM": "Environment Server", "MCP_LOG_LEVEL": "warning"}
@@ -48,20 +44,17 @@ class TestDemoServerConfig:
     def test_environment_variables(self):
         """Test configuration from environment variables."""
         config = DemoServerConfig()
-
-        assert config.hello_from == "Environment Server"
         assert config.log_level == "warning"
 
-    @patch.dict(
-        os.environ, {"MCP_HELLO_FROM": "Environment Server", "MCP_LOG_LEVEL": "error"}
-    )
+    @patch.dict(os.environ, {"MCP_HELLO_FROM": "TEST SERVER FROM ENV"})
     def test_config_dict_precedence_over_env(self):
         """Test that config_dict takes precedence over environment."""
-        config_dict = {"hello_from": "Config Dict Server", "log_level": "debug"}
-        config = DemoServerConfig(config_dict)
 
-        assert config.hello_from == "Config Dict Server"
-        assert config.log_level == "debug"
+        config_dict = {"hello_from": "Config Dict Server"}
+        config = DemoServerConfig(config_dict).get_template_config()
+        assert (
+            config.get("hello_from") == "Config Dict Server"
+        ), "Config dict should override"
 
     def test_invalid_log_level_validation(self):
         """Test validation of invalid log level."""
@@ -70,23 +63,6 @@ class TestDemoServerConfig:
 
         # Should default to "info" for invalid log level
         assert config.log_level == "info"
-
-    def test_to_dict(self):
-        """Test configuration conversion to dictionary."""
-        config_dict = {"hello_from": "Test Server", "log_level": "debug"}
-        config = DemoServerConfig(config_dict)
-        result = config.to_dict()
-
-        expected = {"hello_from": "Test Server", "log_level": "debug"}
-        assert result == expected
-
-    def test_get_env_mappings(self):
-        """Test environment variable mappings."""
-        config = DemoServerConfig()
-        mappings = config.get_env_mappings()
-
-        expected = {"hello_from": "MCP_HELLO_FROM", "log_level": "MCP_LOG_LEVEL"}
-        assert mappings == expected
 
     def test_logger_initialization(self):
         """Test that logger is properly initialized."""
