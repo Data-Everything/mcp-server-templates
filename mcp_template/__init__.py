@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# mypy: ignore-errors
 """
 MCP Template Deployment Tool
 
@@ -28,13 +26,34 @@ import sys
 
 from rich.console import Console
 
-from mcp_template.cli import (
-    EnhancedCLI,
-    add_enhanced_cli_args,
-    handle_enhanced_cli_commands,
-)
+from mcp_template.backends.docker import DockerDeploymentService
 from mcp_template.deployer import MCPDeployer
+from mcp_template.manager import DeploymentManager
 from mcp_template.template.creation import TemplateCreator
+
+# Import core classes that are used in CI and the CLI
+from mcp_template.template.discovery import TemplateDiscovery
+
+# Try to import enhanced CLI - graceful fallback if not available
+try:
+    from mcp_template.cli import (
+        EnhancedCLI,
+        add_enhanced_cli_args,
+        handle_enhanced_cli_commands,
+    )
+
+    HAS_ENHANCED_CLI = True
+except ImportError:
+    HAS_ENHANCED_CLI = False
+
+# Export the classes for external use (CI compatibility)
+__all__ = [
+    "TemplateDiscovery",
+    "DockerDeploymentService",
+    "DeploymentManager",
+    "MCPDeployer",
+    "TemplateCreator",
+]
 
 # Constants
 DEFAULT_CONFIG_PATH = "/config"
