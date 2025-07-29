@@ -1,18 +1,20 @@
 # MCP Server Templates
 
-**Open-source deployment system for Model Context Protocol (MCP) server templates with zero-configuration deployment.**
+**Production-ready deployment system for Model Context Protocol (MCP) servers with zero-configuration deployment, comprehensive tool discovery, and enterprise-grade management capabilities.**
 
-MCP Server Templates is a self-hosted deployment system that lets you quickly deploy, manage, and extend MCP servers on your own infrastructure. It provides a unified CLI tool, flexible configuration system, and pre-built templates for common use cases.
+MCP Server Templates is a self-hosted deployment system that enables rapid deployment, management, and scaling of MCP servers on your own infrastructure. It provides a unified CLI, flexible configuration system, advanced tool discovery, and pre-built templates for common use cases.
 
-## 🌟 MCP Platform - Commercial Hosted Solution
+## 🌟 MCP Platform - Managed Cloud Solution
 
-Looking for a one-click managed deployment? **[MCP Platform](https://mcp-platform.dataeverything.ai/)** offers:
+Looking for enterprise deployment without infrastructure management? **[MCP Platform](https://mcp-platform.dataeverything.ai/)** offers:
 
 - ✨ **One-click deployment** - Deploy any MCP server template instantly
-- 🛡️ **Enterprise security** - SOC2, GDPR compliance and advanced security controls
-- 📊 **Monitoring & analytics** - Real-time performance metrics and usage insights
-- 🔧 **Custom templates** - We build proprietary MCP servers for your specific needs
-- 💼 **Commercial support** - 24/7 enterprise support and SLA guarantees
+- 🛡️ **Enterprise security** - SOC2, GDPR compliance with advanced security controls
+- 📊 **Real-time monitoring** - Performance metrics, usage analytics, and health dashboards
+- 🔧 **Custom development** - We build proprietary MCP servers for your specific needs
+- 💼 **Commercial support** - 24/7 enterprise support with SLA guarantees
+- 🎯 **Auto-scaling** - Dynamic resource allocation based on demand
+- 🔐 **Team management** - Multi-user access controls and audit logging
 
 **Ready for production?** [Get started with MCP Platform →](https://mcp-platform.dataeverything.ai/)
 
@@ -20,18 +22,21 @@ Looking for a one-click managed deployment? **[MCP Platform](https://mcp-platfor
 
 ## Open Source Self-Hosted Deployment
 
-This repository provides the open-source tools for self-managing MCP server deployments on your own infrastructure.
+This repository provides comprehensive tools for self-managing MCP server deployments on your own infrastructure.
 
-### Key Features
+### 🚀 Key Features
 
-- **🚀 Zero Configuration Deployment** - Deploy templates with a single command
-- **📦 Pre-built Templates** - Ready-to-use templates for common MCP use cases
-- **🔧 Flexible Configuration** - Multi-source configuration with automatic type conversion
-- **🐳 Docker Backend** - Container-based deployments with volume management
-- **📋 Rich CLI Interface** - Beautiful command-line interface with progress indicators
-- **🧪 Template Development** - Tools for creating and testing custom templates
+- **🎯 Zero Configuration Deployment** - Deploy templates with a single command
+- **🔍 Advanced Tool Discovery** - Automatic detection of MCP server capabilities using official MCP protocol
+- **📦 Pre-built Templates** - Production-ready templates for file operations, databases, APIs, and more
+- **🔧 Flexible Configuration** - Multi-source configuration with environment variables, CLI options, and files
+- **🐳 Docker-First Architecture** - Container-based deployments with proper lifecycle management
+- **📋 Rich CLI Interface** - Beautiful command-line interface with comprehensive help and examples
+- **🧪 Template Development Tools** - Complete toolkit for creating and testing custom templates
+- **📊 Monitoring & Management** - Real-time status monitoring, log streaming, and health checks
+- **🔗 Integration Examples** - Ready-to-use code for Claude Desktop, VS Code, Python, and more
 
-### Quick Start
+### 🎯 Quick Start
 
 #### Installation
 
@@ -43,11 +48,215 @@ pip install mcp-templates
 python -m mcp_template --version
 ```
 
-**Alternative - From Source:**
+#### Deploy Your First Template
+
 ```bash
-# Clone the repository
-git clone https://github.com/Data-Everything/mcp-server-templates
-cd mcp-server-templates
+# List available templates
+python -m mcp_template list
+
+# Deploy demo server
+python -m mcp_template deploy demo
+
+# Discover available tools
+python -m mcp_template tools demo
+
+# Get integration examples
+python -m mcp_template connect demo --llm claude
+```
+
+#### Integration with Claude Desktop
+
+```bash
+# Get container name
+python -m mcp_template list
+
+# Update Claude Desktop config
+python -m mcp_template connect demo --llm claude
+```
+
+**Claude Desktop Configuration:**
+```json
+{
+  "mcpServers": {
+    "demo": {
+      "command": "docker",
+      "args": ["exec", "-i", "CONTAINER_NAME", "python", "-m", "src.server"]
+    }
+  }
+}
+```
+
+### 📚 Documentation
+
+#### 🚀 Getting Started
+- **[Installation Guide](getting-started/installation.md)** - Setup and initial configuration
+- **[Quick Start Tutorial](getting-started/quickstart.md)** - Deploy your first MCP server
+- **[Basic Concepts](getting-started/concepts.md)** - Understanding templates, deployments, and tools
+
+#### 📖 User Guide
+- **[Template Usage](user-guide/templates.md)** - Working with pre-built templates
+- **[Configuration Management](user-guide/configuration.md)** - Advanced configuration patterns
+- **[Integration Patterns](user-guide/integration.md)** - Connect to LLMs and frameworks
+- **[Monitoring & Management](user-guide/monitoring.md)** - Production deployment management
+
+#### 🛠️ CLI Reference
+- **[Command Overview](cli/index.md)** - Complete CLI documentation
+- **[deploy](cli/deploy.md)** - Deploy templates with configuration options
+- **[tools](cli/tools.md)** - Discover and analyze MCP server capabilities
+- **[discover-tools](cli/discover-tools.md)** - Probe Docker images for tool discovery
+- **[connect](cli/connect.md)** - Generate integration examples for LLMs
+- **[config](cli/config.md)** - View template configuration options
+- **[list](cli/list.md)** - List templates and deployments
+- **[logs](cli/logs.md)** - Monitor deployment logs
+- **[status](cli/status.md)** - Check deployment health
+
+#### 🔧 Development
+- **[Creating Templates](guides/creating-templates.md)** - Build custom MCP server templates
+- **[Template Development Guide](guides/development.md)** - Advanced template development
+- **[Template Discovery System](template-discovery.md)** - Understanding template discovery architecture
+- **[Tool Discovery System](tool-discovery.md)** - Understanding tool discovery architecture
+- **[Testing & Validation](guides/testing.md)** - Test templates and deployments
+- **[Contributing](guides/contributing.md)** - Contribute to the project
+
+#### 🏗️ System Architecture
+- **[Architecture Overview](development/architecture.md)** - System design and components
+- **[Backend Abstraction](development/backends.md)** - Docker, Kubernetes, and custom backends
+- **[Template System](development/templates.md)** - Template structure and lifecycle
+- **[API Reference](api/)** - Complete API documentation
+
+### 🎯 Use Cases
+
+#### File Operations
+```bash
+# Deploy secure file server
+python -m mcp_template deploy file-server \
+  --config security__allowed_dirs='["/data", "/workspace"]' \
+  --config security__read_only=false
+
+# Connect to Claude Desktop for file operations
+python -m mcp_template connect file-server --llm claude
+```
+
+#### Database Integration
+```bash
+# Deploy PostgreSQL MCP server
+python -m mcp_template deploy postgres-server \
+  --config database__host=localhost \
+  --config database__name=mydb \
+  --env POSTGRES_PASSWORD=secret
+
+# Generate Python integration code
+python -m mcp_template connect postgres-server --llm python
+```
+
+#### API Integration
+```bash
+# Deploy REST API integration server
+python -m mcp_template deploy api-server \
+  --config api__base_url=https://api.example.com \
+  --config api__auth_token=$API_TOKEN
+
+# Test with cURL
+python -m mcp_template connect api-server --llm curl
+```
+
+### 🔍 Tool Discovery
+
+**Automatic MCP Protocol Discovery:**
+```bash
+# Discover tools from any MCP-compliant Docker image
+python -m mcp_template discover-tools --image mcp/filesystem /tmp
+
+# Rich formatted output shows all capabilities:
+✅ Discovered 11 tools via docker_mcp_stdio
+- read_file: Read complete file contents
+- write_file: Create or overwrite files
+- list_directory: List directory contents
+- create_directory: Create directories
+- ... and 7 more tools
+```
+
+**Integration Ready:**
+```bash
+# Get ready-to-use integration code
+python -m mcp_template tools demo --format json
+python -m mcp_template connect demo --llm vscode
+```
+
+### 📊 Available Templates
+
+| Template | Description | Use Cases |
+|----------|-------------|-----------|
+| **demo** | Basic greeting and echo server | Learning, testing, examples |
+| **file-server** | Secure filesystem operations | Document processing, file management |
+| **postgres-server** | PostgreSQL database integration | Data analysis, query execution |
+| **api-server** | REST API client with auth | External service integration |
+| **mongodb-server** | MongoDB document operations | NoSQL data operations |
+| **redis-server** | Redis cache and pub/sub | Caching, real-time messaging |
+
+### 🛠️ System Requirements
+
+- **Operating System**: Linux, macOS, Windows (with WSL2)
+- **Docker**: Version 20.10+ (required for container deployments)
+- **Python**: Version 3.9+ (for CLI and development)
+- **Memory**: 512MB minimum, 2GB recommended
+- **Storage**: 1GB minimum for templates and container images
+
+### 🚦 Production Deployment
+
+#### Security Considerations
+```bash
+# Deploy with security hardening
+python -m mcp_template deploy file-server \
+  --config security__read_only=true \
+  --config security__max_file_size=10 \
+  --config logging__enable_audit=true \
+  --env MCP_ALLOWED_DIRS='["/secure/data"]'
+```
+
+#### Monitoring Setup
+```bash
+# Health check monitoring
+python -m mcp_template list --format json | jq '.summary'
+
+# Log monitoring
+python -m mcp_template logs file-server --follow --since 1h
+```
+
+#### Backup and Recovery
+```bash
+# Export deployment configuration
+python -m mcp_template status file-server --format json > backup.json
+
+# Cleanup and redeploy
+python -m mcp_template cleanup file-server
+python -m mcp_template deploy file-server --config-file backup.json
+```
+
+### 🤝 Community & Support
+
+- **📖 Documentation**: Comprehensive guides and API reference
+- **🐛 Issue Tracker**: [GitHub Issues](https://github.com/Data-Everything/mcp-server-templates/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/Data-Everything/mcp-server-templates/discussions)
+- **� Community Slack**: [Join mcp-platform workspace](https://join.slack.com/t/mcp-platform/shared_invite/zt-2p9h8k8xr-example)
+- **�📧 Enterprise Support**: [Contact us](mailto:support@dataeverything.ai) for commercial support
+
+### 🗺️ Roadmap
+
+- **Kubernetes Backend**: Native Kubernetes deployment support
+- **Template Marketplace**: Community-driven template sharing
+- **GraphQL Integration**: GraphQL API server templates
+- **Metrics & Alerting**: Prometheus/Grafana integration
+- **Multi-tenant Support**: Isolated deployments for teams
+- **Auto-scaling**: Dynamic resource allocation
+
+### 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**Get started today**: Choose between our [managed cloud platform](https://mcp-platform.dataeverything.ai/) for instant deployment or [self-hosted deployment](getting-started/installation.md) for full control.
 
 # Install dependencies
 pip install -e .

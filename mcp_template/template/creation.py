@@ -301,6 +301,11 @@ class TemplateCreator:
             "config_schema": self.template_data.get(
                 "config_schema", {"type": "object", "properties": {}, "required": []}
             ),
+            # Add new tool discovery fields
+            "tool_discovery": self.template_data.get("tool_discovery", "dynamic"),
+            "tool_endpoint": self.template_data.get("tool_endpoint", "/tools"),
+            "has_image": self.template_data.get("has_image", True),
+            "origin": self.template_data.get("origin", "internal"),
         }
 
         with open(self.template_dir / "template.json", "w", encoding="utf-8") as f:

@@ -15,7 +15,7 @@ import subprocess
 
 # Import existing components
 # Note: Import classes directly to avoid circular import
-from typing import Optional
+from typing import List, Optional
 
 from rich.console import Console
 from rich.panel import Panel
@@ -23,6 +23,8 @@ from rich.table import Table
 
 from mcp_template.deployer import MCPDeployer
 from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.tools import DockerProbe, ToolDiscovery
+from mcp_template.utils import TEMPLATES_DIR
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -38,6 +40,8 @@ class EnhancedCLI:
         self.deployer = MCPDeployer()
         self.template_discovery = TemplateDiscovery()
         self.templates = self.template_discovery.discover_templates()
+        self.tool_discovery = ToolDiscovery()
+        self.docker_probe = DockerProbe()
 
     def show_config_options(self, template_name: str) -> None:
         """Show all configuration options including double-underscore notation."""
@@ -125,61 +129,98 @@ class EnhancedCLI:
             f"  python -m mcp_template deploy {template_name} --config-file config.json"
         )
 
-    def list_tools(self, template_name: str) -> None:
-        """List available tools for a template using FastMCP client."""
+    def list_tools(
+        self, template_name: str, no_cache: bool = False, refresh: bool = False
+    ) -> None:
+        """List available tools for a template using enhanced tool discovery."""
         if template_name not in self.templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             return
 
         template = self.templates[template_name]
+        template_dir = TEMPLATES_DIR / template_name
 
         console.print(
             Panel(
-                f"Available Tools for [cyan]{template_name}[/cyan]",
-                title="🔧 Template Tools",
+                f"Discovering Tools for [cyan]{template_name}[/cyan]",
+                title="🔧 Tool Discovery",
                 border_style="blue",
             )
         )
 
-        # Get tools from template.json
-        tools = template.get("tools", [])
+        # Use the enhanced tool discovery system
+        discovery_result = self.tool_discovery.discover_tools(
+            template_name=template_name,
+            template_dir=template_dir,
+            template_config=template,
+            use_cache=not no_cache,
+            force_refresh=refresh,
+        )
+
+        tools = discovery_result.get("tools", [])
+        discovery_method = discovery_result.get("discovery_method", "unknown")
+        source = (
+            discovery_result.get("source_file")
+            or discovery_result.get("source_endpoint")
+            or "template.json"
+        )
+
+        # Show discovery info
+        console.print(f"[dim]Discovery method: {discovery_method}[/dim]")
+        console.print(f"[dim]Source: {source}[/dim]")
+
+        if "timestamp" in discovery_result:
+            import datetime
+
+            timestamp = datetime.datetime.fromtimestamp(discovery_result["timestamp"])
+            console.print(
+                f"[dim]Last updated: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}[/dim]"
+            )
 
         if not tools:
-            console.print("[yellow]⚠️  No tools defined for this template[/yellow]")
+            console.print("[yellow]⚠️  No tools found for this template[/yellow]")
+            if "warnings" in discovery_result:
+                for warning in discovery_result["warnings"]:
+                    console.print(f"[yellow]⚠️  {warning}[/yellow]")
             return
 
+        # Display tools in a table
+        self._display_tools_table(tools)
+
+        # Show usage examples
+        self._show_tool_usage_examples(template_name, template, tools)
+
+    def _display_tools_table(self, tools):
+        """Display tools in a formatted table."""
         table = Table()
         table.add_column("Tool Name", style="cyan", width=20)
         table.add_column("Description", style="white", width=50)
-        table.add_column("Parameters", style="yellow", width=30)
+        table.add_column("Category", style="green", width=15)
+        table.add_column("Parameters", style="yellow", width=25)
 
         for tool in tools:
             tool_name = tool.get("name", "Unknown")
             description = tool.get("description", "No description")
+            category = tool.get("category", "general")
 
             # Format parameters
             parameters = tool.get("parameters", [])
-            if parameters:
-                param_strs = []
-                for param in parameters:
-                    param_name = param.get("name", "unknown")
-                    param_required = param.get("required", False)
-                    param_type = param.get("type", "string")
-
-                    if param_required:
-                        param_strs.append(f"{param_name}: {param_type} (required)")
-                    else:
-                        param_strs.append(f"{param_name}: {param_type} (optional)")
-
-                param_text = "\n".join(param_strs)
+            if isinstance(parameters, list) and parameters:
+                param_count = len(parameters)
+                param_text = f"{param_count} parameter{'s' if param_count != 1 else ''}"
+            elif isinstance(parameters, dict):
+                param_text = "Schema defined"
             else:
                 param_text = "No parameters"
 
-            table.add_row(tool_name, description, param_text)
+            table.add_row(tool_name, description, category, param_text)
 
         console.print(table)
 
-        # Show usage examples
+    def _show_tool_usage_examples(
+        self, template_name: str, template: dict, tools: list
+    ):
+        """Show usage examples for the discovered tools."""
         console.print("\n[cyan]💡 Tool Usage Examples:[/cyan]")
 
         # Get transport info
@@ -195,32 +236,55 @@ class EnhancedCLI:
                 f'  client = FastMCPClient(endpoint="http://localhost:{port}")'
             )
 
-            # Show example tool calls
-            for tool in tools[:2]:  # Show first 2 tools as examples
+            # Show example tool calls for first 2 tools
+            for tool in tools[:2]:
                 tool_name = tool.get("name")
-                parameters = tool.get("parameters", [])
+                if tool_name:
+                    console.print(f'  result = client.call_tool("{tool_name}", {{}})')
 
-                if parameters:
-                    # Create example parameters
-                    example_params = {}
-                    for param in parameters:
-                        param_name = param.get("name")
-                        param_type = param.get("type", "string")
-                        if param_type == "string":
-                            example_params[param_name] = "example_value"
-                        elif param_type == "boolean":
-                            example_params[param_name] = True
-                        elif param_type == "integer":
-                            example_params[param_name] = 42
+        console.print(f"\n  # Deploy template: mcp-template deploy {template_name}")
+        console.print(f"  # View logs: mcp-template logs {template_name}")
 
-                    params_str = ", ".join(
-                        [f'{k}="{v}"' for k, v in example_params.items()]
-                    )
-                    console.print(
-                        f'  result = client.call("{tool_name}", {params_str})'
-                    )
-                else:
-                    console.print(f'  result = client.call("{tool_name}")')
+    def discover_tools_from_image(
+        self, image_name: str, server_args: Optional[List[str]] = None
+    ) -> None:
+        """Discover tools from a Docker image."""
+        console.print(
+            Panel(
+                f"Discovering Tools from Docker Image: [cyan]{image_name}[/cyan]",
+                title="🐳 Docker Tool Discovery",
+                border_style="blue",
+            )
+        )
+
+        # Use Docker probe to discover tools
+        result = self.docker_probe.discover_tools_from_image(image_name, server_args)
+
+        if result:
+            tools = result.get("tools", [])
+            discovery_method = result.get("discovery_method", "unknown")
+            console.print(
+                f"[green]✅ Discovered {len(tools)} tools via {discovery_method}[/green]"
+            )
+
+            if tools:
+                self._display_tools_table(tools)
+
+                # Show MCP client usage example
+                console.print("\n[cyan]💡 Usage Example:[/cyan]")
+                console.print("  # Using MCP client directly:")
+                console.print(
+                    "  from mcp_template.tools.mcp_client_probe import MCPClientProbe"
+                )
+                console.print("  client = MCPClientProbe()")
+                args_str = str(server_args) if server_args else "[]"
+                console.print(
+                    f"  result = client.discover_tools_from_docker_sync('{image_name}', {args_str})"
+                )
+            else:
+                console.print("[yellow]⚠️  No tools found in the image[/yellow]")
+        else:
+            console.print("[red]❌ Failed to discover tools from image[/red]")
 
     def show_integration_examples(
         self, template_name: str, llm: Optional[str] = None
@@ -461,6 +525,21 @@ def add_enhanced_cli_args(subparsers) -> None:
         "tools", help="List available tools for a template"
     )
     tools_parser.add_argument("template", help="Template name")
+    tools_parser.add_argument(
+        "--no-cache", action="store_true", help="Ignore cached results"
+    )
+    tools_parser.add_argument(
+        "--refresh", action="store_true", help="Force refresh cached results"
+    )
+
+    # Discover tools command for Docker images
+    discover_parser = subparsers.add_parser(
+        "discover-tools", help="Discover tools from a Docker image"
+    )
+    discover_parser.add_argument("--image", required=True, help="Docker image name")
+    discover_parser.add_argument(
+        "server_args", nargs="*", help="Arguments to pass to the MCP server"
+    )
 
     # Connect command
     connect_parser = subparsers.add_parser(
@@ -508,7 +587,15 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
         return True
 
     elif args.command == "tools":
-        enhanced_cli.list_tools(args.template)
+        enhanced_cli.list_tools(
+            args.template,
+            no_cache=getattr(args, "no_cache", False),
+            refresh=getattr(args, "refresh", False),
+        )
+        return True
+
+    elif args.command == "discover-tools":
+        enhanced_cli.discover_tools_from_image(args.image, args.server_args)
         return True
 
     elif args.command == "connect":
