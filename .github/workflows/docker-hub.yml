@@ -2,7 +2,7 @@ name: Template Test & Docker Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, refactor ]
     paths:
       - 'templates/**'
   pull_request:

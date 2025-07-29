@@ -1,8 +1,27 @@
 {
   "name": "Demo Hello MCP Server",
-  "description": "A simple demonstration MCP server that provides greeting tools",
+  "description": "A simple demonstration MCP server that provides greeting tools using FastMCP",
+  "version": "1.0.0",
+  "author": "Data Everything",
+  "category": "Demo",
+  "tags": [
+    "demo",
+    "greeting",
+    "hello",
+    "fastmcp",
+    "http"
+  ],
   "docker_image": "dataeverything/mcp-demo",
   "docker_tag": "latest",
+  "ports": {
+    "7071": 7071
+  },
+  "command": ["python", "server.py"],
+  "transport": {
+    "default": "http",
+    "supported": ["http", "stdio"],
+    "port": 7071
+  },
   "config_schema": {
     "type": "object",
     "properties": {
@@ -20,7 +39,7 @@
         "enum": [
           "debug",
           "info",
-          "warn",
+          "warning",
           "error"
         ],
         "default": "info",
@@ -33,6 +52,11 @@
       "name": "Greeting Tools",
       "description": "Generate personalized greetings and messages",
       "example": "Say hello, create custom messages, demonstrate MCP capabilities"
+    },
+    {
+      "name": "Server Information",
+      "description": "Provide server metadata and configuration details",
+      "example": "Get server info, check configuration, validate deployment"
     }
   ],
   "tools": [
@@ -43,6 +67,7 @@
         {
           "name": "name",
           "description": "Name of the person to greet (optional)",
+          "type": "string",
           "required": false
         }
       ]
@@ -51,6 +76,30 @@
       "name": "get_server_info",
       "description": "Get information about the demo server",
       "parameters": []
+    },
+    {
+      "name": "echo_message",
+      "description": "Echo back a message with server identification",
+      "parameters": [
+        {
+          "name": "message",
+          "description": "Message to echo back",
+          "type": "string",
+          "required": true
+        }
+      ]
     }
-  ]
+  ],
+  "examples": {
+    "http_endpoint": "http://localhost:7071",
+    "cli_usage": [
+      "python -m mcp_template deploy demo",
+      "python -m mcp_template deploy demo --config hello_from='My Server'",
+      "python -m mcp_template deploy demo --transport http --port 7071"
+    ],
+    "client_integration": {
+      "fastmcp": "from fastmcp.client import FastMCPClient\nclient = FastMCPClient(endpoint='http://localhost:7071')\nresult = client.call('say_hello', name='Alice')",
+      "curl": "curl -X POST http://localhost:7071/call -H 'Content-Type: application/json' -d '{\"method\": \"say_hello\", \"params\": {\"name\": \"Alice\"}}'"
+    }
+  }
 }
