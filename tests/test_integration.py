@@ -10,15 +10,10 @@ import subprocess
 import time
 from unittest.mock import patch
 
-import docker
 import pytest
 
 from conftest import assert_deployment_success
-from mcp_template.backends import (
-    DockerDeploymentService,
-    KubernetesDeploymentService,
-    MockDeploymentService,
-)
+from mcp_template.backends import DockerDeploymentService, MockDeploymentService
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.discovery import TemplateDiscovery
 
@@ -69,16 +64,20 @@ class TestDockerIntegrationReal:
     def teardown_method(self):
         """Cleanup after each test method."""
         # Clean up any containers created during testing
+
         try:
-            client = docker.from_env()
             for container_name in self.cleanup_containers:
                 try:
-                    container = client.containers.get(container_name)
-                    container.remove(force=True)
-                except docker.errors.NotFound:
+                    subprocess.run(
+                        ["docker", "rm", "-f", container_name],
+                        check=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                except Exception as e:
                     pass
         except Exception:
-            pass  # Ignore cleanup errors
+            pass
 
     def test_docker_service_real_deployment(self, mock_docker_client):
         """Test actual Docker deployment with mock image."""
