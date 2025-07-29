@@ -38,3 +38,6 @@ wheel>=0.40.0
 
 # Rich console output (for tests)
 rich>=13.0.0
+
+# Backend
+docker

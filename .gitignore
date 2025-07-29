@@ -66,6 +66,7 @@ coverage/
 .coverage
 coverage.xml
 htmlcov/
+.coverage.*
 
 # nyc test coverage
 .nyc_output

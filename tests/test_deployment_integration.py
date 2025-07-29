@@ -10,20 +10,15 @@ Tests all functionality including:
 - Cleanup functionality
 """
 
-import json
-import os
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import pytest
 
-# Add mcp_template to path for testing
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from mcp_template import MCPDeployer, TemplateDiscovery, console
+from mcp_template import MCPDeployer
+from mcp_template.template.discovery import TemplateDiscovery
 
 
 @pytest.mark.integration

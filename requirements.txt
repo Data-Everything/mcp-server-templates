@@ -1,2 +1,3 @@
 rich>=13.0.0
 pyyaml
+fastmcp>=2.10.0

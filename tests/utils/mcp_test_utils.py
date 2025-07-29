@@ -4,16 +4,16 @@ MCP Test Utilities for template testing.
 Provides common testing utilities for MCP server templates.
 """
 
-import asyncio
 import json
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from unittest.mock import Mock
 
 import pytest
+
+from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.utils import TEMPLATES_DIR
 
 
 class MCPTestClient:
@@ -200,7 +200,6 @@ def build_and_run_template(template_name: str, config: Dict[str, Any]):
 def get_template_list() -> List[str]:
     """Get list of available templates using TemplateDiscovery."""
     # Import here to avoid circular imports
-    from mcp_template import TemplateDiscovery
 
     discovery = TemplateDiscovery()
     templates = discovery.discover_templates()
@@ -233,14 +232,13 @@ def validate_template_structure(template_name: str) -> bool:
 def run_template_tests(template_name: str) -> subprocess.CompletedProcess:
     """Run pytest tests for a specific template."""
     # Tests are now located in templates/{template_name}/tests/
-    test_dir = (
-        Path(__file__).parent.parent.parent / "templates" / template_name / "tests"
-    )
+    test_dir = TEMPLATES_DIR / template_name / "tests"
     if not test_dir.exists():
         raise ValueError(f"No tests found for template: {template_name}")
 
+    # Run without coverage requirements for template tests
     return subprocess.run(
-        [sys.executable, "-m", "pytest", str(test_dir), "-v", "--tb=short"],
+        [sys.executable, "-m", "pytest", str(test_dir), "-v", "--tb=short", "--no-cov"],
         capture_output=True,
         text=True,
     )

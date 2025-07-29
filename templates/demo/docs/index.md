@@ -1,32 +1,10 @@
-# Demo Hello MCP Server Documentation
+# MCP Demo Server Template
+This template provides a simple demo server for the MCP Platform, showcasing basic functionality and configuration options.
 
 ## Overview
-
-A simple demonstration MCP server that provides greeting tools
-
-## Quick Start
-
-Deploy this template:
-
-```bash
-mcp-template deploy demo
-```
-
-## Configuration
-
-This template supports the following configuration parameters:
-
-- LOG_LEVEL: Logging level (default: INFO)
-
-## Development
-
-### Local Testing
-
-```bash
-cd templates/demo
-pytest tests/
-```
-
-## Support
-
-For support, please open an issue in the main repository.
+This demo server is designed to demonstrate the capabilities of the MCP Platform architecture, including:
+- FastMCP integration for tool decorators and HTTP transport
+- HTTP-first approach with stdio fallback
+- Docker deployment with networking support
+- Modular code structure following best practices
+- Comprehensive configuration with environment variable mapping

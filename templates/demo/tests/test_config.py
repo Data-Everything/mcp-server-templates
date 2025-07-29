@@ -1,54 +1,72 @@
-"""Unit tests for the demo server configuration."""
+#!/usr/bin/env python3
+"""
+Test suite for demo server configuration.
+"""
 
 import os
+import sys
+from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-from server import DemoServerConfig
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+try:
+    from config import DemoServerConfig
+except ImportError:
+    # Fallback for testing
+    import importlib.util
+
+    config_path = Path(__file__).parent.parent / "config.py"
+    spec = importlib.util.spec_from_file_location("config", config_path)
+    config_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(config_module)
+    DemoServerConfig = config_module.DemoServerConfig
 
 
 class TestDemoServerConfig:
     """Test cases for DemoServerConfig."""
 
-    def test_default_configuration(self, clean_env):
+    def test_default_configuration(self):
         """Test default configuration values."""
         config = DemoServerConfig()
+        assert config.log_level == "info"
 
-        assert config.hello_from == "MCP Platform"
-        assert config.logger.name == "demo-server"
+    def test_config_dict_override(self):
+        """Test configuration override with config_dict."""
+        config_dict = {"hello_from": "Test Server"}
+        config = DemoServerConfig(config_dict).get_template_config()
+        assert config.get("hello_from") == "Test Server", "Config dict override failed"
 
-    def test_environment_variable_configuration(self, mock_env_vars):
+    @patch.dict(
+        os.environ, {"MCP_HELLO_FROM": "Environment Server", "MCP_LOG_LEVEL": "warning"}
+    )
+    def test_environment_variables(self):
         """Test configuration from environment variables."""
         config = DemoServerConfig()
+        assert config.log_level == "warning"
 
-        assert config.hello_from == "Test Server"
+    @patch.dict(os.environ, {"MCP_HELLO_FROM": "TEST SERVER FROM ENV"})
+    def test_config_dict_precedence_over_env(self):
+        """Test that config_dict takes precedence over environment."""
 
-    def test_custom_hello_from(self, monkeypatch):
-        """Test custom hello_from configuration."""
-        monkeypatch.setenv("MCP_HELLO_FROM", "Custom Bot")
+        config_dict = {"hello_from": "Config Dict Server"}
+        config = DemoServerConfig(config_dict).get_template_config()
+        assert (
+            config.get("hello_from") == "Config Dict Server"
+        ), "Config dict should override"
 
+    def test_invalid_log_level_validation(self):
+        """Test validation of invalid log level."""
+        config_dict = {"log_level": "invalid"}
+        config = DemoServerConfig(config_dict)
+
+        # Should default to "info" for invalid log level
+        assert config.log_level == "info"
+
+    def test_logger_initialization(self):
+        """Test that logger is properly initialized."""
         config = DemoServerConfig()
-        assert config.hello_from == "Custom Bot"
 
-    def test_log_level_configuration(self, monkeypatch):
-        """Test log level configuration."""
-        monkeypatch.setenv("MCP_LOG_LEVEL", "DEBUG")
-
-        config = DemoServerConfig()
-        # Logger should be configured with DEBUG level
-        assert config.logger.level <= 10  # DEBUG is 10
-
-    def test_invalid_log_level_fallback(self, monkeypatch):
-        """Test that invalid log level falls back gracefully."""
-        monkeypatch.setenv("MCP_LOG_LEVEL", "INVALID")
-
-        # Should not raise an exception
-        config = DemoServerConfig()
-        assert config.hello_from == "MCP Platform"
-
-    def test_empty_hello_from(self, monkeypatch):
-        """Test empty hello_from environment variable."""
-        monkeypatch.setenv("MCP_HELLO_FROM", "")
-
-        config = DemoServerConfig()
-        assert config.hello_from == ""  # Should accept empty string
+        assert config.logger is not None
+        assert config.logger.name == "config"
