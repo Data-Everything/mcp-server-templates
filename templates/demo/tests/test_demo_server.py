@@ -25,7 +25,18 @@ async def test_list_tools():
     async with client:
         tools = await client.list_tools()
         assert isinstance(tools, list)
-        assert len(tools) == 3, "No tools found in the server"
+        assert len(tools) == 4, f"Expected 4 tools, found {len(tools)}"
+        tool_names = [tool.name for tool in tools]
+        expected_tools = [
+            "say_hello",
+            "get_server_info",
+            "echo_message",
+            "demonstrate_overrides",
+        ]
+        for expected_tool in expected_tools:
+            assert (
+                expected_tool in tool_names
+            ), f"Tool {expected_tool} not found in {tool_names}"
 
 
 @pytest.mark.asyncio
@@ -38,9 +49,10 @@ async def test_echo_tool():
     client = Client(demo_server.mcp)
     async with client:
         result = await client.call_tool("echo_message", {"message": "Hi There"})
+        expected = "Echo from Demo Hello MCP Server: Hi There"
         assert (
-            result.data == "[MCP Platform] Echo: Hi There"
-        ), "Echo message did not match expected output"
+            result.data == expected
+        ), f"Echo message did not match expected output. Got: {result.data}, Expected: {expected}"
 
 
 @pytest.mark.asyncio
@@ -53,14 +65,16 @@ async def test_greet_tool():
     client = Client(demo_server.mcp)
     async with client:
         result = await client.call_tool("say_hello", {"name": "World"})
+        expected = "Hello World! Greetings from MCP Platform!"
         assert (
-            result.data == "Hello! Greetings from MCP Platform!"
-        ), "Greeting message did not match expected output"
+            result.data == expected
+        ), f"Greeting message did not match expected output. Got: {result.data}, Expected: {expected}"
 
         result2 = await client.call_tool("say_hello", {"name": "Test"})
+        expected2 = "Hello Test! Greetings from MCP Platform!"
         assert (
-            result2.data == "Hello Test! Greetings from MCP Platform!"
-        ), "Greeting message did not match expected output"
+            result2.data == expected2
+        ), f"Greeting message did not match expected output. Got: {result2.data}, Expected: {expected2}"
 
 
 @pytest.mark.asyncio
@@ -75,8 +89,11 @@ async def test_get_server_info():
         result = await client.call_tool("get_server_info")
         assert isinstance(result.data, dict), "Server info should be a dictionary"
         assert (
-            "hello_from" in result.data
-        ), "Server info should contain 'hello_from' key"
+            "standard_config" in result.data
+        ), "Server info should contain 'standard_config' key"
         assert (
-            result.data["hello_from"] == "MCP Platform"
-        ), "Server info did not match expected value"
+            "hello_from" in result.data["standard_config"]
+        ), "Server info standard_config should contain 'hello_from' key"
+        assert (
+            result.data["standard_config"]["hello_from"] == "MCP Platform"
+        ), "Server info hello_from did not match expected value"

@@ -112,7 +112,23 @@ Examples:
         "--config-file", help="Path to JSON/YAML configuration file"
     )
     deploy_parser.add_argument(
-        "--config", action="append", help="Configuration values (KEY=VALUE)"
+        "--config",
+        action="append",
+        help="Configuration values (KEY=VALUE) - for config_schema properties",
+    )
+    deploy_parser.add_argument(
+        "--override",
+        action="append",
+        help="Template data overrides (KEY=VALUE) - supports double underscore notation (e.g., tools__0__custom_field=value)",
+    )
+    deploy_parser.add_argument(
+        "--transport",
+        choices=["http", "stdio"],
+        default="http",
+        help="Transport protocol for MCP communication (default: http)",
+    )
+    deploy_parser.add_argument(
+        "--port", type=int, default=7071, help="Port for HTTP transport (default: 7071)"
     )
     deploy_parser.add_argument(
         "--show-config",
@@ -211,15 +227,42 @@ Examples:
                     key, value = config_var.split("=", 1)
                     config_values[key] = value
 
-            deployer.deploy(
-                template,
-                data_dir=getattr(args, "data_dir", None),
-                config_dir=getattr(args, "config_dir", None),
-                env_vars=env_vars,
-                config_file=getattr(args, "config_file", None),
-                config_values=config_values,
-                pull_image=not getattr(args, "no_pull", False),
-            )
+            override_values = {}
+            if hasattr(args, "override") and args.override:
+                for override_var in args.override:
+                    key, value = override_var.split("=", 1)
+                    override_values[key] = value
+
+            # Use enhanced CLI deploy with transport support if available
+            if HAS_ENHANCED_CLI and (
+                hasattr(args, "transport") or hasattr(args, "port")
+            ):
+                success = enhanced_cli.deploy_with_transport(
+                    template_name=template,
+                    transport=getattr(args, "transport", "http"),
+                    port=getattr(args, "port", 7071),
+                    data_dir=getattr(args, "data_dir", None),
+                    config_dir=getattr(args, "config_dir", None),
+                    env_vars=env_vars,
+                    config_file=getattr(args, "config_file", None),
+                    config_values=config_values,
+                    override_values=override_values,
+                    pull_image=not getattr(args, "no_pull", False),
+                )
+                if not success:
+                    sys.exit(1)
+            else:
+                # Fallback to original deployer
+                deployer.deploy(
+                    template,
+                    data_dir=getattr(args, "data_dir", None),
+                    config_dir=getattr(args, "config_dir", None),
+                    env_vars=env_vars,
+                    config_file=getattr(args, "config_file", None),
+                    config_values=config_values,
+                    override_values=override_values,
+                    pull_image=not getattr(args, "no_pull", False),
+                )
         elif args.command == "stop":
             deployer.stop(args.template, custom_name=getattr(args, "name", None))
         elif args.command == "logs":

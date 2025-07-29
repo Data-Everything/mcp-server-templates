@@ -214,7 +214,7 @@ Every template includes a `template.json` file with:
 ### Getting Help
 - **Documentation**: Check individual template documentation
 - **Issues**: [GitHub Issues](https://github.com/Data-Everything/mcp-server-templates/issues)
-- **Community**: [Join our Slack workspace](https://join.slack.com/t/mcp-platform/shared_invite/zt-2p9h8k8xr-example)
+- **Community**: [Join our Slack workspace](https://join.slack.com/t/mcp-platform/shared_invite/zt-39z1p559j-8aWEML~IsSPwFFgr7anHRA)
 
 ### Contributing Templates
 We welcome community contributions! See our [Contributing Guide](../guides/contributing.md) for:

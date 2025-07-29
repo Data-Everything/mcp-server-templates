@@ -238,7 +238,7 @@ python -m mcp_template deploy file-server --config-file backup.json
 - **📖 Documentation**: Comprehensive guides and API reference
 - **🐛 Issue Tracker**: [GitHub Issues](https://github.com/Data-Everything/mcp-server-templates/issues)
 - **💬 Discussions**: [GitHub Discussions](https://github.com/Data-Everything/mcp-server-templates/discussions)
-- **� Community Slack**: [Join mcp-platform workspace](https://join.slack.com/t/mcp-platform/shared_invite/zt-2p9h8k8xr-example)
+- **� Community Slack**: [Join mcp-platform workspace](https://join.slack.com/t/mcp-platform/shared_invite/zt-39z1p559j-8aWEML~IsSPwFFgr7anHRA)
 - **�📧 Enterprise Support**: [Contact us](mailto:support@dataeverything.ai) for commercial support
 
 ### 🗺️ Roadmap

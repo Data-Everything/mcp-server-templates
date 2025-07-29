@@ -81,7 +81,7 @@ python -m mcp_template connect demo --llm claude
 ### Configuration Options
 
 ```bash
-# Direct configuration
+# Direct configuration (for config_schema properties)
 --config hello_from="Custom Server"
 --config log_level=debug
 
@@ -92,6 +92,65 @@ python -m mcp_template connect demo --llm claude
 # Double-underscore notation (for nested configs)
 --config demo__hello_from="Custom Server"
 --config demo__log_level=debug
+```
+
+### Template Data Overrides
+
+The demo template supports **template data overrides** using the `--override` argument with double underscore notation:
+
+```bash
+# Modify template metadata
+python -m mcp_template deploy demo \
+  --override "metadata__version=2.0.0" \
+  --override "metadata__author=Your Name"
+
+# Modify tool configurations
+python -m mcp_template deploy demo \
+  --override "tools__0__enabled=false" \
+  --override "tools__1__description=Custom echo tool"
+
+# Add custom fields to template
+python -m mcp_template deploy demo \
+  --override "custom_field=custom_value" \
+  --override "config__debug_mode=true"
+
+# Complex nested structures with automatic type conversion
+python -m mcp_template deploy demo \
+  --override "config__features__advanced=true" \
+  --override "config__features__timeout=30.5" \
+  --override "servers__0__config__host=localhost"
+
+# Combined config and overrides
+python -m mcp_template deploy demo \
+  --config hello_from="Custom Server" \
+  --override "metadata__version=1.5.0" \
+  --override "tools__0__custom_property=value"
+```
+
+**Override vs Config Usage:**
+
+| Use `--config` for: | Use `--override` for: |
+|---------------------|----------------------|
+| Server configuration properties | Template metadata changes |
+| Environment variable mappings | Tool modifications |
+| Settings from `config_schema` | Custom field additions |
+| Runtime behavior control | Template structure changes |
+
+**Type Conversion:**
+Overrides automatically convert values:
+- `"true"/"false"` → boolean
+- `"123"` → integer
+- `"45.67"` → float
+- `'["a","b"]'` → JSON array
+- `'{"key":"value"}'` → JSON object
+
+**Testing Override Functionality:**
+```bash
+# Use the demonstrate_overrides tool to see both patterns
+python -c "
+from templates.demo.server import demonstrate_overrides
+print(demonstrate_overrides())
+"
 ```
 
 ### Configuration Files
