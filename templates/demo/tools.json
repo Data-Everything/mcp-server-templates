@@ -1,0 +1,47 @@
+{
+  "tools": [
+    {
+      "name": "say_hello",
+      "description": "Generate a personalized greeting message",
+      "category": "greeting",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the person to greet (optional)"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_server_info",
+      "description": "Get information about the demo server",
+      "category": "information",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "echo_message",
+      "description": "Echo back a message with server identification",
+      "category": "messaging",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Message to echo back"
+          }
+        },
+        "required": ["message"]
+      }
+    }
+  ],
+  "metadata": {
+    "discovery_method": "static",
+    "last_updated": "2024-07-29T00:00:00Z",
+    "template_name": "demo"
+  }
+}

@@ -117,28 +117,74 @@ python -m mcp_template deploy file-server --config-file ./config.json
 python -m mcp_template deploy file-server --config-file ./config.yml
 ```
 
-**3. Deploy with CLI Options:**
+**3. Deploy with CLI Configuration Options:**
+
+There are **two types** of CLI configuration:
+
+- **`--config`**: For `config_schema` properties (becomes environment variables)
+- **`--override`**: For template data modifications (modifies template structure directly)
+
 ```bash
-# Direct property names
+# Configuration schema properties (recommended for server settings)
 python -m mcp_template deploy file-server \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
 
-# With custom name and skip image pull
+# Template data overrides (for metadata, tools, custom fields)
+python -m mcp_template deploy file-server \
+  --override "metadata__version=2.0.0" \
+  --override "metadata__author=MyName" \
+  --override "tools__0__enabled=false"
+
+# Combined usage with custom name
 python -m mcp_template deploy file-server \
   --name my-file-server \
   --no-pull \
-  --config read_only_mode=true
+  --config read_only_mode=true \
+  --override "metadata__description=Custom file server"
+```
 
-# Nested configuration using double underscore notation
+**4. Double Underscore Notation for Nested Configuration:**
+
+Both `--config` and `--override` support double underscore notation for nested structures:
+
+```bash
+# Config schema properties (nested configuration)
 python -m mcp_template deploy file-server \
   --config security__read_only=true \
   --config security__max_file_size=50 \
   --config logging__level=debug
+
+# Template data overrides (nested modifications)
+python -m mcp_template deploy file-server \
+  --override "metadata__version=2.0.0" \
+  --override "config__custom_setting=value" \
+  --override "tools__0__description=Modified tool" \
+  --override "servers__0__config__host=remote.example.com"
 ```
 
-**4. Deploy with Environment Variables:**
+**5. Advanced Override Examples:**
+
+```bash
+# Array modifications with automatic type conversion
+python -m mcp_template deploy demo \
+  --override "tools__0__enabled=false" \
+  --override "tools__1__timeout=30.5" \
+  --override "metadata__tags=[\"custom\",\"modified\"]"
+
+# Complex nested structure creation
+python -m mcp_template deploy demo \
+  --override "config__database__connection__host=localhost" \
+  --override "config__database__connection__port=5432" \
+  --override "config__security__enabled=true"
+
+# JSON object overrides
+python -m mcp_template deploy demo \
+  --override "metadata__custom={\"key\":\"value\",\"nested\":{\"prop\":true}}"
+```
+
+**6. Deploy with Environment Variables:**
 ```bash
 python -m mcp_template deploy file-server \
   --env MCP_READ_ONLY=true \
@@ -146,13 +192,25 @@ python -m mcp_template deploy file-server \
   --env MCP_LOG_LEVEL=debug
 ```
 
-**5. Mixed Configuration (precedence: env > cli > file > defaults):**
+**7. Mixed Configuration (precedence: env > cli > file > defaults):**
 ```bash
 python -m mcp_template deploy file-server \
   --config-file ./base-config.json \
   --config log_level=warning \
+  --override "metadata__version=1.5.0" \
   --env MCP_READ_ONLY=true
 ```
+
+### Configuration vs Override Usage Guide
+
+| Use Case | Recommended Method | Example |
+|----------|-------------------|---------|
+| Server settings (logging, security, performance) | `--config` | `--config log_level=debug` |
+| Nested server configuration | `--config` with `__` | `--config security__read_only=true` |
+| Template metadata changes | `--override` | `--override "metadata__version=2.0.0"` |
+| Tool modifications | `--override` | `--override "tools__0__enabled=false"` |
+| Custom fields addition | `--override` | `--override "custom_field=value"` |
+| Complex nested structures | `--override` with `__` | `--override "config__db__host=localhost"` |
 
 ### Configuration File Examples
 
@@ -378,4 +436,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
 
 - **Issues**: [GitHub Issues](https://github.com/Data-Everything/mcp-server-templates/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/Data-Everything/mcp-server-templates/discussions)
+- **Community Slack**: [Join mcp-platform workspace](https://join.slack.com/t/mcp-platform/shared_invite/zt-39z1p559j-8aWEML~IsSPwFFgr7anHRA)
 - **Documentation**: [docs/index.md](docs/index.md)
