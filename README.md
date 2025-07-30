@@ -416,9 +416,14 @@ python -m mcp_template create my-custom-template
 ```
 
 ---
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the **Elastic License 2.0**.
+
+You may use, deploy, and modify it freely in your organization or personal projects.
+You **may not** resell, rehost, or offer it as a commercial SaaS product without a commercial license.
+
+See [LICENSE](./LICENSE) and [ATTRIBUTION](./ATTRIBUTION.md) for details.
 
 ---
 ## 🤝 Contributing

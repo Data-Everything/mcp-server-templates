@@ -9,7 +9,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="mcp-templates",
-    version="1.0.0",
+    version="0.1.1",
     author="Data Everything",
     author_email="tooling@dataeverything.com",
     description="Deploy MCP server templates with zero configuration",
