@@ -493,14 +493,19 @@ class DemoServerConfig:
         template_data = self.template_data.copy()
 
         # Apply any template-level overrides from double underscore notation
+        template_config_keys = set(self.get_template_config().keys())
         for key, value in self.config_dict.items():
             if "__" in key:
                 # Apply nested override to template data
                 self._apply_nested_override(template_data, key, value)
-            elif key not in self.get_template_config():
+            elif key.lower() not in template_config_keys:
                 # Direct template-level override (not in config_schema)
-                template_data[key] = value
-                self.logger.debug("Applied template override: %s = %s", key, value)
+                # Convert key to lowercase to match template.json keys
+                template_key = key.lower()
+                template_data[template_key] = value
+                self.logger.debug(
+                    "Applied template override: %s = %s", template_key, value
+                )
 
         return template_data
 
