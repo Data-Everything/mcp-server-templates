@@ -115,6 +115,7 @@ class TestTemplateCreator(unittest.TestCase):
             "server123",
             "my-mcp-server",
             "test123",
+            "123numbers-first",  # numbers and letters with hyphens
             "ab",  # minimum length
         ]
 
@@ -130,7 +131,6 @@ class TestTemplateCreator(unittest.TestCase):
             "under_scores",  # underscores not allowed
             "with spaces",  # spaces not allowed
             "with.dots",  # dots not allowed
-            "123numbers-first",  # starts with number is actually valid per regex
             "a",  # too short (< 2 chars)
             "",  # empty
             "special@chars",  # special chars not allowed
@@ -139,11 +139,8 @@ class TestTemplateCreator(unittest.TestCase):
         for template_id in invalid_ids:
             with self.subTest(template_id=template_id):
                 result = self.creator._validate_template_id(template_id)
-                # Note: "123numbers-first" is actually valid per the regex ^[a-z0-9-]+$
-                if template_id == "123numbers-first":
-                    assert result is True  # This one is actually valid
-                else:
-                    assert result is False
+                # Validate the template ID against the expected rules
+                assert result is False
 
     @patch("mcp_template.template.creation.Prompt.ask")
     def test_gather_template_info(self, mock_ask):

@@ -9,11 +9,14 @@ A demonstration MCP server that showcases two key patterns:
 This helps template authors understand both patterns.
 """
 
+import logging
 import os
 import sys
-from typing import Any, Dict
 
 from fastmcp import FastMCP
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 try:
     from .config import DemoServerConfig
@@ -53,13 +56,13 @@ class DemoMCPServer:
         self.template_data = self.config.get_template_data()
 
         self.logger = self.config.logger
-        self.logger.info("Demo MCP Server initialized")
 
         self.mcp = FastMCP(
             name=self.template_data.get("name", "demo-server"),
             instructions="Demo server showing config patterns",
             version=self.template_data.get("version", "1.0.0"),
         )
+        logger.info("Demo MCP server %s created", self.mcp.name)
         self.register_tools()
 
     def register_tools(self):
@@ -68,6 +71,7 @@ class DemoMCPServer:
         self.mcp.tool(self.get_server_info, tags=["info"])
         self.mcp.tool(self.echo_message, tags=["echo"])
         self.mcp.tool(self.demonstrate_overrides, tags=["demo"])
+        logger.info("Tools registered with MCP server")
 
     def say_hello(self, name: str = "World") -> str:
         """
@@ -85,6 +89,8 @@ class DemoMCPServer:
         Returns:
             A personalized greeting message
         """
+
+        logger.debug("Generating greeting for %s", name)
         # PATTERN 1: Standard config usage
         hello_from = self.config_data.get("hello_from", "Demo Server")
 
@@ -118,6 +124,8 @@ class DemoMCPServer:
         Returns:
             Dictionary containing server information
         """
+
+        logger.debug("Fetching server info")
         return {
             # Template data (can be overridden via --name="Custom Name")
             "name": self.template_data.get("name", "Demo MCP Server"),
@@ -159,6 +167,8 @@ class DemoMCPServer:
         Returns:
             Echoed message with server identification
         """
+
+        logger.debug("Echoing message: %s", message)
         # Use template data that can be overridden
         server_name = self.template_data.get("name", "Demo Server")
 
@@ -178,6 +188,8 @@ class DemoMCPServer:
         Returns:
             Examples of both configuration patterns
         """
+
+        logger.debug("Demonstrating configuration overrides")
         return {
             "configuration_patterns": {
                 "pattern_1_standard_config": {

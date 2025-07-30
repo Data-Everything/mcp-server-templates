@@ -7,9 +7,12 @@ and configuration handling with comprehensive coverage.
 
 from unittest.mock import patch
 
+import pytest
+
 from mcp_template.manager import DeploymentManager, MockDeploymentService
 
 
+@pytest.mark.unit
 class TestDeploymentManager:
     """Test deployment manager."""
 

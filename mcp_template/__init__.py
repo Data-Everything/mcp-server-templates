@@ -27,24 +27,19 @@ import sys
 from rich.console import Console
 
 from mcp_template.backends.docker import DockerDeploymentService
+
+# Import enhanced CLI modules
+from mcp_template.cli import (
+    EnhancedCLI,
+    add_enhanced_cli_args,
+    handle_enhanced_cli_commands,
+)
 from mcp_template.deployer import MCPDeployer
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.creation import TemplateCreator
 
 # Import core classes that are used in CI and the CLI
 from mcp_template.template.discovery import TemplateDiscovery
-
-# Try to import enhanced CLI - graceful fallback if not available
-try:
-    from mcp_template.cli import (
-        EnhancedCLI,
-        add_enhanced_cli_args,
-        handle_enhanced_cli_commands,
-    )
-
-    HAS_ENHANCED_CLI = True
-except ImportError:
-    HAS_ENHANCED_CLI = False
 
 # Export the classes for external use (CI compatibility)
 __all__ = [
@@ -181,13 +176,6 @@ Examples:
     # Initialize enhanced CLI
     enhanced_cli = EnhancedCLI()
 
-    # Handle direct template deployment (backwards compatibility) - legacy fallback
-    if not args.command and len(sys.argv) > 1:
-        template_name = sys.argv[1]
-        if template_name in available_templates:
-            args.command = "deploy"
-            args.template = template_name
-
     if not args.command:
         parser.print_help()
         sys.exit(0)
@@ -233,36 +221,21 @@ Examples:
                     key, value = override_var.split("=", 1)
                     override_values[key] = value
 
-            # Use enhanced CLI deploy with transport support if available
-            if HAS_ENHANCED_CLI and (
-                hasattr(args, "transport") or hasattr(args, "port")
-            ):
-                success = enhanced_cli.deploy_with_transport(
-                    template_name=template,
-                    transport=getattr(args, "transport", "http"),
-                    port=getattr(args, "port", 7071),
-                    data_dir=getattr(args, "data_dir", None),
-                    config_dir=getattr(args, "config_dir", None),
-                    env_vars=env_vars,
-                    config_file=getattr(args, "config_file", None),
-                    config_values=config_values,
-                    override_values=override_values,
-                    pull_image=not getattr(args, "no_pull", False),
-                )
-                if not success:
-                    sys.exit(1)
-            else:
-                # Fallback to original deployer
-                deployer.deploy(
-                    template,
-                    data_dir=getattr(args, "data_dir", None),
-                    config_dir=getattr(args, "config_dir", None),
-                    env_vars=env_vars,
-                    config_file=getattr(args, "config_file", None),
-                    config_values=config_values,
-                    override_values=override_values,
-                    pull_image=not getattr(args, "no_pull", False),
-                )
+            # Deploy using enhanced CLI with transport support
+            success = enhanced_cli.deploy_with_transport(
+                template_name=template,
+                transport=getattr(args, "transport", "http"),
+                port=getattr(args, "port", 7071),
+                data_dir=getattr(args, "data_dir", None),
+                config_dir=getattr(args, "config_dir", None),
+                env_vars=env_vars,
+                config_file=getattr(args, "config_file", None),
+                config_values=config_values,
+                override_values=override_values,
+                pull_image=not getattr(args, "no_pull", False),
+            )
+            if not success:
+                sys.exit(1)
         elif args.command == "stop":
             deployer.stop(args.template, custom_name=getattr(args, "name", None))
         elif args.command == "logs":
