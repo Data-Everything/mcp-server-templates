@@ -11,9 +11,13 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List
 
+from rich.console import Console
+from rich.panel import Panel
+
 from mcp_template.backends import BaseDeploymentBackend
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
 class DockerDeploymentService(BaseDeploymentBackend):
@@ -43,6 +47,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
         Raises:
             subprocess.CalledProcessError: If command fails and check=True
         """
+
         try:
             logger.debug("Running command: %s", " ".join(command))
             result = subprocess.run(  # nosec B603
@@ -155,6 +160,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
     ) -> List[str]:
         """Prepare environment variables for container deployment."""
         env_vars = []
+        env_dict = {}  # Use dict to prevent duplicates
 
         # Process user configuration
         for key, value in config.items():
@@ -170,11 +176,17 @@ class DockerDeploymentService(BaseDeploymentBackend):
                 env_value = ",".join(str(item) for item in value)
             else:
                 env_value = str(value)
-            env_vars.extend(["--env", f"{env_key}={env_value}"])
 
-        # Add template default env vars
+            env_dict[env_key] = env_value
+
+        # Add template default env vars (only if not already present)
         template_env = template_data.get("env_vars", {})
         for key, value in template_env.items():
+            if key not in env_dict:  # Don't override user config
+                env_dict[key] = str(value)
+
+        # Convert dict to docker --env format
+        for key, value in env_dict.items():
             env_vars.extend(["--env", f"{key}={value}"])
 
         return env_vars
@@ -231,6 +243,14 @@ class DockerDeploymentService(BaseDeploymentBackend):
             + command_args
         )
 
+        console.line()
+        console.print(
+            Panel(
+                f"Running command: {' '.join(docker_command)}",
+                title="Docker Command Execution",
+                style="magenta",
+            )
+        )
         # Run the container
         result = self._run_command(docker_command)
         container_id = result.stdout.strip()

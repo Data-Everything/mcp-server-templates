@@ -18,6 +18,7 @@ from mcp_template.manager import DeploymentManager
 from mcp_template.template.discovery import TemplateDiscovery
 
 
+@pytest.mark.integration
 class TestTemplateDiscoveryIntegration:
     """Test template discovery with real filesystem."""
 
@@ -53,6 +54,8 @@ class TestTemplateDiscoveryIntegration:
                 pytest.fail(f"Template {template_id} has invalid config: {e}")
 
 
+@pytest.mark.docker
+@pytest.mark.integration
 @pytest.mark.docker
 class TestDockerIntegrationReal:
     """Test Docker integration with real Docker daemon."""
@@ -157,6 +160,9 @@ class TestDockerIntegrationReal:
 
 
 @pytest.mark.integration
+@pytest.mark.e2e
+@pytest.mark.docker
+@pytest.mark.slow
 class TestEndToEndDeployment:
     """Test complete end-to-end deployment scenarios."""
 
@@ -260,6 +266,7 @@ class TestEndToEndDeployment:
 
 
 @pytest.mark.integration
+@pytest.mark.integration
 class TestConfigurationIntegration:
     """Test configuration handling and validation."""
 
@@ -276,26 +283,48 @@ class TestConfigurationIntegration:
         # Should not raise an exception
         manager.validate_template_config(template_config)
 
-    def test_environment_variable_mapping(self):
+    @patch(
+        "mcp_template.backends.docker.DockerDeploymentService._ensure_docker_available"
+    )
+    @patch("mcp_template.backends.docker.subprocess")
+    def test_environment_variable_mapping(self, mock_subprocess, mock_ensure_docker):
         """Test environment variable mapping from config."""
+        # Mock subprocess to prevent actual Docker execution
+        mock_subprocess.run.return_value.returncode = 0
+        mock_subprocess.run.return_value.stdout = "container_id_123"
+
+        # Mock docker availability check
+        mock_ensure_docker.return_value = None
 
         service = DockerDeploymentService()
 
         config = {"hello_from": "Test", "log_level": "debug"}
 
         template_data = {
+            "name": "test-template",
+            "docker_image": "test/image",
+            "docker_tag": "latest",
             "config_schema": {
                 "properties": {
                     "hello_from": {"env_mapping": "MCP_HELLO_FROM"},
                     "log_level": {"env_mapping": "MCP_LOG_LEVEL"},
                 }
-            }
+            },
         }
 
-        env_vars = service._prepare_environment_variables(config, template_data)
+        # Deploy and check that env vars are passed correctly
+        service.deploy_template(
+            template_id="test", config=config, template_data=template_data
+        )
 
-        assert "MCP_HELLO_FROM=Test" in env_vars
-        assert "MCP_LOG_LEVEL=debug" in env_vars
+        # Verify deployment was called with correct environment variables
+        assert mock_subprocess.run.called
+        call_args = mock_subprocess.run.call_args[0][0]  # Get the command args
+
+        # Check that environment variables are in the command
+        command_str = " ".join(call_args)
+        assert "MCP_HELLO_FROM=Test" in command_str
+        assert "MCP_LOG_LEVEL=debug" in command_str
 
     def test_config_defaults_handling(self):
         """Test handling of default configuration values."""
@@ -313,6 +342,8 @@ class TestConfigurationIntegration:
 
 
 @pytest.mark.integration
+@pytest.mark.integration
+@pytest.mark.template
 class TestTemplateStructureValidation:
     """Test template structure and file validation."""
 
@@ -367,6 +398,8 @@ class TestTemplateStructureValidation:
 
 @pytest.mark.slow
 @pytest.mark.integration
+@pytest.mark.integration
+@pytest.mark.slow
 class TestPerformanceIntegration:
     """Test performance aspects of the system."""
 
@@ -427,6 +460,7 @@ class TestPerformanceIntegration:
 
 
 @pytest.mark.integration
+@pytest.mark.integration
 class TestErrorHandlingIntegration:
     """Test error handling in integration scenarios."""
 
@@ -463,7 +497,7 @@ class TestErrorHandlingIntegration:
             with pytest.raises(
                 RuntimeError, match="Docker daemon is not available or not running"
             ):
-                service = DockerDeploymentService()
+                DockerDeploymentService()
 
     def test_deployment_cleanup_on_failure(self):
         """Test that failed deployments are properly cleaned up."""

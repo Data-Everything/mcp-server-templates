@@ -7,10 +7,13 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 # Add src to Python path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
+@pytest.mark.unit
 class TestMain:
     """Test the __main__ module entry point."""
 

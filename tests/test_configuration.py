@@ -11,6 +11,7 @@ import pytest
 from mcp_template import MCPDeployer
 
 
+@pytest.mark.unit
 class TestConfigurationMapping:
     """Test configuration mapping functionality."""
 
@@ -242,6 +243,7 @@ class TestConfigurationMapping:
             Path(config_file_path).unlink()
 
 
+@pytest.mark.integration
 class TestConfigurationIntegration:
     """Integration tests for configuration system."""
 
