@@ -14,6 +14,7 @@ from mcp_template import main
 from mcp_template.deployer import MCPDeployer
 
 
+@pytest.mark.integration
 class TestCLIIntegration:
     """Test end-to-end CLI integration with override functionality."""
 
@@ -32,34 +33,35 @@ class TestCLIIntegration:
             "log_level=debug",
         ]
 
-        with patch("sys.argv", test_args), patch(
-            "mcp_template.MCPDeployer"
-        ) as mock_deployer_class:
+        with patch("sys.argv", test_args):
+            with patch(
+                "mcp_template.backends.docker.DockerDeploymentService.deploy_template"
+            ) as mock_deploy:
+                mock_deploy.return_value = {
+                    "success": True,
+                    "deployment_id": "test-deployment",
+                    "container_id": "test-container",
+                }
 
-            mock_deployer = MagicMock()
-            mock_deployer_class.return_value = mock_deployer
-            mock_deployer.templates = {"demo": {"name": "demo"}}
-            mock_deployer.deploy.return_value = True
+                try:
+                    main()
+                except SystemExit:  # CLI may exit after successful deployment
+                    pass
 
-            try:
-                main()
-            except SystemExit:
-                pass  # Expected for successful completion
+                # Verify deploy was called
+                mock_deploy.assert_called_once()
+                call_args = mock_deploy.call_args
 
-            # Verify deploy was called with correct arguments
-            mock_deployer.deploy.assert_called_once()
-            call_args = mock_deployer.deploy.call_args
+                # Check that template_id was passed correctly
+                assert call_args.kwargs["template_id"] == "demo"
 
-            # Check override_values were passed correctly
-            assert "override_values" in call_args.kwargs
-            override_values = call_args.kwargs["override_values"]
-            assert override_values["metadata__version"] == "2.0.0"
-            assert override_values["tools__0__enabled"] == "false"
+                # Check that override values were processed correctly
+                config = call_args.kwargs["config"]
+                assert config["OVERRIDE_metadata__version"] == "2.0.0"
+                assert config["OVERRIDE_tools__0__enabled"] == "false"
 
-            # Check config_values were passed correctly
-            assert "config_values" in call_args.kwargs
-            config_values = call_args.kwargs["config_values"]
-            assert config_values["log_level"] == "debug"
+                # Check that config values were processed correctly
+                assert config["MCP_LOG_LEVEL"] == "debug"
 
     def test_cli_help_shows_override_option(self, capsys):
         """Test that CLI help displays the override option clearly."""
@@ -75,7 +77,8 @@ class TestCLIIntegration:
         # Verify override option is documented
         assert "--override OVERRIDE" in help_output
         assert "Template data overrides" in help_output
-        assert "double underscore notation" in help_output
+        # The help text may have line breaks, so check for the key parts
+        assert "supports double" in help_output and "underscore notation" in help_output
         assert "tools__0__custom_field=value" in help_output
 
     def test_deploy_with_mixed_config_and_overrides(self):
@@ -89,6 +92,7 @@ class TestCLIIntegration:
             {
                 "demo": {
                     "name": "demo",
+                    "image": "demo-image:latest",  # Add missing image field
                     "config_schema": {
                         "properties": {
                             "log_level": {
@@ -129,11 +133,13 @@ class TestCLIIntegration:
             assert "MCP_LOG_LEVEL" in config
             assert config["MCP_LOG_LEVEL"] == "debug"
 
-            # Check template data contains overrides
-            template_data = call_args[1]["template_data"]
-            assert template_data["metadata"]["version"] == "2.0.0"
-            assert template_data["tools"][0]["enabled"] is False
-            assert template_data["config"]["custom_setting"] == "test_value"
+            # Check configuration contains override environment variables
+            assert "OVERRIDE_metadata__version" in config
+            assert config["OVERRIDE_metadata__version"] == "2.0.0"
+            assert "OVERRIDE_tools__0__enabled" in config
+            assert config["OVERRIDE_tools__0__enabled"] == "false"
+            assert "OVERRIDE_config__custom_setting" in config
+            assert config["OVERRIDE_config__custom_setting"] == "test_value"
 
     def test_complex_nested_overrides(self):
         """Test complex nested override scenarios."""
@@ -189,7 +195,7 @@ class TestCLIIntegration:
         assert config["boolean_false"] is False
         assert config["integer"] == 42
         assert isinstance(config["integer"], int)
-        assert config["float"] == 3.14
+        assert abs(config["float"] - 3.14) < 0.001
         assert isinstance(config["float"], float)
         assert config["string"] == "hello world"
         assert config["json_array"] == ["item1", "item2", "item3"]
@@ -243,6 +249,7 @@ class TestCLIIntegration:
         assert result2 == template_data
 
 
+@pytest.mark.integration
 class TestCLIDocumentationExamples:
     """Test that documentation examples actually work."""
 

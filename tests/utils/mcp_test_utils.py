@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from mcp_template.template.discovery import TemplateDiscovery
 from mcp_template.utils import TEMPLATES_DIR
 
 
@@ -200,6 +199,7 @@ def build_and_run_template(template_name: str, config: Dict[str, Any]):
 def get_template_list() -> List[str]:
     """Get list of available templates using TemplateDiscovery."""
     # Import here to avoid circular imports
+    from mcp_template.template.discovery import TemplateDiscovery
 
     discovery = TemplateDiscovery()
     templates = discovery.discover_templates()
@@ -237,6 +237,10 @@ def run_template_tests(template_name: str) -> subprocess.CompletedProcess:
         raise ValueError(f"No tests found for template: {template_name}")
 
     # Run without coverage requirements for template tests
+    # The `--no-cov` flag is used here because template tests are designed to validate
+    # the functionality of user-provided templates, not the core application code.
+    # Coverage metrics for these tests are not meaningful as they do not reflect
+    # the coverage of the main application logic.
     return subprocess.run(
         [sys.executable, "-m", "pytest", str(test_dir), "-v", "--tb=short", "--no-cov"],
         capture_output=True,
