@@ -243,6 +243,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
             + command_args
         )
 
+        console.line()
         console.print(
             Panel(
                 f"Running command: {' '.join(docker_command)}",
