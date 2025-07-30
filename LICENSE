@@ -1,21 +1,21 @@
-MIT License
+Elastic License 2.0
 
-Copyright (c) 2025 Data Everything
+License FAQ: https://www.elastic.co/licensing/elastic-license
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+You may not use this file except in compliance with the Elastic License 2.0.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+You may obtain a copy of the License at:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+    https://www.elastic.co/licensing/elastic-license
+
+Software: MCP Platform (https://github.com/Data-Everything/mcp-server-templates)
+
+This software is licensed under the Elastic License 2.0 (ELv2), subject to the following limitations:
+
+1. **You may not provide the software to others as a managed or hosted service**. For example, you may not create a commercial SaaS platform using this code.
+2. **You may not relicense, redistribute, or sell** the software or modified versions as a commercial product.
+3. **You may use, modify, and deploy** the software freely, including in internal commercial environments.
+
+The licensor reserves the right to offer the software under a different license to third parties.
+
+For commercial licensing or support, please contact: team@data-everything.io
