@@ -9,6 +9,7 @@ import pytest
 from mcp_template.deployer import MCPDeployer
 
 
+@pytest.mark.unit
 class TestCLIOverrides:
     """Test CLI override functionality with double underscore notation."""
 
@@ -115,26 +116,36 @@ class TestCLIOverrides:
         with patch.object(
             self.deployer, "deployment_manager"
         ) as mock_manager, patch.object(
-            self.deployer, "templates", {"test": {"name": "test"}}
+            self.deployer,
+            "templates",
+            {"test": {"name": "test", "image": "test:latest"}},
+        ), patch.object(
+            self.deployer, "_generate_mcp_config"
         ):
 
-            mock_manager.deploy_template.return_value = True
+            mock_manager.deploy_template.return_value = {
+                "deployment_name": "test-deployment",
+                "status": "deployed",
+                "image": "test:latest",
+            }
 
             # Test deploy with override values
-            self.deployer.deploy(
+            result = self.deployer.deploy(
                 template_name="test", override_values={"metadata__version": "2.0.0"}
             )
 
-            # Verify that deploy_template was called
+            # Verify that deploy_template was called and deployment succeeded
             assert mock_manager.deploy_template.called
+            assert result is True
             call_args = mock_manager.deploy_template.call_args
 
-            # Check that template_data was modified by overrides
-            template_data = call_args[1]["template_data"]
-            assert "metadata" in template_data
-            assert template_data["metadata"]["version"] == "2.0.0"
+            # Check that override values were converted to environment variables
+            config = call_args[1]["configuration"]
+            assert "OVERRIDE_metadata__version" in config
+            assert config["OVERRIDE_metadata__version"] == "2.0.0"
 
 
+@pytest.mark.unit
 class TestCLIOverrideEdgeCases:
     """Test edge cases for CLI override functionality."""
 

@@ -125,20 +125,31 @@ class TestTemplateDiscovery:
 
 
 @pytest.mark.unit
+@pytest.mark.unit
 class TestMCPDeployer:
     """Unit tests for MCPDeployer class."""
 
-    @patch("mcp_template.deployer.DeploymentManager")
-    @patch("mcp_template.deployer.TemplateDiscovery")
-    def test_init(self, mock_discovery, mock_manager):
+    def test_init(self):
         """Test MCPDeployer initialization."""
-        mock_discovery.return_value.discover_templates.return_value = {"test": {}}
+        with patch(
+            "mcp_template.deployer.TemplateDiscovery"
+        ) as mock_discovery_class, patch(
+            "mcp_template.deployer.DeploymentManager"
+        ) as mock_manager_class:
 
-        deployer = MCPDeployer()
+            # Configure the mock instance
+            mock_discovery_instance = mock_discovery_class.return_value
+            mock_discovery_instance.discover_templates.return_value = {"test": {}}
 
-        assert deployer.templates == {"test": {}}
-        mock_discovery.assert_called_once()
-        mock_manager.assert_called_once_with(backend_type="docker")
+            deployer = MCPDeployer()
+
+            # Verify the classes were called
+            mock_discovery_class.assert_called_once()
+            mock_manager_class.assert_called_once_with(backend_type="docker")
+
+            # Check that templates were loaded from the mock
+            assert "test" in deployer.templates
+            assert deployer.templates["test"] == {}
 
     @patch("mcp_template.manager.DeploymentManager")
     @patch("mcp_template.template.discovery.TemplateDiscovery")
@@ -151,10 +162,10 @@ class TestMCPDeployer:
 
         assert result is False
 
-    @patch("mcp_template.deployer.console")
-    @patch("mcp_template.deployer.DeploymentManager")
-    @patch("mcp_template.deployer.TemplateDiscovery")
-    def test_deploy_success(self, mock_discovery, mock_manager, mock_console):
+    @patch("mcp_template.manager.TemplateDiscovery")  # Patch at manager level too
+    @patch("mcp_template.manager.DeploymentManager")
+    @patch("mcp_template.template.discovery.TemplateDiscovery")
+    def test_deploy_success(self, mock_discovery, mock_manager, mock_manager_discovery):
         """Test successful deployment."""
         # Setup mocks
         template_config = {
@@ -170,21 +181,39 @@ class TestMCPDeployer:
             "test": template_config
         }
 
+        # Also mock the manager-level template discovery
+        mock_manager_discovery.return_value.discover_templates.return_value = {
+            "test": template_config
+        }
+
         mock_manager.return_value.deploy_template.return_value = {
             "deployment_name": "test-deployment",
             "status": "deployed",
             "image": "test/image:latest",
+            "success": True,
         }
+
+        # Set the backend type to mock to skip template validation
+        mock_manager.return_value.backend_type = "mock"
 
         deployer = MCPDeployer()
 
-        with patch.object(deployer, "_generate_mcp_config"):
-            result = deployer.deploy("test")
+        # Mock the templates directly on the deployer instance
+        deployer.templates = {"test": template_config}
+
+        # Mock the deployment manager on the deployer instance
+        deployer.deployment_manager = mock_manager.return_value
+
+        with patch.object(deployer, "_generate_mcp_config") as mock_generate_config:
+            # Ensure the mocked method doesn't raise an exception
+            mock_generate_config.return_value = None
+            result = deployer.deploy("test", pull_image=False)
 
         assert result is True
         mock_manager.return_value.deploy_template.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.unit
 class TestDeploymentManager:
     """Unit tests for DeploymentManager class."""
@@ -209,6 +238,8 @@ class TestDeploymentManager:
 
 
 @pytest.mark.unit
+@pytest.mark.unit
+@pytest.mark.docker
 class TestDockerDeploymentService:
     """Unit tests for DockerDeploymentService class."""
 

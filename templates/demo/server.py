@@ -11,7 +11,6 @@ This helps template authors understand both patterns.
 
 import os
 import sys
-from typing import Any, Dict
 
 from fastmcp import FastMCP
 

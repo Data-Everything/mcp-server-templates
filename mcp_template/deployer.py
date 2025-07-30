@@ -137,11 +137,12 @@ class MCPDeployer:
                                     "volumes"
                                 ][key].replace("/config", config_dir)
 
-                # Apply template data overrides with double underscore notation
+                # Pass template overrides as environment variables to the template
                 if override_values:
-                    template_copy = self._apply_template_overrides(
-                        template_copy, override_values
+                    override_env_vars = self._convert_overrides_to_env_vars(
+                        override_values
                     )
+                    config.update(override_env_vars)
 
                 # Deploy using unified manager
                 result = self.deployment_manager.deploy_template(
@@ -660,6 +661,30 @@ class MCPDeployer:
 
         return converted_config
 
+    def _convert_overrides_to_env_vars(
+        self, override_values: Dict[str, str]
+    ) -> Dict[str, str]:
+        """
+        Convert override values to environment variables with OVERRIDE_ prefix.
+
+        This allows the template's config.py to handle the override processing
+        instead of the deployer trying to modify template.json directly.
+
+        Args:
+            override_values: Override values from CLI (e.g., {'capabilities__0__name': 'Hello Tool'})
+
+        Returns:
+            Dict with OVERRIDE_ prefixed environment variables
+        """
+        override_env_vars = {}
+
+        for key, value in override_values.items():
+            # Convert to environment variable with OVERRIDE_ prefix
+            env_var_name = f"OVERRIDE_{key}"
+            override_env_vars[env_var_name] = str(value)
+
+        return override_env_vars
+
     def _handle_nested_cli_config(
         self, nested_key: str, value: str, properties: Dict[str, Any]
     ) -> Optional[str]:
@@ -893,8 +918,9 @@ class MCPDeployer:
                                 current[index] = {}
                         current = current[index]
                     else:
+                        # DEBUG: Add more details about the failing field
                         console.print(
-                            f"[yellow]⚠️ Warning: Cannot index non-list field with {part}[/yellow]"
+                            f"[yellow]⚠️ Warning: Cannot index non-list field with {part} (field type: {type(current)}, key_parts so far: {key_parts[:i+1]})[/yellow]"
                         )
                         break
                 else:
@@ -923,6 +949,59 @@ class MCPDeployer:
                     current[final_key] = converted_value
 
         return template_copy
+
+    def _extract_config_overrides(
+        self, override_values: Dict[str, str], template_data: Dict[str, Any]
+    ) -> Dict[str, str]:
+        """
+        Extract config-related overrides that should be converted to environment variables.
+
+        Args:
+            override_values: Raw override values from CLI
+            template_data: Template data with config_schema
+
+        Returns:
+            Dictionary of config overrides to be converted to env vars
+        """
+        config_overrides = {}
+        config_schema = template_data.get("config_schema", {})
+        properties = config_schema.get("properties", {})
+
+        for key, value in override_values.items():
+            # Check if this override key corresponds to a config schema property
+            parts = key.split("__")
+
+            # Direct property match
+            if key in properties:
+                config_overrides[key] = value
+                continue
+
+            # Check for nested property matches
+            for prop_name, prop_config in properties.items():
+                env_mapping = prop_config.get("env_mapping", "")
+
+                # Match by environment mapping
+                if env_mapping and (
+                    key == env_mapping
+                    or key.upper() == env_mapping.upper()
+                    or key.replace("__", "_").upper() == env_mapping.upper()
+                ):
+                    config_overrides[prop_name] = value
+                    break
+
+                # Match nested structure patterns
+                if len(parts) >= 2:
+                    potential_matches = [
+                        "_".join(parts),
+                        "_".join(parts[1:]),
+                        parts[-1],
+                    ]
+
+                    if prop_name in potential_matches:
+                        config_overrides[prop_name] = value
+                        break
+
+        return config_overrides
 
     def _convert_override_value(self, value: str) -> Any:
         """Convert string override value to appropriate type."""
