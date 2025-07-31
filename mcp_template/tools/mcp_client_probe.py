@@ -5,9 +5,7 @@ MCP Client probe for discovering tools from MCP servers via stdio.
 import asyncio
 import json
 import logging
-import subprocess
 import time
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)

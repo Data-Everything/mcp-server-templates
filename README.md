@@ -2,7 +2,31 @@
 
 Production-ready Model Context Protocol (MCP) server templates with a **unified deployment architecture** and **comprehensive configuration support**. Easily deploy, manage, and extend AI server templates with flexible configuration options matching commercial platform capabilities.
 
+## ⚡ Features
+
+Get ready to supercharge your MCP journey! The MCP Platform is packed with electrifying features that make server deployment a thrill ride:
+
+### 🚀 Current Features
+
+- **🖱️ One-Click Docker Deployment**: Launch MCP servers instantly with pre-built templates—no hassle, just pure speed.
+- **🔎 Smart Tool Discovery**: Automatically finds and showcases every tool your server can offer. No more guesswork!
+- **💻 Slick CLI Management**: Command-line magic for easy, powerful control over all deployments.
+- **🤝 Bring Your Own MCP Server**: Plug in your own MCP server and run it on our network—even with limited features!
+- **🐳 Effortless Docker Image Integration**: Add any existing MCP Docker image to the templates library with minimal setup and unlock all the platform’s cool benefits.
+- **⚡ Boilerplate Template Generator**: Instantly create new MCP server projects with a CLI-powered generator—kickstart your next big idea!
+- **🛠️ Multiple Ways to Set Configuration**: Flex your setup with config via JSON, YAML, environment variables, CLI config, or CLI override options—total flexibility for every workflow!
+
+### 🌈 Planned Features
+
+- **🦸 MCP Sidekick (Coming Soon)**: Your friendly AI companion, making every MCP server compatible with any AI tool or framework.
+- **🛸 Kubernetes Support**: Deploy to Kubernetes clusters with ease, scaling your MCP servers effortlessly.
+
+**Release Timeline:** All this and more dropping mid-August 2025—don’t miss out!
+
+Want the full scoop? [Check out the docs for more features & details!](docs/index.md)
+
 ---
+
 ## 🚀 How It Works
 
 **Architecture Overview:**
