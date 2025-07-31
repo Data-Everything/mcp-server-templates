@@ -166,7 +166,7 @@ No tools found in deployment
 **Diagnostics:**
 ```bash
 # Test MCP protocol directly
-python -m mcp_template discover-tools --image template:latest
+python -m mcp_template tools --image template:latest
 
 # Check container logs
 python -m mcp_template logs deployment --filter "tool\|mcp"
@@ -197,7 +197,7 @@ Only 3 of 10 tools discovered
 **Solutions:**
 ```bash
 # Increase discovery timeout
-python -m mcp_template discover-tools --timeout 30 --image template
+python -m mcp_template tools --image template
 
 # Check for tool initialization errors
 python -m mcp_template logs deployment --filter "error\|exception"
@@ -261,7 +261,7 @@ python -m mcp_template deploy template --config debug=true
 **Solutions:**
 ```bash
 # Increase timeouts
-python -m mcp_template discover-tools --timeout 60 --image template
+python -m mcp_template tools --image template
 
 # Use HTTP transport instead of stdio
 python -m mcp_template deploy template --transport http
