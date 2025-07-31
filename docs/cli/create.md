@@ -221,7 +221,7 @@ python -m mcp_template create --from-image mcp/filesystem my-file-server
 
 ```bash
 # First, discover tools from an image
-python -m mcp_template discover-tools --image custom/mcp-server:latest > discovery.json
+python -m mcp_template tools --image custom/mcp-server:latest > discovery.json
 
 # Then create template from discovery
 python -m mcp_template create --from-discovery discovery.json custom-template

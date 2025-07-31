@@ -1,27 +1,38 @@
 # tools
 
-**List and analyze tools available from deployed MCP server templates.**
+**List and analyze tools available from MCP server templates or discover tools from Docker images.**
 
 ## Synopsis
 
 ```bash
+# For deployed templates
 python -m mcp_template tools TEMPLATE [OPTIONS]
+
+# For Docker images
+python -m mcp_template tools --image IMAGE [SERVER_ARGS...] [OPTIONS]
 ```
 
 ## Description
 
-The `tools` command discovers and displays tools (capabilities) available from a deployed MCP server template. It uses multiple discovery strategies including MCP protocol communication, static analysis, and dynamic probing to provide comprehensive tool information.
+The `tools` command discovers and displays tools (capabilities) available from MCP servers. It supports two modes:
+
+1. **Template Mode**: Analyzes tools from deployed MCP server templates in your workspace
+2. **Docker Discovery Mode**: Discovers tools directly from Docker images using the MCP protocol
+
+The command uses multiple discovery strategies including MCP protocol communication, static analysis, and dynamic probing to provide comprehensive tool information.
 
 ## Arguments
 
 | Argument | Description |
 |----------|-------------|
-| `TEMPLATE` | Name of the deployed template to analyze |
+| `TEMPLATE` | Name of the deployed template to analyze (template mode) |
+| `SERVER_ARGS` | Arguments to pass to the MCP server (Docker mode) |
 
 ## Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
+| `--image IMAGE` | Docker image name to discover tools from (enables Docker mode) | None |
 | `--no-cache` | Ignore cached results and perform fresh discovery | Use cache |
 | `--refresh` | Force refresh cached results | Use cache |
 
@@ -29,14 +40,20 @@ The `tools` command discovers and displays tools (capabilities) available from a
 
 The tools command uses a multi-strategy approach:
 
+### Template Mode (Default)
 1. **MCP Protocol**: Direct communication with running server
 2. **Static Discovery**: Analysis of template configuration files
 3. **Dynamic Probing**: HTTP endpoint discovery
 4. **Template Metadata**: Fallback to template definitions
 
+### Docker Mode (--image)
+1. **MCP Protocol**: Direct communication via stdio transport
+2. **HTTP Fallback**: Endpoint probing if stdio fails
+3. **Container Management**: Automatic container lifecycle
+
 ## Examples
 
-### Basic Usage
+### Template Mode
 
 ```bash
 # List tools from demo template
@@ -61,6 +78,57 @@ python -m mcp_template tools demo
   # Deploy template: python -m mcp_template deploy demo
   # Connect to Claude: python -m mcp_template connect demo --llm claude
   # View logs: python -m mcp_template logs demo
+```
+
+### Docker Discovery Mode
+
+```bash
+# Discover tools from filesystem server
+python -m mcp_template tools --image mcp/filesystem /tmp
+
+# Example output:
+╭──────────────────────────────────────────────────────────────╮
+│                    🐳 Docker Tool Discovery                  │
+╰──────────────────────────────────────────────────────────────╯
+
+✅ Discovered 11 tools via docker_mcp_stdio
+
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Tool Name            ┃ Description                           ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ read_file            │ Read complete file contents...       │
+│ write_file           │ Create or overwrite files...         │
+│ list_directory       │ List directory contents...           │
+│ create_directory     │ Create directories...                │
+│ directory_tree       │ Get recursive tree view...           │
+│ move_file            │ Move or rename files...              │
+│ search_files         │ Search for files by pattern...       │
+│ get_file_info        │ Get detailed file metadata...        │
+│ edit_file            │ Make line-based edits...             │
+│ read_multiple_files  │ Read multiple files efficiently...   │
+│ list_allowed_directories │ List accessible directories...   │
+└──────────────────────┴───────────────────────────────────────┘
+
+💡 Usage Example:
+  from mcp_template.tools.mcp_client_probe import MCPClientProbe
+  client = MCPClientProbe()
+  result = client.discover_tools_from_docker_sync('mcp/filesystem', ['/tmp'])
+```
+
+### Custom MCP Servers
+
+```bash
+# Database server with connection parameters
+python -m mcp_template tools --image myregistry/postgres-mcp:latest \
+  --host localhost --port 5432 --database mydb
+
+# API server with authentication
+python -m mcp_template tools --image company/api-mcp:v1.0 \
+  --api-key $API_TOKEN --base-url https://api.example.com
+
+# File server with multiple directories
+python -m mcp_template tools --image mcp/filesystem \
+  /data /workspace /tmp
 ```
 
 ### File Server Tools
@@ -284,7 +352,21 @@ python -m mcp_template tools demo --refresh
 
 ## See Also
 
-- [discover-tools](discover-tools.md) - Discover tools from Docker images
+- ~~[discover-tools](discover-tools.md)~~ - **DEPRECATED**: Use `tools --image` instead
 - [connect](connect.md) - Generate integration examples
 - [deploy](deploy.md) - Deploy templates
 - [config](config.md) - View template configuration
+
+## Migration from discover-tools
+
+The `discover-tools` command has been merged into the unified `tools` command. Update your scripts:
+
+```bash
+# Old (deprecated)
+python -m mcp_template discover-tools --image mcp/filesystem /tmp
+
+# New (recommended)
+python -m mcp_template tools --image mcp/filesystem /tmp
+```
+
+The old command will continue to work but will show a deprecation warning.

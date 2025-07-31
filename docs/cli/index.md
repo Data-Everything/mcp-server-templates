@@ -40,8 +40,8 @@ python -m mcp_template tools demo
 - [list](list.md) - List available templates and deployments
 
 ### Tool Discovery & Interaction
-- [discover-tools](discover-tools.md) - Discover available tools from MCP servers
-- [tools](tools.md) - List and inspect tools in templates and deployments
+- [tools](tools.md) - List tools from templates OR discover tools from Docker images
+- ~~[discover-tools](discover-tools.md)~~ - **DEPRECATED**: Use `tools --image` instead
 - [connect](connect.md) - Connect to deployed MCP servers with LLM clients
 
 ### Configuration & Monitoring
@@ -128,11 +128,9 @@ python -m mcp_template logs prod-file-server --tail 100
 ### Tool Discovery
 
 ```bash
-# Discover tools from external Docker image
-python -m mcp_template discover-tools --image mcp/filesystem /tmp
-
-# List tools from deployed template
-python -m mcp_template tools demo --refresh
+# Unified tool discovery command
+python -m mcp_template tools demo                              # From templates
+python -m mcp_template tools --image mcp/filesystem /tmp       # From Docker images
 
 # Get integration examples
 python -m mcp_template connect demo --llm vscode

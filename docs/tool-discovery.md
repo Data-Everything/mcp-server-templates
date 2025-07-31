@@ -76,10 +76,10 @@ python -m mcp_template tools demo --no-cache
 
 ```bash
 # Discover from MCP filesystem server
-python -m mcp_template discover-tools --image mcp/filesystem /tmp
+python -m mcp_template tools --image mcp/filesystem /tmp
 
 # Discover from custom server with arguments
-python -m mcp_template discover-tools --image myregistry/mcp-server:latest --arg config.json --arg --port 8080
+python -m mcp_template tools --image myregistry/mcp-server:latest config.json --port 8080
 
 # Example output for filesystem server
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
