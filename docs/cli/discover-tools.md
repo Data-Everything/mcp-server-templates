@@ -1,6 +1,20 @@
 # discover-tools
 
-**Discover and analyze MCP server tools from Docker images using the official MCP protocol.**
+**[DEPRECATED] Use `tools --image` instead. This command will be removed in a future version.**
+
+⚠️ **This command is deprecated**. The functionality has been merged into the unified `tools` command. 
+
+**Migration**: Replace `discover-tools --image` with `tools --image`:
+
+```bash
+# Old (deprecated)
+python -m mcp_template discover-tools --image mcp/filesystem /tmp
+
+# New (recommended) 
+python -m mcp_template tools --image mcp/filesystem /tmp
+```
+
+---
 
 ## Synopsis
 
@@ -241,7 +255,18 @@ python -m mcp_template deploy my-template
 
 ## See Also
 
-- [tools](tools.md) - List tools from deployed templates
+- [tools](tools.md) - **NEW**: Unified command for listing tools from templates and Docker images
 - [deploy](deploy.md) - Deploy templates after discovery
 - [connect](connect.md) - Generate integration examples
 - [Tool Discovery System](../tool-discovery.md) - Technical details
+
+## Migration Guide
+
+This command has been deprecated in favor of the unified `tools` command:
+
+| Old Command | New Command |
+|-------------|-------------|
+| `discover-tools --image IMAGE` | `tools --image IMAGE` |
+| `discover-tools --image IMAGE arg1 arg2` | `tools --image IMAGE arg1 arg2` |
+
+All functionality, options, and behavior remain exactly the same.

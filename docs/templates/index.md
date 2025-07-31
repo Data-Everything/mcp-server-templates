@@ -135,7 +135,7 @@ python -m mcp_template validate template-name
 python -m mcp_template config template-name --show-schema
 
 # Test tool discovery
-python -m mcp_template discover-tools --image template:latest
+python -m mcp_template tools --image template:latest
 ```
 
 ## Creating Custom Templates
