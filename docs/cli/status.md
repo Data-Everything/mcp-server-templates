@@ -367,7 +367,7 @@ python -m mcp_template deploy template --memory 1024m --cpu 0.5
 python -m mcp_template tools deployment
 
 # Check tool discovery issues
-python -m mcp_template discover-tools --deployment deployment
+python -m mcp_template tools --image deployment
 
 # Review server startup logs
 python -m mcp_template logs deployment --since 1h --filter "tool\|error"

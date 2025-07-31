@@ -128,7 +128,8 @@ python -m mcp_template connect demo --llm claude
 - **[Command Overview](cli/index.md)** - Complete CLI documentation
 - **[deploy](cli/deploy.md)** - Deploy templates with configuration options
 - **[tools](cli/tools.md)** - Discover and analyze MCP server capabilities
-- **[discover-tools](cli/discover-tools.md)** - Probe Docker images for tool discovery
+- **[tools](cli/tools.md)** - List tools from templates OR discover from Docker images
+- ~~**[discover-tools](cli/discover-tools.md)**~~ - **DEPRECATED**: Use `tools --image` instead
 - **[connect](cli/connect.md)** - Generate integration examples for LLMs
 - **[config](cli/config.md)** - View template configuration options
 - **[list](cli/list.md)** - List templates and deployments
@@ -190,7 +191,7 @@ python -m mcp_template connect api-server --llm curl
 **Automatic MCP Protocol Discovery:**
 ```bash
 # Discover tools from any MCP-compliant Docker image
-python -m mcp_template discover-tools --image mcp/filesystem /tmp
+python -m mcp_template tools --image mcp/filesystem /tmp
 
 # Rich formatted output shows all capabilities:
 ✅ Discovered 11 tools via docker_mcp_stdio

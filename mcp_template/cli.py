@@ -135,6 +135,7 @@ class EnhancedCLI:
         """List available tools for a template using enhanced tool discovery."""
         if template_name not in self.templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
+            console.print(f"[dim]Available templates: {', '.join(self.templates.keys())}[/dim]")
             return
 
         template = self.templates[template_name]
@@ -142,7 +143,7 @@ class EnhancedCLI:
 
         console.print(
             Panel(
-                f"Discovering Tools for [cyan]{template_name}[/cyan]",
+                f"Discovering Tools for Template: [cyan]{template_name}[/cyan]",
                 title="🔧 Tool Discovery",
                 border_style="blue",
             )
@@ -520,21 +521,29 @@ def add_enhanced_cli_args(subparsers) -> None:
     )
     config_parser.add_argument("template", help="Template name")
 
-    # Tools command
+    # Tools command (unified)
     tools_parser = subparsers.add_parser(
-        "tools", help="List available tools for a template"
+        "tools", help="List available tools for a template or discover tools from a Docker image"
     )
-    tools_parser.add_argument("template", help="Template name")
+    tools_parser.add_argument(
+        "--image", 
+        help="Docker image name to discover tools from"
+    )
     tools_parser.add_argument(
         "--no-cache", action="store_true", help="Ignore cached results"
     )
     tools_parser.add_argument(
         "--refresh", action="store_true", help="Force refresh cached results"
     )
+    tools_parser.add_argument(
+        "template_or_args", 
+        nargs="*", 
+        help="Template name (if no --image) or server arguments (if --image specified)"
+    )
 
-    # Discover tools command for Docker images
+    # Discover tools command (deprecated, for backward compatibility)
     discover_parser = subparsers.add_parser(
-        "discover-tools", help="Discover tools from a Docker image"
+        "discover-tools", help="[DEPRECATED] Use 'tools --image' instead"
     )
     discover_parser.add_argument("--image", required=True, help="Docker image name")
     discover_parser.add_argument(
@@ -581,20 +590,42 @@ def add_enhanced_cli_args(subparsers) -> None:
 
 def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
     """Handle enhanced CLI commands."""
+    from rich.console import Console
+    console = Console()
 
     if args.command == "config":
         enhanced_cli.show_config_options(args.template)
         return True
 
     elif args.command == "tools":
-        enhanced_cli.list_tools(
-            args.template,
-            no_cache=getattr(args, "no_cache", False),
-            refresh=getattr(args, "refresh", False),
-        )
+        # Handle unified tools command
+        if args.image:
+            # Docker image discovery (former discover-tools functionality)
+            server_args = args.template_or_args  # All positional args become server args
+            enhanced_cli.discover_tools_from_image(args.image, server_args)
+        elif args.template_or_args:
+            # Template-based discovery (former tools functionality)
+            if len(args.template_or_args) != 1:
+                console.print("[red]❌ When not using --image, provide exactly one template name[/red]")
+                return False
+            template_name = args.template_or_args[0]
+            enhanced_cli.list_tools(
+                template_name,
+                no_cache=getattr(args, "no_cache", False),
+                refresh=getattr(args, "refresh", False),
+            )
+        else:
+            # Error: must provide either template or --image
+            console.print("[red]❌ Must provide either a template name or --image parameter[/red]")
+            console.print("Examples:")
+            console.print("  python -m mcp_template tools demo")
+            console.print("  python -m mcp_template tools --image mcp/filesystem /tmp")
+            return False
         return True
 
     elif args.command == "discover-tools":
+        # Legacy command - redirect to unified tools command
+        console.print("[yellow]⚠️  The 'discover-tools' command is deprecated. Use 'tools --image' instead.[/yellow]")
         enhanced_cli.discover_tools_from_image(args.image, args.server_args)
         return True
 

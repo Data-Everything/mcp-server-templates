@@ -146,7 +146,7 @@ python -m mcp_template tools template-name --format json
 python -m mcp_template tools template-name
 
 # Discover tools from any MCP server
-python -m mcp_template discover-tools --image custom/mcp-server
+python -m mcp_template tools --image custom/mcp-server
 
 # Get detailed tool information
 python -m mcp_template tools template-name --detailed
@@ -332,7 +332,7 @@ See the [Troubleshooting Guide](troubleshooting.md) for comprehensive solutions.
 **Debugging Steps:**
 ```bash
 # Test tool discovery directly
-python -m mcp_template discover-tools --image template:latest
+python -m mcp_template tools --image template:latest
 
 # Check MCP protocol response
 python -m mcp_template connect deployment --test-connection
