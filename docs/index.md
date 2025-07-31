@@ -4,7 +4,32 @@
 
 MCP Server Templates is a self-hosted deployment system that enables rapid deployment, management, and scaling of MCP servers on your own infrastructure. It provides a unified CLI, flexible configuration system, advanced tool discovery, and pre-built templates for common use cases.
 
-## 🌟 MCP Platform - Managed Cloud Solution
+## � What’s Inside
+
+Welcome to the MCP Platform—where server deployment meets pure excitement! Here’s what makes this project a must-have for every AI builder:
+
+### ⚡ Features (Mid-August 2025 Release)
+
+#### 🚀 Current Features
+
+- **🖱️ One-Click Docker Deployment**: Launch MCP servers instantly with pre-built templates—no hassle, just pure speed.
+- **🔎 Smart Tool Discovery**: Automatically finds and showcases every tool your server can offer. No more guesswork!
+- **💻 Slick CLI Management**: Command-line magic for easy, powerful control over all deployments.
+- **🤝 Bring Your Own MCP Server**: Plug in your own MCP server and run it on our network—even with limited features!
+- **🐳 Effortless Docker Image Integration**: Add any existing MCP Docker image to the templates library with minimal setup and unlock all the platform’s cool benefits.
+- **⚡ Boilerplate Template Generator**: Instantly create new MCP server projects with a CLI-powered generator—kickstart your next big idea!
+- **🛠️ Multiple Ways to Set Configuration**: Flex your setup with config via JSON, YAML, environment variables, CLI config, or CLI override options—total flexibility for every workflow!
+
+#### 🌈 Planned Features
+
+- **🦸 MCP Sidekick (Coming Soon)**: Your friendly AI companion, making every MCP server compatible with any AI tool or framework.
+- **🛸 Kubernetes Support**: Deploy to Kubernetes clusters with ease, scaling your MCP servers effortlessly.
+
+**Release Timeline:** All this and more dropping mid-August 2025—don’t miss out!
+
+Ready to dive in? [Get Started with the README!](../../README.md)
+
+## �🌟 MCP Platform - Managed Cloud Solution
 
 Looking for enterprise deployment without infrastructure management? **[MCP Platform](https://mcp-platform.dataeverything.ai/)** offers:
 
