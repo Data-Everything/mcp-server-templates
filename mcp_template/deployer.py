@@ -41,26 +41,33 @@ class MCPDeployer:
         self.template_discovery = TemplateDiscovery()
         self.templates = self.template_discovery.discover_templates()
 
-    def list_templates(self):
+    def list_templates(self, deployed_only: bool = False):
         """List available templates."""
-        table = Table(title="Available MCP Templates")
+
+        table = Table(title=f"{'Available' if not deployed_only else 'Deployed'} MCP Templates")
         table.add_column("Template", style="cyan")
         table.add_column("Description", style="white")
         table.add_column("Status", style="green")
 
         for name, template in self.templates.items():
+            if deployed_only:
+                add_row = False
+            else:
+                add_row = True
             # Check deployment status
             try:
                 deployments = self.deployment_manager.list_deployments()
                 template_deployments = [d for d in deployments if d["template"] == name]
                 if template_deployments:
                     status = f"✅ Running ({len(template_deployments)})"
+                    add_row = True
                 else:
                     status = "⚪ Not deployed"
             except Exception:
                 status = "⚪ Not deployed"
-
-            table.add_row(name, template["description"], status)
+            
+            if add_row:
+                table.add_row(name, template["description"], status)
 
         console.print(table)
 
@@ -185,16 +192,23 @@ class MCPDeployer:
                 console.print(f"[red]❌ Failed to deploy {template_name}: {e}[/red]")
                 return False
 
-    def stop(self, template_name: str, custom_name: Optional[str] = None):
+    def stop(self, template_name: str = None, custom_name: Optional[str] = None, all_containers: bool = False):
         """Stop a deployed template."""
         try:
             # List deployments to find the right one
             deployments = self.deployment_manager.list_deployments()
 
+            if not (template_name or custom_name or all_containers):
+                console.print("[red]❌ You must provide at least one of: template, --name, or --all[/red]")
+                return False
+
             # Find deployment by template name
-            target_deployments = [
-                d for d in deployments if d["template"] == template_name
-            ]
+            if template_name:
+                target_deployments = [
+                    d for d in deployments if d["template"] == template_name
+                ]
+            else:
+                target_deployments = deployments
 
             if not target_deployments:
                 console.print(
