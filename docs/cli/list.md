@@ -20,6 +20,7 @@ The `list` command provides an overview of available MCP server templates and ac
 | `--filter TEXT` | Filter by name, category, or tag | No filter |
 | `--backend {docker,k8s,mock}` | Backend to query | `docker` |
 | `--all` | Show all templates (including inactive) | Active only |
+| `--deployed` | Show only currently deployed (active) servers | All templates |
 
 ## Output Information
 
@@ -38,8 +39,12 @@ The `list` command provides an overview of available MCP server templates and ac
 ### Basic Usage
 
 ```bash
+
 # List all available templates
 mcp-template list
+
+# List only currently deployed (active) servers
+mcp-template list --deployed
 
 # Example output:
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
@@ -194,8 +199,12 @@ For each template, the list command shows:
 # Watch list in real-time (requires watch command)
 watch -n 5 'mcp-template list'
 
+
 # Show all information including stopped containers
 mcp-template list --all
+
+# Show only currently deployed (active) servers
+mcp-template list --deployed
 
 # Compact format for scripts
 mcp-template list --format json | jq -r '.templates[].name'

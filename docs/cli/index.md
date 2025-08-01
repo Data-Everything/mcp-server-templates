@@ -38,6 +38,7 @@ mcp-template tools demo
 - [create](create.md) - Create new MCP server templates with interactive guidance
 - [deploy](deploy.md) - Deploy MCP server templates to infrastructure
 - [list](list.md) - List available templates and deployments
+- [stop](stop.md) - Stop deployed templates or specific deployments
 
 ### Tool Discovery & Interaction
 - [tools](tools.md) - List tools from templates OR discover tools from Docker images
