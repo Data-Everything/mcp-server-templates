@@ -64,12 +64,17 @@ class DockerProbe:
             return None
 
     def _try_mcp_stdio_discovery(
-        self, image_name: str, server_args: Optional[List[str]], env_vars: Optional[Dict[str, str]]
+        self,
+        image_name: str,
+        server_args: Optional[List[str]],
+        env_vars: Optional[Dict[str, str]],
     ) -> Optional[Dict[str, Any]]:
         """Try to discover tools using MCP stdio protocol."""
         try:
             args = server_args or []
-            result = self.mcp_client.discover_tools_from_docker_sync(image_name, args, env_vars)
+            result = self.mcp_client.discover_tools_from_docker_sync(
+                image_name, args, env_vars
+            )
 
             if result:
                 logger.info(
