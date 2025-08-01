@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-templates"
-version = "0.2.1.dev9"
+version = "0.2.1"
 description = "Deploy MCP server templates with zero configuration"
 readme = "README.md"
 authors = [
