@@ -85,7 +85,7 @@ class MCPClientProbe:
             return None
 
     async def discover_tools_from_docker_mcp(
-        self, image_name: str, args: Optional[List[str]] = None
+        self, image_name: str, args: Optional[List[str]] = None, env_vars: Optional[Dict[str, str]] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Discover tools from MCP server running in Docker.
@@ -93,6 +93,7 @@ class MCPClientProbe:
         Args:
             image_name: Docker image name
             args: Additional arguments for the MCP server
+            env_vars: Environment variables to pass to the container
 
         Returns:
             Dictionary containing discovered tools and metadata, or None if failed
@@ -108,11 +109,20 @@ class MCPClientProbe:
                 "-i",
                 "--name",
                 container_name,
-                image_name,
             ]
 
+            # Add environment variables
+            if env_vars:
+                for key, value in env_vars.items():
+                    docker_cmd.extend(["-e", f"{key}={value}"])
+
+            docker_cmd.append(image_name)
+
+            # For GitHub MCP server and similar, try to add "stdio" command if no args provided
             if args:
                 docker_cmd.extend(args)
+            elif "github" in image_name.lower():
+                docker_cmd.append("stdio")
 
             return await self.discover_tools_from_command(docker_cmd)
 
@@ -234,6 +244,10 @@ class MCPClientProbe:
 
         for tool in mcp_tools:
             try:
+                # Skip None or invalid tools
+                if tool is None or not isinstance(tool, dict):
+                    continue
+                    
                 normalized_tool = {
                     "name": tool.get("name", "unknown"),
                     "description": tool.get("description", "No description available"),
@@ -250,7 +264,7 @@ class MCPClientProbe:
             except Exception as e:
                 logger.warning(
                     "Failed to normalize MCP tool %s: %s",
-                    tool.get("name", "unknown"),
+                    tool.get("name", "unknown") if tool and isinstance(tool, dict) else "unknown",
                     e,
                 )
                 continue
@@ -271,14 +285,14 @@ class MCPClientProbe:
             loop.close()
 
     def discover_tools_from_docker_sync(
-        self, image_name: str, args: Optional[List[str]] = None
+        self, image_name: str, args: Optional[List[str]] = None, env_vars: Optional[Dict[str, str]] = None
     ) -> Optional[Dict[str, Any]]:
         """Synchronous wrapper for discovering tools from Docker."""
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             return loop.run_until_complete(
-                self.discover_tools_from_docker_mcp(image_name, args)
+                self.discover_tools_from_docker_mcp(image_name, args, env_vars)
             )
         finally:
             loop.close()
