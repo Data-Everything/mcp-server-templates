@@ -168,7 +168,10 @@ class TemplateCreator:
         self.template_data.update(
             {
                 "name": Prompt.ask(
-                    "Template display name", default=re.sub(r"[^a-zA-Z0-9]", " ", self.template_data["id"]).title()
+                    "Template display name",
+                    default=re.sub(
+                        r"[^a-zA-Z0-9]", " ", self.template_data["id"]
+                    ).title(),
                 ),
                 "description": Prompt.ask("Template description"),
                 "version": Prompt.ask("Version", default="1.0.0"),
