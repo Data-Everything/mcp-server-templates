@@ -56,10 +56,10 @@ No, this is an independent open-source project that implements the MCP specifica
 pip install mcp-templates
 
 # Verify installation
-python -m mcp_template --version
+mcp-template --version
 
 # Test with demo template
-python -m mcp_template deploy demo
+mcp-template deploy demo
 ```
 
 See the [Installation Guide](../getting-started/installation.md) for detailed instructions.
@@ -74,7 +74,7 @@ See the [Installation Guide](../getting-started/installation.md) for detailed in
 
 **Full List:**
 ```bash
-python -m mcp_template list
+mcp-template list
 ```
 
 View detailed information in the [Template Library](../server-templates/index.md).
@@ -85,13 +85,13 @@ View detailed information in the [Template Library](../server-templates/index.md
 
 ```bash
 # Basic deployment
-python -m mcp_template deploy template-name
+mcp-template deploy template-name
 
 # With configuration
-python -m mcp_template deploy file-server --config base_path=/home/user/documents
+mcp-template deploy file-server --config base_path=/home/user/documents
 
 # With config file
-python -m mcp_template deploy database --config-file db-config.json
+mcp-template deploy database --config-file db-config.json
 ```
 
 ### How do I configure templates?
@@ -100,18 +100,18 @@ python -m mcp_template deploy database --config-file db-config.json
 
 1. **Command-line options:**
    ```bash
-   python -m mcp_template deploy template --config key=value
+   mcp-template deploy template --config key=value
    ```
 
 2. **Configuration file:**
    ```bash
-   python -m mcp_template deploy template --config-file config.json
+   mcp-template deploy template --config-file config.json
    ```
 
 3. **Environment variables:**
    ```bash
    export MCP_API_KEY="your-key"
-   python -m mcp_template deploy template
+   mcp-template deploy template
    ```
 
 **Configuration precedence:** Environment Variables > CLI Options > Config File > Template Defaults
@@ -121,7 +121,7 @@ python -m mcp_template deploy database --config-file db-config.json
 **Claude Desktop:**
 ```bash
 # Generate configuration
-python -m mcp_template connect template-name --llm claude
+mcp-template connect template-name --llm claude
 
 # Add to Claude Desktop config
 # (~/.config/claude-desktop/claude_desktop_config.json)
@@ -130,26 +130,26 @@ python -m mcp_template connect template-name --llm claude
 **VS Code:**
 ```bash
 # Generate VS Code configuration
-python -m mcp_template connect template-name --llm vscode
+mcp-template connect template-name --llm vscode
 ```
 
 **Custom Integration:**
 ```bash
 # Get JSON configuration
-python -m mcp_template tools template-name --format json
+mcp-template tools template-name --format json
 ```
 
 ### How do I see what tools are available?
 
 ```bash
 # List tools in a template
-python -m mcp_template tools template-name
+mcp-template tools template-name
 
 # Discover tools from any MCP server
-python -m mcp_template tools --image custom/mcp-server
+mcp-template tools --image custom/mcp-server
 
 # Get detailed tool information
-python -m mcp_template tools template-name --detailed
+mcp-template tools template-name --detailed
 ```
 
 ## Template Development
@@ -158,13 +158,13 @@ python -m mcp_template tools template-name --detailed
 
 **Interactive Creation:**
 ```bash
-python -m mcp_template create my-custom-template
+mcp-template create my-custom-template
 # Follow the prompts for configuration
 ```
 
 **From Existing Image:**
 ```bash
-python -m mcp_template create --from-image existing/mcp-server my-template
+mcp-template create --from-image existing/mcp-server my-template
 ```
 
 **Manual Creation:**
@@ -198,13 +198,13 @@ templates/my-template/
 
 ```bash
 # Validate template structure
-python -m mcp_template validate my-template
+mcp-template validate my-template
 
 # Deploy for testing
-python -m mcp_template deploy my-template
+mcp-template deploy my-template
 
 # Test tool discovery
-python -m mcp_template tools my-template
+mcp-template tools my-template
 
 # Run template tests
 cd templates/my-template
@@ -232,48 +232,48 @@ The key requirements:
 
 ```bash
 # List all deployments
-python -m mcp_template list
+mcp-template list
 
 # Check deployment status
-python -m mcp_template status
+mcp-template status
 
 # View specific deployment
-python -m mcp_template status deployment-name
+mcp-template status deployment-name
 
 # Stop deployment
-python -m mcp_template stop deployment-name
+mcp-template stop deployment-name
 
 # Remove deployment
-python -m mcp_template delete deployment-name
+mcp-template delete deployment-name
 ```
 
 ### How do I monitor deployments?
 
 ```bash
 # View logs
-python -m mcp_template logs deployment-name
+mcp-template logs deployment-name
 
 # Follow logs in real-time
-python -m mcp_template logs deployment-name --follow
+mcp-template logs deployment-name --follow
 
 # Monitor status continuously
-python -m mcp_template status --watch
+mcp-template status --watch
 
 # Health check only
-python -m mcp_template status --health-only
+mcp-template status --health-only
 ```
 
 ### How do I update deployments?
 
 ```bash
 # Update to latest image
-python -m mcp_template deploy template-name --force-pull
+mcp-template deploy template-name --force-pull
 
 # Force recreate container
-python -m mcp_template deploy template-name --force-recreate
+mcp-template deploy template-name --force-recreate
 
 # Update with new configuration
-python -m mcp_template deploy template-name --config new_setting=value
+mcp-template deploy template-name --config new_setting=value
 ```
 
 ### Where are deployment data and logs stored?
@@ -286,10 +286,10 @@ python -m mcp_template deploy template-name --config new_setting=value
 **Custom Locations:**
 ```bash
 # Use custom data directory
-python -m mcp_template deploy template --volume /custom/path:/data
+mcp-template deploy template --volume /custom/path:/data
 
 # Multiple volumes
-python -m mcp_template deploy template \
+mcp-template deploy template \
   --volume /data1:/app/data1 \
   --volume /data2:/app/data2
 ```
@@ -300,7 +300,7 @@ python -m mcp_template deploy template \
 
 1. **Check logs:**
    ```bash
-   python -m mcp_template logs deployment-name
+   mcp-template logs deployment-name
    ```
 
 2. **Verify Docker:**
@@ -311,7 +311,7 @@ python -m mcp_template deploy template \
 
 3. **Check configuration:**
    ```bash
-   python -m mcp_template config template-name
+   mcp-template config template-name
    ```
 
 4. **Test image directly:**
@@ -332,13 +332,13 @@ See the [Troubleshooting Guide](troubleshooting.md) for comprehensive solutions.
 **Debugging Steps:**
 ```bash
 # Test tool discovery directly
-python -m mcp_template tools --image template:latest
+mcp-template tools --image template:latest
 
 # Check MCP protocol response
-python -m mcp_template connect deployment --test-connection
+mcp-template connect deployment --test-connection
 
 # Monitor container startup
-python -m mcp_template logs deployment --follow
+mcp-template logs deployment --follow
 ```
 
 ### How do I get help with specific issues?
@@ -376,7 +376,7 @@ python -m mcp_template logs deployment --follow
 **Template Level:**
 ```bash
 # Set resource limits
-python -m mcp_template deploy template --memory 512m --cpu 0.5
+mcp-template deploy template --memory 512m --cpu 0.5
 
 # Use efficient base images
 # In Dockerfile: FROM python:3.11-slim instead of python:3.11
@@ -438,7 +438,7 @@ The platform follows security best practices:
 ```bash
 # Use environment variables for secrets
 export MCP_API_KEY="secret-key"
-python -m mcp_template deploy template
+mcp-template deploy template
 ```
 
 **Config Files with Restricted Permissions:**
@@ -446,14 +446,14 @@ python -m mcp_template deploy template
 # Create secure config file
 echo '{"api_key": "secret"}' > config.json
 chmod 600 config.json
-python -m mcp_template deploy template --config-file config.json
+mcp-template deploy template --config-file config.json
 ```
 
 **External Secret Management:**
 ```bash
 # Use external secret managers
 export MCP_API_KEY=$(vault kv get -field=key secret/mcp/api)
-python -m mcp_template deploy template
+mcp-template deploy template
 ```
 
 ## Integration & Compatibility
@@ -485,7 +485,7 @@ tools = manager.discover_tools(deployment)
 **CLI Integration:**
 ```bash
 # Scriptable CLI interface
-python -m mcp_template deploy template --format json
+mcp-template deploy template --format json
 ```
 
 **Docker Integration:**
@@ -563,13 +563,13 @@ See the [Contributing Guide](contributing.md) for detailed guidelines.
 
 1. **Create the template:**
    ```bash
-   python -m mcp_template create my-new-template
+   mcp-template create my-new-template
    ```
 
 2. **Test thoroughly:**
    ```bash
-   python -m mcp_template deploy my-new-template
-   python -m mcp_template tools my-new-template
+   mcp-template deploy my-new-template
+   mcp-template tools my-new-template
    ```
 
 3. **Add documentation:**

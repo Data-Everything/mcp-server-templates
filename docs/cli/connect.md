@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-python -m mcp_template connect TEMPLATE [OPTIONS]
+mcp-template connect TEMPLATE [OPTIONS]
 ```
 
 ## Description
@@ -50,7 +50,7 @@ The `connect` command generates ready-to-use integration examples for connecting
 
 ```bash
 # Display all available integrations for demo template
-python -m mcp_template connect demo
+mcp-template connect demo
 
 # Example output:
 ╭─────────────────────────────────────────────────────────────╮
@@ -72,16 +72,16 @@ python -m mcp_template connect demo
 - Node.js Client
 
 💡 Use --llm option to see specific integration:
-  python -m mcp_template connect demo --llm claude
-  python -m mcp_template connect demo --llm vscode
-  python -m mcp_template connect demo --llm python
+  mcp-template connect demo --llm claude
+  mcp-template connect demo --llm vscode
+  mcp-template connect demo --llm python
 ```
 
 ### Claude Desktop Integration
 
 ```bash
 # Generate Claude Desktop configuration
-python -m mcp_template connect demo --llm claude
+mcp-template connect demo --llm claude
 
 # Example output:
 ╭─────────────────────────────────────────────────────────────╮
@@ -121,16 +121,16 @@ python -m mcp_template connect demo --llm claude
 
 🐛 Troubleshooting:
 - If connection fails, verify container is running:
-  python -m mcp_template status demo
+  mcp-template status demo
 - Check container logs:
-  python -m mcp_template logs demo
+  mcp-template logs demo
 ```
 
 ### VS Code Integration
 
 ```bash
 # Generate VS Code configuration
-python -m mcp_template connect demo --llm vscode
+mcp-template connect demo --llm vscode
 
 # Example output:
 ╭─────────────────────────────────────────────────────────────╮
@@ -169,7 +169,7 @@ python -m mcp_template connect demo --llm vscode
 
 ```bash
 # Generate Python client code
-python -m mcp_template connect demo --llm python
+mcp-template connect demo --llm python
 
 # Example output:
 ╭─────────────────────────────────────────────────────────────╮
@@ -252,7 +252,7 @@ async def robust_demo():
 
 ```bash
 # Generate FastMCP integration
-python -m mcp_template connect demo --llm fastmcp
+mcp-template connect demo --llm fastmcp
 
 # Shows FastMCP-specific patterns and best practices
 ```
@@ -261,7 +261,7 @@ python -m mcp_template connect demo --llm fastmcp
 
 ```bash
 # Generate cURL examples for HTTP transport
-python -m mcp_template connect demo --llm curl
+mcp-template connect demo --llm curl
 
 # Example output includes HTTP endpoint testing:
 curl -X POST http://localhost:8080/tools/say_hello \
@@ -335,19 +335,19 @@ Different templates provide specialized integration examples:
 
 ### File Server Template
 ```bash
-python -m mcp_template connect file-server --llm claude
+mcp-template connect file-server --llm claude
 # Shows examples for file operations, directory listing, etc.
 ```
 
 ### Database Templates
 ```bash
-python -m mcp_template connect postgres-server --llm python
+mcp-template connect postgres-server --llm python
 # Shows SQL query examples, connection pooling, etc.
 ```
 
 ### API Templates
 ```bash
-python -m mcp_template connect api-server --llm curl
+mcp-template connect api-server --llm curl
 # Shows REST API integration patterns
 ```
 
@@ -371,7 +371,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"ping"}' | \
   docker exec -i CONTAINER_NAME python -m src.server
 
 # View server logs
-python -m mcp_template logs TEMPLATE_NAME
+mcp-template logs TEMPLATE_NAME
 ```
 
 ## Configuration Management
@@ -379,16 +379,16 @@ python -m mcp_template logs TEMPLATE_NAME
 ### Environment-Specific Configs
 ```bash
 # Development
-python -m mcp_template connect demo --llm claude --env dev
+mcp-template connect demo --llm claude --env dev
 
 # Production
-python -m mcp_template connect demo --llm claude --env prod
+mcp-template connect demo --llm claude --env prod
 ```
 
 ### Custom Integration
 ```bash
 # Generate custom integration template
-python -m mcp_template connect demo --llm custom > integration_template.py
+mcp-template connect demo --llm custom > integration_template.py
 ```
 
 ## See Also

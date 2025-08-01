@@ -473,13 +473,13 @@ discovery_methods.append(CustomProbe())
 ### 1. Verbose Logging
 ```bash
 # Enable debug logging
-python -m mcp_template deploy demo --verbose
+mcp-template deploy demo --verbose
 ```
 
 ### 2. Configuration Inspection
 ```bash
 # Show configuration options
-python -m mcp_template deploy demo --show-config
+mcp-template deploy demo --show-config
 ```
 
 ### 3. Tool Discovery Debugging

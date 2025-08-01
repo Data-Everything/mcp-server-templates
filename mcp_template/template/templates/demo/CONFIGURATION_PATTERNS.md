@@ -13,11 +13,11 @@ Standard configuration uses the `config_schema` in `template.json` and provides:
 ### Usage Examples:
 ```bash
 # Via CLI config argument
-python -m mcp_template deploy demo --config hello_from="My Server"
-python -m mcp_template deploy demo --config log_level=debug
+mcp-template deploy demo --config hello_from="My Server"
+mcp-template deploy demo --config log_level=debug
 
 # Via environment variables
-MCP_HELLO_FROM="My Server" python -m mcp_template deploy demo
+MCP_HELLO_FROM="My Server" mcp-template deploy demo
 ```
 
 ### In Server Code:
@@ -38,15 +38,15 @@ Double underscore notation allows overriding ANY part of the template.json struc
 ### Usage Examples:
 ```bash
 # Override template-level properties
-python -m mcp_template deploy demo --name="Custom Server Name"
-python -m mcp_template deploy demo --description="Modified description"
+mcp-template deploy demo --name="Custom Server Name"
+mcp-template deploy demo --description="Modified description"
 
 # Override nested tool properties
-python -m mcp_template deploy demo --tools__0__greeting_style=formal
-python -m mcp_template deploy demo --tools__0__custom_prefix="Hey there!"
+mcp-template deploy demo --tools__0__greeting_style=formal
+mcp-template deploy demo --tools__0__custom_prefix="Hey there!"
 
 # Add custom fields
-python -m mcp_template deploy demo --custom_field="any value"
+mcp-template deploy demo --custom_field="any value"
 ```
 
 ### In Server Code:
@@ -78,7 +78,7 @@ The demo server includes a `demonstrate_overrides` tool that shows both patterns
 
 ```bash
 # Deploy demo and call the demonstration tool
-python -m mcp_template deploy demo
+mcp-template deploy demo
 curl -X POST http://localhost:7071/call -H 'Content-Type: application/json' \
   -d '{"method": "demonstrate_overrides", "params": {}}'
 ```

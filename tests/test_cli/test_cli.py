@@ -89,7 +89,9 @@ class TestMainCLI:
 
     @patch("mcp_template.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
-    def test_tools_command_with_template(self, mock_deployer_class, mock_enhanced_cli_class):
+    def test_tools_command_with_template(
+        self, mock_deployer_class, mock_enhanced_cli_class
+    ):
         """Test tools command with template name."""
         mock_deployer = Mock()
         mock_deployer.templates.keys.return_value = ["demo"]
@@ -101,11 +103,15 @@ class TestMainCLI:
         sys.argv = ["mcp_template", "tools", "demo"]
 
         main()
-        mock_enhanced_cli.list_tools.assert_called_once_with("demo", no_cache=False, refresh=False)
+        mock_enhanced_cli.list_tools.assert_called_once_with(
+            "demo", no_cache=False, refresh=False
+        )
 
     @patch("mcp_template.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
-    def test_tools_command_with_image(self, mock_deployer_class, mock_enhanced_cli_class):
+    def test_tools_command_with_image(
+        self, mock_deployer_class, mock_enhanced_cli_class
+    ):
         """Test tools command with Docker image."""
         mock_deployer = Mock()
         mock_deployer.templates.keys.return_value = ["demo"]
@@ -117,11 +123,15 @@ class TestMainCLI:
         sys.argv = ["mcp_template", "tools", "--image", "mcp/filesystem", "/tmp"]
 
         main()
-        mock_enhanced_cli.discover_tools_from_image.assert_called_once_with("mcp/filesystem", ["/tmp"])
+        mock_enhanced_cli.discover_tools_from_image.assert_called_once_with(
+            "mcp/filesystem", ["/tmp"]
+        )
 
     @patch("mcp_template.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
-    def test_tools_command_with_cache_options(self, mock_deployer_class, mock_enhanced_cli_class):
+    def test_tools_command_with_cache_options(
+        self, mock_deployer_class, mock_enhanced_cli_class
+    ):
         """Test tools command with cache options."""
         mock_deployer = Mock()
         mock_deployer.templates.keys.return_value = ["demo"]
@@ -133,11 +143,15 @@ class TestMainCLI:
         sys.argv = ["mcp_template", "tools", "demo", "--no-cache", "--refresh"]
 
         main()
-        mock_enhanced_cli.list_tools.assert_called_once_with("demo", no_cache=True, refresh=True)
+        mock_enhanced_cli.list_tools.assert_called_once_with(
+            "demo", no_cache=True, refresh=True
+        )
 
     @patch("mcp_template.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
-    def test_discover_tools_command_deprecated(self, mock_deployer_class, mock_enhanced_cli_class):
+    def test_discover_tools_command_deprecated(
+        self, mock_deployer_class, mock_enhanced_cli_class
+    ):
         """Test deprecated discover-tools command shows warning."""
         mock_deployer = Mock()
         mock_deployer.templates.keys.return_value = ["demo"]
@@ -146,13 +160,23 @@ class TestMainCLI:
         mock_enhanced_cli = Mock()
         mock_enhanced_cli_class.return_value = mock_enhanced_cli
 
-        sys.argv = ["mcp_template", "discover-tools", "--image", "mcp/filesystem", "/tmp"]
+        sys.argv = [
+            "mcp_template",
+            "discover-tools",
+            "--image",
+            "mcp/filesystem",
+            "/tmp",
+        ]
 
         with patch("rich.console.Console.print") as mock_print:
             main()
             # Should show deprecation warning
-            mock_print.assert_any_call("[yellow]⚠️  The 'discover-tools' command is deprecated. Use 'tools --image' instead.[/yellow]")
-            mock_enhanced_cli.discover_tools_from_image.assert_called_once_with("mcp/filesystem", ["/tmp"])
+            mock_print.assert_any_call(
+                "[yellow]⚠️  The 'discover-tools' command is deprecated. Use 'tools --image' instead.[/yellow]"
+            )
+            mock_enhanced_cli.discover_tools_from_image.assert_called_once_with(
+                "mcp/filesystem", ["/tmp"]
+            )
 
     @patch("mcp_template.MCPDeployer")
     def test_cleanup_command(self, mock_deployer_class):
@@ -264,7 +288,7 @@ class TestMCPDeployer:
 
         mock_manager.deploy_template.assert_called_once()
 
-    @patch("mcp_template.template.discovery.TemplateDiscovery")
+    @patch("mcp_template.template.utils.discovery.TemplateDiscovery")
     @patch("mcp_template.manager.DeploymentManager")
     def test_deploy_nonexistent_template(
         self, mock_manager_class, mock_discovery_class
