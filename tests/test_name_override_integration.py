@@ -9,6 +9,9 @@ from unittest.mock import patch
 
 import pytest
 
+from mcp_template.template.templates.demo.config import DemoServerConfig
+from mcp_template.template.templates.demo.server import DemoMCPServer
+
 
 @pytest.mark.integration
 class TestNameOverrideIntegration(unittest.TestCase):
@@ -30,7 +33,6 @@ class TestNameOverrideIntegration(unittest.TestCase):
         os.environ["MCP_OVERRIDE_NAME"] = "Test Function"
 
         # Import and test the demo config directly
-        from templates.demo.config import DemoServerConfig
 
         config = DemoServerConfig()
         template_data = config.get_template_data()
@@ -41,10 +43,11 @@ class TestNameOverrideIntegration(unittest.TestCase):
         print(f"✅ Demo config received name override: {template_data.get('name')}")
 
         # Verify server would use the overridden name
-        from templates.demo.server import DemoMCPServer
 
         # Create server instance (without actually running FastMCP)
-        with patch("templates.demo.server.FastMCP") as mock_fastmcp:
+        with patch(
+            "mcp_template.template.templates.demo.server.FastMCP"
+        ) as mock_fastmcp:
             DemoMCPServer()
 
             # Verify FastMCP was initialized with the correct name

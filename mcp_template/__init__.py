@@ -36,10 +36,10 @@ from mcp_template.cli import (
 )
 from mcp_template.deployer import MCPDeployer
 from mcp_template.manager import DeploymentManager
-from mcp_template.template.creation import TemplateCreator
+from mcp_template.template.utils.creation import TemplateCreator
 
 # Import core classes that are used in CI and the CLI
-from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.template.utils.discovery import TemplateDiscovery
 
 # Export the classes for external use (CI compatibility)
 __all__ = [

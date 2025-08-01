@@ -20,7 +20,7 @@ pip install mcp-template
 Create a new MCP server template.
 
 ```bash
-python -m mcp_template create [TEMPLATE_ID] [OPTIONS]
+mcp-template create [TEMPLATE_ID] [OPTIONS]
 ```
 
 **Arguments:**
@@ -33,16 +33,16 @@ python -m mcp_template create [TEMPLATE_ID] [OPTIONS]
 **Examples:**
 ```bash
 # Interactive template creation
-python -m mcp_template create
+mcp-template create
 
 # Create with specific template ID
-python -m mcp_template create my-new-template
+mcp-template create my-new-template
 
 # Create from configuration file
-python -m mcp_template create --config-file template-config.json
+mcp-template create --config-file template-config.json
 
 # Non-interactive mode
-python -m mcp_template create my-template --config-file config.json --non-interactive
+mcp-template create my-template --config-file config.json --non-interactive
 ```
 
 ### deploy
@@ -50,7 +50,7 @@ python -m mcp_template create my-template --config-file config.json --non-intera
 Deploy a template using the specified deployment backend.
 
 ```bash
-python -m mcp_template deploy TEMPLATE_ID [OPTIONS]
+mcp-template deploy TEMPLATE_ID [OPTIONS]
 ```
 
 **Arguments:**
@@ -65,16 +65,16 @@ python -m mcp_template deploy TEMPLATE_ID [OPTIONS]
 **Examples:**
 ```bash
 # Deploy with Docker backend
-python -m mcp_template deploy demo
+mcp-template deploy demo
 
 # Deploy with custom name and skip image pull
-python -m mcp_template deploy demo --name my-demo --no-pull
+mcp-template deploy demo --name my-demo --no-pull
 
 # Deploy with configuration file
-python -m mcp_template deploy demo --config-file config.json
+mcp-template deploy demo --config-file config.json
 
 # Deploy using Kubernetes backend
-python -m mcp_template deploy demo --backend k8s
+mcp-template deploy demo --backend k8s
 ```
 
 ### list
@@ -82,7 +82,7 @@ python -m mcp_template deploy demo --backend k8s
 List all active deployments.
 
 ```bash
-python -m mcp_template list [OPTIONS]
+mcp-template list [OPTIONS]
 ```
 
 **Options:**
@@ -91,10 +91,10 @@ python -m mcp_template list [OPTIONS]
 **Examples:**
 ```bash
 # List Docker deployments
-python -m mcp_template list
+mcp-template list
 
 # List Kubernetes deployments
-python -m mcp_template list --backend k8s
+mcp-template list --backend k8s
 ```
 
 ### delete
@@ -102,7 +102,7 @@ python -m mcp_template list --backend k8s
 Delete a deployment.
 
 ```bash
-python -m mcp_template delete DEPLOYMENT_NAME [OPTIONS]
+mcp-template delete DEPLOYMENT_NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -114,10 +114,10 @@ python -m mcp_template delete DEPLOYMENT_NAME [OPTIONS]
 **Examples:**
 ```bash
 # Delete Docker deployment
-python -m mcp_template delete demo-deployment
+mcp-template delete demo-deployment
 
 # Delete Kubernetes deployment
-python -m mcp_template delete demo-deployment --backend k8s
+mcp-template delete demo-deployment --backend k8s
 ```
 
 ### status
@@ -125,7 +125,7 @@ python -m mcp_template delete demo-deployment --backend k8s
 Get status information for a deployment.
 
 ```bash
-python -m mcp_template status DEPLOYMENT_NAME [OPTIONS]
+mcp-template status DEPLOYMENT_NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -137,10 +137,10 @@ python -m mcp_template status DEPLOYMENT_NAME [OPTIONS]
 **Examples:**
 ```bash
 # Get Docker deployment status
-python -m mcp_template status demo-deployment
+mcp-template status demo-deployment
 
 # Get Kubernetes deployment status
-python -m mcp_template status demo-deployment --backend k8s
+mcp-template status demo-deployment --backend k8s
 ```
 
 ## Configuration File Format

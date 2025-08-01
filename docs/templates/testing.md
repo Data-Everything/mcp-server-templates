@@ -1078,16 +1078,16 @@ class TestPerformanceScenarios:
 
 ```bash
 # Template structure validation
-python -m mcp_template validate my-template --comprehensive
+mcp-template validate my-template --comprehensive
 
 # Configuration schema validation
-python -m mcp_template config my-template --validate-schema
+mcp-template config my-template --validate-schema
 
 # Docker build testing
-python -m mcp_template build my-template --test
+mcp-template build my-template --test
 
 # Deployment smoke test
-python -m mcp_template deploy my-template --test-mode --timeout 60
+mcp-template deploy my-template --test-mode --timeout 60
 ```
 
 ### Integration Testing with MCP Platform

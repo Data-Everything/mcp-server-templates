@@ -5,17 +5,17 @@ Get started with MCP Templates in minutes.
 ## 1. List Available Templates
 
 ```bash
-python -m mcp_template list
+mcp-template list
 ```
 
 ## 2. Deploy a Template
 
 ```bash
 # Deploy the demo template
-python -m mcp_template deploy demo
+mcp-template deploy demo
 
 # Deploy with custom configuration
-python -m mcp_template deploy file-server --port 8080
+mcp-template deploy file-server --port 8080
 ```
 
 ## 3. Test Your Deployment
@@ -25,17 +25,17 @@ python -m mcp_template deploy file-server --port 8080
 curl http://localhost:8080/health
 
 # View server logs
-python -m mcp_template logs demo
+mcp-template logs demo
 ```
 
 ## 4. Clean Up
 
 ```bash
 # Stop the server
-python -m mcp_template stop demo
+mcp-template stop demo
 
 # Remove the deployment
-python -m mcp_template remove demo
+mcp-template remove demo
 ```
 
 ## Next Steps

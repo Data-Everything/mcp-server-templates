@@ -20,23 +20,23 @@ Effective monitoring is crucial for production MCP deployments. This guide cover
 
 ```bash
 # Real-time status monitoring
-python -m mcp_template status --watch --refresh 5
+mcp-template status --watch --refresh 5
 
 # Health-only monitoring
-python -m mcp_template status --health-only
+mcp-template status --health-only
 
 # Deployment overview
-python -m mcp_template list --status
+mcp-template list --status
 
 # Resource monitoring
-python -m mcp_template status deployment-name --detailed
+mcp-template status deployment-name --detailed
 ```
 
 ### Status Monitoring Dashboard
 
 ```bash
 # Interactive status dashboard
-python -m mcp_template dashboard
+mcp-template dashboard
 
 # Example output:
 ╭─────────────────── MCP Platform Dashboard ───────────────────╮
@@ -64,7 +64,7 @@ python -m mcp_template dashboard
 
 ```bash
 # Set up automated health monitoring
-python -m mcp_template monitor --config health-check.json
+mcp-template monitor --config health-check.json
 
 # Example health-check.json:
 {
@@ -88,20 +88,20 @@ python -m mcp_template monitor --config health-check.json
 
 ```bash
 # Stream logs from all deployments
-python -m mcp_template logs --all --follow
+mcp-template logs --all --follow
 
 # Filter logs by severity
-python -m mcp_template logs --all --filter "ERROR|WARN"
+mcp-template logs --all --filter "ERROR|WARN"
 
 # Export logs for analysis
-python -m mcp_template logs deployment --since 24h --format json > logs.json
+mcp-template logs deployment --since 24h --format json > logs.json
 ```
 
 ### Log Aggregation Setup
 
 ```bash
 # Forward logs to external systems
-python -m mcp_template logs deployment --format json --follow | \
+mcp-template logs deployment --format json --follow | \
   curl -X POST -H "Content-Type: application/json" \
   --data-binary @- \
   https://logs.company.com/mcp-platform
@@ -195,7 +195,7 @@ if __name__ == "__main__":
 
 ```bash
 # Collect system metrics
-python -m mcp_template metrics --output prometheus
+mcp-template metrics --output prometheus
 
 # Example Prometheus metrics:
 # mcp_deployment_status{deployment="file-server"} 1
@@ -528,13 +528,13 @@ if __name__ == '__main__':
 
 ```bash
 # Monitor resource usage trends
-python -m mcp_template metrics --format csv --duration 24h > usage-trends.csv
+mcp-template metrics --format csv --duration 24h > usage-trends.csv
 
 # Analyze performance bottlenecks
-python -m mcp_template analyze-performance deployment-name
+mcp-template analyze-performance deployment-name
 
 # Optimize resource allocation
-python -m mcp_template deploy template --memory 512m --cpu 0.5 --optimize
+mcp-template deploy template --memory 512m --cpu 0.5 --optimize
 ```
 
 ### Performance Benchmarking
@@ -661,30 +661,30 @@ if __name__ == "__main__":
 
 ```bash
 # Blue-green deployment
-python -m mcp_template deploy template --name template-blue
-python -m mcp_template deploy template --name template-green
+mcp-template deploy template --name template-blue
+mcp-template deploy template --name template-green
 
 # Rolling updates
-python -m mcp_template deploy template --strategy rolling --instances 3
+mcp-template deploy template --strategy rolling --instances 3
 
 # Canary deployment
-python -m mcp_template deploy template --canary 10%
+mcp-template deploy template --canary 10%
 ```
 
 ### Backup & Recovery
 
 ```bash
 # Backup deployment configurations
-python -m mcp_template backup --output backup-$(date +%Y%m%d).tar.gz
+mcp-template backup --output backup-$(date +%Y%m%d).tar.gz
 
 # Backup specific deployment
-python -m mcp_template backup deployment-name --include-data
+mcp-template backup deployment-name --include-data
 
 # Restore from backup
-python -m mcp_template restore backup-20250127.tar.gz
+mcp-template restore backup-20250127.tar.gz
 
 # Disaster recovery
-python -m mcp_template restore --disaster-recovery --cluster-config
+mcp-template restore --disaster-recovery --cluster-config
 ```
 
 ### High Availability Setup
@@ -710,7 +710,7 @@ high_availability:
 
 ```bash
 # Deploy with high availability
-python -m mcp_template deploy template --ha-config ha-config.yaml
+mcp-template deploy template --ha-config ha-config.yaml
 ```
 
 ## Integration with External Systems

@@ -11,16 +11,16 @@ The MCP Template CLI provides a comprehensive set of commands for deploying, man
 pip install mcp-templates
 
 # List available templates
-python -m mcp_template list
+mcp-template list
 
 # Deploy a template with defaults
-python -m mcp_template deploy demo
+mcp-template deploy demo
 
 # View template configuration options
-python -m mcp_template config demo
+mcp-template config demo
 
 # Discover tools from template
-python -m mcp_template tools demo
+mcp-template tools demo
 ```
 
 ## Global Options
@@ -57,13 +57,13 @@ The CLI supports comprehensive template creation alongside deployment and config
 
 ```bash
 # Interactive template creation
-python -m mcp_template create
+mcp-template create
 
 # Create from existing image
-python -m mcp_template create --from-image mcp/filesystem my-file-server
+mcp-template create --from-image mcp/filesystem my-file-server
 
 # Non-interactive creation
-python -m mcp_template create --config-file template-config.json --non-interactive
+mcp-template create --config-file template-config.json --non-interactive
 ```
 
 ### Configuration Precedence
@@ -87,13 +87,13 @@ Use double underscores for nested configuration:
 
 ```bash
 # Standard format
-python -m mcp_template deploy file-server --config read_only_mode=true
+mcp-template deploy file-server --config read_only_mode=true
 
 # Nested format (equivalent)
-python -m mcp_template deploy file-server --config security__read_only=true
+mcp-template deploy file-server --config security__read_only=true
 
 # Template-prefixed format
-python -m mcp_template deploy file-server --config file-server__security__read_only=true
+mcp-template deploy file-server --config file-server__security__read_only=true
 ```
 
 ## Common Usage Patterns
@@ -102,38 +102,38 @@ python -m mcp_template deploy file-server --config file-server__security__read_o
 
 ```bash
 # Create and test new template
-python -m mcp_template create my-server
-python -m mcp_template deploy my-server --config debug=true
-python -m mcp_template logs my-server --follow
+mcp-template create my-server
+mcp-template deploy my-server --config debug=true
+mcp-template logs my-server --follow
 
 # Test tools
-python -m mcp_template tools my-server
-python -m mcp_template connect my-server --llm claude
+mcp-template tools my-server
+mcp-template connect my-server --llm claude
 ```
 
 ### Production Deployment
 
 ```bash
 # Deploy with production config
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config-file production.json \
   --name prod-file-server \
   --no-pull
 
 # Monitor deployment
-python -m mcp_template status prod-file-server
-python -m mcp_template logs prod-file-server --tail 100
+mcp-template status prod-file-server
+mcp-template logs prod-file-server --tail 100
 ```
 
 ### Tool Discovery
 
 ```bash
 # Unified tool discovery command
-python -m mcp_template tools demo                              # From templates
-python -m mcp_template tools --image mcp/filesystem /tmp       # From Docker images
+mcp-template tools demo                              # From templates
+mcp-template tools --image mcp/filesystem /tmp       # From Docker images
 
 # Get integration examples
-python -m mcp_template connect demo --llm vscode
+mcp-template connect demo --llm vscode
 ```
 
 ## Environment Variables

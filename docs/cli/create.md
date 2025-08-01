@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-python -m mcp_template create [TEMPLATE_ID] [OPTIONS]
+mcp-template create [TEMPLATE_ID] [OPTIONS]
 ```
 
 ## Description
@@ -33,7 +33,7 @@ The `create` command provides a comprehensive template creation workflow that gu
 
 ```bash
 # Start interactive template creation
-python -m mcp_template create
+mcp-template create
 
 # Example interactive session:
 ╭─────────────────────────────────────────────────────────────╮
@@ -99,15 +99,15 @@ Add another option? [y/N]: n
 
 🚀 Next steps:
   1. Implement your tools in src/tools.py
-  2. Test: python -m mcp_template deploy custom-server
-  3. Verify: python -m mcp_template tools custom-server
+  2. Test: mcp-template deploy custom-server
+  3. Verify: mcp-template tools custom-server
 ```
 
 ### Specify Template ID
 
 ```bash
 # Create with specific template ID
-python -m mcp_template create my-database-server
+mcp-template create my-database-server
 
 # Skips the template ID prompt and uses 'my-database-server'
 ```
@@ -118,7 +118,7 @@ python -m mcp_template create my-database-server
 
 ```bash
 # Create from configuration file
-python -m mcp_template create --config-file template-config.json --non-interactive
+mcp-template create --config-file template-config.json --non-interactive
 
 # Example template-config.json:
 {
@@ -194,7 +194,7 @@ python -m mcp_template create --config-file template-config.json --non-interacti
 
 ```bash
 # Create template from existing MCP-compatible image
-python -m mcp_template create --from-image mcp/filesystem my-file-server
+mcp-template create --from-image mcp/filesystem my-file-server
 
 # Automatically discovers tools and generates template
 # Example output:
@@ -221,10 +221,10 @@ python -m mcp_template create --from-image mcp/filesystem my-file-server
 
 ```bash
 # First, discover tools from an image
-python -m mcp_template tools --image custom/mcp-server:latest > discovery.json
+mcp-template tools --image custom/mcp-server:latest > discovery.json
 
 # Then create template from discovery
-python -m mcp_template create --from-discovery discovery.json custom-template
+mcp-template create --from-discovery discovery.json custom-template
 
 # Uses discovered tool information to generate template
 ```
@@ -443,16 +443,16 @@ class ExampleTools:
 
 ```bash
 # Test template creation
-python -m mcp_template create test-template
+mcp-template create test-template
 
 # Deploy for testing
-python -m mcp_template deploy test-template
+mcp-template deploy test-template
 
 # Verify tools are discovered
-python -m mcp_template tools test-template
+mcp-template tools test-template
 
 # Test with configuration
-python -m mcp_template deploy test-template --config debug=true
+mcp-template deploy test-template --config debug=true
 ```
 
 ### Development Workflow
@@ -462,10 +462,10 @@ python -m mcp_template deploy test-template --config debug=true
 vim templates/test-template/src/tools.py
 
 # Redeploy with changes
-python -m mcp_template deploy test-template --no-pull
+mcp-template deploy test-template --no-pull
 
 # Test specific tool
-python -m mcp_template connect test-template --llm python
+mcp-template connect test-template --llm python
 ```
 
 ## Best Practices
@@ -482,7 +482,7 @@ python -m mcp_template connect test-template --llm python
 
 ```bash
 # Create template with security focus
-python -m mcp_template create secure-api \
+mcp-template create secure-api \
   --config-file secure-template-config.json
 
 # Include security-focused configuration:

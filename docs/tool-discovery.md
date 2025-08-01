@@ -63,23 +63,23 @@ Extracts capabilities from existing `template.json` definitions for compatibilit
 
 ```bash
 # Basic tool discovery for deployed template
-python -m mcp_template tools demo
+mcp-template tools demo
 
 # Force refresh cached results
-python -m mcp_template tools demo --refresh
+mcp-template tools demo --refresh
 
 # Ignore cache entirely
-python -m mcp_template tools demo --no-cache
+mcp-template tools demo --no-cache
 ```
 
 ### Discover Tools from Docker Images
 
 ```bash
 # Discover from MCP filesystem server
-python -m mcp_template tools --image mcp/filesystem /tmp
+mcp-template tools --image mcp/filesystem /tmp
 
 # Discover from custom server with arguments
-python -m mcp_template tools --image myregistry/mcp-server:latest config.json --port 8080
+mcp-template tools --image myregistry/mcp-server:latest config.json --port 8080
 
 # Example output for filesystem server
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓

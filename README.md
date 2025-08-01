@@ -46,7 +46,7 @@ Want the full scoop? [Check out the docs for more features & details!](docs/inde
 **Configuration Flow:**
 1. **Template Defaults** → 2. **Config File** → 3. **CLI Options** → 4. **Environment Variables**
 
-- **CLI Tool**: `python -m mcp_template` with comprehensive config support
+- **CLI Tool**: `mcp-template` with comprehensive config support
 - **DeploymentManager**: Unified interface for Docker, Kubernetes, or Mock backends
 - **TemplateDiscovery**: Auto-discovers templates with config schema validation
 - **ConfigMapping**: Generic mapping system supporting nested JSON/YAML configs
@@ -117,12 +117,12 @@ Each template must include:
 
 | Command | Description |
 |---------|-------------|
-| `python -m mcp_template list` | List all deployments |
-| `python -m mcp_template deploy <template>` | Deploy template with defaults |
-| `python -m mcp_template deploy <template> --no-pull` | Deploy without pulling image (use local) |
-| `python -m mcp_template status <deployment>` | View deployment status |
-| `python -m mcp_template delete <deployment>` | Delete deployment |
-| `python -m mcp_template create <template-id>` | Create new template |
+| `mcp-template list` | List all deployments |
+| `mcp-template deploy <template>` | Deploy template with defaults |
+| `mcp-template deploy <template> --no-pull` | Deploy without pulling image (use local) |
+| `mcp-template status <deployment>` | View deployment status |
+| `mcp-template delete <deployment>` | Delete deployment |
+| `mcp-template create <template-id>` | Create new template |
 
 ### Configuration Options
 
@@ -135,10 +135,10 @@ cat templates/file-server/template.json
 **2. Deploy with Config File:**
 ```bash
 # JSON config file
-python -m mcp_template deploy file-server --config-file ./config.json
+mcp-template deploy file-server --config-file ./config.json
 
 # YAML config file
-python -m mcp_template deploy file-server --config-file ./config.yml
+mcp-template deploy file-server --config-file ./config.yml
 ```
 
 **3. Deploy with CLI Configuration Options:**
@@ -150,19 +150,19 @@ There are **two types** of CLI configuration:
 
 ```bash
 # Configuration schema properties (recommended for server settings)
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
 
 # Template data overrides (for metadata, tools, custom fields)
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --override "metadata__version=2.0.0" \
   --override "metadata__author=MyName" \
   --override "tools__0__enabled=false"
 
 # Combined usage with custom name
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --name my-file-server \
   --no-pull \
   --config read_only_mode=true \
@@ -175,13 +175,13 @@ Both `--config` and `--override` support double underscore notation for nested s
 
 ```bash
 # Config schema properties (nested configuration)
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config security__read_only=true \
   --config security__max_file_size=50 \
   --config logging__level=debug
 
 # Template data overrides (nested modifications)
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --override "metadata__version=2.0.0" \
   --override "config__custom_setting=value" \
   --override "tools__0__description=Modified tool" \
@@ -192,25 +192,25 @@ python -m mcp_template deploy file-server \
 
 ```bash
 # Array modifications with automatic type conversion
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --override "tools__0__enabled=false" \
   --override "tools__1__timeout=30.5" \
   --override "metadata__tags=[\"custom\",\"modified\"]"
 
 # Complex nested structure creation
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --override "config__database__connection__host=localhost" \
   --override "config__database__connection__port=5432" \
   --override "config__security__enabled=true"
 
 # JSON object overrides
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --override "metadata__custom={\"key\":\"value\",\"nested\":{\"prop\":true}}"
 ```
 
 **6. Deploy with Environment Variables:**
 ```bash
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50 \
   --env MCP_LOG_LEVEL=debug
@@ -218,7 +218,7 @@ python -m mcp_template deploy file-server \
 
 **7. Mixed Configuration (precedence: env > cli > file > defaults):**
 ```bash
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config-file ./base-config.json \
   --config log_level=warning \
   --override "metadata__version=1.5.0" \
@@ -311,7 +311,7 @@ Templates automatically build and tag images as:
 1. Create `templates/{name}/` directory
 2. Add `template.json` with config schema and environment mappings
 3. Add `Dockerfile` for container build
-4. Test with `python -m mcp_template {name} --show-config`
+4. Test with `mcp-template {name} --show-config`
 
 ### Adding New Backends
 
@@ -352,7 +352,7 @@ cd mcp-server-templates
 pip install -e .
 
 # Run in development mode
-python -m mcp_template list
+mcp-template list
 ```
 
 ### Testing
@@ -414,29 +414,29 @@ Each template includes:
 pip install mcp-templates
 
 # 2. List available deployments
-python -m mcp_template list
+mcp-template list
 
 # 3. Deploy with defaults
-python -m mcp_template deploy file-server
+mcp-template deploy file-server
 
 # 4. Deploy with custom config and skip image pull
-python -m mcp_template deploy file-server --config-file ./my-config.json --no-pull
+mcp-template deploy file-server --config-file ./my-config.json --no-pull
 
 # 5. View deployment status
-python -m mcp_template status file-server-deployment
+mcp-template status file-server-deployment
 
 # 6. Delete when done
-python -m mcp_template delete file-server-deployment
+mcp-template delete file-server-deployment
 ```
 
 ### Template Discovery
 
 ```bash
 # List all available templates
-python -m mcp_template create --help
+mcp-template create --help
 
 # Create new template interactively
-python -m mcp_template create my-custom-template
+mcp-template create my-custom-template
 ```
 
 ---

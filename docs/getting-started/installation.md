@@ -23,7 +23,7 @@ The simplest way to install MCP Server Templates is directly from PyPI:
 pip install mcp-templates
 
 # Verify installation
-python -m mcp_template --version
+mcp-template --version
 ```
 
 **Benefits:**
@@ -47,8 +47,8 @@ pip install -e .
 ## Verify Installation
 
 ```bash
-python -m mcp_template --version
-python -m mcp_template list
+mcp-template --version
+mcp-template list
 ```
 
 You should see the available templates listed.

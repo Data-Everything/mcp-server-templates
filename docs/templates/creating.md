@@ -22,7 +22,7 @@ The fastest way to create a new template:
 
 ```bash
 # Start interactive template creation wizard
-python -m mcp_template create
+mcp-template create
 
 # Example interactive session:
 ╭─────────────────────────────────────────────────────────────╮
@@ -78,7 +78,7 @@ Environment variable: API_BASE_URL
 
 ```bash
 # Create template with specific ID
-python -m mcp_template create my-database-server
+mcp-template create my-database-server
 
 # Skips the template ID prompt
 ```
@@ -87,7 +87,7 @@ python -m mcp_template create my-database-server
 
 ```bash
 # Create from configuration file
-python -m mcp_template create --config-file template-config.json --non-interactive
+mcp-template create --config-file template-config.json --non-interactive
 
 # Example template-config.json:
 {
@@ -128,7 +128,7 @@ python -m mcp_template create --config-file template-config.json --non-interacti
 
 ```bash
 # Create template from MCP-compatible Docker image
-python -m mcp_template create --from-image mcp/filesystem my-file-server
+mcp-template create --from-image mcp/filesystem my-file-server
 
 # Automatically discovers tools and generates template structure
 ```
@@ -550,42 +550,42 @@ def _load_from_env() -> Dict[str, Any]:
 
 ```bash
 # Validate template structure and configuration
-python -m mcp_template validate my-template
+mcp-template validate my-template
 
 # Check configuration schema
-python -m mcp_template config my-template --show-schema
+mcp-template config my-template --show-schema
 
 # Test configuration parsing
-python -m mcp_template config my-template --test-config config.json
+mcp-template config my-template --test-config config.json
 ```
 
 ### Deployment Testing
 
 ```bash
 # Deploy for testing
-python -m mcp_template deploy my-template --config debug=true
+mcp-template deploy my-template --config debug=true
 
 # Check deployment status
-python -m mcp_template status my-template
+mcp-template status my-template
 
 # Test tool discovery
-python -m mcp_template tools my-template
+mcp-template tools my-template
 
 # Test tools interactively
-python -m mcp_template connect my-template --test
+mcp-template connect my-template --test
 ```
 
 ### Integration Testing
 
 ```bash
 # Generate Claude Desktop integration
-python -m mcp_template connect my-template --llm claude
+mcp-template connect my-template --llm claude
 
 # Test with VS Code
-python -m mcp_template connect my-template --llm vscode
+mcp-template connect my-template --llm vscode
 
 # Generate Python client code
-python -m mcp_template connect my-template --llm python
+mcp-template connect my-template --llm python
 ```
 
 ## Best Practices
@@ -640,13 +640,13 @@ python -m mcp_template connect my-template --llm python
 
 ```bash
 # Package template for distribution
-python -m mcp_template package my-template
+mcp-template package my-template
 
 # Validate package
-python -m mcp_template validate-package my-template.tar.gz
+mcp-template validate-package my-template.tar.gz
 
 # Submit to template registry
-python -m mcp_template submit my-template.tar.gz
+mcp-template submit my-template.tar.gz
 ```
 
 ### Docker Registry
@@ -738,7 +738,7 @@ CMD ["node", "platform-wrapper.js"]
    python -m json.tool templates/my-template/template.json
 
    # Check for required fields
-   python -m mcp_template validate my-template --verbose
+   mcp-template validate my-template --verbose
    ```
 
 2. **Docker Build Issues**
@@ -754,11 +754,11 @@ CMD ["node", "platform-wrapper.js"]
 3. **Configuration Problems**
    ```bash
    # Test configuration parsing
-   python -m mcp_template config my-template --test-env
+   mcp-template config my-template --test-env
 
    # Check environment variable mapping
    export MCP_DEBUG=true
-   python -m mcp_template deploy my-template --config debug=true
+   mcp-template deploy my-template --config debug=true
    ```
 
 ### Debug Mode
@@ -769,7 +769,7 @@ export MCP_LOG_LEVEL=DEBUG
 export MCP_DEBUG_TEMPLATE=true
 
 # Deploy with debug options
-python -m mcp_template deploy my-template \
+mcp-template deploy my-template \
   --config debug=true \
   --config log_level=DEBUG \
   --verbose

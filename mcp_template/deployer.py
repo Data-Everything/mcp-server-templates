@@ -16,7 +16,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from mcp_template.manager import DeploymentManager
-from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.template.utils.discovery import TemplateDiscovery
 
 console = Console()
 logger = logging.getLogger(__name__)

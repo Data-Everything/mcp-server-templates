@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive tests for mcp_template.template.creation.TemplateCreator.create_template module.
+Comprehensive tests for mcp_template.template.utils.creation.TemplateCreator.create_template module.
 """
 
 import json
@@ -11,7 +11,11 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from mcp_template.template.creation import TEMPLATES_DIR, TESTS_DIR, TemplateCreator
+from mcp_template.template.utils.creation import (
+    TEMPLATES_DIR,
+    TESTS_DIR,
+    TemplateCreator,
+)
 
 
 class TestTemplateCreator(unittest.TestCase):
@@ -79,11 +83,11 @@ class TestTemplateCreator(unittest.TestCase):
             assert self.creator.template_dir.name == "test-template"
             mock_create.assert_called_once()
 
-    @patch("mcp_template.template.creation.console")
+    @patch("mcp_template.template.utils.creation.console")
     def test_prompt_template_id_valid(self, mock_console):
         """Test prompting for template ID with valid input."""
 
-        with patch("mcp_template.template.creation.Prompt") as mock_prompt:
+        with patch("mcp_template.template.utils.creation.Prompt") as mock_prompt:
             mock_prompt.ask.return_value = "valid-template-id"
 
             creator = TemplateCreator()
@@ -91,11 +95,11 @@ class TestTemplateCreator(unittest.TestCase):
 
             assert result == "valid-template-id"
 
-    @patch("mcp_template.template.creation.console")
+    @patch("mcp_template.template.utils.creation.console")
     def test_prompt_template_id_invalid_then_valid(self, mock_console):
         """Test prompting for template ID with invalid input first, then valid."""
 
-        with patch("mcp_template.template.creation.Prompt") as mock_prompt:
+        with patch("mcp_template.template.utils.creation.Prompt") as mock_prompt:
             # First return invalid, then valid
             mock_prompt.ask.side_effect = ["Invalid Template!", "valid-template-id"]
 
@@ -142,7 +146,7 @@ class TestTemplateCreator(unittest.TestCase):
                 # Validate the template ID against the expected rules
                 assert result is False
 
-    @patch("mcp_template.template.creation.Prompt.ask")
+    @patch("mcp_template.template.utils.creation.Prompt.ask")
     def test_gather_template_info(self, mock_ask):
         """Test gathering template information from user input."""
         # Set up template_data with id first
@@ -192,8 +196,8 @@ class TestTemplateCreator(unittest.TestCase):
 
         assert self.creator.template_data == expected_data
 
-    @patch("mcp_template.template.creation.console")
-    @patch("mcp_template.template.creation.Confirm")
+    @patch("mcp_template.template.utils.creation.console")
+    @patch("mcp_template.template.utils.creation.Confirm")
     def test_confirm_creation_yes(self, mock_confirm, mock_console):
         """Test confirmation dialog when user confirms creation."""
         mock_confirm.ask.return_value = True
@@ -213,8 +217,8 @@ class TestTemplateCreator(unittest.TestCase):
         result = self.creator._confirm_creation()
         assert result is True
 
-    @patch("mcp_template.template.creation.console")
-    @patch("mcp_template.template.creation.Confirm")
+    @patch("mcp_template.template.utils.creation.console")
+    @patch("mcp_template.template.utils.creation.Confirm")
     def test_confirm_creation_no(self, mock_confirm, mock_console):
         """Test confirmation dialog when user declines creation."""
         mock_confirm.ask.return_value = False
@@ -285,7 +289,7 @@ class TestTemplateCreator(unittest.TestCase):
         invalid_json = "{ invalid json }"
 
         with patch("builtins.open", mock_open(read_data=invalid_json)):
-            with patch("mcp_template.template.creation.console") as mock_console:
+            with patch("mcp_template.template.utils.creation.console") as mock_console:
                 result = self.creator._create_from_config_file("config.json")
 
                 assert result is False
@@ -294,7 +298,7 @@ class TestTemplateCreator(unittest.TestCase):
     def test_create_from_config_file_missing_file(self):
         """Test creating template from missing config file."""
         with patch("builtins.open", side_effect=FileNotFoundError):
-            with patch("mcp_template.template.creation.console") as mock_console:
+            with patch("mcp_template.template.utils.creation.console") as mock_console:
                 result = self.creator._create_from_config_file("missing.json")
 
                 assert result is False

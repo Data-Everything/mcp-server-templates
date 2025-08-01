@@ -70,33 +70,33 @@ This repository provides comprehensive tools for self-managing MCP server deploy
 pip install mcp-templates
 
 # Verify installation
-python -m mcp_template --version
+mcp-template --version
 ```
 
 #### Deploy Your First Template
 
 ```bash
 # List available templates
-python -m mcp_template list
+mcp-template list
 
 # Deploy demo server
-python -m mcp_template deploy demo
+mcp-template deploy demo
 
 # Discover available tools
-python -m mcp_template tools demo
+mcp-template tools demo
 
 # Get integration examples
-python -m mcp_template connect demo --llm claude
+mcp-template connect demo --llm claude
 ```
 
 #### Integration with Claude Desktop
 
 ```bash
 # Get container name
-python -m mcp_template list
+mcp-template list
 
 # Update Claude Desktop config
-python -m mcp_template connect demo --llm claude
+mcp-template connect demo --llm claude
 ```
 
 **Claude Desktop Configuration:**
@@ -155,35 +155,35 @@ python -m mcp_template connect demo --llm claude
 #### File Operations
 ```bash
 # Deploy secure file server
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config security__allowed_dirs='["/data", "/workspace"]' \
   --config security__read_only=false
 
 # Connect to Claude Desktop for file operations
-python -m mcp_template connect file-server --llm claude
+mcp-template connect file-server --llm claude
 ```
 
 #### Database Integration
 ```bash
 # Deploy PostgreSQL MCP server
-python -m mcp_template deploy postgres-server \
+mcp-template deploy postgres-server \
   --config database__host=localhost \
   --config database__name=mydb \
   --env POSTGRES_PASSWORD=secret
 
 # Generate Python integration code
-python -m mcp_template connect postgres-server --llm python
+mcp-template connect postgres-server --llm python
 ```
 
 #### API Integration
 ```bash
 # Deploy REST API integration server
-python -m mcp_template deploy api-server \
+mcp-template deploy api-server \
   --config api__base_url=https://api.example.com \
   --config api__auth_token=$API_TOKEN
 
 # Test with cURL
-python -m mcp_template connect api-server --llm curl
+mcp-template connect api-server --llm curl
 ```
 
 ### 🔍 Tool Discovery
@@ -191,7 +191,7 @@ python -m mcp_template connect api-server --llm curl
 **Automatic MCP Protocol Discovery:**
 ```bash
 # Discover tools from any MCP-compliant Docker image
-python -m mcp_template tools --image mcp/filesystem /tmp
+mcp-template tools --image mcp/filesystem /tmp
 
 # Rich formatted output shows all capabilities:
 ✅ Discovered 11 tools via docker_mcp_stdio
@@ -205,8 +205,8 @@ python -m mcp_template tools --image mcp/filesystem /tmp
 **Integration Ready:**
 ```bash
 # Get ready-to-use integration code
-python -m mcp_template tools demo --format json
-python -m mcp_template connect demo --llm vscode
+mcp-template tools demo --format json
+mcp-template connect demo --llm vscode
 ```
 
 ### 📊 Available Templates
@@ -233,7 +233,7 @@ python -m mcp_template connect demo --llm vscode
 #### Security Considerations
 ```bash
 # Deploy with security hardening
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config security__read_only=true \
   --config security__max_file_size=10 \
   --config logging__enable_audit=true \
@@ -243,20 +243,20 @@ python -m mcp_template deploy file-server \
 #### Monitoring Setup
 ```bash
 # Health check monitoring
-python -m mcp_template list --format json | jq '.summary'
+mcp-template list --format json | jq '.summary'
 
 # Log monitoring
-python -m mcp_template logs file-server --follow --since 1h
+mcp-template logs file-server --follow --since 1h
 ```
 
 #### Backup and Recovery
 ```bash
 # Export deployment configuration
-python -m mcp_template status file-server --format json > backup.json
+mcp-template status file-server --format json > backup.json
 
 # Cleanup and redeploy
-python -m mcp_template cleanup file-server
-python -m mcp_template deploy file-server --config-file backup.json
+mcp-template cleanup file-server
+mcp-template deploy file-server --config-file backup.json
 ```
 
 ### 🤝 Community & Support
@@ -292,13 +292,13 @@ pip install -e .
 
 ```bash
 # List available templates
-python -m mcp_template list
+mcp-template list
 
 # Deploy a template
-python -m mcp_template deploy file-server
+mcp-template deploy file-server
 
 # View logs
-python -m mcp_template logs file-server
+mcp-template logs file-server
 
 ```
 
@@ -306,20 +306,20 @@ python -m mcp_template logs file-server
 
 ```bash
 # View configuration options for any template
-python -m mcp_template deploy file-server --show-config
+mcp-template deploy file-server --show-config
 
 # Deploy with custom configuration
-python -m mcp_template deploy file-server --config read_only_mode=true
+mcp-template deploy file-server --config read_only_mode=true
 
 # Deploy with config file
-python -m mcp_template deploy file-server --config-file config.json
+mcp-template deploy file-server --config-file config.json
 ```
 
 ## Available Templates
 
 Our templates are automatically discovered and validated using the `TemplateDiscovery` utility to ensure only working implementations are listed. This keeps the documentation up-to-date as new templates are added.
 
-*Use `python -m mcp_template list` to see all currently available templates, or visit the [Templates](server-templates/index.md) section for detailed documentation.*
+*Use `mcp-template list` to see all currently available templates, or visit the [Templates](server-templates/index.md) section for detailed documentation.*
 
 **Popular Templates:**
 - **file-server** - Secure filesystem access for AI assistants
@@ -342,7 +342,7 @@ The system uses a simple architecture designed for self-hosted deployments:
 ```
 
 **Key Components:**
-- **CLI Interface** - Rich command-line interface (`python -m mcp_template`)
+- **CLI Interface** - Rich command-line interface (`mcp-template`)
 - **Template Discovery** - Automatic detection and validation of templates
 - **Docker Backend** - Container-based deployment with volume management
 - **Configuration System** - Multi-source configuration with type conversion
@@ -360,18 +360,18 @@ Templates support flexible configuration from multiple sources:
 **Example configuration:**
 ```bash
 # Using CLI options
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
 
 # Using environment variables
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50
 
 # Using config file
-python -m mcp_template deploy file-server --config-file production.json
+mcp-template deploy file-server --config-file production.json
 ```
 
 ## Template Development
@@ -380,7 +380,7 @@ Create custom MCP server templates:
 
 ```bash
 # Interactive template creation
-python -m mcp_template create my-custom-server
+mcp-template create my-custom-server
 
 # Follow prompts to configure:
 # - Template metadata
