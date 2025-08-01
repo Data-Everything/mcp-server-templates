@@ -80,7 +80,16 @@ Examples:
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # List command
-    subparsers.add_parser("list", help="List available templates")
+    list_parser = subparsers.add_parser(
+        "list",
+        help="List available templates",
+        description="List all available templates with their metadata.",
+    )
+    list_parser.add_argument(
+        "--deployed",
+        action="store_true",
+        help="List only deployed templates",
+    )
 
     # Create command
     create_parser = subparsers.add_parser("create", help="Create a new template")
@@ -136,10 +145,14 @@ Examples:
         help="Skip pulling Docker image (use local image)",
     )
 
+
     # Stop command
     stop_parser = subparsers.add_parser("stop", help="Stop a deployed template")
-    stop_parser.add_argument("template", help="Template name to stop")
+    stop_parser.add_argument("template", nargs="?", help="Template name to stop (optional if --name or --all is provided)")
     stop_parser.add_argument("--name", help=CUSTOM_NAME_HELP)
+    stop_parser.add_argument(
+        "--all", action="store_true", help="Stop all deployments of this template or all templates if no template is specified"
+    )
 
     # Logs command
     logs_parser = subparsers.add_parser("logs", help="Show template logs")
@@ -171,7 +184,6 @@ Examples:
     # Initialize deployer again if not already done
     if "deployer" not in locals():
         deployer = MCPDeployer()
-        available_templates = deployer.templates.keys()
 
     # Initialize enhanced CLI
     enhanced_cli = EnhancedCLI()
@@ -186,7 +198,7 @@ Examples:
             return
 
         if args.command == "list":
-            deployer.list_templates()
+            deployer.list_templates(deployed_only=args.deployed)
         elif args.command == "create":
             creator = TemplateCreator()
             success = creator.create_template_interactive(
@@ -237,7 +249,15 @@ Examples:
             if not success:
                 sys.exit(1)
         elif args.command == "stop":
-            deployer.stop(args.template, custom_name=getattr(args, "name", None))
+            # At least one of: template, --name, or --all must be provided
+            if not (getattr(args, "template", None) or getattr(args, "name", None) or getattr(args, "all", False)):
+                console.print("[red]❌ You must provide at least one of: template, --name, or --all[/red]")
+                sys.exit(1)
+            # If template is not provided, require --name or --all
+            if not getattr(args, "template", None) and not (getattr(args, "name", None) or getattr(args, "all", False)):
+                console.print("[red]❌ You must provide either a template name, --name, or --all[/red]")
+                sys.exit(1)
+            deployer.stop(getattr(args, "template", None), custom_name=getattr(args, "name", None), all_containers=getattr(args, "all", False))
         elif args.command == "logs":
             deployer.logs(args.template, custom_name=getattr(args, "name", None))
         elif args.command == "shell":
