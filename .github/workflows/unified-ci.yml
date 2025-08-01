@@ -96,7 +96,7 @@ jobs:
 
     - name: Test template ${{ matrix.template }}
       run: |
-        cd templates/${{ matrix.template }}
+        cd mcp_template/template/templates/${{ matrix.template }}
         python -m pytest tests/ -v --tb=short --cov-fail-under=0
 
   # Code quality checks
