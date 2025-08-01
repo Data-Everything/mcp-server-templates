@@ -1,0 +1,9 @@
+# Include all relevant files from mcp_template/template/templates and subdirectories
+recursive-include mcp_template/template/templates *.yaml *.yml *.json *.py
+# Exclude all test, tests, and test_* files/directories
+prune tests/
+prune mcp_template/template/templates/test
+prune mcp_template/template/templates/tests
+global-exclude tests/
+global-exclude mcp_template/template/templates/**/test
+global-exclude mcp_template/template/templates/**/tests

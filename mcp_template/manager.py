@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 from mcp_template.backends.docker import DockerDeploymentService
 from mcp_template.backends.kubernetes import KubernetesDeploymentService
 from mcp_template.backends.mock import MockDeploymentService
-from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.template.utils.discovery import TemplateDiscovery
 
 logger = logging.getLogger(__name__)
 

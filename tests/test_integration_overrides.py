@@ -59,7 +59,7 @@ class TestDeploymentIntegration:
         }
 
     @patch("mcp_template.manager.DeploymentManager")
-    @patch("mcp_template.template.discovery.TemplateDiscovery.discover_templates")
+    @patch("mcp_template.template.utils.discovery.TemplateDiscovery.discover_templates")
     def test_config_overrides_reach_deployment(
         self, mock_discover, mock_deployment_manager_class
     ):
@@ -105,7 +105,7 @@ class TestDeploymentIntegration:
         assert "OVERRIDE_max_connections" in configuration
 
     @patch("mcp_template.manager.DeploymentManager")
-    @patch("mcp_template.template.discovery.TemplateDiscovery.discover_templates")
+    @patch("mcp_template.template.utils.discovery.TemplateDiscovery.discover_templates")
     def test_template_overrides_modify_template_data(
         self, mock_discover, mock_deployment_manager_class
     ):
@@ -156,7 +156,7 @@ class TestDeploymentIntegration:
         assert "OVERRIDE_metadata__version" in configuration
         assert configuration["OVERRIDE_metadata__version"] == "2.0.0"
 
-    @patch("mcp_template.template.discovery.TemplateDiscovery.discover_templates")
+    @patch("mcp_template.template.utils.discovery.TemplateDiscovery.discover_templates")
     def test_mixed_config_and_template_overrides(self, mock_discover):
         """Test mixing config overrides and template overrides."""
         # Setup mocks

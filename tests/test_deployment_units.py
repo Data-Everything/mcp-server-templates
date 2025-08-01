@@ -15,7 +15,7 @@ import pytest
 from mcp_template import MCPDeployer
 from mcp_template.backends import DockerDeploymentService, MockDeploymentService
 from mcp_template.manager import DeploymentManager
-from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.template.utils.discovery import TemplateDiscovery
 
 
 @pytest.mark.unit
@@ -25,7 +25,9 @@ class TestTemplateDiscovery:
     def test_init_with_default_path(self):
         """Test initialization with default templates path."""
         discovery = TemplateDiscovery()
-        expected_path = Path(__file__).parent.parent / "templates"
+        expected_path = (
+            Path(__file__).parent.parent / "mcp_template" / "template" / "templates"
+        )
         assert discovery.templates_dir == expected_path
 
     def test_init_with_custom_path(self):
@@ -66,21 +68,6 @@ class TestTemplateDiscovery:
             assert "test-template" in templates
             assert templates["test-template"]["name"] == "Test Template"
             assert templates["test-template"]["image"] == "test/image:latest"
-
-    def test_discover_templates_missing_dockerfile(self):
-        """Test template discovery with missing Dockerfile."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Create template without Dockerfile
-            template_dir = Path(temp_dir) / "invalid-template"
-            template_dir.mkdir()
-
-            template_json = {"name": "Invalid Template"}
-            (template_dir / "template.json").write_text(json.dumps(template_json))
-
-            discovery = TemplateDiscovery(Path(temp_dir))
-            templates = discovery.discover_templates()
-
-            assert "invalid-template" not in templates
 
     def test_generate_template_config(self):
         """Test template configuration generation."""
@@ -152,7 +139,7 @@ class TestMCPDeployer:
             assert deployer.templates["test"] == {}
 
     @patch("mcp_template.manager.DeploymentManager")
-    @patch("mcp_template.template.discovery.TemplateDiscovery")
+    @patch("mcp_template.template.utils.discovery.TemplateDiscovery")
     def test_deploy_invalid_template(self, mock_discovery, mock_manager):
         """Test deployment with invalid template name."""
         mock_discovery.return_value.discover_templates.return_value = {}
@@ -164,7 +151,7 @@ class TestMCPDeployer:
 
     @patch("mcp_template.manager.TemplateDiscovery")  # Patch at manager level too
     @patch("mcp_template.manager.DeploymentManager")
-    @patch("mcp_template.template.discovery.TemplateDiscovery")
+    @patch("mcp_template.template.utils.discovery.TemplateDiscovery")
     def test_deploy_success(self, mock_discovery, mock_manager, mock_manager_discovery):
         """Test successful deployment."""
         # Setup mocks

@@ -27,13 +27,13 @@ Override template defaults at deployment time:
 
 ```bash
 # Set environment variables
-python -m mcp_template deploy demo --env DEMO_MESSAGE="Custom message"
+mcp-template deploy demo --env DEMO_MESSAGE="Custom message"
 
 # Change port
-python -m mcp_template deploy demo --port 9090
+mcp-template deploy demo --port 9090
 
 # Set multiple options
-python -m mcp_template deploy demo --port 8080 --env DEBUG=true --env LOG_LEVEL=info
+mcp-template deploy demo --port 8080 --env DEBUG=true --env LOG_LEVEL=info
 ```
 
 ## Configuration Files

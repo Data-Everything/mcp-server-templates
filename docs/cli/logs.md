@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-python -m mcp_template logs TEMPLATE [OPTIONS]
+mcp-template logs TEMPLATE [OPTIONS]
 ```
 
 ## Description
@@ -37,7 +37,7 @@ The `logs` command provides comprehensive log viewing and monitoring for deploye
 
 ```bash
 # View all logs for demo template
-python -m mcp_template logs demo
+mcp-template logs demo
 
 # Example output:
 2024-01-15 10:30:45 [INFO] MCP Server starting on stdio transport
@@ -54,51 +54,51 @@ python -m mcp_template logs demo
 
 ```bash
 # Follow logs in real-time
-python -m mcp_template logs demo --follow
+mcp-template logs demo --follow
 
 # Follow with tail (last 50 lines + new ones)
-python -m mcp_template logs demo --follow --tail 50
+mcp-template logs demo --follow --tail 50
 
 # Monitor specific log level
-python -m mcp_template logs demo --follow --level error
+mcp-template logs demo --follow --level error
 ```
 
 ### Time-based Filtering
 
 ```bash
 # Show logs from last hour
-python -m mcp_template logs demo --since 1h
+mcp-template logs demo --since 1h
 
 # Show logs from last 30 minutes
-python -m mcp_template logs demo --since 30m
+mcp-template logs demo --since 30m
 
 # Show logs from specific time range
-python -m mcp_template logs demo --since 2024-01-15T10:00:00 --until 2024-01-15T11:00:00
+mcp-template logs demo --since 2024-01-15T10:00:00 --until 2024-01-15T11:00:00
 
 # Show recent activity
-python -m mcp_template logs demo --since 5m --follow
+mcp-template logs demo --since 5m --follow
 ```
 
 ### Content Filtering
 
 ```bash
 # Filter by log level
-python -m mcp_template logs demo --level error
-python -m mcp_template logs demo --level warn
+mcp-template logs demo --level error
+mcp-template logs demo --level warn
 
 # Search for specific patterns
-python -m mcp_template logs demo --grep "tool called"
-python -m mcp_template logs demo --grep "error\|exception" --level error
+mcp-template logs demo --grep "tool called"
+mcp-template logs demo --grep "error\|exception" --level error
 
 # Combine filters
-python -m mcp_template logs demo --since 1h --level info --grep "client"
+mcp-template logs demo --since 1h --level info --grep "client"
 ```
 
 ### Output Formats
 
 ```bash
 # JSON format for parsing
-python -m mcp_template logs demo --format json --tail 10
+mcp-template logs demo --format json --tail 10
 
 # Example JSON output:
 [
@@ -123,7 +123,7 @@ python -m mcp_template logs demo --format json --tail 10
 ]
 
 # Plain text format (no formatting)
-python -m mcp_template logs demo --format plain --no-color
+mcp-template logs demo --format plain --no-color
 ```
 
 ## Log Levels and Filtering
@@ -142,13 +142,13 @@ python -m mcp_template logs demo --format plain --no-color
 
 ```bash
 # Show only errors and warnings
-python -m mcp_template logs demo --level warn
+mcp-template logs demo --level warn
 
 # Debug-level logging (very verbose)
-python -m mcp_template logs demo --level debug --tail 100
+mcp-template logs demo --level debug --tail 100
 
 # Production monitoring (errors only)
-python -m mcp_template logs demo --level error --follow
+mcp-template logs demo --level error --follow
 ```
 
 ## Advanced Filtering
@@ -157,29 +157,29 @@ python -m mcp_template logs demo --level error --follow
 
 ```bash
 # Case-insensitive search
-python -m mcp_template logs demo --grep "(?i)error"
+mcp-template logs demo --grep "(?i)error"
 
 # Multiple patterns (OR logic)
-python -m mcp_template logs demo --grep "error\|exception\|fail"
+mcp-template logs demo --grep "error\|exception\|fail"
 
 # Tool-specific logs
-python -m mcp_template logs demo --grep "Tool called: say_hello"
+mcp-template logs demo --grep "Tool called: say_hello"
 
 # Client connection logs
-python -m mcp_template logs demo --grep "client (connected|disconnected)"
+mcp-template logs demo --grep "client (connected|disconnected)"
 ```
 
 ### Complex Queries
 
 ```bash
 # Errors in last hour
-python -m mcp_template logs demo --since 1h --level error
+mcp-template logs demo --since 1h --level error
 
 # Recent tool calls with debug info
-python -m mcp_template logs demo --since 30m --grep "Tool" --level debug
+mcp-template logs demo --since 30m --grep "Tool" --level debug
 
 # Monitor specific functionality
-python -m mcp_template logs demo --follow --grep "file_server\|directory"
+mcp-template logs demo --follow --grep "file_server\|directory"
 ```
 
 ## Performance and Troubleshooting
@@ -188,13 +188,13 @@ python -m mcp_template logs demo --follow --grep "file_server\|directory"
 
 ```bash
 # Check startup logs
-python -m mcp_template logs demo --since 10m --level info
+mcp-template logs demo --since 10m --level info
 
 # Look for errors during initialization
-python -m mcp_template logs demo --grep "starting\|initializ" --level error
+mcp-template logs demo --grep "starting\|initializ" --level error
 
 # Monitor resource usage logs
-python -m mcp_template logs demo --grep "memory\|cpu\|disk" --follow
+mcp-template logs demo --grep "memory\|cpu\|disk" --follow
 ```
 
 ### Common Log Patterns
@@ -235,13 +235,13 @@ python -m mcp_template logs demo --grep "memory\|cpu\|disk" --follow
 
 ```bash
 # Monitor tool performance
-python -m mcp_template logs demo --grep "execution.*[0-9]+\.[0-9]+s" --follow
+mcp-template logs demo --grep "execution.*[0-9]+\.[0-9]+s" --follow
 
 # Track client connections
-python -m mcp_template logs demo --grep "client.*connected\|disconnected" --since 1h
+mcp-template logs demo --grep "client.*connected\|disconnected" --since 1h
 
 # Monitor error rates
-python -m mcp_template logs demo --level error --since 1h | wc -l
+mcp-template logs demo --level error --since 1h | wc -l
 ```
 
 ## Integration with Monitoring
@@ -251,10 +251,10 @@ python -m mcp_template logs demo --level error --since 1h | wc -l
 ```bash
 #!/bin/bash
 # Simple error monitoring script
-ERROR_COUNT=$(python -m mcp_template logs demo --since 1h --level error --format plain | wc -l)
+ERROR_COUNT=$(mcp-template logs demo --since 1h --level error --format plain | wc -l)
 if [ "$ERROR_COUNT" -gt 10 ]; then
     echo "⚠️  High error rate: $ERROR_COUNT errors in last hour"
-    python -m mcp_template logs demo --since 1h --level error --tail 5
+    mcp-template logs demo --since 1h --level error --tail 5
 fi
 ```
 
@@ -262,13 +262,13 @@ fi
 
 ```bash
 # Export logs to file
-python -m mcp_template logs demo --since 1d --format json > demo_logs_$(date +%Y%m%d).json
+mcp-template logs demo --since 1d --format json > demo_logs_$(date +%Y%m%d).json
 
 # Import to log analysis tools
-python -m mcp_template logs demo --format json --since 1h | jq '.[] | select(.level == "ERROR")'
+mcp-template logs demo --format json --since 1h | jq '.[] | select(.level == "ERROR")'
 
 # Create CSV for spreadsheet analysis
-python -m mcp_template logs demo --since 1d --format json | \
+mcp-template logs demo --since 1d --format json | \
   jq -r '.[] | [.timestamp, .level, .message] | @csv' > logs.csv
 ```
 
@@ -331,8 +331,8 @@ logging:
 
 ```bash
 # Monitor multiple templates simultaneously
-python -m mcp_template logs demo --follow &
-python -m mcp_template logs file-server --follow &
+mcp-template logs demo --follow &
+mcp-template logs file-server --follow &
 wait
 ```
 
@@ -343,8 +343,8 @@ wait
 ❌ No logs available for template 'demo'
 ```
 **Solutions**:
-- Verify template is deployed: `python -m mcp_template status demo`
-- Check if container is running: `python -m mcp_template list`
+- Verify template is deployed: `mcp-template status demo`
+- Check if container is running: `mcp-template list`
 - Container may have just started: try `--since 1m`
 
 ### Permission Errors

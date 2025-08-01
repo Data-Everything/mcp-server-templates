@@ -2,7 +2,7 @@
 Test template discovery and management.
 """
 
-from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.template.utils.discovery import TemplateDiscovery
 
 
 class TestTemplateDiscovery:

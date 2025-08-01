@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-templates"
+dynamic = ["version"]
+description = "Deploy MCP server templates with zero configuration"
+readme = "README.md"
+authors = [
+    { name = "Sam Arora", email = "tooling@dataeverything.com" },
+]
+license = "Elastic-2.0"
+requires-python = ">=3.10"
+dependencies = [
+    "rich>=13.0.0",
+    "pyyaml>=6.0",
+    "requests>=2.25.1",
+]
+keywords = ["mcp", "model-context-protocol", "ai", "deployment", "docker", "templates"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+]
+
+[project.urls]
+Bug-Reports = "https://github.com/Data-Everything/mcp-server-templates/issues"
+Source = "https://github.com/Data-Everything/mcp-server-templates"
+Documentation = "https://github.com/Data-Everything/mcp-server-templates#readme"
+
+[project.scripts]
+mcp-template = "mcp_template:main"
+
+[tool.setuptools]
+include-package-data = true
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = [
+    "test",
+    "tests",
+    "test_*",
+    "*/test",
+    "*/tests",
+    "*/test_*",
+]
+
+[tool.setuptools.package-data]
+# Include all .yaml, .yml, .json, .py files from mcp_template/template/templates and subdirectories
+"mcp_template.template.templates" = ["**/*.yaml", "**/*.yml", "**/*.json", "**/*.py"]
+
+[tool.setuptools.dynamic]
+version = {attr = "mcp_template.__version__.__version__"}

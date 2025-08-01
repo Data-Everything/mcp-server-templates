@@ -54,19 +54,19 @@ docker run --network mcp-platform --name demo \
 
 ```bash
 # Deploy using the CLI
-python -m mcp_template deploy demo
+mcp-template deploy demo
 
 # Deploy with custom configuration
-python -m mcp_template deploy demo --config hello_from="CLI Server"
+mcp-template deploy demo --config hello_from="CLI Server"
 
 # Show configuration options
-python -m mcp_template config demo
+mcp-template config demo
 
 # List available tools
-python -m mcp_template tools demo
+mcp-template tools demo
 
 # Get integration examples
-python -m mcp_template connect demo --llm claude
+mcp-template connect demo --llm claude
 ```
 
 ## Configuration
@@ -100,28 +100,28 @@ The demo template supports **template data overrides** using the `--override` ar
 
 ```bash
 # Modify template metadata
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --override "metadata__version=2.0.0" \
   --override "metadata__author=Your Name"
 
 # Modify tool configurations
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --override "tools__0__enabled=false" \
   --override "tools__1__description=Custom echo tool"
 
 # Add custom fields to template
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --override "custom_field=custom_value" \
   --override "config__debug_mode=true"
 
 # Complex nested structures with automatic type conversion
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --override "config__features__advanced=true" \
   --override "config__features__timeout=30.5" \
   --override "servers__0__config__host=localhost"
 
 # Combined config and overrides
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --config hello_from="Custom Server" \
   --override "metadata__version=1.5.0" \
   --override "tools__0__custom_property=value"
@@ -370,7 +370,7 @@ python server.py --log-level debug
 docker run -e MCP_LOG_LEVEL=debug dataeverything/mcp-demo:latest
 
 # CLI deployment
-python -m mcp_template deploy demo --config log_level=debug
+mcp-template deploy demo --config log_level=debug
 ```
 
 ## Contributing

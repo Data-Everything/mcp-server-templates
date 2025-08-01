@@ -53,15 +53,10 @@ class TemplateDiscovery:
     def _load_template_config(self, template_dir: Path) -> Optional[Dict[str, Any]]:
         """Load and validate a template configuration."""
         template_json = template_dir / "template.json"
-        dockerfile = template_dir / "Dockerfile"
 
         # Basic validation: must have template.json and Dockerfile
         if not template_json.exists():
             logger.debug("Template %s missing template.json", template_dir.name)
-            return None
-
-        if not dockerfile.exists():
-            logger.debug("Template %s missing Dockerfile", template_dir.name)
             return None
 
         try:

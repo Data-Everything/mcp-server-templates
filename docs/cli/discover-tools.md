@@ -8,10 +8,10 @@
 
 ```bash
 # Old (deprecated)
-python -m mcp_template discover-tools --image mcp/filesystem /tmp
+mcp-template discover-tools --image mcp/filesystem /tmp
 
 # New (recommended) 
-python -m mcp_template tools --image mcp/filesystem /tmp
+mcp-template tools --image mcp/filesystem /tmp
 ```
 
 ---
@@ -19,7 +19,7 @@ python -m mcp_template tools --image mcp/filesystem /tmp
 ## Synopsis
 
 ```bash
-python -m mcp_template discover-tools --image IMAGE [SERVER_ARGS...]
+mcp-template discover-tools --image IMAGE [SERVER_ARGS...]
 ```
 
 ## Description
@@ -60,7 +60,7 @@ If MCP stdio fails, the system automatically falls back to:
 
 ```bash
 # Discover tools from filesystem server
-python -m mcp_template discover-tools --image mcp/filesystem /tmp
+mcp-template discover-tools --image mcp/filesystem /tmp
 
 # Example output:
 ╭──────────────────────────────────────────────────────────────╮
@@ -95,17 +95,17 @@ python -m mcp_template discover-tools --image mcp/filesystem /tmp
 
 ```bash
 # Database server with connection parameters
-python -m mcp_template discover-tools \
+mcp-template discover-tools \
   --image myregistry/postgres-mcp:latest \
   --host localhost --port 5432 --database mydb
 
 # API server with authentication
-python -m mcp_template discover-tools \
+mcp-template discover-tools \
   --image company/api-mcp:v1.0 \
   --api-key $API_TOKEN --base-url https://api.example.com
 
 # File server with multiple directories
-python -m mcp_template discover-tools \
+mcp-template discover-tools \
   --image mcp/filesystem \
   /data /workspace /tmp
 ```
@@ -114,7 +114,7 @@ python -m mcp_template discover-tools \
 
 ```bash
 # Custom image with complex configuration
-python -m mcp_template discover-tools \
+mcp-template discover-tools \
   --image custom/research-mcp:latest \
   --config config.json \
   --model gpt-4 \
@@ -122,7 +122,7 @@ python -m mcp_template discover-tools \
   --output-format json
 
 # Development server with debug mode
-python -m mcp_template discover-tools \
+mcp-template discover-tools \
   --image local/dev-mcp:latest \
   --debug \
   --log-level trace \
@@ -156,15 +156,15 @@ For programmatic usage, pipe to `jq` or similar tools:
 
 ```bash
 # Get raw JSON data
-python -m mcp_template discover-tools --image mcp/filesystem /tmp | \
+mcp-template discover-tools --image mcp/filesystem /tmp | \
   grep -A 1000 "Raw result:" | tail -n +2
 
 # Extract just tool names
-python -m mcp_template discover-tools --image mcp/filesystem /tmp 2>/dev/null | \
+mcp-template discover-tools --image mcp/filesystem /tmp 2>/dev/null | \
   jq -r '.tools[].name'
 
 # Get tools with descriptions
-python -m mcp_template discover-tools --image mcp/filesystem /tmp 2>/dev/null | \
+mcp-template discover-tools --image mcp/filesystem /tmp 2>/dev/null | \
   jq -r '.tools[] | "\(.name): \(.description)"'
 ```
 
@@ -217,7 +217,7 @@ For detailed troubleshooting information:
 
 ```bash
 # Enable debug logging
-MCP_DEBUG=1 python -m mcp_template discover-tools --image mcp/filesystem /tmp
+MCP_DEBUG=1 mcp-template discover-tools --image mcp/filesystem /tmp
 
 # Check container logs manually
 docker run -it --rm mcp/filesystem /tmp
@@ -230,13 +230,13 @@ Use discovered tools to inform template creation:
 
 ```bash
 # Discover tools
-python -m mcp_template discover-tools --image custom/mcp-server:latest > tools.json
+mcp-template discover-tools --image custom/mcp-server:latest > tools.json
 
 # Create template with discovered capabilities
-python -m mcp_template create my-template --from-discovery tools.json
+mcp-template create my-template --from-discovery tools.json
 
 # Deploy template
-python -m mcp_template deploy my-template
+mcp-template deploy my-template
 ```
 
 ## Performance Considerations

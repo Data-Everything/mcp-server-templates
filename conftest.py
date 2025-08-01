@@ -22,7 +22,7 @@ from mcp_template.backends import (
     KubernetesDeploymentService,
     MockDeploymentService,
 )
-from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.template.utils.discovery import TemplateDiscovery
 
 
 @pytest.fixture(scope="session")

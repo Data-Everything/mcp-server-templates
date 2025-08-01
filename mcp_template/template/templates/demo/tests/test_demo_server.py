@@ -2,15 +2,10 @@
 Test cases for the FastMCP server using pytest and FastMCP Client.
 """
 
-import sys
-from pathlib import Path
-
 import pytest
 from fastmcp import Client
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from templates.demo import DemoMCPServer
+from mcp_template.template.templates.demo import DemoMCPServer
 
 demo_server = DemoMCPServer()
 

@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-python -m mcp_template list [OPTIONS]
+mcp-template list [OPTIONS]
 ```
 
 ## Description
@@ -20,6 +20,7 @@ The `list` command provides an overview of available MCP server templates and ac
 | `--filter TEXT` | Filter by name, category, or tag | No filter |
 | `--backend {docker,k8s,mock}` | Backend to query | `docker` |
 | `--all` | Show all templates (including inactive) | Active only |
+| `--deployed` | Show only currently deployed (active) servers | All templates |
 
 ## Output Information
 
@@ -38,8 +39,12 @@ The `list` command provides an overview of available MCP server templates and ac
 ### Basic Usage
 
 ```bash
+
 # List all available templates
-python -m mcp_template list
+mcp-template list
+
+# List only currently deployed (active) servers
+mcp-template list --deployed
 
 # Example output:
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
@@ -52,28 +57,28 @@ python -m mcp_template list
 └──────────────────────┴───────────────────────────────────────┴───────────────────────────────────────┴─────────────┘
 
 📊 Summary: 4 templates (2 active, 1 stopped, 1 error)
-💡 Use 'python -m mcp_template deploy <template>' to deploy
-    Use 'python -m mcp_template logs <template>' to view logs
+💡 Use 'mcp-template deploy <template>' to deploy
+    Use 'mcp-template logs <template>' to view logs
 ```
 
 ### Filtering Options
 
 ```bash
 # Filter by template name
-python -m mcp_template list --filter file
+mcp-template list --filter file
 
 # Filter by category
-python -m mcp_template list --filter database
+mcp-template list --filter database
 
 # Filter by status
-python -m mcp_template list --filter active
+mcp-template list --filter active
 ```
 
 ### Output Formats
 
 ```bash
 # JSON format for programmatic use
-python -m mcp_template list --format json
+mcp-template list --format json
 
 # Example JSON output:
 {
@@ -99,20 +104,20 @@ python -m mcp_template list --format json
 }
 
 # YAML format
-python -m mcp_template list --format yaml
+mcp-template list --format yaml
 ```
 
 ### Backend-Specific Listing
 
 ```bash
 # List Docker deployments (default)
-python -m mcp_template list --backend docker
+mcp-template list --backend docker
 
 # List Kubernetes deployments
-python -m mcp_template list --backend k8s
+mcp-template list --backend k8s
 
 # List mock deployments (testing)
-python -m mcp_template list --backend mock
+mcp-template list --backend mock
 ```
 
 ## Template Categories
@@ -192,26 +197,30 @@ For each template, the list command shows:
 
 ```bash
 # Watch list in real-time (requires watch command)
-watch -n 5 'python -m mcp_template list'
+watch -n 5 'mcp-template list'
+
 
 # Show all information including stopped containers
-python -m mcp_template list --all
+mcp-template list --all
+
+# Show only currently deployed (active) servers
+mcp-template list --deployed
 
 # Compact format for scripts
-python -m mcp_template list --format json | jq -r '.templates[].name'
+mcp-template list --format json | jq -r '.templates[].name'
 ```
 
 ### Health Monitoring
 
 ```bash
 # Show only error status deployments
-python -m mcp_template list --filter error
+mcp-template list --filter error
 
 # Show recently active deployments
-python -m mcp_template list --filter active
+mcp-template list --filter active
 
 # Export deployment list for monitoring
-python -m mcp_template list --format json > deployments.json
+mcp-template list --format json > deployments.json
 ```
 
 ## Troubleshooting
@@ -250,10 +259,10 @@ python -m mcp_template list --format json > deployments.json
 ```bash
 #!/bin/bash
 # Simple monitoring script
-ERRORS=$(python -m mcp_template list --format json | jq '.summary.error')
+ERRORS=$(mcp-template list --format json | jq '.summary.error')
 if [ "$ERRORS" -gt 0 ]; then
     echo "⚠️  $ERRORS deployments have errors"
-    python -m mcp_template list --filter error
+    mcp-template list --filter error
 fi
 ```
 

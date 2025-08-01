@@ -8,30 +8,30 @@
 
 ```bash
 # Verify MCP Template Platform installation
-python -m mcp_template --version
+mcp-template --version
 
 # Check Docker status
 docker --version
 docker info
 
 # List all deployments
-python -m mcp_template list
+mcp-template list
 
 # Check deployment health
-python -m mcp_template status
+mcp-template status
 ```
 
 ### Basic Health Check
 
 ```bash
 # Test a simple deployment
-python -m mcp_template deploy demo --config debug=true
+mcp-template deploy demo --config debug=true
 
 # Verify tools are discovered
-python -m mcp_template tools demo
+mcp-template tools demo
 
 # Check logs for errors
-python -m mcp_template logs demo --tail 50
+mcp-template logs demo --tail 50
 ```
 
 ## Common Issues
@@ -89,16 +89,16 @@ ERROR: Template 'my-template' not found
 **Solutions:**
 ```bash
 # List available templates
-python -m mcp_template list
+mcp-template list
 
 # Check templates directory
 ls -la templates/
 
 # Validate template structure
-python -m mcp_template create --help
+mcp-template create --help
 
 # Create missing template
-python -m mcp_template create my-template
+mcp-template create my-template
 ```
 
 #### 2. Container Fails to Start
@@ -111,7 +111,7 @@ ERROR: Container exited with code 1
 **Diagnostics:**
 ```bash
 # Check container logs
-python -m mcp_template logs deployment-name
+mcp-template logs deployment-name
 
 # Inspect container
 docker logs mcp-deployment-name
@@ -126,13 +126,13 @@ docker run -it mcp/template:latest /bin/bash
 **Solutions:**
 ```bash
 # Force image pull
-python -m mcp_template deploy template --force-pull
+mcp-template deploy template --force-pull
 
 # Check configuration
-python -m mcp_template config template
+mcp-template config template
 
 # Use debug mode
-python -m mcp_template deploy template --config debug=true
+mcp-template deploy template --config debug=true
 ```
 
 #### 3. Port Conflicts
@@ -148,7 +148,7 @@ ERROR: Port 8080 already in use
 sudo netstat -tulpn | grep 8080
 
 # Use different port
-python -m mcp_template deploy template --port 8081
+mcp-template deploy template --port 8081
 
 # Stop conflicting service
 sudo systemctl stop service-on-port-8080
@@ -166,10 +166,10 @@ No tools found in deployment
 **Diagnostics:**
 ```bash
 # Test MCP protocol directly
-python -m mcp_template tools --image template:latest
+mcp-template tools --image template:latest
 
 # Check container logs
-python -m mcp_template logs deployment --filter "tool\|mcp"
+mcp-template logs deployment --filter "tool\|mcp"
 
 # Verify MCP server is running
 docker exec -it mcp-deployment python -c "import sys; print(sys.version)"
@@ -178,13 +178,13 @@ docker exec -it mcp-deployment python -c "import sys; print(sys.version)"
 **Solutions:**
 ```bash
 # Update to latest image
-python -m mcp_template deploy template --force-pull
+mcp-template deploy template --force-pull
 
 # Check template configuration
-python -m mcp_template config template
+mcp-template config template
 
 # Test with stdio transport
-python -m mcp_template connect template --transport stdio
+mcp-template connect template --transport stdio
 ```
 
 #### 2. Partial Tool Discovery
@@ -197,13 +197,13 @@ Only 3 of 10 tools discovered
 **Solutions:**
 ```bash
 # Increase discovery timeout
-python -m mcp_template tools --image template
+mcp-template tools --image template
 
 # Check for tool initialization errors
-python -m mcp_template logs deployment --filter "error\|exception"
+mcp-template logs deployment --filter "error\|exception"
 
 # Restart deployment
-python -m mcp_template deploy template --force-recreate
+mcp-template deploy template --force-recreate
 ```
 
 ### Configuration Issues
@@ -218,17 +218,17 @@ Missing required configuration: API_KEY
 **Solutions:**
 ```bash
 # Check current configuration
-python -m mcp_template config template
+mcp-template config template
 
 # Set environment variable
 export MCP_API_KEY="your-key-here"
 
 # Use config file
 echo '{"api_key": "your-key"}' > config.json
-python -m mcp_template deploy template --config-file config.json
+mcp-template deploy template --config-file config.json
 
 # Pass inline configuration
-python -m mcp_template deploy template --config api_key=your-key
+mcp-template deploy template --config api_key=your-key
 ```
 
 #### 2. Configuration Validation Fails
@@ -244,10 +244,10 @@ ERROR: Invalid configuration schema
 python -m json.tool config.json
 
 # Check template schema
-python -m mcp_template config template --show-schema
+mcp-template config template --show-schema
 
 # Use minimal configuration
-python -m mcp_template deploy template --config debug=true
+mcp-template deploy template --config debug=true
 ```
 
 ### Performance Issues
@@ -261,10 +261,10 @@ python -m mcp_template deploy template --config debug=true
 **Solutions:**
 ```bash
 # Increase timeouts
-python -m mcp_template tools --image template
+mcp-template tools --image template
 
 # Use HTTP transport instead of stdio
-python -m mcp_template deploy template --transport http
+mcp-template deploy template --transport http
 
 # Check container resources
 docker stats mcp-deployment
@@ -279,13 +279,13 @@ docker stats mcp-deployment
 **Solutions:**
 ```bash
 # Set memory limits
-python -m mcp_template deploy template --memory 512m
+mcp-template deploy template --memory 512m
 
 # Check for memory leaks
-python -m mcp_template logs deployment --filter "memory\|oom"
+mcp-template logs deployment --filter "memory\|oom"
 
 # Monitor resource usage
-python -m mcp_template status deployment --watch
+mcp-template status deployment --watch
 ```
 
 ### Network Issues
@@ -303,13 +303,13 @@ Connection refused to localhost:8080
 docker port mcp-deployment
 
 # Verify container is running
-python -m mcp_template status deployment
+mcp-template status deployment
 
 # Test network connectivity
 docker exec mcp-deployment curl http://localhost:8080/health
 
 # Use stdio transport instead
-python -m mcp_template connect deployment --transport stdio
+mcp-template connect deployment --transport stdio
 ```
 
 #### 2. DNS Resolution Issues
@@ -322,7 +322,7 @@ Could not resolve hostname
 **Solutions:**
 ```bash
 # Use IP address instead of hostname
-python -m mcp_template deploy template --config host=127.0.0.1
+mcp-template deploy template --config host=127.0.0.1
 
 # Check Docker DNS
 docker exec mcp-deployment nslookup google.com
@@ -348,10 +348,10 @@ ERROR: Invalid template.json format
 python -m json.tool templates/my-template/template.json
 
 # Check required fields
-python -m mcp_template create --help
+mcp-template create --help
 
 # Use template wizard
-python -m mcp_template create my-template
+mcp-template create my-template
 ```
 
 #### 2. Docker Build Fails
@@ -409,10 +409,10 @@ export MCP_LOG_LEVEL=DEBUG
 export MCP_DEBUG=true
 
 # Deploy with debug configuration
-python -m mcp_template deploy template --config debug=true log_level=DEBUG
+mcp-template deploy template --config debug=true log_level=DEBUG
 
 # Monitor debug logs
-python -m mcp_template logs deployment --follow --filter "DEBUG"
+mcp-template logs deployment --follow --filter "DEBUG"
 ```
 
 ### Container Inspection
@@ -448,7 +448,7 @@ curl -X POST http://localhost:8080/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 
 # Monitor MCP messages
-python -m mcp_template connect deployment --debug
+mcp-template connect deployment --debug
 ```
 
 ## Getting Help
@@ -463,7 +463,7 @@ python -m mcp_template connect deployment --debug
 2. **Search Common Issues**
    ```bash
    # Search logs for error patterns
-   python -m mcp_template logs deployment | grep -i error
+   mcp-template logs deployment | grep -i error
 
    # Check GitHub issues
    # Visit: https://github.com/data-everything/mcp-server-templates/issues
@@ -488,7 +488,7 @@ When reporting issues, include:
 
 1. **System Information**
    ```bash
-   python -m mcp_template --version
+   mcp-template --version
    docker --version
    python --version
    uname -a
@@ -497,13 +497,13 @@ When reporting issues, include:
 2. **Error Details**
    ```bash
    # Full error logs
-   python -m mcp_template logs deployment --since 1h
+   mcp-template logs deployment --since 1h
 
    # Configuration
-   python -m mcp_template config deployment
+   mcp-template config deployment
 
    # Status information
-   python -m mcp_template status deployment --detailed
+   mcp-template status deployment --detailed
    ```
 
 3. **Steps to Reproduce**
@@ -523,14 +523,14 @@ pip install --upgrade mcp-templates
 docker system prune -f
 
 # Check deployment health
-python -m mcp_template status --health-only
+mcp-template status --health-only
 ```
 
 ### Monitoring Setup
 
 ```bash
 # Set up health checks
-python -m mcp_template status --watch --refresh 60 > health.log &
+mcp-template status --watch --refresh 60 > health.log &
 
 # Monitor resource usage
 docker stats --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}" \
