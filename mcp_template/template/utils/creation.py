@@ -78,6 +78,45 @@ class TemplateCreator:
         # Create the template
         return self._create_template_structure()
 
+    def _create_config_py(self):
+        """Create config.py for the template by loading demo config and adapting it."""
+        # Load the demo config.py as a template
+        demo_config_path = self.templates_dir.parent / "utils" / "config.py"
+        with open(demo_config_path, "r", encoding="utf-8") as f:
+            config_content = f.read()
+
+        # Generate template-specific names
+        config_class_name = (
+            "".join(word.capitalize() for word in self.template_data["id"].split("-"))
+            + "ServerConfig"
+        )
+        template_name = self.template_data["name"]
+        template_id = self.template_data["id"]
+        template_name_lower = template_name.lower()
+        template_id_lower = template_id.lower()
+
+        # Replace demo-specific references with template-specific ones
+        replacements = {
+            "DemoServerConfig": config_class_name,
+            "Demo MCP Server": f"{template_name} MCP Server",
+            "demo template": f"{template_name_lower} template",
+            "demo server": f"{template_name_lower} server",
+            "Demo server": f"{template_name} server",
+            '"demo"': f'"{template_id_lower}"',
+            "'demo'": f"'{template_id_lower}'",
+            "demo_": f"{template_id_lower}_",
+            '"Demo"': f'"{template_name}"',
+            "'Demo'": f"'{template_name}'",
+        }
+
+        # Apply replacements
+        for old_text, new_text in replacements.items():
+            config_content = config_content.replace(old_text, new_text)
+
+        # Write the adapted config file
+        with open(self.template_dir / "config.py", "w", encoding="utf-8") as f:
+            f.write(config_content)
+
     def create_template(self) -> bool:
         """Create a template using the current template_data."""
         if not self.template_data:
@@ -180,6 +219,15 @@ class TemplateCreator:
                     "Docker image name",
                     default=f"dataeverything/mcp-{self.template_data['id']}",
                 ),
+                "docker_tag": Prompt.ask(
+                    "Docker tag",
+                    default="latest",
+                ),
+                "origin": Prompt.ask(
+                    "Origin: [yellow]For pre-build docker based templates, specify the origin as external else internal[/yellow]",
+                    default="internal",
+                    choices=["internal", "external"],
+                ),
             }
         )
 
@@ -187,8 +235,8 @@ class TemplateCreator:
         console.print("\n[cyan]� Creating template with minimal boilerplate...[/cyan]")
         self.template_data["capabilities"] = [
             {
-                "name": "hello",
-                "description": "A simple hello world tool",
+                "name": "example",
+                "description": "A simple example tool",
                 "example": "Say hello to the world",
                 "example_args": {},
                 "example_response": "Hello from your new MCP server!",
@@ -222,7 +270,8 @@ class TemplateCreator:
         table.add_row("Version", self.template_data["version"])
         table.add_row("Author", self.template_data["author"])
         table.add_row("Docker Image", self.template_data["docker_image"])
-        table.add_row("Capabilities", str(len(self.template_data["capabilities"])))
+        table.add_row("Docker Tag", self.template_data["docker_tag"])
+        table.add_row("Origin", self.template_data["origin"])
         table.add_row(
             "Config Parameters",
             str(len(self.template_data["config_schema"]["properties"])),
@@ -245,11 +294,13 @@ class TemplateCreator:
             # Create template files
             self._create_template_json()
             self._create_readme()
-            self._create_dockerfile()
-            self._create_requirements_txt()
-            self._create_server_py()
             self._create_usage_md()
             self._create_docs_index()
+            if self.template_data.get("origin", "internal") == "internal":
+                self._create_dockerfile()
+                self._create_requirements_txt()
+                self._create_server_py()
+                self._create_config_py()
 
             # Create test structure
             self._create_test_structure()
@@ -273,8 +324,6 @@ class TemplateCreator:
         """Create template directory structure."""
         directories = [
             self.template_dir,
-            self.template_dir / "src",
-            self.template_dir / "config",
             self.template_dir / "tests",
             self.template_dir / "docs",
         ]
@@ -374,7 +423,7 @@ This template supports the following configuration parameters:
 pip install -r requirements.txt
 
 # Run the server
-python -m src.server
+python -m server
 ```
 
 ### Running Tests
@@ -410,21 +459,42 @@ docker run -p 8000:8000 {self.template_data.get("docker_image", f"dataeverything
         """Create Dockerfile for the template."""
         dockerfile_content = """FROM python:3.11-slim
 
+LABEL maintainer="Data Everything <tooling@dataeverything.com>"
+LABEL description="Demo MCP Server using FastMCP"
+LABEL version="1.0.0"
+
+# Set working directory
 WORKDIR /app
 
-# Copy requirements first for better caching
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY src/ ./src/
-COPY config/ ./config/
+# Copy demo template source code
+COPY . .
 
-# Expose port for HTTP transport (if needed)
-EXPOSE 8000
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash mcp
+RUN chown -R mcp:mcp /app
+USER mcp
 
-# Run the MCP server
-CMD ["python", "-m", "src.server"]
+# Expose the default HTTP port
+EXPOSE 7071
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:7071/health || exit 1
+
+# Set environment variables
+ENV MCP_LOG_LEVEL=info
+ENV MCP_HELLO_FROM="MCP Platform"
+
+# Default command
+CMD ["python", "server.py"]
 """
 
         with open(self.template_dir / "Dockerfile", "w", encoding="utf-8") as f:
@@ -448,6 +518,10 @@ CMD ["python", "-m", "src.server"]
         config_properties = self.template_data.get("config_schema", {}).get(
             "properties", {}
         )
+        class_name = (
+            "".join(word.capitalize() for word in self.template_data["id"].split("-"))
+            + "MCPServer"
+        )
 
         server_content = f'''#!/usr/bin/env python3
 """
@@ -456,140 +530,90 @@ CMD ["python", "-m", "src.server"]
 {self.template_data["description"]}
 """
 
+import logging
 import os
-from typing import Any, Dict, List
+import sys
 
 from fastmcp import FastMCP
-from pydantic import BaseModel
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Initialize FastMCP server
-app = FastMCP("{self.template_data["id"]}")
+try:
+    from .config import ServerConfig
+except ImportError:
+    try:
+        from config import ServerConfig
+    except ImportError:
+        # Fallback for Docker or direct script execution
+        sys.path.append(os.path.dirname(__file__))
+        from config import ServerConfig
 
-
-# Configuration models
-class ServerConfig(BaseModel):
-    """Server configuration model."""
-'''
-
-        # Add configuration properties
-        for param_name, param_config in config_properties.items():
-            param_type = param_config["type"]
-            if param_type == "string":
-                type_hint = "str"
-            elif param_type == "number":
-                type_hint = "int"
-            elif param_type == "boolean":
-                type_hint = "bool"
-            else:
-                type_hint = "Any"
-
-            default = param_config.get("default", "None")
-            if isinstance(default, str) and param_type == "string":
-                default = f'"{default}"'
-
-            server_content += f"    {param_name}: {type_hint} = {default}\n"
-
-        if not config_properties:
-            server_content += "    pass  # No configuration needed\n"
-
-        server_content += '''
-
-# Load configuration
-def load_config() -> ServerConfig:
-    """Load configuration from environment variables."""
-    config_data = {}
-'''
-
-        # Add environment variable loading
-        for param_name, param_config in config_properties.items():
-            env_name = param_config.get("env_mapping", param_name.upper())
-            server_content += (
-                f'    config_data["{param_name}"] = os.getenv("{env_name}")\n'
-            )
-
-        server_content += """
-    # Remove None values
-    config_data = {k: v for k, v in config_data.items() if v is not None}
-
-    return ServerConfig(**config_data)
-
-
-# Global configuration
-config = load_config()
-
-
-"""
-
-        # Add tool implementations
-        for capability in capabilities:
-            tool_name = capability["name"].lower().replace(" ", "_").replace("-", "_")
-
-            # Create parameter model if there are example args
-            if capability.get("example_args"):
-                server_content += f'''class {tool_name.title().replace("_", "")}Args(BaseModel):
-    """Arguments for {capability["name"]} tool."""
-'''
-                for arg_name, arg_value in capability["example_args"].items():
-                    if isinstance(arg_value, str):
-                        type_hint = "str"
-                    elif isinstance(arg_value, int):
-                        type_hint = "int"
-                    elif isinstance(arg_value, bool):
-                        type_hint = "bool"
-                    else:
-                        type_hint = "Any"
-
-                    server_content += f"    {arg_name}: {type_hint}\n"
-
-                server_content += "\n\n"
-
-            # Create tool function
-            args_param = (
-                f"args: {tool_name.title().replace('_', '')}Args"
-                if capability.get("example_args")
-                else ""
-            )
-
-            server_content += f'''@app.tool()
-def {tool_name}({args_param}) -> str:
+class {class_name}:
     """
-    {capability["description"]}
-
-    Example: {capability["example"]}
+    {self.template_data["name"]} MCP Server implementation using FastMCP.
     """
-    # TODO: Implement {capability["name"]} logic here
-    return "{capability.get('example_response', 'Operation completed successfully')}"
+
+    def __init__(self, config_dict: dict = None):
+        """Initialize the {self.template_data["name"]} MCP Server with configuration."""
+        self.config = ServerConfig(config_dict=config_dict or {{}})
+
+        # Standard configuration data from config_schema
+        self.config_data = self.config.get_template_config()
+
+        # Full template data (potentially modified by double underscore notation)
+        self.template_data = self.config.get_template_data()
+
+        self.logger = self.config.logger
+
+        self.mcp = FastMCP(
+            name=self.template_data.get("name", "demo-server"),
+            instructions={self.template_data.get("description", None)},
+            version={self.template_data.get("version", "1.0.0")},
+        )
+        logger.info("%s MCP server %s created", self.template_data["name"], self.mcp.name)
+        self.register_tools()
+
+    def register_tools(self):
+        """Register tools with the MCP server."""
+        self.mcp.tool(self.example, tags=["example"])
+
+    def example(self, message: str) -> str:
+        """
+        Example tool
+        """
+        
+        return "Example tool executed successfully"
+
+    def run(self):
+        """Run the MCP server with the configured transport and port."""
+        self.mcp.run(
+            transport=os.getenv(
+                "MCP_TRANSPORT",
+                self.template_data.get("transport", {{}}).get("default", "http"),
+            ),
+            port=int(
+                os.getenv(
+                    "MCP_PORT",
+                    self.template_data.get("transport", {{}}).get("port", 7071),
+                )
+            ),
+            log_level=self.config_data.get("log_level", "info"),
+        )
 
 
+# Create the server instance
+server = {class_name}(config_dict={{}})
+
+if __name__ == "__main__":
+    server.run()
 '''
 
-        # Add default tool if no capabilities defined
-        if not capabilities:
-            server_content += '''@app.tool()
-def hello() -> str:
-    """
-    A simple hello world tool.
-
-    Example: Say hello to the world
-    """
-    return "Hello from your new MCP server!"
-
-
-'''
-
-        # Add main block
-        server_content += """if __name__ == "__main__":
-    app.run()
-"""
-
-        with open(self.template_dir / "src" / "server.py", "w", encoding="utf-8") as f:
+        with open(self.template_dir / "server.py", "w", encoding="utf-8") as f:
             f.write(server_content)
 
         # Create __init__.py
-        with open(
-            self.template_dir / "src" / "__init__.py", "w", encoding="utf-8"
-        ) as f:
+        with open(self.template_dir / "__init__.py", "w", encoding="utf-8") as f:
             f.write(f'"""\n{self.template_data["name"]} MCP Server.\n"""\n')
 
     def _create_usage_md(self):
@@ -693,7 +717,7 @@ from mcp.client.stdio import stdio_client
 async def use_server():
     server_params = StdioServerParameters(
         command="python",
-        args=["-m", "src.server"]
+        args=["-m", "server"]
     )
 
     async with stdio_client(server_params) as (read, write):
@@ -825,7 +849,7 @@ cd {self.template_data["id"]}
 pip install -r requirements.txt
 
 # Run the server
-python -m src.server
+python -m server
 ```
 
 ### Testing
@@ -838,7 +862,7 @@ pytest tests/
 pytest tests/ -m "not integration"
 
 # Run with coverage
-pytest tests/ --cov=src --cov-report=html
+pytest tests/ --cov=. --cov-report=html
 ```
 
 ### Docker
@@ -911,7 +935,7 @@ from unittest.mock import Mock, patch
 import sys
 sys.path.insert(0, str({repr(str(self.template_dir))}))
 
-from src.server import app, load_config
+from server import app, load_config
 
 
 class Test{class_name_base}Unit:
@@ -986,7 +1010,7 @@ class Test{class_name_base}Integration:
     async def mcp_client(self):
         """Create MCP test client."""
         template_dir = Path({repr(str(self.template_dir))})
-        client = MCPTestClient(template_dir / "src" / "server.py")
+        client = MCPTestClient(template_dir  / "server.py")
         await client.start()
         yield client
         await client.stop()

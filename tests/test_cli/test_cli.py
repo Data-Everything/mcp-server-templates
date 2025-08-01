@@ -129,7 +129,7 @@ class TestMainCLI:
 
         main()
         mock_enhanced_cli.list_tools.assert_called_once_with(
-            "demo", no_cache=False, refresh=False
+            "demo", no_cache=False, refresh=False, config_values={}
         )
 
     @patch("mcp_template.EnhancedCLI")
@@ -169,7 +169,7 @@ class TestMainCLI:
 
         main()
         mock_enhanced_cli.list_tools.assert_called_once_with(
-            "demo", no_cache=True, refresh=True
+            "demo", no_cache=True, refresh=True, config_values={}
         )
 
     @patch("mcp_template.EnhancedCLI")

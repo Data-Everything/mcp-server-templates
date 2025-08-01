@@ -1,0 +1,48 @@
+{
+  "name": "Github",
+  "description": "Official github MCP server implementation",
+  "version": "1.0.0",
+  "author": "Sam Arora",
+  "category": "General",
+  "tags": [],
+  "docker_image": "ghcr.io/github/github-mcp-server",
+  "docker_tag": "0.9.1",
+  "ports": {},
+  "command": [],
+  "transport": {
+    "default": "stdio",
+    "supported": [
+      "stdio"
+    ]
+  },
+  "capabilities": [
+    {
+      "name": "example",
+      "description": "A simple example tool",
+      "example": "Say hello to the world",
+      "example_args": {},
+      "example_response": "Hello from your new MCP server!"
+    }
+  ],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "log_level": {
+        "type": "string",
+        "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
+        "default": "INFO",
+        "env_mapping": "LOG_LEVEL"
+      },
+      "github_token": {
+        "type": "string",
+        "description": "GitHub personal access token",
+        "env_mapping": "GITHUB_PERSONAL_ACCESS_TOKEN"
+      }
+    },
+    "required": ["github_token"]
+  },
+  "tool_discovery": "dynamic",
+  "tool_endpoint": "/tools",
+  "has_image": true,
+  "origin": "external"
+}
