@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-templates"
-version = "0.2.1"
+dynamic = ["version"]
 description = "Deploy MCP server templates with zero configuration"
 readme = "README.md"
 authors = [
@@ -57,3 +57,6 @@ exclude = [
 [tool.setuptools.package-data]
 # Include all .yaml, .yml, .json, .py files from mcp_template/template/templates and subdirectories
 "mcp_template.template.templates" = ["**/*.yaml", "**/*.yml", "**/*.json", "**/*.py"]
+
+[tool.setuptools.dynamic]
+version = {attr = "mcp_template.__version__.__version__"}
