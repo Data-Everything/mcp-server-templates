@@ -97,7 +97,7 @@ tools_design = {
 **Create Template Structure**
 ```bash
 # Use the template creator with development settings
-python -m mcp_template create my-new-template --dev-mode
+mcp-template create my-new-template --dev-mode
 
 # This creates:
 templates/my-new-template/
@@ -1083,13 +1083,13 @@ clean:
 
 # Template operations
 validate:
-	python -m mcp_template validate .
+	mcp-template validate .
 
 deploy-test:
-	python -m mcp_template deploy . --config environment=test
+	mcp-template deploy . --config environment=test
 
 deploy-prod:
-	python -m mcp_template deploy . --config environment=production
+	mcp-template deploy . --config environment=production
 ```
 
 *pyproject.toml*
@@ -1188,10 +1188,10 @@ Professional MCP server template for XYZ API integration with comprehensive data
 
 ```bash
 # Deploy with basic configuration
-python -m mcp_template deploy my-new-template --config api_key=your-key
+mcp-template deploy my-new-template --config api_key=your-key
 
 # Deploy with custom configuration
-python -m mcp_template deploy my-new-template --config-file config.json
+mcp-template deploy my-new-template --config-file config.json
 ```
 
 ### Manual Docker Deployment
@@ -1400,7 +1400,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 docker build --target production -t my-template:prod .
 
 # Deploy to production environment
-python -m mcp_template deploy my-template \
+mcp-template deploy my-template \
   --config-file production-config.json \
   --environment production \
   --replicas 3 \
@@ -1411,13 +1411,13 @@ python -m mcp_template deploy my-template \
 
 ```bash
 # Package template for distribution
-python -m mcp_template package my-template \
+mcp-template package my-template \
   --include-tests \
   --validate \
   --optimize
 
 # Submit to template registry
-python -m mcp_template submit my-template.tar.gz \
+mcp-template submit my-template.tar.gz \
   --category api \
   --tags "data,api,integration" \
   --license MIT

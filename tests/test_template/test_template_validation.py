@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.template.utils.discovery import TemplateDiscovery
 
 
 class TestTemplateValidation:
@@ -163,7 +163,7 @@ class TestTemplateValidation:
 
     def test_default_tool_discovery_values(self):
         """Test default values for tool discovery fields."""
-        from mcp_template.template.creation import TemplateCreator
+        from mcp_template.template.utils.creation import TemplateCreator
 
         creator = TemplateCreator(templates_dir=self.templates_dir)
         creator.template_data = {

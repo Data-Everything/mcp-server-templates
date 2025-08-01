@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-python -m mcp_template deploy TEMPLATE [OPTIONS]
+mcp-template deploy TEMPLATE [OPTIONS]
 ```
 
 ## Description
@@ -62,41 +62,41 @@ Configuration values are resolved in the following order (highest to lowest prio
 
 ```bash
 # Deploy with defaults
-python -m mcp_template deploy demo
+mcp-template deploy demo
 
 # Deploy with custom name
-python -m mcp_template deploy demo --name my-demo-server
+mcp-template deploy demo --name my-demo-server
 ```
 
 ### Configuration Examples
 
 ```bash
 # Using CLI configuration (config_schema properties)
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config read_only_mode=true \
   --config max_file_size=100 \
   --config log_level=debug
 
 # Using double-underscore notation for nested config
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config security__read_only=true \
   --config security__max_file_size=100 \
   --config logging__level=debug
 
 # Using template-prefixed configuration
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config file-server__security__read_only=true \
   --config file-server__logging__level=debug
 
 # Using template data overrides (modifies template.json structure)
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --override "metadata__version=2.0.0" \
   --override "metadata__author=Your Name" \
   --override "tools__0__enabled=false" \
   --override "config__custom_setting=value"
 
 # Advanced: Array and nested overrides with type conversion
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --override "tools__0__enabled=false" \
   --override "tools__1__timeout=30.5" \
   --override "metadata__tags=[\"custom\",\"modified\"]" \
@@ -109,10 +109,10 @@ python -m mcp_template deploy demo \
 
 ```bash
 # Using JSON configuration file
-python -m mcp_template deploy file-server --config-file config.json
+mcp-template deploy file-server --config-file config.json
 
 # Using YAML configuration file
-python -m mcp_template deploy file-server --config-file config.yml
+mcp-template deploy file-server --config-file config.yml
 ```
 
 **config.json example:**
@@ -138,13 +138,13 @@ python -m mcp_template deploy file-server --config-file config.yml
 
 ```bash
 # Using environment variables
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50 \
   --env MCP_LOG_LEVEL=debug
 
 # Mixed configuration (env variables override CLI)
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config-file base-config.json \
   --config log_level=warning \
   --env MCP_READ_ONLY=true
@@ -154,14 +154,14 @@ python -m mcp_template deploy file-server \
 
 ```bash
 # Deploy with custom backend and transport
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --backend docker \
   --transport http \
   --port 8080 \
   --name prod-demo
 
 # Deploy without pulling image (development)
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --no-pull \
   --config debug=true \
   --data-dir ./local-data
@@ -172,7 +172,7 @@ python -m mcp_template deploy demo \
 Use the `--show-config` flag to see all available configuration options:
 
 ```bash
-python -m mcp_template deploy file-server --show-config
+mcp-template deploy file-server --show-config
 ```
 
 This displays a comprehensive table showing:
@@ -190,7 +190,7 @@ Each template has its own configuration schema. Common patterns include:
 ### File Server Template
 
 ```bash
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config security__allowed_dirs='["/data", "/workspace"]' \
   --config security__read_only=false \
   --config security__max_file_size=100 \
@@ -201,7 +201,7 @@ python -m mcp_template deploy file-server \
 ### Demo Template
 
 ```bash
-python -m mcp_template deploy demo \
+mcp-template deploy demo \
   --config hello_from="Custom Server" \
   --config debug=true \
   --config port=8080
@@ -210,7 +210,7 @@ python -m mcp_template deploy demo \
 ### PostgreSQL Server Template
 
 ```bash
-python -m mcp_template deploy postgres-server \
+mcp-template deploy postgres-server \
   --config database__host=localhost \
   --config database__port=5432 \
   --config database__name=mydb \
@@ -235,13 +235,13 @@ After deployment, monitor your server:
 
 ```bash
 # Check deployment status
-python -m mcp_template status demo
+mcp-template status demo
 
 # View logs
-python -m mcp_template logs demo --follow
+mcp-template logs demo --follow
 
 # Access container shell
-python -m mcp_template shell demo
+mcp-template shell demo
 ```
 
 ## Error Handling
@@ -253,7 +253,7 @@ Common deployment errors and solutions:
 ❌ Template 'mytemplate' not found
 Available templates: demo, file-server, postgres-server
 ```
-**Solution**: Use `python -m mcp_template list` to see available templates.
+**Solution**: Use `mcp-template list` to see available templates.
 
 ### Configuration Error
 ```

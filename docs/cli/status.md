@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-python -m mcp_template status [DEPLOYMENT_ID] [OPTIONS]
+mcp-template status [DEPLOYMENT_ID] [OPTIONS]
 ```
 
 ## Description
@@ -34,7 +34,7 @@ The `status` command provides comprehensive health monitoring and status informa
 
 ```bash
 # Show status of all deployments
-python -m mcp_template status
+mcp-template status
 
 # Example output:
 ╭─────────────────── MCP Deployment Status ────────────────────╮
@@ -59,7 +59,7 @@ python -m mcp_template status
 
 ```bash
 # Check specific deployment status
-python -m mcp_template status demo-server
+mcp-template status demo-server
 
 # Example output:
 ╭────────────────── demo-server Status ─────────────────────╮
@@ -99,16 +99,16 @@ python -m mcp_template status demo-server
 └─ Errors (24h): 0 errors
 
 🔗 Quick Actions:
-├─ View logs: python -m mcp_template logs demo-server
-├─ Connect: python -m mcp_template connect demo-server
-└─ Redeploy: python -m mcp_template deploy demo --no-pull
+├─ View logs: mcp-template logs demo-server
+├─ Connect: mcp-template connect demo-server
+└─ Redeploy: mcp-template deploy demo --no-pull
 ```
 
 ### Detailed Status Information
 
 ```bash
 # Show detailed status with full configuration
-python -m mcp_template status demo-server --detailed
+mcp-template status demo-server --detailed
 
 # Example output includes:
 ╭─────────────── Detailed Configuration ────────────────╮
@@ -139,7 +139,7 @@ python -m mcp_template status demo-server --detailed
 
 ```bash
 # Show only health status
-python -m mcp_template status --health-only
+mcp-template status --health-only
 
 # Example output:
 🏥 Health Status Summary:
@@ -168,10 +168,10 @@ python -m mcp_template status --health-only
 
 ```bash
 # Watch status with auto-refresh every 5 seconds
-python -m mcp_template status demo-server --watch
+mcp-template status demo-server --watch
 
 # Custom refresh interval
-python -m mcp_template status --watch --refresh 10
+mcp-template status --watch --refresh 10
 
 # Example output (refreshes automatically):
 ╭─────────────── Live Status Monitor ───────────────╮
@@ -200,7 +200,7 @@ Errors (1m): 0
 
 ```bash
 # Get status as JSON for scripting
-python -m mcp_template status demo-server --format json
+mcp-template status demo-server --format json
 
 # Example output:
 {
@@ -257,7 +257,7 @@ python -m mcp_template status demo-server --format json
 
 ```bash
 # Get status as YAML
-python -m mcp_template status demo-server --format yaml
+mcp-template status demo-server --format yaml
 
 # Example output:
 deployment_id: demo-server
@@ -327,50 +327,50 @@ tools:
 
 ```bash
 # Check why container stopped
-python -m mcp_template status failed-deployment --detailed
+mcp-template status failed-deployment --detailed
 
 # Common solutions:
-python -m mcp_template logs failed-deployment --tail 50
-python -m mcp_template deploy template-name --force-recreate
+mcp-template logs failed-deployment --tail 50
+mcp-template deploy template-name --force-recreate
 ```
 
 ### Health Check Failures
 
 ```bash
 # Check health check details
-python -m mcp_template status deployment --health-only
+mcp-template status deployment --health-only
 
 # Test MCP protocol directly
-python -m mcp_template connect deployment --test-connection
+mcp-template connect deployment --test-connection
 
 # Review health check logs
-python -m mcp_template logs deployment --filter "health"
+mcp-template logs deployment --filter "health"
 ```
 
 ### High Resource Usage
 
 ```bash
 # Monitor resource usage over time
-python -m mcp_template status deployment --watch --refresh 2
+mcp-template status deployment --watch --refresh 2
 
 # Check for resource leaks
-python -m mcp_template logs deployment --filter "memory\|cpu"
+mcp-template logs deployment --filter "memory\|cpu"
 
 # Consider resource limits
-python -m mcp_template deploy template --memory 1024m --cpu 0.5
+mcp-template deploy template --memory 1024m --cpu 0.5
 ```
 
 ### Missing Tools
 
 ```bash
 # Verify tool availability
-python -m mcp_template tools deployment
+mcp-template tools deployment
 
 # Check tool discovery issues
-python -m mcp_template tools --image deployment
+mcp-template tools --image deployment
 
 # Review server startup logs
-python -m mcp_template logs deployment --since 1h --filter "tool\|error"
+mcp-template logs deployment --since 1h --filter "tool\|error"
 ```
 
 ## Integration Examples
@@ -383,12 +383,12 @@ python -m mcp_template logs deployment --since 1h --filter "tool\|error"
 
 check_deployment_health() {
     local deployment_id=$1
-    local status=$(python -m mcp_template status "$deployment_id" --format json | jq -r '.status.health')
+    local status=$(mcp-template status "$deployment_id" --format json | jq -r '.status.health')
 
     if [ "$status" != "healthy" ]; then
         echo "ALERT: $deployment_id is $status"
         # Send notification
-        python -m mcp_template logs "$deployment_id" --tail 10
+        mcp-template logs "$deployment_id" --tail 10
     fi
 }
 
@@ -406,20 +406,20 @@ done
 
 recover_failed_deployment() {
     local deployment_id=$1
-    local status=$(python -m mcp_template status "$deployment_id" --format json | jq -r '.status.state')
+    local status=$(mcp-template status "$deployment_id" --format json | jq -r '.status.state')
 
     if [ "$status" = "failed" ]; then
         echo "Recovering failed deployment: $deployment_id"
 
         # Get template name
-        local template=$(python -m mcp_template status "$deployment_id" --format json | jq -r '.template.name')
+        local template=$(mcp-template status "$deployment_id" --format json | jq -r '.template.name')
 
         # Redeploy
-        python -m mcp_template deploy "$template" --force-recreate
+        mcp-template deploy "$template" --force-recreate
 
         # Verify recovery
         sleep 30
-        local new_status=$(python -m mcp_template status "$deployment_id" --format json | jq -r '.status.state')
+        local new_status=$(mcp-template status "$deployment_id" --format json | jq -r '.status.state')
         echo "Recovery result: $new_status"
     fi
 }
@@ -513,20 +513,20 @@ if __name__ == '__main__':
 
 ```bash
 # Fast health-only checks
-python -m mcp_template status --health-only
+mcp-template status --health-only
 
 # Avoid detailed checks for monitoring scripts
-python -m mcp_template status deployment --format json | jq '.status.health'
+mcp-template status deployment --format json | jq '.status.health'
 
 # Batch status checks are more efficient than individual
-python -m mcp_template status  # All deployments
+mcp-template status  # All deployments
 ```
 
 ### Resource Monitoring
 
 ```bash
 # Monitor resource trends
-python -m mcp_template status --watch --refresh 60 > status.log &
+mcp-template status --watch --refresh 60 > status.log &
 
 # Analyze resource patterns
 grep "Memory Usage" status.log | tail -100

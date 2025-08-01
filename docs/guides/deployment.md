@@ -8,10 +8,10 @@ Run templates locally for development:
 
 ```bash
 # Quick local deployment
-python -m mcp_template deploy demo --local
+mcp-template deploy demo --local
 
 # With custom configuration
-python -m mcp_template deploy demo --local --env DEBUG=true
+mcp-template deploy demo --local --env DEBUG=true
 ```
 
 ## Docker Deployment
@@ -20,10 +20,10 @@ Deploy using Docker containers:
 
 ```bash
 # Deploy with Docker
-python -m mcp_template deploy demo --docker
+mcp-template deploy demo --docker
 
 # Specify custom Docker options
-python -m mcp_template deploy demo --docker --port 8080:8080 --env PRODUCTION=true
+mcp-template deploy demo --docker --port 8080:8080 --env PRODUCTION=true
 ```
 
 ## Production Deployment

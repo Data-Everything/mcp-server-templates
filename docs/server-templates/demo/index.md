@@ -9,7 +9,7 @@ A simple demonstration MCP server that provides greeting tools
 Deploy this template:
 
 ```bash
-python -m mcp_template deploy demo
+mcp-template deploy demo
 ```
 
 ## Configuration Options
@@ -23,16 +23,16 @@ python -m mcp_template deploy demo
 
 ```bash
 # Deploy with configuration
-python -m mcp_template deploy demo --show-config
+mcp-template deploy demo --show-config
 
 # Using environment variables
-python -m mcp_template deploy demo --env MCP_HELLO_FROM=value
+mcp-template deploy demo --env MCP_HELLO_FROM=value
 
 # Using CLI configuration
-python -m mcp_template deploy {template_id} --config {first_prop}=value
+mcp-template deploy {template_id} --config {first_prop}=value
 
 # Using nested configuration
-python -m mcp_template deploy {template_id} --config category__property=value
+mcp-template deploy {template_id} --config category__property=value
 ```## Development
 
 ### Local Testing

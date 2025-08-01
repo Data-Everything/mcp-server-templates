@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-python -m mcp_template config TEMPLATE [OPTIONS]
+mcp-template config TEMPLATE [OPTIONS]
 ```
 
 ## Description
@@ -37,7 +37,7 @@ The command shows configuration information in a structured table format:
 
 ```bash
 # Show configuration for demo template
-python -m mcp_template config demo
+mcp-template config demo
 
 # Example output:
 ╭─────────────────────────────────────────────────────────────╮
@@ -60,20 +60,20 @@ python -m mcp_template config demo
 
 💡 Usage Examples:
   # Basic configuration:
-  python -m mcp_template deploy demo --config hello_from="Custom Server" --config debug_mode=true
+  mcp-template deploy demo --config hello_from="Custom Server" --config debug_mode=true
 
   # Double-underscore notation:
-  python -m mcp_template deploy demo --config demo__hello_from="Custom Server"
+  mcp-template deploy demo --config demo__hello_from="Custom Server"
 
   # Configuration file:
-  python -m mcp_template deploy demo --config-file config.json
+  mcp-template deploy demo --config-file config.json
 ```
 
 ### File Server Configuration
 
 ```bash
 # Show file server configuration options
-python -m mcp_template config file-server
+mcp-template config file-server
 
 # Example output shows comprehensive security and performance options:
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -123,12 +123,12 @@ Each config display includes practical usage examples:
 ### Basic Examples
 ```bash
 # Simple configuration
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config read_only_mode=true \
   --config max_file_size=50
 
 # Environment variables
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50
 ```
@@ -136,14 +136,14 @@ python -m mcp_template deploy file-server \
 ### Advanced Examples
 ```bash
 # Nested configuration
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config security__read_only=true \
   --config security__max_file_size=50 \
   --config logging__level=debug \
   --config performance__max_concurrent=20
 
 # Mixed configuration sources
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config-file base-config.json \
   --config log_level=warning \
   --env MCP_READ_ONLY=true
@@ -152,7 +152,7 @@ python -m mcp_template deploy file-server \
 ### Configuration File Examples
 ```bash
 # JSON configuration file
-python -m mcp_template deploy file-server --config-file config.json
+mcp-template deploy file-server --config-file config.json
 ```
 
 ## Configuration Schema Types
@@ -203,7 +203,7 @@ Have sensible defaults and can be omitted for basic usage.
 ### Example with Requirements
 ```bash
 # Template with required API key
-python -m mcp_template config api-server
+mcp-template config api-server
 
 # Shows:
 # api_key (string) ✓ Required - API authentication key

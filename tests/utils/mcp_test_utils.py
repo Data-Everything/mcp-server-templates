@@ -156,9 +156,7 @@ class TemplateTestContainer:
 
     def __enter__(self):
         # Build template image
-        template_dir = (
-            Path(__file__).parent.parent.parent / "templates" / self.template_name
-        )
+        template_dir = TEMPLATES_DIR / self.template_name
         tag = f"mcp-test-{self.template_name}"
 
         if not build_template_image(template_dir, tag):
@@ -199,7 +197,7 @@ def build_and_run_template(template_name: str, config: Dict[str, Any]):
 def get_template_list() -> List[str]:
     """Get list of available templates using TemplateDiscovery."""
     # Import here to avoid circular imports
-    from mcp_template.template.discovery import TemplateDiscovery
+    from mcp_template.template.utils.discovery import TemplateDiscovery
 
     discovery = TemplateDiscovery()
     templates = discovery.discover_templates()
@@ -208,7 +206,7 @@ def get_template_list() -> List[str]:
 
 def validate_template_structure(template_name: str) -> bool:
     """Validate that a template has the required structure."""
-    template_dir = Path(__file__).parent.parent.parent / "templates" / template_name
+    template_dir = TEMPLATES_DIR / template_name
 
     # Check required files
     required_files = ["template.json", "README.md", "docs/index.md"]

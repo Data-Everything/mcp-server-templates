@@ -53,8 +53,8 @@ pip install -e .
 
 ```bash
 # Check CLI works
-python -m mcp_template --version
-python -m mcp_template list
+mcp-template --version
+mcp-template list
 
 # Run quick tests
 make test-quick
@@ -192,7 +192,7 @@ make type-check
 make deploy-test
 
 # Check logs
-python -m mcp_template logs test-deployment
+mcp-template logs test-deployment
 
 # Clean up
 make cleanup-test
@@ -223,7 +223,7 @@ git push origin feature/your-feature-name
 python -c "from mcp_template import TemplateDiscovery; d = TemplateDiscovery(); t = d.discover_templates(); print('your-template' in t)"
 
 # Test template deployment
-python -m mcp_template deploy your-template --show-config
+mcp-template deploy your-template --show-config
 ```
 
 ### Testing Issues

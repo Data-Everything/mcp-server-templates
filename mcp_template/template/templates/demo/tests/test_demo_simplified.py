@@ -9,8 +9,8 @@ Tests the two core patterns:
 
 import pytest
 
-from templates.demo.config import DemoServerConfig
-from templates.demo.server import DemoMCPServer
+from mcp_template.template.templates.demo.config import DemoServerConfig
+from mcp_template.template.templates.demo.server import DemoMCPServer
 
 
 class TestDemoSimplifiedConfig:

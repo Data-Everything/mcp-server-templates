@@ -9,7 +9,7 @@ Secure file system access for AI assistants using the official MCP filesystem se
 Deploy this template:
 
 ```bash
-python -m mcp_template deploy file-server
+mcp-template deploy file-server
 ```
 
 ## Configuration Options
@@ -32,16 +32,16 @@ python -m mcp_template deploy file-server
 
 ```bash
 # Deploy with configuration
-python -m mcp_template deploy file-server --show-config
+mcp-template deploy file-server --show-config
 
 # Using environment variables
-python -m mcp_template deploy file-server --env MCP_ALLOWED_DIRS=value
+mcp-template deploy file-server --env MCP_ALLOWED_DIRS=value
 
 # Using CLI configuration
-python -m mcp_template deploy {template_id} --config {first_prop}=value
+mcp-template deploy {template_id} --config {first_prop}=value
 
 # Using nested configuration
-python -m mcp_template deploy {template_id} --config category__property=value
+mcp-template deploy {template_id} --config category__property=value
 ```## Development
 
 ### Local Testing

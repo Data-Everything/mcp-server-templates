@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 # Add src to Python path for testing
-from mcp_template.template.discovery import TemplateDiscovery
+from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.utils import TEMPLATES_DIR
 from tests.utils.mcp_test_utils import (
     get_template_list,
@@ -33,7 +33,7 @@ class TestAllTemplates:
     def test_all_templates_build_successfully(self, template_list):
         """Test that all templates can be built."""
         results = {}
-
+        breakpoint()  # For debugging purposes
         for template_name in template_list:
             print(f"\nTesting template: {template_name}")
             result = run_template_tests(template_name)
@@ -130,7 +130,7 @@ class TestTemplateMetadata:
         """Test that all template.json files are valid JSON."""
 
         for template_name in get_template_list():
-            template_dir = Path(__file__).parent.parent / "templates" / template_name
+            template_dir = TEMPLATES_DIR / template_name
             template_json_path = template_dir / "template.json"
 
             if template_json_path.exists():
@@ -144,7 +144,7 @@ class TestTemplateMetadata:
         """Test that all templates specify Docker images."""
 
         for template_name in get_template_list():
-            template_dir = Path(__file__).parent.parent / "templates" / template_name
+            template_dir = TEMPLATES_DIR / template_name
             template_json_path = template_dir / "template.json"
 
             if template_json_path.exists():

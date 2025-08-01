@@ -44,13 +44,13 @@ MCP Server Templates are pre-configured, production-ready implementations of the
 
 ```bash
 # List available templates
-python -m mcp_template list
+mcp-template list
 
 # Deploy demo template
-python -m mcp_template deploy demo
+mcp-template deploy demo
 
 # Deploy with custom configuration
-python -m mcp_template deploy file-server \
+mcp-template deploy file-server \
   --config security__allowed_dirs='["/data", "/workspace"]' \
   --config security__read_only=false
 ```
@@ -59,13 +59,13 @@ python -m mcp_template deploy file-server \
 
 ```bash
 # Discover available tools
-python -m mcp_template tools demo
+mcp-template tools demo
 
 # Get detailed tool information
-python -m mcp_template tools file-server --detailed
+mcp-template tools file-server --detailed
 
 # Generate integration examples
-python -m mcp_template connect demo --llm claude
+mcp-template connect demo --llm claude
 ```
 
 ## Template Categories
@@ -114,28 +114,28 @@ All templates support:
 ### Testing Templates
 ```bash
 # Deploy for testing
-python -m mcp_template deploy template-name --config debug=true
+mcp-template deploy template-name --config debug=true
 
 # Monitor logs
-python -m mcp_template logs template-name --follow
+mcp-template logs template-name --follow
 
 # Check status
-python -m mcp_template status template-name --detailed
+mcp-template status template-name --detailed
 
 # Test tools
-python -m mcp_template connect template-name --test
+mcp-template connect template-name --test
 ```
 
 ### Template Validation
 ```bash
 # Validate template structure
-python -m mcp_template validate template-name
+mcp-template validate template-name
 
 # Check configuration schema
-python -m mcp_template config template-name --show-schema
+mcp-template config template-name --show-schema
 
 # Test tool discovery
-python -m mcp_template tools --image template:latest
+mcp-template tools --image template:latest
 ```
 
 ## Creating Custom Templates
@@ -150,13 +150,13 @@ For detailed information on creating your own templates, see:
 
 ```bash
 # Interactive template creation
-python -m mcp_template create
+mcp-template create
 
 # Create from existing image
-python -m mcp_template create --from-image mcp/custom my-template
+mcp-template create --from-image mcp/custom my-template
 
 # Create with configuration
-python -m mcp_template create --config-file template-config.json --non-interactive
+mcp-template create --config-file template-config.json --non-interactive
 ```
 
 ## Template Architecture

@@ -8,7 +8,7 @@ import unittest
 
 import pytest
 
-from templates.demo.config import DemoServerConfig
+from mcp_template.template.templates.demo.config import DemoServerConfig
 
 
 @pytest.mark.unit
