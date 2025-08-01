@@ -156,10 +156,18 @@ class EnhancedCLI:
         )
 
         # Use the enhanced tool discovery system
+        # Merge config_values into template config for dynamic discovery
+        template_with_config = template.copy()
+        if config_values:
+            # Add config values as environment variables for Docker discovery
+            existing_env_vars = template_with_config.get("env_vars", {})
+            existing_env_vars.update(config_values)
+            template_with_config["env_vars"] = existing_env_vars
+
         discovery_result = self.tool_discovery.discover_tools(
             template_name=template_name,
             template_dir=template_dir,
-            template_config=template,
+            template_config=template_with_config,
             use_cache=not no_cache,
             force_refresh=refresh,
         )
@@ -302,7 +310,7 @@ class EnhancedCLI:
         console.print(f"  # View logs: mcp-template logs {template_name}")
 
     def discover_tools_from_image(
-        self, image_name: str, server_args: Optional[List[str]] = None
+        self, image_name: str, server_args: Optional[List[str]] = None, env_vars: Optional[Dict[str, str]] = None
     ) -> None:
         """Discover tools from a Docker image."""
         console.print(
@@ -314,7 +322,7 @@ class EnhancedCLI:
         )
 
         # Use Docker probe to discover tools
-        result = self.docker_probe.discover_tools_from_image(image_name, server_args)
+        result = self.docker_probe.discover_tools_from_image(image_name, server_args, env_vars)
 
         if result:
             tools = result.get("tools", [])
@@ -678,7 +686,7 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
             server_args = (
                 args.template_or_args
             )  # All positional args become server args
-            enhanced_cli.discover_tools_from_image(args.image, server_args)
+            enhanced_cli.discover_tools_from_image(args.image, server_args, config_values)
         elif args.template_or_args:
             # Template-based discovery (former tools functionality)
             if len(args.template_or_args) != 1:
