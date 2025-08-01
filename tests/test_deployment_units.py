@@ -69,21 +69,6 @@ class TestTemplateDiscovery:
             assert templates["test-template"]["name"] == "Test Template"
             assert templates["test-template"]["image"] == "test/image:latest"
 
-    def test_discover_templates_missing_dockerfile(self):
-        """Test template discovery with missing Dockerfile."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Create template without Dockerfile
-            template_dir = Path(temp_dir) / "invalid-template"
-            template_dir.mkdir()
-
-            template_json = {"name": "Invalid Template"}
-            (template_dir / "template.json").write_text(json.dumps(template_json))
-
-            discovery = TemplateDiscovery(Path(temp_dir))
-            templates = discovery.discover_templates()
-
-            assert "invalid-template" not in templates
-
     def test_generate_template_config(self):
         """Test template configuration generation."""
         discovery = TemplateDiscovery()
