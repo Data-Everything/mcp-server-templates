@@ -85,7 +85,10 @@ class MCPClientProbe:
             return None
 
     async def discover_tools_from_docker_mcp(
-        self, image_name: str, args: Optional[List[str]] = None, env_vars: Optional[Dict[str, str]] = None
+        self,
+        image_name: str,
+        args: Optional[List[str]] = None,
+        env_vars: Optional[Dict[str, str]] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Discover tools from MCP server running in Docker.
@@ -247,7 +250,7 @@ class MCPClientProbe:
                 # Skip None or invalid tools
                 if tool is None or not isinstance(tool, dict):
                     continue
-                    
+
                 normalized_tool = {
                     "name": tool.get("name", "unknown"),
                     "description": tool.get("description", "No description available"),
@@ -264,7 +267,11 @@ class MCPClientProbe:
             except Exception as e:
                 logger.warning(
                     "Failed to normalize MCP tool %s: %s",
-                    tool.get("name", "unknown") if tool and isinstance(tool, dict) else "unknown",
+                    (
+                        tool.get("name", "unknown")
+                        if tool and isinstance(tool, dict)
+                        else "unknown"
+                    ),
                     e,
                 )
                 continue
@@ -285,7 +292,10 @@ class MCPClientProbe:
             loop.close()
 
     def discover_tools_from_docker_sync(
-        self, image_name: str, args: Optional[List[str]] = None, env_vars: Optional[Dict[str, str]] = None
+        self,
+        image_name: str,
+        args: Optional[List[str]] = None,
+        env_vars: Optional[Dict[str, str]] = None,
     ) -> Optional[Dict[str, Any]]:
         """Synchronous wrapper for discovering tools from Docker."""
         try:

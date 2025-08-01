@@ -310,7 +310,10 @@ class EnhancedCLI:
         console.print(f"  # View logs: mcp-template logs {template_name}")
 
     def discover_tools_from_image(
-        self, image_name: str, server_args: Optional[List[str]] = None, env_vars: Optional[Dict[str, str]] = None
+        self,
+        image_name: str,
+        server_args: Optional[List[str]] = None,
+        env_vars: Optional[Dict[str, str]] = None,
     ) -> None:
         """Discover tools from a Docker image."""
         console.print(
@@ -322,7 +325,9 @@ class EnhancedCLI:
         )
 
         # Use Docker probe to discover tools
-        result = self.docker_probe.discover_tools_from_image(image_name, server_args, env_vars)
+        result = self.docker_probe.discover_tools_from_image(
+            image_name, server_args, env_vars
+        )
 
         if result:
             tools = result.get("tools", [])
@@ -686,7 +691,9 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
             server_args = (
                 args.template_or_args
             )  # All positional args become server args
-            enhanced_cli.discover_tools_from_image(args.image, server_args, config_values)
+            enhanced_cli.discover_tools_from_image(
+                args.image, server_args, config_values
+            )
         elif args.template_or_args:
             # Template-based discovery (former tools functionality)
             if len(args.template_or_args) != 1:

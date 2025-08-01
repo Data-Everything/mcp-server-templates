@@ -62,9 +62,9 @@ class ToolDiscovery:
         # Convert template_dir to Path object if it's a string
         if isinstance(template_dir, str):
             template_dir = Path(template_dir)
-            
+
         cache_key = f"{template_name}_{hash(str(sorted(template_config.items())))}"
-        
+
         # Check cache if not forcing refresh
         if use_cache and not force_refresh and cache_key in self.cache:
             cached_result = self.cache[cache_key]
@@ -101,10 +101,16 @@ class ToolDiscovery:
                 return result
 
         # Strategy 3: Fallback to template.json capabilities (last resort)
-        if template_config and ("tools" in template_config or "capabilities" in template_config):
-            logger.warning("Using template capabilities as fallback for %s", template_name)
+        if template_config and (
+            "tools" in template_config or "capabilities" in template_config
+        ):
+            logger.warning(
+                "Using template capabilities as fallback for %s", template_name
+            )
             # Extract tools or capabilities from template
-            tools_data = template_config.get("tools") or template_config.get("capabilities", [])
+            tools_data = template_config.get("tools") or template_config.get(
+                "capabilities", []
+            )
             logger.debug("Found tools_data: %s", tools_data)
             if tools_data:
                 normalized_tools = self._normalize_tools(tools_data)
@@ -117,8 +123,8 @@ class ToolDiscovery:
                     "source": "template.json",
                     "warnings": [
                         "Using template-defined capabilities as fallback",
-                        "This may not reflect actual server capabilities"
-                    ]
+                        "This may not reflect actual server capabilities",
+                    ],
                 }
                 # Only save to cache if tools were found
                 if result.get("tools"):
@@ -176,20 +182,20 @@ class ToolDiscovery:
         self, template_name: str, config: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         """Discover tools by probing live server endpoints and Docker containers."""
-        
+
         # Strategy 2a: Try Docker discovery if image is available
         if "docker_image" in config or "image" in config:
             docker_result = self._try_docker_discovery(template_name, config)
             if docker_result and docker_result.get("tools"):
                 return docker_result
-        
+
         # Strategy 2b: Try HTTP endpoints if server URL is available
         base_url = self._get_server_url(config)
         if base_url:
             http_result = self._try_http_endpoints(template_name, config, base_url)
             if http_result and http_result.get("tools"):
                 return http_result
-        
+
         logger.debug("No responsive dynamic discovery methods for %s", template_name)
         return None
 
@@ -199,7 +205,7 @@ class ToolDiscovery:
         """Try to discover tools using Docker probe."""
         try:
             from .docker_probe import DockerProbe
-            
+
             # Get Docker image
             docker_image = config.get("docker_image")
             if not docker_image:
@@ -210,31 +216,37 @@ class ToolDiscovery:
                     docker_image = f"{image}:{docker_tag}"
                 else:
                     docker_image = image
-            
+
             if not docker_image:
                 logger.debug("No Docker image specified for %s", template_name)
                 return None
-            
-            logger.info("Trying Docker discovery for %s with image %s", template_name, docker_image)
-            
+
+            logger.info(
+                "Trying Docker discovery for %s with image %s",
+                template_name,
+                docker_image,
+            )
+
             # Create environment variables from config schema defaults
             env_vars = self._extract_env_vars_from_config(config)
-            
+
             # Use Docker probe to discover tools
             docker_probe = DockerProbe()
             result = docker_probe.discover_tools_from_image(
-                docker_image, 
+                docker_image,
                 server_args=None,  # Let the probe handle default args
-                env_vars=env_vars
+                env_vars=env_vars,
             )
-            
+
             if result:
-                logger.info("Successfully discovered tools via Docker for %s", template_name)
+                logger.info(
+                    "Successfully discovered tools via Docker for %s", template_name
+                )
                 return result
             else:
                 logger.debug("Docker discovery failed for %s", template_name)
                 return None
-                
+
         except ImportError:
             logger.warning("DockerProbe not available for %s", template_name)
             return None
@@ -287,20 +299,20 @@ class ToolDiscovery:
     def _extract_env_vars_from_config(self, config: Dict[str, Any]) -> Dict[str, str]:
         """Extract environment variables from template config schema."""
         env_vars = {}
-        
+
         # Get existing env_vars if any
         if "env_vars" in config:
             env_vars.update(config["env_vars"])
-        
+
         # Extract from config schema properties with env_mapping
         config_schema = config.get("config_schema", {})
         properties = config_schema.get("properties", {})
-        
+
         for prop_name, prop_config in properties.items():
             env_mapping = prop_config.get("env_mapping")
             if env_mapping and "default" in prop_config:
                 env_vars[env_mapping] = str(prop_config["default"])
-        
+
         return env_vars
 
     def _get_server_url(self, config: Dict[str, Any]) -> Optional[str]:
