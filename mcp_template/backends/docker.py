@@ -164,12 +164,6 @@ class DockerDeploymentService(BaseDeploymentBackend):
 
         # Process user configuration
         for key, value in config.items():
-            # Avoid double MCP_ prefix
-            if key.startswith("MCP_"):
-                env_key = key
-            else:
-                env_key = f"MCP_{key.upper().replace(' ', '_').replace('-', '_')}"
-
             if isinstance(value, bool):
                 env_value = "true" if value else "false"
             elif isinstance(value, list):
@@ -177,7 +171,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
             else:
                 env_value = str(value)
 
-            env_dict[env_key] = env_value
+            env_dict[key] = env_value
 
         # Add template default env vars (only if not already present)
         template_env = template_data.get("env_vars", {})

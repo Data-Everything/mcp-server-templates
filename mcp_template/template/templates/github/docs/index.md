@@ -2,7 +2,7 @@
 
 ## Overview
 
-The GitHub MCP Server template provides seamless integration with GitHub's comprehensive API through the Model Context Protocol (MCP). This template extends the official GitHub MCP server to provide enhanced capabilities, streamlined deployment, and robust tooling for GitHub operations.
+The GitHub MCP Server template now uses a custom MCP server image that wraps and extends the official GitHub MCP server. This enables support for platform-wide template variables and configuration management, providing a consistent experience across all MCP templates.
 
 Our platform extends the official GitHub MCP server by providing:
 - **🚀 One-Command Deployment**: Deploy and manage GitHub MCP servers with a single command

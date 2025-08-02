@@ -106,26 +106,27 @@ class MCPDeployer:
             console=console,
         ) as progress:
             task = progress.add_task(f"Deploying {template_name}...", total=None)
-
             try:
                 # Prepare configuration from multiple sources
                 config = self._prepare_configuration(
                     template, env_vars, config_file, config_values
                 )
 
-                # Check for required tokens
-                if "requires_token" in template:
-                    token_name = template["requires_token"]
-                    if token_name not in config and token_name not in os.environ:
-                        console.print(
-                            f"[red]❌ Required environment variable {token_name} not provided[/red]"
-                        )
-                        console.print(
-                            f"Set it with: --env {token_name}=your-token-here"
-                        )
-                        return False
-                    elif token_name not in config:
-                        config[token_name] = os.environ[token_name]
+
+                required_properties = template.get("config_schema", {}).get("required", [])
+                required_properties = {
+                    key: template["config_schema"]["properties"].get(key, {}).get('env_mapping', key.upper())
+                    for key in required_properties
+                    if key in template["config_schema"]["properties"]
+                }
+                missing_properties = [
+                    prop for prop, env_var in required_properties.items() if prop not in config and env_var not in config
+                ]
+                if missing_properties:
+                    console.print(
+                        f"[red]❌ Missing required properties: {', '.join(missing_properties)}[/red]"
+                    )
+                    return False
 
                 # Override directories if provided
                 template_copy = template.copy()
@@ -422,7 +423,7 @@ class MCPDeployer:
         # Load from config file if provided
         if config_file:
             config.update(self._load_config_file(config_file, template))
-
+        
         # Apply CLI config values with type conversion
         if config_values:
             config.update(self._convert_config_values(config_values, template))
@@ -617,7 +618,6 @@ class MCPDeployer:
     ) -> Dict[str, Any]:
         """Convert CLI config values to proper types based on template schema."""
         converted_config = {}
-
         # Get the config schema from template
         config_schema = template.get("config_schema", {})
         properties = config_schema.get("properties", {})
