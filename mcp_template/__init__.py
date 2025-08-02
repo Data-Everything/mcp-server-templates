@@ -127,8 +127,8 @@ Examples:
     )
     deploy_parser.add_argument(
         "--transport",
-        choices=["http", "stdio"],
-        default="http",
+        choices=["http", "stdio", 'sse', 'streamable-http'],
+        default=None,
         help="Transport protocol for MCP communication (default: http)",
     )
     deploy_parser.add_argument(
@@ -237,11 +237,11 @@ Examples:
                 for override_var in args.override:
                     key, value = override_var.split("=", 1)
                     override_values[key] = value
-
+            
             # Deploy using enhanced CLI with transport support
             success = enhanced_cli.deploy_with_transport(
                 template_name=template,
-                transport=getattr(args, "transport", "http"),
+                transport=getattr(args, "transport", None),
                 port=getattr(args, "port", 7071),
                 data_dir=getattr(args, "data_dir", None),
                 config_dir=getattr(args, "config_dir", None),
