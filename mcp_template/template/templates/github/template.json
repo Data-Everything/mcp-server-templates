@@ -15,15 +15,7 @@
       "stdio"
     ]
   },
-  "capabilities": [
-    {
-      "name": "example",
-      "description": "A simple example tool",
-      "example": "Say hello to the world",
-      "example_args": {},
-      "example_response": "Hello from your new MCP server!"
-    }
-  ],
+  "capabilities": [],
   "config_schema": {
     "type": "object",
     "properties": {
@@ -37,6 +29,30 @@
         "type": "string",
         "description": "GitHub personal access token",
         "env_mapping": "GITHUB_PERSONAL_ACCESS_TOKEN"
+      },
+      "github_host": {
+        "type": "string",
+        "description": "GitHub host URL (default: https://api.github.com)",
+        "default": "https://api.github.com",
+        "env_mapping": "GITHUB_HOST"
+      },
+      "github_toolset": {
+        "type": "string",
+        "description": "GitHub toolset to use (default: 'default'). Options: 'context', 'actions', 'code_security', 'dependabot', 'discussions', 'experiments', 'gists', 'issues', 'notifications', 'orgs', 'pull_requests', 'repos', 'secret_protection', 'users'. If 'all', all toolsets are enabled. Use comma-separated values to specify multiple toolsets.",
+        "default": "all",
+        "env_mapping": "GITHUB_TOOLSET"
+      },
+      "dynamic_toolsets": {
+        "type": "integer",
+        "description": "Enable dynamic toolset discovery (default: 0)",
+        "default": 0,
+        "env_mapping": "GITHUB_DYNAMIC_TOOLSETS"
+      },
+      "read_only": {
+        "type": "integer",
+        "description": "When 1, restricts server to read-only operations for enhanced security",
+        "default": 0,
+        "env_mapping": "GITHUB_READ_ONLY"
       }
     },
     "required": ["github_token"]
