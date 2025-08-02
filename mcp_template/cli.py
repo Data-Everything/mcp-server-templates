@@ -533,7 +533,7 @@ else:
             return False
 
     def deploy_with_transport(
-        self, template_name: str, transport: str = "http", port: int = 7071, **kwargs
+        self, template_name: str, transport: str = None, port: int = 7071, **kwargs
     ) -> bool:
         """Deploy template with specified transport options."""
         if template_name not in self.templates:
@@ -541,6 +541,10 @@ else:
             return False
 
         template = self.templates[template_name]
+
+        if not transport:
+            # Default to HTTP transport if not specified
+            transport = template.get("transport", {}).get("default", "http")
 
         # Validate transport
         supported_transports = template.get("transport", {}).get("supported", ["http"])
