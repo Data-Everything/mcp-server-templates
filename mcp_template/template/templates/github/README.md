@@ -1,52 +1,38 @@
-# Github
+# GitHub MCP Server Documentation
 
-Official github MCP server implementation
+## Overview
 
-## Features
+The GitHub MCP Server template provides seamless integration with GitHub's comprehensive API through the Model Context Protocol (MCP). This template extends the official GitHub MCP server to provide enhanced capabilities, streamlined deployment, and robust tooling for GitHub operations.
 
-- **example**: A simple example tool
+Our platform extends the official GitHub MCP server by providing:
+- **🚀 One-Command Deployment**: Deploy and manage GitHub MCP servers with a single command
+- **🔧 Dynamic Tool Discovery**: Automatically discover and catalog all 77+ available GitHub tools
+- **📊 Comprehensive Monitoring**: Built-in logging, status monitoring, and error tracking
+- **🔄 Auto-Scaling**: Docker-based deployment with automatic container management
+- **⚙️ Configuration Management**: Simplified environment variable and secret management
+- **🛡️ Security**: Secure token handling and access control
+- **📈 Performance Optimization**: Efficient caching and connection pooling
 
+## Available Tools (77 Total)
 
-## Configuration
+The GitHub MCP server provides comprehensive GitHub API access through 77 specialized tools organized by functionality:
 
-This template supports the following configuration parameters:
+### Repository Management
+- **`create_repository`**: Create new GitHub repositories
+- **`fork_repository`**: Fork repositories to your account or organization
+- **`search_repositories`**: Search for GitHub repositories
+- **`get_file_contents`**: Read file contents from repositories
+- **`create_or_update_file`**: Create or update files in repositories
+- **`delete_file`**: Delete files from repositories
+- **`push_files`**: Push multiple files in a single commit
 
-- `log_level`: Logging level (DEBUG, INFO, WARNING, ERROR)
-
-
-## Usage
-
-1. Deploy the template using the MCP platform
-2. Configure the required parameters
-3. Connect your MCP client to the deployed server
-
-## Development
-
-### Running Locally
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the server
-python -m server
-```
-
-### Running Tests
-
-```bash
-# Run template-specific tests
-pytest templates/github/tests/
-```
-
-## Docker
-
-```bash
-# Build the image
-docker build -t mcp/github .
-
-# Run the container
-docker run -p 8000:8000 mcp/github
+### Branch & Tag Management
+- **`create_branch`**: Create new branches
+- **`list_branches`**: List all repository branches
+- **`get_tag`**: Get git tag details
+- **`list_tags`**: List all repository tags
+- **`get_commit`**: Get commit details
+- **`list_commits`**: List repository commits
 ```
 
 ## Author
