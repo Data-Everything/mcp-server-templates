@@ -3,17 +3,16 @@
   "description": "Official github MCP server implementation",
   "version": "1.0.0",
   "author": "Sam Arora",
-  "category": "General",
+  "category": "Development",
   "tags": [],
-  "docker_image": "ghcr.io/github/github-mcp-server",
-  "docker_tag": "0.9.1",
+  "docker_image": "dataeverything/mcp-github",
+  "docker_tag": "latest",
   "ports": {},
   "command": [],
   "transport": {
     "default": "stdio",
-    "supported": [
-      "stdio"
-    ]
+    "supported": ["stdio"],
+    "port": 7071
   },
   "capabilities": [],
   "config_schema": {
