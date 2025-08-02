@@ -78,7 +78,7 @@ class TestMCPDeploymentSystem:
         test_template = templates[0]
 
         # Deploy template
-        success = self.deployer.deploy(test_template)
+        success = self.deployer.deploy(test_template, env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"})
         assert success, f"Failed to deploy {test_template}"
 
         # Wait for container to start
@@ -105,7 +105,7 @@ class TestMCPDeploymentSystem:
             pytest.skip("No templates available for testing")
 
         test_template = templates[0]
-        success = self.deployer.deploy(test_template)
+        success = self.deployer.deploy(test_template, env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"})
         assert success, f"Failed to deploy {test_template}"
 
         time.sleep(3)
@@ -141,7 +141,7 @@ class TestMCPDeploymentSystem:
             pytest.skip("No templates available for testing")
 
         test_template = templates[0]
-        success = self.deployer.deploy(test_template)
+        success = self.deployer.deploy(test_template, env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"})
         assert success, f"Failed to deploy {test_template}"
 
         time.sleep(3)
