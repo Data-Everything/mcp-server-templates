@@ -117,6 +117,12 @@ class TemplateDiscovery:
             "transport", {"default": "stdio", "supported": ["stdio"]}
         )
 
+        # Include tool discovery method for CLI usage
+        config["tool_discovery"] = template_data.get("tool_discovery")
+
+        # Include capabilities for CLI usage
+        config["capabilities"] = template_data.get("capabilities", [])
+
         # Generate MCP client configuration
         config["example_config"] = self._generate_mcp_config(
             template_data, template_dir.name

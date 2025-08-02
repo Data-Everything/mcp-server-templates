@@ -33,7 +33,6 @@ class TestAllTemplates:
     def test_all_templates_build_successfully(self, template_list):
         """Test that all templates can be built."""
         results = {}
-        breakpoint()  # For debugging purposes
         for template_name in template_list:
             print(f"\nTesting template: {template_name}")
             result = run_template_tests(template_name)

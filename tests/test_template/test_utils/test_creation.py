@@ -159,6 +159,8 @@ class TestTemplateCreator(unittest.TestCase):
             "1.0.0",  # version
             "Test Author",  # author
             "dataeverything/mcp-test-template",  # docker_image
+            "latest",  # docker_tag
+            "internal",  # origin
         ]
 
         self.creator._gather_template_info()
@@ -171,10 +173,12 @@ class TestTemplateCreator(unittest.TestCase):
             "version": "1.0.0",
             "author": "Test Author",
             "docker_image": "dataeverything/mcp-test-template",
+            "docker_tag": "latest",
+            "origin": "internal",
             "capabilities": [
                 {
-                    "name": "hello",
-                    "description": "A simple hello world tool",
+                    "name": "example",
+                    "description": "A simple example tool",
                     "example": "Say hello to the world",
                     "example_args": {},
                     "example_response": "Hello from your new MCP server!",
@@ -210,6 +214,8 @@ class TestTemplateCreator(unittest.TestCase):
             "version": "1.0.0",
             "author": "Test Author",
             "docker_image": "test-image",
+            "docker_tag": "latest",
+            "origin": "internal",
             "capabilities": [{"name": "test"}],
             "config_schema": {"properties": {"test": True}},
         }
@@ -231,6 +237,8 @@ class TestTemplateCreator(unittest.TestCase):
             "version": "1.0.0",
             "author": "Test Author",
             "docker_image": "test-image",
+            "docker_tag": "latest",
+            "origin": "internal",
             "capabilities": [{"name": "test"}],
             "config_schema": {"properties": {"test": True}},
         }

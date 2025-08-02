@@ -143,6 +143,86 @@ mcp-template status demo-deployment
 mcp-template status demo-deployment --backend k8s
 ```
 
+### tools
+
+List available tools for a template or discover tools from a Docker image.
+
+```bash
+mcp-template tools TEMPLATE_NAME [OPTIONS]
+mcp-template tools --image IMAGE_NAME [SERVER_ARGS...]
+```
+
+**Arguments:**
+- `TEMPLATE_NAME` - Template to discover tools for
+- `IMAGE_NAME` - Docker image name to discover tools from
+- `SERVER_ARGS` - Arguments to pass to the MCP server (when using --image)
+
+**Options:**
+- `--image IMAGE_NAME` - Discover tools from Docker image instead of template
+- `--no-cache` - Ignore cached tool discovery results
+- `--refresh` - Force refresh of cached results
+- `--config KEY=VALUE` - Configuration values for dynamic discovery (can be used multiple times)
+
+**Examples:**
+```bash
+# List tools for a template
+mcp-template tools demo
+
+# List tools with cache refresh
+mcp-template tools demo --refresh
+
+# List tools for dynamic template with config
+mcp-template tools github --config github_token=your_token
+
+# Discover tools from Docker image
+mcp-template tools --image mcp/filesystem /tmp
+
+# Discover tools with multiple config values
+mcp-template tools github --config github_token=token --config log_level=DEBUG
+```
+
+**Note:** For templates with `tool_discovery: "dynamic"`, if standard discovery methods fail, the command will automatically attempt to spin up the Docker image specified in the template configuration to discover tools dynamically.
+
+### config
+
+Show configuration options for a template.
+
+```bash
+mcp-template config TEMPLATE_NAME
+```
+
+**Arguments:**
+- `TEMPLATE_NAME` - Template to show configuration for
+
+**Examples:**
+```bash
+# Show configuration options for demo template
+mcp-template config demo
+```
+
+### connect
+
+Show integration examples for LLMs and frameworks.
+
+```bash
+mcp-template connect TEMPLATE_NAME [OPTIONS]
+```
+
+**Arguments:**
+- `TEMPLATE_NAME` - Template to show integration examples for
+
+**Options:**
+- `--llm {fastmcp,claude,vscode,curl,python}` - Show specific LLM integration example
+
+**Examples:**
+```bash
+# Show all integration examples
+mcp-template connect demo
+
+# Show specific integration
+mcp-template connect demo --llm claude
+```
+
 ## Configuration File Format
 
 The configuration file is a JSON file that can be used with the `create` and `deploy` commands:
