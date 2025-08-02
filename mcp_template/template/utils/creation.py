@@ -994,11 +994,11 @@ import pytest_asyncio
 import asyncio
 from pathlib import Path
 
+from mcp_template.utils import TESTS_DIR
+
 # Import MCP testing utilities
 import sys
-sys.path.insert(0, str({repr(str(self.tests_dir.parent / "tests" / "utils"))}))
-
-from mcp_test_utils import MCPTestClient
+sys.path.insert(0, str(TESTS_DIR / "utils"))
 
 
 @pytest.mark.integration
