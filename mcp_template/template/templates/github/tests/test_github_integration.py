@@ -8,11 +8,16 @@ import asyncio
 from pathlib import Path
 
 # Import MCP testing utilities
-from mcp_template.utils import TESTS_DIR
+from mcp_template.utils import (
+    TEMPLATES_DIR,
+    TESTS_DIR
+)
 
 # Import MCP testing utilities
 import sys
 sys.path.insert(0, str(TESTS_DIR / "utils"))
+
+from mcp_test_utils import MCPTestClient
 
 
 @pytest.mark.integration
@@ -23,9 +28,7 @@ class TestGithubIntegration:
     @pytest_asyncio.fixture
     async def mcp_client(self):
         """Create MCP test client."""
-        template_dir = Path(
-            "/home/samarora/data-everything/mcp-server-templates/mcp_template/template/templates/github"
-        )
+        template_dir = TEMPLATES_DIR / "github"
         client = MCPTestClient(template_dir / "server.py")
         await client.start()
         yield client

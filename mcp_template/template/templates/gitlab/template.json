@@ -1,0 +1,138 @@
+{
+  "name": "GitLab",
+  "description": "Enhanced GitLab MCP server implementation with comprehensive API coverage",
+  "version": "1.0.76",
+  "author": "zereight team",
+  "category": "Version Control",
+  "tags": ["gitlab", "version-control", "ci-cd", "project-management", "wiki", "pipelines", "milestones"],
+  "docker_image": "iwakitakuma/gitlab-mcp",
+  "docker_tag": "latest",
+  "ports": {},
+  "command": [],
+  "transport": {
+    "default": "stdio",
+    "supported": [
+      "stdio",
+      "sse", 
+      "streamable-http"
+    ]
+  },
+  "capabilities": [
+    {
+      "name": "create_or_update_file",
+      "description": "Create or update a single file in a GitLab project",
+      "example": "Create a new README.md file in a GitLab repository",
+      "example_args": {
+        "project_id": "123",
+        "file_path": "README.md",
+        "content": "# My Project\n\nThis is a new project.",
+        "commit_message": "Add initial README"
+      },
+      "example_response": "File created successfully with commit ID abc123"
+    },
+    {
+      "name": "search_repositories",
+      "description": "Search for GitLab projects",
+      "example": "Find all projects containing 'mcp' in the name",
+      "example_args": {
+        "search": "mcp"
+      },
+      "example_response": "List of matching GitLab projects"
+    },
+    {
+      "name": "create_issue",
+      "description": "Create a new issue in a GitLab project",
+      "example": "Create a bug report issue",
+      "example_args": {
+        "project_id": "123",
+        "title": "Bug: Application crashes on startup",
+        "description": "The application fails to start with error message..."
+      },
+      "example_response": "Issue created with ID #45"
+    }
+  ],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "log_level": {
+        "type": "string",
+        "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
+        "default": "INFO",
+        "env_mapping": "LOG_LEVEL"
+      },
+      "gitlab_personal_access_token": {
+        "type": "string",
+        "description": "GitLab personal access token for API authentication",
+        "env_mapping": "GITLAB_PERSONAL_ACCESS_TOKEN",
+        "required": true
+      },
+      "gitlab_api_url": {
+        "type": "string",
+        "description": "GitLab API URL (default: https://gitlab.com/api/v4 for GitLab.com)",
+        "default": "https://gitlab.com/api/v4",
+        "env_mapping": "GITLAB_API_URL"
+      },
+      "gitlab_project_id": {
+        "type": "string",
+        "description": "Default project ID to use when not specified in tool calls",
+        "env_mapping": "GITLAB_PROJECT_ID"
+      },
+      "gitlab_read_only_mode": {
+        "type": "boolean",
+        "description": "When true, restricts server to read-only operations for enhanced security",
+        "default": false,
+        "env_mapping": "GITLAB_READ_ONLY_MODE"
+      },
+      "use_gitlab_wiki": {
+        "type": "boolean",
+        "description": "Enable wiki-related tools (list_wiki_pages, get_wiki_page, etc.)",
+        "default": false,
+        "env_mapping": "USE_GITLAB_WIKI"
+      },
+      "use_milestone": {
+        "type": "boolean",
+        "description": "Enable milestone-related tools for project management",
+        "default": false,
+        "env_mapping": "USE_MILESTONE"
+      },
+      "use_pipeline": {
+        "type": "boolean",
+        "description": "Enable pipeline-related tools for CI/CD operations",
+        "default": false,
+        "env_mapping": "USE_PIPELINE"
+      },
+      "gitlab_auth_cookie_path": {
+        "type": "string",
+        "description": "Path to authentication cookie file for GitLab instances requiring cookie-based auth",
+        "env_mapping": "GITLAB_AUTH_COOKIE_PATH"
+      },
+      "sse": {
+        "type": "boolean",
+        "description": "Enable Server-Sent Events transport",
+        "default": false,
+        "env_mapping": "SSE"
+      },
+      "streamable_http": {
+        "type": "boolean",
+        "description": "Enable Streamable HTTP transport (takes precedence over SSE)",
+        "default": false,
+        "env_mapping": "STREAMABLE_HTTP"
+      },
+      "http_proxy": {
+        "type": "string",
+        "description": "HTTP proxy URL for API requests",
+        "env_mapping": "HTTP_PROXY"
+      },
+      "https_proxy": {
+        "type": "string",
+        "description": "HTTPS proxy URL for API requests",
+        "env_mapping": "HTTPS_PROXY"
+      }
+    },
+    "required": ["gitlab_personal_access_token"]
+  },
+  "tool_discovery": "dynamic",
+  "tool_endpoint": "/tools",
+  "has_image": true,
+  "origin": "external"
+}
