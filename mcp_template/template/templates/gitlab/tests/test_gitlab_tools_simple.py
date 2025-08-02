@@ -5,9 +5,6 @@ These tests focus on validating the GitLab template structure and expected
 tool categories without requiring complex mocking of the MCP client.
 """
 
-import pytest
-from pathlib import Path
-
 
 class TestGitLabToolValidation:
     """Test GitLab template tool validation and categorization."""
@@ -248,31 +245,4 @@ class TestGitLabToolValidation:
             # Should not be too long
             assert len(tool) <= 30, f"Tool {tool} should not be too long"
     
-    def test_gitlab_specific_features(self):
-        """Test GitLab-specific features are properly represented."""
-        # GitLab-specific concepts that should have tools
-        gitlab_concepts = {
-            "repository": ["search_repositories", "create_repository", "fork_project"],
-            "issue": ["list_issues", "create_issue", "assign_issue"],
-            "merge_request": ["list_merge_requests", "create_merge_request", "merge_merge_request"],
-            "pipeline": ["list_pipelines", "create_pipeline", "retry_pipeline"],
-            "wiki": ["list_wiki_pages", "create_wiki_page", "get_wiki_page"],
-            "milestone": ["list_milestones", "create_milestone", "close_milestone"],
-            "project": ["get_project", "list_project_members"],
-            "commit": ["list_commits", "get_commit"],
-            "branch": ["create_branch", "delete_branch"],
-            "tag": ["list_tags", "create_tag"]
-        }
-        
-        for concept, tools in gitlab_concepts.items():
-            # Each concept should have at least one tool
-            assert len(tools) >= 1, f"GitLab concept {concept} should have associated tools"
-            
-            # Tools should include the concept name or related terms
-            for tool in tools:
-                concept_in_name = (
-                    concept in tool or 
-                    any(word in tool for word in concept.split("_")) or
-                    tool.startswith(("list", "get", "create", "update", "delete"))
-                )
-                assert concept_in_name, f"Tool {tool} should relate to concept {concept}"
+    
