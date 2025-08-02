@@ -149,7 +149,7 @@ class TestMainCLI:
 
         main()
         mock_enhanced_cli.discover_tools_from_image.assert_called_once_with(
-            "mcp/filesystem", ["/tmp"]
+            "mcp/filesystem", ["/tmp"], {}
         )
 
     @patch("mcp_template.EnhancedCLI")
