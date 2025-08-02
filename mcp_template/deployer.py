@@ -112,15 +112,20 @@ class MCPDeployer:
                     template, env_vars, config_file, config_values
                 )
 
-
-                required_properties = template.get("config_schema", {}).get("required", [])
+                required_properties = template.get("config_schema", {}).get(
+                    "required", []
+                )
                 required_properties = {
-                    key: template["config_schema"]["properties"].get(key, {}).get('env_mapping', key.upper())
+                    key: template["config_schema"]["properties"]
+                    .get(key, {})
+                    .get("env_mapping", key.upper())
                     for key in required_properties
                     if key in template["config_schema"]["properties"]
                 }
                 missing_properties = [
-                    prop for prop, env_var in required_properties.items() if prop not in config and env_var not in config
+                    prop
+                    for prop, env_var in required_properties.items()
+                    if prop not in config and env_var not in config
                 ]
                 if missing_properties:
                     console.print(
@@ -423,7 +428,7 @@ class MCPDeployer:
         # Load from config file if provided
         if config_file:
             config.update(self._load_config_file(config_file, template))
-        
+
         # Apply CLI config values with type conversion
         if config_values:
             config.update(self._convert_config_values(config_values, template))
