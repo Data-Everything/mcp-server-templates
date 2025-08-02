@@ -8,13 +8,11 @@ import asyncio
 from pathlib import Path
 
 # Import MCP testing utilities
+from mcp_template.utils import TESTS_DIR
+
+# Import MCP testing utilities
 import sys
-
-sys.path.insert(
-    0, str("/home/samarora/data-everything/mcp-server-templates/tests/utils")
-)
-
-from mcp_test_utils import MCPTestClient
+sys.path.insert(0, str(TESTS_DIR / "utils"))
 
 
 @pytest.mark.integration
