@@ -1,0 +1,509 @@
+{
+  "name": "Zendesk MCP Server",
+  "description": "Comprehensive Zendesk integration MCP server providing ticket management, user operations, and knowledge base access using FastMCP",
+  "version": "1.0.0",
+  "author": "Data Everything",
+  "category": "Customer Support",
+  "tags": [
+    "zendesk",
+    "customer-support",
+    "ticketing",
+    "helpdesk",
+    "fastmcp",
+    "http"
+  ],
+  "docker_image": "dataeverything/mcp-zendesk",
+  "docker_tag": "latest",
+  "ports": {
+    "7072": 7072
+  },
+  "command": ["python", "server.py"],
+  "transport": {
+    "default": "http",
+    "supported": ["http", "stdio", "sse", "streamable-http"],
+    "port": 7072
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "zendesk_subdomain": {
+        "type": "string",
+        "title": "Zendesk Subdomain",
+        "description": "Your Zendesk subdomain (e.g., 'mycompany' for mycompany.zendesk.com)",
+        "env_mapping": "ZENDESK_SUBDOMAIN"
+      },
+      "zendesk_email": {
+        "type": "string",
+        "title": "Zendesk Email",
+        "description": "Email address for Zendesk authentication",
+        "env_mapping": "ZENDESK_EMAIL"
+      },
+      "zendesk_api_token": {
+        "type": "string",
+        "title": "Zendesk API Token",
+        "description": "Zendesk API token for authentication",
+        "env_mapping": "ZENDESK_API_TOKEN",
+        "sensitive": true
+      },
+      "zendesk_oauth_token": {
+        "type": "string",
+        "title": "Zendesk OAuth Token",
+        "description": "Zendesk OAuth token (alternative to API token)",
+        "env_mapping": "ZENDESK_OAUTH_TOKEN",
+        "sensitive": true
+      },
+      "rate_limit_requests": {
+        "type": "integer",
+        "title": "Rate Limit Requests",
+        "description": "Maximum number of requests per minute",
+        "default": 200,
+        "env_mapping": "ZENDESK_RATE_LIMIT"
+      },
+      "timeout_seconds": {
+        "type": "integer",
+        "title": "Request Timeout",
+        "description": "HTTP request timeout in seconds",
+        "default": 30,
+        "env_mapping": "ZENDESK_TIMEOUT"
+      },
+      "log_level": {
+        "type": "string",
+        "title": "Log Level",
+        "description": "Logging level for the server",
+        "enum": [
+          "debug",
+          "info",
+          "warning",
+          "error"
+        ],
+        "default": "info",
+        "env_mapping": "MCP_LOG_LEVEL"
+      },
+      "default_ticket_priority": {
+        "type": "string",
+        "title": "Default Ticket Priority",
+        "description": "Default priority for newly created tickets",
+        "enum": [
+          "low",
+          "normal",
+          "high",
+          "urgent"
+        ],
+        "default": "normal",
+        "env_mapping": "ZENDESK_DEFAULT_PRIORITY"
+      },
+      "default_ticket_type": {
+        "type": "string",
+        "title": "Default Ticket Type",
+        "description": "Default type for newly created tickets",
+        "enum": [
+          "incident",
+          "problem",
+          "question",
+          "task"
+        ],
+        "default": "question",
+        "env_mapping": "ZENDESK_DEFAULT_TYPE"
+      },
+      "enable_cache": {
+        "type": "boolean",
+        "title": "Enable Caching",
+        "description": "Enable caching for frequently accessed data",
+        "default": true,
+        "env_mapping": "ZENDESK_ENABLE_CACHE"
+      },
+      "cache_ttl_seconds": {
+        "type": "integer",
+        "title": "Cache TTL",
+        "description": "Cache time-to-live in seconds",
+        "default": 300,
+        "env_mapping": "ZENDESK_CACHE_TTL"
+      }
+    },
+    "required": ["zendesk_subdomain", "zendesk_email"]
+  },
+  "capabilities": [
+    {
+      "name": "Ticket Management",
+      "description": "Create, read, update, and search tickets in Zendesk",
+      "example": "Create a new support ticket, update ticket status, search tickets by various criteria"
+    },
+    {
+      "name": "User Management",
+      "description": "Manage Zendesk users and organizations",
+      "example": "Create users, update user information, search users, manage organizations"
+    },
+    {
+      "name": "Knowledge Base",
+      "description": "Access and manage knowledge base articles",
+      "example": "Search articles, retrieve article content, create and update articles"
+    },
+    {
+      "name": "Comments and Notes",
+      "description": "Add comments and internal notes to tickets",
+      "example": "Add public comments, private notes, track communication history"
+    },
+    {
+      "name": "Analytics and Reporting",
+      "description": "Generate reports and analytics on support metrics",
+      "example": "Ticket volume reports, resolution time analysis, agent performance metrics"
+    },
+    {
+      "name": "Automation Management",
+      "description": "Manage automations, triggers, and business rules",
+      "example": "List active automations, check trigger conditions, manage SLA policies"
+    }
+  ],
+  "tools": [
+    {
+      "name": "create_ticket",
+      "description": "Create a new support ticket in Zendesk",
+      "parameters": [
+        {
+          "name": "subject",
+          "description": "Subject/title of the ticket",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "description": "Initial description or comment for the ticket",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "requester_email",
+          "description": "Email address of the person requesting support",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "priority",
+          "description": "Priority level of the ticket",
+          "type": "string",
+          "enum": ["low", "normal", "high", "urgent"],
+          "required": false
+        },
+        {
+          "name": "type",
+          "description": "Type of the ticket",
+          "type": "string",
+          "enum": ["incident", "problem", "question", "task"],
+          "required": false
+        },
+        {
+          "name": "tags",
+          "description": "Tags to associate with the ticket",
+          "type": "array",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_ticket",
+      "description": "Retrieve detailed information about a specific ticket",
+      "parameters": [
+        {
+          "name": "ticket_id",
+          "description": "ID of the ticket to retrieve",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "include_comments",
+          "description": "Include ticket comments in the response",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        }
+      ]
+    },
+    {
+      "name": "update_ticket",
+      "description": "Update an existing ticket's properties",
+      "parameters": [
+        {
+          "name": "ticket_id",
+          "description": "ID of the ticket to update",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "status",
+          "description": "New status for the ticket",
+          "type": "string",
+          "enum": ["new", "open", "pending", "hold", "solved", "closed"],
+          "required": false
+        },
+        {
+          "name": "priority",
+          "description": "New priority for the ticket",
+          "type": "string",
+          "enum": ["low", "normal", "high", "urgent"],
+          "required": false
+        },
+        {
+          "name": "assignee_id",
+          "description": "ID of the agent to assign the ticket to",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "tags",
+          "description": "Tags to add or update on the ticket",
+          "type": "array",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "search_tickets",
+      "description": "Search for tickets using various criteria",
+      "parameters": [
+        {
+          "name": "query",
+          "description": "Search query using Zendesk search syntax",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "description": "Filter by ticket status",
+          "type": "string",
+          "enum": ["new", "open", "pending", "hold", "solved", "closed"],
+          "required": false
+        },
+        {
+          "name": "priority",
+          "description": "Filter by ticket priority",
+          "type": "string",
+          "enum": ["low", "normal", "high", "urgent"],
+          "required": false
+        },
+        {
+          "name": "requester_email",
+          "description": "Filter by requester email address",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "created_after",
+          "description": "Filter tickets created after this date (ISO format)",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "description": "Maximum number of tickets to return",
+          "type": "integer",
+          "required": false,
+          "default": 25
+        }
+      ]
+    },
+    {
+      "name": "add_ticket_comment",
+      "description": "Add a comment to an existing ticket",
+      "parameters": [
+        {
+          "name": "ticket_id",
+          "description": "ID of the ticket to comment on",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "body",
+          "description": "Content of the comment",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "public",
+          "description": "Whether the comment is public (visible to requester) or internal",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        },
+        {
+          "name": "author_id",
+          "description": "ID of the comment author (defaults to authenticated user)",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "create_user",
+      "description": "Create a new user in Zendesk",
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Full name of the user",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "email",
+          "description": "Email address of the user",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "role",
+          "description": "Role for the user",
+          "type": "string",
+          "enum": ["end-user", "agent", "admin"],
+          "required": false,
+          "default": "end-user"
+        },
+        {
+          "name": "organization_id",
+          "description": "ID of the organization to associate the user with",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_user",
+      "description": "Retrieve information about a specific user",
+      "parameters": [
+        {
+          "name": "user_id",
+          "description": "ID of the user to retrieve",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "email",
+          "description": "Email address of the user to retrieve",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "search_users",
+      "description": "Search for users in Zendesk",
+      "parameters": [
+        {
+          "name": "query",
+          "description": "Search query for users",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "role",
+          "description": "Filter by user role",
+          "type": "string",
+          "enum": ["end-user", "agent", "admin"],
+          "required": false
+        },
+        {
+          "name": "organization_id",
+          "description": "Filter by organization ID",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "search_articles",
+      "description": "Search knowledge base articles",
+      "parameters": [
+        {
+          "name": "query",
+          "description": "Search query for articles",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "locale",
+          "description": "Language locale for articles",
+          "type": "string",
+          "required": false,
+          "default": "en-us"
+        },
+        {
+          "name": "section_id",
+          "description": "Filter by specific section ID",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "get_article",
+      "description": "Retrieve a specific knowledge base article",
+      "parameters": [
+        {
+          "name": "article_id",
+          "description": "ID of the article to retrieve",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "locale",
+          "description": "Language locale for the article",
+          "type": "string",
+          "required": false,
+          "default": "en-us"
+        }
+      ]
+    },
+    {
+      "name": "get_ticket_metrics",
+      "description": "Get metrics and analytics for tickets",
+      "parameters": [
+        {
+          "name": "start_date",
+          "description": "Start date for metrics (ISO format)",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "end_date",
+          "description": "End date for metrics (ISO format)",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "group_by",
+          "description": "Group metrics by specific field",
+          "type": "string",
+          "enum": ["day", "week", "month", "assignee", "priority", "status"],
+          "required": false,
+          "default": "day"
+        }
+      ]
+    },
+    {
+      "name": "list_organizations",
+      "description": "List organizations in Zendesk",
+      "parameters": [
+        {
+          "name": "query",
+          "description": "Search query for organizations",
+          "type": "string",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "tool_discovery": "static",
+  "tool_endpoint": "/tools",
+  "has_image": true,
+  "origin": "internal",
+  "examples": {
+    "http_endpoint": "http://localhost:7072",
+    "cli_usage": [
+      "python -m mcp_template deploy zendesk",
+      "python -m mcp_template deploy zendesk --config zendesk_subdomain=mycompany --config zendesk_email=support@mycompany.com"
+    ],
+    "environment_variables": [
+      "ZENDESK_SUBDOMAIN=mycompany",
+      "ZENDESK_EMAIL=support@mycompany.com",
+      "ZENDESK_API_TOKEN=your_api_token_here"
+    ]
+  }
+}
