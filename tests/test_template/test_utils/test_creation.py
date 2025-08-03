@@ -18,6 +18,7 @@ from mcp_template.template.utils.creation import (
 )
 
 
+@pytest.mark.unit
 class TestTemplateCreator(unittest.TestCase):
     """Test the TemplateCreator class."""
 
@@ -383,6 +384,7 @@ class TestTemplateCreator(unittest.TestCase):
                 shutil.rmtree(self.creator.template_dir)
 
 
+@pytest.mark.unit
 class TestTemplateCreatorUtilityFunctions:
     """Test utility functions in the create_template module."""
 

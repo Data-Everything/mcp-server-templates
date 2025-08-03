@@ -375,3 +375,28 @@ class DockerDeploymentService(BaseDeploymentBackend):
                 "Failed to get container info for %s: %s", deployment_name, exc
             )
             raise ValueError(f"Deployment {deployment_name} not found") from exc
+
+    def _build_internal_image(
+        self, template_id: str, image_name: str, template_data: Dict[str, Any]
+    ) -> None:
+        """Build Docker image for internal templates."""
+        import os
+        from pathlib import Path
+
+        # Get template directory
+        from mcp_template.template.utils.discovery import TemplateDiscovery
+
+        discovery = TemplateDiscovery()
+        template_dir = discovery.template_root / template_id
+
+        if not template_dir.exists() or not (template_dir / "Dockerfile").exists():
+            logger.error(
+                f"Dockerfile not found for internal template {template_id} in {template_dir}"
+            )
+            raise ValueError(f"Internal template {template_id} missing Dockerfile")
+
+        logger.info(f"Building image {image_name} for internal template {template_id}")
+
+        # Build the Docker image
+        build_command = ["docker", "build", "-t", image_name, str(template_dir)]
+        self._run_command(build_command)

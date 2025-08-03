@@ -23,17 +23,18 @@ class TestGitLabTemplateConfiguration:
             template_config = json.load(f)
 
         # Verify required template fields
-        assert template_config["name"] == "GitLab"
+        assert template_config["name"] == "GitLab MCP Server"
         assert template_config["description"]
         assert template_config["version"]
-        assert template_config["docker_image"] == "iwakitakuma/gitlab-mcp"
+        assert template_config["docker_image"] == "dataeverything/mcp-gitlab"
         assert template_config["has_image"] is True
-        assert template_config["origin"] == "external"
+        assert template_config["origin"] == "internal"
 
         # Verify supported transports
         assert "stdio" in template_config["transport"]["supported"]
         assert "sse" in template_config["transport"]["supported"]
         assert "streamable-http" in template_config["transport"]["supported"]
+        assert 'http' in template_config["transport"]["supported"]
 
         # Verify configuration schema
         config_schema = template_config["config_schema"]

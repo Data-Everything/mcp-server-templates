@@ -1,21 +1,25 @@
 {
-  "name": "GitLab",
+  "name": "GitLab MCP Server",
   "description": "Enhanced GitLab MCP server implementation with comprehensive API coverage",
   "version": "1.0.76",
-  "author": "zereight team",
-  "category": "Version Control",
-  "tags": ["gitlab", "version-control", "ci-cd", "project-management", "wiki", "pipelines", "milestones"],
-  "docker_image": "iwakitakuma/gitlab-mcp",
+  "author": "zereight team & Data Everything",
+  "category": "Development",
+  "tags": ["gitlab", "version-control", "development", "ci-cd", "project-management", "wiki", "pipelines", "milestones"],
+  "docker_image": "dataeverything/mcp-gitlab",
   "docker_tag": "latest",
-  "ports": {},
+  "ports": {
+    "3002": 3002
+  },
   "command": [],
   "transport": {
     "default": "stdio",
     "supported": [
       "stdio",
       "sse", 
-      "streamable-http"
-    ]
+      "streamable-http",
+      "http"
+    ],
+    "port": 3002
   },
   "capabilities": [
     {
@@ -56,9 +60,25 @@
     "properties": {
       "log_level": {
         "type": "string",
+        "title": "Log Level",
         "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
         "default": "INFO",
         "env_mapping": "LOG_LEVEL"
+      },
+      "mcp_transport": {
+        "type": "string",
+        "title": "MCP Transport Mode",
+        "description": "Transport protocol for MCP communication",
+        "enum": ["stdio", "sse", "streamable-http"],
+        "default": "stdio",
+        "env_mapping": "MCP_TRANSPORT"
+      },
+      "mcp_port": {
+        "type": "integer",
+        "title": "MCP Server Port",
+        "description": "Port for HTTP-based transports (sse, streamable-http)",
+        "default": 3002,
+        "env_mapping": "MCP_PORT"
       },
       "gitlab_personal_access_token": {
         "type": "string",
@@ -134,5 +154,20 @@
   "tool_discovery": "dynamic",
   "tool_endpoint": "/tools",
   "has_image": true,
-  "origin": "external"
+  "origin": "internal",
+  "examples": {
+    "stdio_usage": "docker run -i --rm -e GITLAB_PERSONAL_ACCESS_TOKEN=your_token dataeverything/mcp-gitlab",
+    "sse_endpoint": "http://localhost:3002/sse",
+    "streamable_http_endpoint": "http://localhost:3002/mcp",
+    "cli_usage": [
+      "python -m mcp_template deploy gitlab --config gitlab_personal_access_token=your_token",
+      "python -m mcp_template deploy gitlab --config mcp_transport=sse --config mcp_port=3002",
+      "python -m mcp_template deploy gitlab --config mcp_transport=streamable-http --port 3002"
+    ],
+    "client_integration": {
+      "stdio": "Use with Claude Desktop or other MCP clients via stdio transport",
+      "sse": "curl -N http://localhost:3002/sse",
+      "streamable_http": "curl -X POST http://localhost:3002/mcp -H 'Content-Type: application/json' -d '{\"method\": \"list_tools\"}'"
+    }
+  }
 }

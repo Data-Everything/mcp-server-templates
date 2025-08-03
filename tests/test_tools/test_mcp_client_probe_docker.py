@@ -8,6 +8,8 @@ from unittest.mock import Mock, patch, AsyncMock
 from mcp_template.tools.mcp_client_probe import MCPClientProbe
 
 
+@pytest.mark.unit
+@pytest.mark.docker
 class TestMCPClientProbeDocker:
     """Test MCP Client Probe Docker integration."""
 
@@ -179,6 +181,7 @@ class TestMCPClientProbeDocker:
                 assert "stop" in cleanup_cmd
 
 
+@pytest.mark.unit
 class TestMCPClientProbeProtocol:
     """Test MCP protocol communication in client probe."""
 

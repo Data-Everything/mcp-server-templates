@@ -26,6 +26,66 @@ from mcp_template.template.utils.discovery import TemplateDiscovery
 
 
 @pytest.fixture(scope="session")
+def built_internal_images():
+    """Build all internal template images before running deploy tests."""
+    import subprocess
+    import docker
+    from pathlib import Path
+    
+    # Get the root directory and templates path
+    root_dir = Path(__file__).parent
+    templates_dir = root_dir / "templates"
+    
+    # Initialize template discovery to find internal templates
+    discovery = TemplateDiscovery()
+    templates = discovery.discover_templates()
+    
+    built_images = []
+    
+    try:
+        client = docker.from_env()
+        
+        for template_id, template_config in templates.items():
+            # Only build internal templates
+            if template_config.get("origin") == "internal":
+                template_path = templates_dir / template_id
+                dockerfile_path = template_path / "Dockerfile"
+                
+                if dockerfile_path.exists():
+                    image_name = f"mcp-{template_id}:latest"
+                    print(f"Building internal template image: {image_name}")
+                    
+                    try:
+                        # Build the image
+                        client.images.build(
+                            path=str(template_path),
+                            tag=image_name,
+                            quiet=False,
+                            rm=True
+                        )
+                        built_images.append(image_name)
+                        print(f"Successfully built: {image_name}")
+                    except Exception as e:
+                        print(f"Warning: Failed to build {image_name}: {e}")
+                        
+    except Exception as e:
+        print(f"Warning: Docker not available for image building: {e}")
+    
+    yield built_images
+    
+    # Cleanup built images after tests
+    try:
+        for image_name in built_images:
+            try:
+                client.images.remove(image_name, force=True)
+                print(f"Cleaned up image: {image_name}")
+            except Exception as e:
+                print(f"Warning: Failed to cleanup {image_name}: {e}")
+    except Exception:
+        pass  # Docker might not be available
+
+
+@pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
     policy = asyncio.get_event_loop_policy()
@@ -79,6 +139,34 @@ def temp_template_dir():
         (template_dir / "README.md").write_text("# Test Template")
 
         yield template_dir
+
+
+@pytest.fixture(autouse=True)
+def use_local_images_for_deploy_tests(request, built_internal_images):
+    """Automatically configure deployment tests to use local images."""
+    # Only apply to tests that involve deployment
+    if any(marker in [m.name for m in request.node.iter_markers()] 
+           for marker in ['docker', 'integration', 'e2e']):
+        # Patch the deploy methods to use pull_image=False by default
+        from mcp_template.deployer import MCPDeployer
+        from mcp_template.backends.docker import DockerDeploymentService
+        
+        original_deploy = MCPDeployer.deploy
+        original_docker_deploy = DockerDeploymentService.deploy_template
+        
+        def patched_mcp_deploy(self, template_name, **kwargs):
+            kwargs.setdefault('pull_image', False)
+            return original_deploy(self, template_name, **kwargs)
+            
+        def patched_docker_deploy(self, template_id, config, template_data, **kwargs):
+            kwargs.setdefault('pull_image', False)
+            return original_docker_deploy(self, template_id, config, template_data, **kwargs)
+        
+        with patch.object(MCPDeployer, 'deploy', patched_mcp_deploy), \
+             patch.object(DockerDeploymentService, 'deploy_template', patched_docker_deploy):
+            yield
+    else:
+        yield
 
 
 @pytest.fixture

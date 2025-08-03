@@ -237,9 +237,9 @@ class TestDeploymentIntegration:
                 env_vars.append(docker_command[i + 1])
 
         # Check that our config overrides became env vars
-        assert any("MCP_HELLO_FROM=Docker Test" in env_var for env_var in env_vars)
-        assert any("MCP_DEBUG_MODE=true" in env_var for env_var in env_vars)
-        assert any("MCP_MAX_CONNECTIONS=15" in env_var for env_var in env_vars)
+        assert any("hello_from=Docker Test" in env_var for env_var in env_vars)
+        assert any("debug_mode=true" in env_var for env_var in env_vars)
+        assert any("max_connections=15" in env_var for env_var in env_vars)
 
     @patch("mcp_template.backends.docker.DockerDeploymentService._run_command")
     @patch(
@@ -258,13 +258,13 @@ class TestDeploymentIntegration:
         # Config with potential duplicates
         config = {
             "hello_from": "No Duplicate Test",
-            "MCP_HELLO_FROM": "Another Value",  # This could cause duplication
+            "hello_from_alt": "Another Value",  # This could cause duplication
         }
 
         template_data = {
             **self.mock_template,
             "env_vars": {
-                "MCP_HELLO_FROM": "Template Default"  # Another potential duplicate
+                "HELLO_FROM_TEMPLATE": "Template Default"  # Another potential duplicate
             },
         }
 
@@ -277,12 +277,12 @@ class TestDeploymentIntegration:
         docker_run_call = mock_run_command.call_args_list[1]
         docker_command = docker_run_call[0][0]
 
-        # Count MCP_HELLO_FROM occurrences
+        # Count hello_from occurrences
         hello_from_count = 0
         for i, arg in enumerate(docker_command):
             if arg == "--env" and i + 1 < len(docker_command):
                 env_var = docker_command[i + 1]
-                if "MCP_HELLO_FROM=" in env_var:
+                if "hello_from=" in env_var:
                     hello_from_count += 1
 
         # Should only appear once (no duplication)

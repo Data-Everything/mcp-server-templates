@@ -11,6 +11,8 @@ from mcp_template.tools.mcp_client_probe import MCPClientProbe
 from mcp_template.cli import EnhancedCLI
 
 
+@pytest.mark.integration
+@pytest.mark.docker
 class TestDockerDiscoveryIntegration:
     """Test Docker discovery functionality across CLI and discovery modules."""
 
