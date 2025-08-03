@@ -44,19 +44,19 @@ install-dev:
 # Testing
 test-quick:
 	@echo "🔬 Running quick validation tests..."
-	pytest tests/test_runner.py quick
+	pytest tests/runner.py quick
 
 test-unit:
 	@echo "🧪 Running unit tests..."
-	pytest tests/test_runner.py unit
+	pytest tests/runner.py unit
 
 test-integration:
 	@echo "🐳 Running integration tests..."
-	pytest tests/test_runner.py integration
+	pytest tests/runner.py integration
 
 test-all:
 	@echo "🚀 Running all tests..."
-	pytest tests/test_runner.py all
+	pytest tests/runner.py all
 
 test:
 	pytest tests

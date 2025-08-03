@@ -72,6 +72,42 @@ mcp-template tools demo --refresh
 mcp-template tools demo --no-cache
 ```
 
+### Template-Based Tool Discovery
+
+The CLI now supports discovering tools directly from templates, with automatic Docker fallback for templates configured with `tool_discovery: "dynamic"`:
+
+```bash
+# Discover tools from a template directory
+mcp-template tools my-template
+
+# With configuration values for Docker fallback
+mcp-template tools my-template --config "PORT=8080,HOST=localhost"
+
+# Force refresh template tool discovery
+mcp-template tools my-template --refresh --config "DEBUG=true"
+```
+
+When a template has `tool_discovery: "dynamic"` in its configuration and standard discovery methods fail, the system automatically:
+
+1. **Checks for Docker image**: Looks for `docker_image` and `docker_tag` in template config
+2. **Spins up container**: Creates temporary container with provided config values as environment variables
+3. **Discovers tools**: Uses MCP protocol or HTTP endpoints to discover available tools
+4. **Cleans up**: Automatically removes the temporary container
+
+Example template configuration supporting dynamic discovery:
+```json
+{
+  "name": "My MCP Server",
+  "tool_discovery": "dynamic",
+  "docker_image": "myregistry/mcp-server",
+  "docker_tag": "latest",
+  "config_schema": {
+    "PORT": {"type": "integer", "default": 8080},
+    "DEBUG": {"type": "boolean", "default": false}
+  }
+}
+```
+
 ### Discover Tools from Docker Images
 
 ```bash
@@ -129,8 +165,14 @@ Configure tool discovery behavior in `template.json`:
 #### Configuration Fields
 
 - **`tool_discovery`**: Discovery method (`"static"`, `"dynamic"`, or `"none"`)
+  - `"static"`: Uses pre-defined tools from `tools.json` file
+  - `"dynamic"`: Probes running server endpoints, with Docker fallback for templates
+  - `"none"`: Disables tool discovery
 - **`tool_endpoint`**: Custom endpoint for dynamic discovery (default: `"/tools"`)
 - **`has_image`**: Whether the template has a Docker image for probing
+- **`docker_image`**: Docker image name for dynamic discovery fallback
+- **`docker_tag`**: Docker image tag (default: `"latest"`)
+- **`config_schema`**: Schema for configuration values passed to Docker containers
 - **`origin`**: Template origin (`"internal"` or `"external"`)
 
 ### Static Tool Discovery

@@ -2,9 +2,12 @@
 Test template discovery and management.
 """
 
+import pytest
+
 from mcp_template.template.utils.discovery import TemplateDiscovery
 
 
+@pytest.mark.unit
 class TestTemplateDiscovery:
     """Test template discovery and management."""
 

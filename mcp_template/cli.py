@@ -15,7 +15,7 @@ import subprocess
 
 # Import existing components
 # Note: Import classes directly to avoid circular import
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from rich.console import Console
 from rich.panel import Panel
@@ -130,7 +130,11 @@ class EnhancedCLI:
         )
 
     def list_tools(
-        self, template_name: str, no_cache: bool = False, refresh: bool = False
+        self,
+        template_name: str,
+        no_cache: bool = False,
+        refresh: bool = False,
+        config_values: Optional[Dict[str, str]] = None,
     ) -> None:
         """List available tools for a template using enhanced tool discovery."""
         if template_name not in self.templates:
@@ -152,10 +156,18 @@ class EnhancedCLI:
         )
 
         # Use the enhanced tool discovery system
+        # Merge config_values into template config for dynamic discovery
+        template_with_config = template.copy()
+        if config_values:
+            # Add config values as environment variables for Docker discovery
+            existing_env_vars = template_with_config.get("env_vars", {})
+            existing_env_vars.update(config_values)
+            template_with_config["env_vars"] = existing_env_vars
+
         discovery_result = self.tool_discovery.discover_tools(
             template_name=template_name,
             template_dir=template_dir,
-            template_config=template,
+            template_config=template_with_config,
             use_cache=not no_cache,
             force_refresh=refresh,
         )
@@ -167,6 +179,55 @@ class EnhancedCLI:
             or discovery_result.get("source_endpoint")
             or "template.json"
         )
+
+        # Check if we need to fallback to Docker image discovery
+        if (not tools or discovery_method == "unknown") and template.get(
+            "tool_discovery"
+        ) == "dynamic":
+            console.print(
+                "[yellow]⚠️  Standard discovery failed, attempting Docker image discovery...[/yellow]"
+            )
+
+            # Extract Docker image information from template
+            docker_image = template.get("docker_image")
+            docker_tag = template.get("docker_tag", "latest")
+
+            if docker_image:
+                full_image_name = f"{docker_image}:{docker_tag}"
+                console.print(f"[dim]Using Docker image: {full_image_name}[/dim]")
+
+                # Prepare server arguments from config values if provided
+                server_args = []
+                if config_values:
+                    # Convert config values to environment variables or command line args
+                    # based on template's config schema
+                    config_schema = template.get("config_schema", {})
+                    properties = config_schema.get("properties", {})
+
+                    for key, value in config_values.items():
+                        if key in properties:
+                            env_mapping = properties[key].get("env_mapping")
+                            if env_mapping:
+                                server_args.extend(["--env", f"{env_mapping}={value}"])
+
+                # Attempt Docker discovery
+                docker_result = self.docker_probe.discover_tools_from_image(
+                    full_image_name, server_args if server_args else None
+                )
+
+                if docker_result and docker_result.get("tools"):
+                    tools = docker_result["tools"]
+                    discovery_method = docker_result.get("discovery_method", "docker")
+                    source = f"Docker image: {full_image_name}"
+                    console.print(
+                        "[green]✅ Successfully discovered tools from Docker image[/green]"
+                    )
+                else:
+                    console.print("[red]❌ Docker image discovery also failed[/red]")
+            else:
+                console.print(
+                    "[yellow]⚠️  No Docker image specified in template config[/yellow]"
+                )
 
         # Show discovery info
         console.print(f"[dim]Discovery method: {discovery_method}[/dim]")
@@ -249,7 +310,10 @@ class EnhancedCLI:
         console.print(f"  # View logs: mcp-template logs {template_name}")
 
     def discover_tools_from_image(
-        self, image_name: str, server_args: Optional[List[str]] = None
+        self,
+        image_name: str,
+        server_args: Optional[List[str]] = None,
+        env_vars: Optional[Dict[str, str]] = None,
     ) -> None:
         """Discover tools from a Docker image."""
         console.print(
@@ -261,7 +325,9 @@ class EnhancedCLI:
         )
 
         # Use Docker probe to discover tools
-        result = self.docker_probe.discover_tools_from_image(image_name, server_args)
+        result = self.docker_probe.discover_tools_from_image(
+            image_name, server_args, env_vars
+        )
 
         if result:
             tools = result.get("tools", [])
@@ -467,7 +533,7 @@ else:
             return False
 
     def deploy_with_transport(
-        self, template_name: str, transport: str = "http", port: int = 7071, **kwargs
+        self, template_name: str, transport: str = None, port: int = 7071, **kwargs
     ) -> bool:
         """Deploy template with specified transport options."""
         if template_name not in self.templates:
@@ -475,6 +541,10 @@ else:
             return False
 
         template = self.templates[template_name]
+
+        if not transport:
+            # Default to HTTP transport if not specified
+            transport = template.get("transport", {}).get("default", "http")
 
         # Validate transport
         supported_transports = template.get("transport", {}).get("supported", ["http"])
@@ -536,6 +606,11 @@ def add_enhanced_cli_args(subparsers) -> None:
     )
     tools_parser.add_argument(
         "--refresh", action="store_true", help="Force refresh cached results"
+    )
+    tools_parser.add_argument(
+        "--config",
+        action="append",
+        help="Configuration values for dynamic discovery (KEY=VALUE)",
     )
     tools_parser.add_argument(
         "template_or_args",
@@ -601,13 +676,28 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
         return True
 
     elif args.command == "tools":
+        # Parse config values if provided
+        config_values = {}
+        if hasattr(args, "config") and args.config:
+            for config_var in args.config:
+                try:
+                    key, value = config_var.split("=", 1)
+                    config_values[key] = value
+                except ValueError:
+                    console.print(
+                        f"[red]❌ Invalid config format: {config_var}. Use KEY=VALUE[/red]"
+                    )
+                    return False
+
         # Handle unified tools command
         if args.image:
             # Docker image discovery (former discover-tools functionality)
             server_args = (
                 args.template_or_args
             )  # All positional args become server args
-            enhanced_cli.discover_tools_from_image(args.image, server_args)
+            enhanced_cli.discover_tools_from_image(
+                args.image, server_args, config_values
+            )
         elif args.template_or_args:
             # Template-based discovery (former tools functionality)
             if len(args.template_or_args) != 1:
@@ -620,6 +710,7 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
                 template_name,
                 no_cache=getattr(args, "no_cache", False),
                 refresh=getattr(args, "refresh", False),
+                config_values=config_values,
             )
         else:
             # Error: must provide either template or --image
@@ -629,6 +720,9 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
             console.print("Examples:")
             console.print("  python -m mcp_template tools demo")
             console.print("  python -m mcp_template tools --image mcp/filesystem /tmp")
+            console.print(
+                "  python -m mcp_template tools github --config github_token=your_token"
+            )
             return False
         return True
 

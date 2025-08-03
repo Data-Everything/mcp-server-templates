@@ -33,6 +33,7 @@ class DockerProbe:
         self,
         image_name: str,
         server_args: Optional[List[str]] = None,
+        env_vars: Optional[Dict[str, str]] = None,
         timeout: int = DISCOVERY_TIMEOUT,
     ) -> Optional[Dict[str, Any]]:
         """
@@ -41,6 +42,7 @@ class DockerProbe:
         Args:
             image_name: Docker image name to probe
             server_args: Arguments to pass to the MCP server
+            env_vars: Environment variables to pass to the container
             timeout: Timeout for discovery process
 
         Returns:
@@ -50,7 +52,7 @@ class DockerProbe:
 
         try:
             # Try MCP stdio first
-            result = self._try_mcp_stdio_discovery(image_name, server_args)
+            result = self._try_mcp_stdio_discovery(image_name, server_args, env_vars)
             if result:
                 return result
 
@@ -62,12 +64,17 @@ class DockerProbe:
             return None
 
     def _try_mcp_stdio_discovery(
-        self, image_name: str, server_args: Optional[List[str]]
+        self,
+        image_name: str,
+        server_args: Optional[List[str]],
+        env_vars: Optional[Dict[str, str]],
     ) -> Optional[Dict[str, Any]]:
         """Try to discover tools using MCP stdio protocol."""
         try:
             args = server_args or []
-            result = self.mcp_client.discover_tools_from_docker_sync(image_name, args)
+            result = self.mcp_client.discover_tools_from_docker_sync(
+                image_name, args, env_vars
+            )
 
             if result:
                 logger.info(

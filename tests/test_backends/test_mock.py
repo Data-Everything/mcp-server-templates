@@ -9,6 +9,7 @@ import pytest
 from mcp_template.backends.mock import MockDeploymentService
 
 
+@pytest.mark.unit
 class TestMockDeploymentService:
     """Test mock deployment service."""
 
