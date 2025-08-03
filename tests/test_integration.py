@@ -323,8 +323,8 @@ class TestConfigurationIntegration:
 
         # Check that environment variables are in the command
         command_str = " ".join(call_args)
-        assert "MCP_HELLO_FROM=Test" in command_str
-        assert "MCP_LOG_LEVEL=debug" in command_str
+        assert "hello_from=Test" in command_str
+        assert "log_level=debug" in command_str
 
     def test_config_defaults_handling(self):
         """Test handling of default configuration values."""
@@ -352,10 +352,25 @@ class TestTemplateStructureValidation:
         manager = TemplateDiscovery()
         templates = manager.discover_templates()
 
-        required_files = ["template.json", "README.md", "Dockerfile"]
+        base_required_files = ["template.json", "README.md"]
 
         for template_id in templates:
             template_path = manager.get_template_path(template_id)
+            
+            # Load template.json to check if it uses external image
+            template_json_path = template_path / "template.json"
+            with open(template_json_path) as f:
+                template_config = json.load(f)
+            
+            # Check if template uses external image
+            uses_external_image = (
+                template_config.get("origin") == "external" or
+                template_config.get("has_image", False)
+            )
+            
+            required_files = base_required_files.copy()
+            if not uses_external_image:
+                required_files.append("Dockerfile")
 
             for required_file in required_files:
                 file_path = template_path / required_file
@@ -385,6 +400,21 @@ class TestTemplateStructureValidation:
 
         for template_id in templates:
             template_path = manager.get_template_path(template_id)
+            
+            # Load template.json to check if it uses external image
+            template_json_path = template_path / "template.json"
+            with open(template_json_path) as f:
+                template_config = json.load(f)
+            
+            # Skip templates that use external images
+            uses_external_image = (
+                template_config.get("origin") == "external" or
+                template_config.get("has_image", False)
+            )
+            
+            if uses_external_image:
+                continue
+                
             dockerfile_path = template_path / "Dockerfile"
 
             content = dockerfile_path.read_text()

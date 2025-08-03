@@ -5,7 +5,7 @@ on:
     branches: ["*"]  # Run on all branches
     tags: ["release-pypi-*"]  # Run on PyPI release tags
   pull_request:
-    branches: ["*"]  # Run on all PRs
+    branches: ["main"]  # Run on all PRs
 
 env:
   PYTHON_VERSION: '3.11'
@@ -27,10 +27,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-
-    - name: Run quick tests
-      run: |
-        python tests/test_runner.py --quick
 
     - name: Test import availability
       run: |
@@ -67,11 +63,7 @@ jobs:
 
     - name: Run unit tests
       run: |
-        python tests/test_runner.py --unit --quiet
-
-    - name: Run configuration tests
-      run: |
-        pytest tests/test_configuration.py -v --tb=short
+        python tests/runner.py --unit
 
   # Template tests
   template-tests:
@@ -153,10 +145,6 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
-    - name: Run core tests
-      run: |
-        python tests/test_runner.py --quick
-
   # PyPI deployment (only on release tags)
   deploy-pypi:
     runs-on: ubuntu-latest
@@ -187,8 +175,7 @@ jobs:
 
     - name: Run final tests before deploy
       run: |
-        python tests/test_runner.py --quick
-        python tests/test_runner.py --unit --quiet
+        python tests/runner.py --unit
 
     - name: Build package
       run: |
@@ -206,7 +193,7 @@ jobs:
   # Integration tests (optional, on main branch)
   integration-tests:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     needs: [core-tests, template-tests]
     continue-on-error: true  # Don't fail the entire pipeline
     steps:
@@ -225,4 +212,4 @@ jobs:
 
     - name: Run integration tests
       run: |
-        python tests/test_runner.py --integration --quiet || echo "⚠️ Some integration tests failed"
+        python tests/runner.py --integration || echo "⚠️ Some integration tests failed"

@@ -1,0 +1,74 @@
+{
+  "name": "Github",
+  "description": "Official github MCP server implementation",
+  "version": "1.0.0",
+  "author": "Sam Arora",
+  "category": "Development",
+  "tags": ["github", "version-control", "development", "ci-cd", "project-management", "wiki", "pipelines", "milestones"],
+  "docker_image": "dataeverything/mcp-github",
+  "docker_tag": "latest",
+  "ports": {},
+  "command": [],
+  "transport": {
+    "default": "stdio",
+    "supported": ["stdio"]
+  },
+  "capabilities": [],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "log_level": {
+        "type": "string",
+        "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
+        "default": "INFO",
+        "env_mapping": "LOG_LEVEL"
+      },
+      "mcp_transport": {
+        "type": "string",
+        "description": "MCP transport mode (stdio only supported)",
+        "default": "stdio",
+        "env_mapping": "MCP_TRANSPORT"
+      },
+      "mcp_port": {
+        "type": "integer",
+        "description": "Port for MCP server (not used for stdio)",
+        "default": 7071,
+        "env_mapping": "MCP_PORT"
+      },
+      "github_token": {
+        "type": "string",
+        "description": "GitHub personal access token",
+        "env_mapping": "GITHUB_PERSONAL_ACCESS_TOKEN"
+      },
+      "github_host": {
+        "type": "string",
+        "description": "GitHub host URL (default: https://api.github.com)",
+        "default": "https://api.github.com",
+        "env_mapping": "GITHUB_HOST"
+      },
+      "github_toolset": {
+        "type": "string",
+        "description": "GitHub toolset to use (default: 'default'). Options: 'context', 'actions', 'code_security', 'dependabot', 'discussions', 'experiments', 'gists', 'issues', 'notifications', 'orgs', 'pull_requests', 'repos', 'secret_protection', 'users'. If 'all', all toolsets are enabled. Use comma-separated values to specify multiple toolsets.",
+        "default": "all",
+        "env_mapping": "GITHUB_TOOLSET"
+      },
+      "dynamic_toolsets": {
+        "type": "integer",
+        "description": "Enable dynamic toolset discovery (default: 0)",
+        "default": 0,
+        "env_mapping": "GITHUB_DYNAMIC_TOOLSETS"
+      },
+      "read_only": {
+        "type": "integer",
+        "description": "When 1, restricts server to read-only operations for enhanced security",
+        "default": 0,
+        "env_mapping": "GITHUB_READ_ONLY"
+      }
+    },
+    "required": ["github_token"]
+  },
+  "tool_discovery": "dynamic",
+  "tool_endpoint": "/tools",
+  "has_image": true,
+  "origin": "internal"
+}

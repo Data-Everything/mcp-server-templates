@@ -14,6 +14,7 @@ import requests
 from mcp_template.tools import CacheManager, DockerProbe, ToolDiscovery
 
 
+@pytest.mark.unit
 class TestToolDiscovery:
     """Test the ToolDiscovery class."""
 
@@ -67,7 +68,9 @@ class TestToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            template_name="test-template", template_config=template_config
+            template_name="test-template", 
+            template_dir=str(self.template_dir),
+            template_config=template_config
         )
 
         assert result["discovery_method"] == "template_json"
@@ -91,10 +94,12 @@ class TestToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            template_name="test-template", template_config=template_config
+            template_name="test-template", 
+            template_dir=str(self.template_dir),
+            template_config=template_config
         )
 
-        assert result["discovery_method"] == "dynamic"
+        assert result["discovery_method"] == "dynamic_http"
         assert len(result["tools"]) == 1
         assert result["tools"][0]["name"] == "dynamic_tool"
 
@@ -128,12 +133,15 @@ class TestToolDiscovery:
         }
 
         result1 = self.discovery.discover_tools(
-            template_name="test-template", template_config=template_config
+            template_name="test-template", 
+            template_dir=str(self.template_dir),
+            template_config=template_config
         )
 
         # Second discovery should use cache
         result2 = self.discovery.discover_tools(
             template_name="test-template",
+            template_dir=str(self.template_dir),
             template_config={},  # Empty config, should still get cached result
         )
 
@@ -157,12 +165,14 @@ class TestToolDiscovery:
         # Should not use expired cache
         result = self.discovery.discover_tools(
             template_name="test-template",
+            template_dir=str(self.template_dir),
             template_config={"tools": [{"name": "new_tool"}]},
         )
 
         assert result["tools"][0]["name"] == "new_tool"
 
 
+@pytest.mark.unit
 class TestCacheManager:
     """Test the CacheManager class."""
 
@@ -234,6 +244,8 @@ class TestCacheManager:
         assert info["expired_files"] == 0
 
 
+@pytest.mark.unit
+@pytest.mark.docker
 class TestDockerProbe:
     """Test the DockerProbe class."""
 
