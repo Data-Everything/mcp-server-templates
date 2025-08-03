@@ -440,6 +440,10 @@ def main():
             print(f"  Return code: {result['return_code']}")
             if "error" in result:
                 print(f"  Error: {result['error']}")
+            if "stdout" in result:
+                print(f"  Output: {result['stdout']}")
+            if "stderr" in result:
+                print(f"  Errors: {result['stderr']}")
 
     print("=" * 60)
     overall_status = "✅ ALL TESTS PASSED" if total_success else "❌ SOME TESTS FAILED"
