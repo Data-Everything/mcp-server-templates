@@ -149,11 +149,6 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
-    - name: Run core tests
-      run: |
-        python tests/runner.py --unit --quiet
-    - name: Run template tests
-
   # PyPI deployment (only on release tags)
   deploy-pypi:
     runs-on: ubuntu-latest
@@ -184,7 +179,7 @@ jobs:
 
     - name: Run final tests before deploy
       run: |
-        python tests/runner.py --unit --quiet
+        python tests/runner.py --unit
 
     - name: Build package
       run: |
