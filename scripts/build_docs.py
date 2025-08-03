@@ -20,6 +20,10 @@ import yaml
 # Import the TemplateDiscovery utility
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from mcp_template.template.utils.discovery import TemplateDiscovery
+from mcp_template.utils import (
+    TEMPLATES_DIR,
+    ROOT_DIR,
+)
 
 
 def cleanup_old_docs(docs_dir: Path):
@@ -336,8 +340,8 @@ def build_docs():
 
 def main():
     """Main function to build documentation."""
-    project_root = Path(__file__).parent.parent  # Go up one level from scripts/
-    templates_dir = project_root / "templates"
+    project_root = ROOT_DIR
+    templates_dir = TEMPLATES_DIR
     docs_dir = project_root / "docs"
     mkdocs_file = project_root / "mkdocs.yml"
 
