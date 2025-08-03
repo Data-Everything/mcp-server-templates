@@ -24,30 +24,6 @@ class TestRunner:
         self.test_dir = self.root_dir / "tests"
         self.coverage_dir = self.root_dir / "htmlcov"
 
-    def run_quick_tests(self, verbose: bool = True) -> Dict[str, Any]:
-        """Run quick validation tests without coverage.
-
-        Args:
-            verbose: Whether to show verbose output
-
-        Returns:
-            Dict containing test results
-        """
-        cmd = [
-            sys.executable,
-            "-m",
-            "pytest",
-            "tests/test_configuration.py",
-            "--tb=short",
-            "-x",  # Stop on first failure
-            "--cov-fail-under=0",  # Don't fail on coverage
-        ]
-
-        if verbose:
-            cmd.append("-v")
-
-        return self._run_pytest(cmd, "Quick Tests")
-
     def run_unit_tests(self, verbose: bool = True) -> Dict[str, Any]:
         """Run unit tests with coverage.
 
@@ -392,9 +368,6 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Run MCP Template tests")
-    parser.add_argument(
-        "--quick", action="store_true", help="Run quick validation tests only"
-    )
     parser.add_argument("--unit", action="store_true", help="Run unit tests only")
     parser.add_argument(
         "--integration", action="store_true", help="Run integration tests only"
@@ -425,9 +398,7 @@ def main():
 
     results = []
 
-    if args.quick:
-        results.append(runner.run_quick_tests(verbose))
-    elif args.unit:
+    if args.unit:
         results.append(runner.run_unit_tests(verbose))
     elif args.integration:
         results.append(runner.run_integration_tests(verbose))
