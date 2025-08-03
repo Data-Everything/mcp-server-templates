@@ -63,7 +63,7 @@ jobs:
 
     - name: Run unit tests
       run: |
-        python tests/runner.py --unit --quiet
+        python tests/runner.py --unit
 
     - name: Run configuration tests
       run: |
@@ -216,4 +216,4 @@ jobs:
 
     - name: Run integration tests
       run: |
-        python tests/runner.py --integration --quiet || echo "⚠️ Some integration tests failed"
+        python tests/runner.py --integration || echo "⚠️ Some integration tests failed"
