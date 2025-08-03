@@ -30,7 +30,7 @@ jobs:
 
     - name: Run quick tests
       run: |
-        python tests/test_runner.py --quick
+        python tests/runner.py --quick
 
     - name: Test import availability
       run: |
@@ -67,7 +67,7 @@ jobs:
 
     - name: Run unit tests
       run: |
-        python tests/test_runner.py --unit --quiet
+        python tests/runner.py --unit --quiet
 
     - name: Run configuration tests
       run: |
@@ -155,7 +155,7 @@ jobs:
 
     - name: Run core tests
       run: |
-        python tests/test_runner.py --quick
+        python tests/runner.py --quick
 
   # PyPI deployment (only on release tags)
   deploy-pypi:
@@ -187,8 +187,8 @@ jobs:
 
     - name: Run final tests before deploy
       run: |
-        python tests/test_runner.py --quick
-        python tests/test_runner.py --unit --quiet
+        python tests/runner.py --quick
+        python tests/runner.py --unit --quiet
 
     - name: Build package
       run: |
@@ -225,4 +225,4 @@ jobs:
 
     - name: Run integration tests
       run: |
-        python tests/test_runner.py --integration --quiet || echo "⚠️ Some integration tests failed"
+        python tests/runner.py --integration --quiet || echo "⚠️ Some integration tests failed"
