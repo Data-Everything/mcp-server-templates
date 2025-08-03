@@ -9,6 +9,8 @@ from mcp_template.tools.discovery import ToolDiscovery
 from mcp_template.cli import EnhancedCLI
 
 
+@pytest.mark.unit
+@pytest.mark.docker
 class TestDockerDiscoveryBasic:
     """Basic tests for Docker discovery functionality."""
 
@@ -142,6 +144,8 @@ class TestDockerDiscoveryBasic:
         assert env_vars["LOG_LEVEL"] == "INFO"
 
 
+@pytest.mark.integration
+@pytest.mark.docker
 class TestCLIConfigIntegration:
     """Test CLI integration with config values."""
 
@@ -186,6 +190,8 @@ class TestCLIConfigIntegration:
             assert template_config["env_vars"]["GITHUB_PERSONAL_ACCESS_TOKEN"] == "secret_token"
 
 
+@pytest.mark.e2e
+@pytest.mark.docker
 class TestEndToEndBehavior:
     """Test end-to-end behavior for real scenarios."""
 

@@ -4,15 +4,14 @@
   "version": "1.0.0",
   "author": "Sam Arora",
   "category": "Development",
-  "tags": [],
+  "tags": ["github", "version-control", "development", "ci-cd", "project-management", "wiki", "pipelines", "milestones"],
   "docker_image": "dataeverything/mcp-github",
   "docker_tag": "latest",
   "ports": {},
   "command": [],
   "transport": {
     "default": "stdio",
-    "supported": ["stdio"],
-    "port": 7071
+    "supported": ["stdio"]
   },
   "capabilities": [],
   "config_schema": {
@@ -23,6 +22,18 @@
         "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
         "default": "INFO",
         "env_mapping": "LOG_LEVEL"
+      },
+      "mcp_transport": {
+        "type": "string",
+        "description": "MCP transport mode (stdio only supported)",
+        "default": "stdio",
+        "env_mapping": "MCP_TRANSPORT"
+      },
+      "mcp_port": {
+        "type": "integer",
+        "description": "Port for MCP server (not used for stdio)",
+        "default": 7071,
+        "env_mapping": "MCP_PORT"
       },
       "github_token": {
         "type": "string",
@@ -59,5 +70,5 @@
   "tool_discovery": "dynamic",
   "tool_endpoint": "/tools",
   "has_image": true,
-  "origin": "external"
+  "origin": "internal"
 }

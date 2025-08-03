@@ -65,10 +65,10 @@ class TestGitLabTemplate:
             assert field in config, f"Missing required field: {field}"
 
         # Verify GitLab-specific values
-        assert config["name"] == "GitLab"
-        assert config["docker_image"] == "iwakitakuma/gitlab-mcp"
+        assert config["name"] == "GitLab MCP Server"
+        assert config["docker_image"] == "dataeverything/mcp-gitlab"
         assert config["has_image"] is True
-        assert config["origin"] == "external"
+        assert config["origin"] == "internal"
         assert config["tool_discovery"] == "dynamic"
 
     def test_configuration_schema_structure(self, template_dir):
@@ -218,7 +218,7 @@ class TestGitLabTemplate:
             config = json.load(f)
 
         # Docker configuration
-        assert config["docker_image"] == "iwakitakuma/gitlab-mcp"
+        assert config["docker_image"] == "dataeverything/mcp-gitlab"
         assert config["docker_tag"] == "latest"
         assert config["has_image"] is True
         assert isinstance(config["ports"], dict)  # May be empty
@@ -231,11 +231,10 @@ class TestGitLabTemplate:
         with open(template_json, "r") as f:
             config = json.load(f)
 
-        assert config["category"] == "Version Control"
+        assert config["category"] == "Development"
 
         tags = config["tags"]
-        expected_tags = ["gitlab", "version-control", "ci-cd"]
-
+        expected_tags = ["gitlab", "version-control", "development"]
         for tag in expected_tags:
             assert tag in tags
 

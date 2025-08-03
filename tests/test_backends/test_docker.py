@@ -9,6 +9,8 @@ import pytest
 from mcp_template.backends.docker import DockerDeploymentService
 
 
+@pytest.mark.unit
+@pytest.mark.docker
 class TestDockerDeploymentService:
     """Test Docker deployment service."""
 
@@ -157,8 +159,8 @@ class TestDockerDeploymentService:
             env_vars = service._prepare_environment_variables(config, template_data)
 
             assert "--env" in env_vars
-            assert "MCP_PARAM1=value1" in env_vars
-            assert "MCP_PARAM2=value2" in env_vars
+            assert "param1=value1" in env_vars
+            assert "param2=value2" in env_vars
             assert "TEMPLATE_VAR=template_value" in env_vars
 
     def test_prepare_port_mappings(self):

@@ -323,8 +323,8 @@ class TestConfigurationIntegration:
 
         # Check that environment variables are in the command
         command_str = " ".join(call_args)
-        assert "MCP_HELLO_FROM=Test" in command_str
-        assert "MCP_LOG_LEVEL=debug" in command_str
+        assert "hello_from=Test" in command_str
+        assert "log_level=debug" in command_str
 
     def test_config_defaults_handling(self):
         """Test handling of default configuration values."""

@@ -14,6 +14,7 @@ import requests
 from mcp_template.tools import CacheManager, DockerProbe, ToolDiscovery
 
 
+@pytest.mark.unit
 class TestToolDiscovery:
     """Test the ToolDiscovery class."""
 
@@ -171,6 +172,7 @@ class TestToolDiscovery:
         assert result["tools"][0]["name"] == "new_tool"
 
 
+@pytest.mark.unit
 class TestCacheManager:
     """Test the CacheManager class."""
 
@@ -242,6 +244,8 @@ class TestCacheManager:
         assert info["expired_files"] == 0
 
 
+@pytest.mark.unit
+@pytest.mark.docker
 class TestDockerProbe:
     """Test the DockerProbe class."""
 
