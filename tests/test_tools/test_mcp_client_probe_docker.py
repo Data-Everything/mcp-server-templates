@@ -99,10 +99,14 @@ class TestMCPClientProbeDocker:
     def test_discover_tools_from_docker_sync_wrapper(self):
         """Test synchronous wrapper for Docker discovery."""
         with patch.object(self.probe, 'discover_tools_from_docker_mcp') as mock_async:
-            mock_async.return_value = asyncio.coroutine(lambda: {
-                "tools": [{"name": "sync_tool", "description": "Sync", "category": "mcp", "parameters": {}}],
-                "discovery_method": "mcp_client"
-            })()
+            # Create an async mock that returns the expected result
+            async def async_return():
+                return {
+                    "tools": [{"name": "sync_tool", "description": "Sync", "category": "mcp", "parameters": {}}],
+                    "discovery_method": "mcp_client"
+                }
+            
+            mock_async.return_value = async_return()
 
             result = self.probe.discover_tools_from_docker_sync(
                 "test/image:latest",
