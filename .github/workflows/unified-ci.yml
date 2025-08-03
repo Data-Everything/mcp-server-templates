@@ -28,10 +28,6 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
-    - name: Run quick tests
-      run: |
-        python tests/runner.py --quick
-
     - name: Test import availability
       run: |
         python -c "
@@ -155,7 +151,8 @@ jobs:
 
     - name: Run core tests
       run: |
-        python tests/runner.py --quick
+        python tests/runner.py --unit --quiet
+    - name: Run template tests
 
   # PyPI deployment (only on release tags)
   deploy-pypi:
@@ -187,7 +184,6 @@ jobs:
 
     - name: Run final tests before deploy
       run: |
-        python tests/runner.py --quick
         python tests/runner.py --unit --quiet
 
     - name: Build package
