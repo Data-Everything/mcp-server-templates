@@ -41,6 +41,15 @@ class EnhancedCLI:
         self.tool_discovery = ToolDiscovery()
         self.docker_probe = DockerProbe()
 
+        # Initialize response beautifier
+        try:
+            from mcp_template.interactive_cli import ResponseBeautifier
+
+            self.beautifier = ResponseBeautifier()
+        except ImportError:
+            # Fallback if interactive CLI not available
+            self.beautifier = None
+
     def show_config_options(self, template_name: str) -> None:
         """Show all configuration options including double-underscore notation."""
         if template_name not in self.templates:
@@ -247,7 +256,10 @@ class EnhancedCLI:
             return
 
         # Display tools in a table
-        self._display_tools_table(tools)
+        if self.beautifier:
+            self.beautifier.beautify_tools_list(tools, f"{discovery_method} ({source})")
+        else:
+            self._display_tools_table(tools)
 
         # Show usage examples
         self._show_tool_usage_examples(template_name, template, tools)
@@ -703,74 +715,93 @@ else:
             if result["status"] == "completed":
                 console.print("[green]✅ Tool executed successfully[/green]")
 
-                stdout_content = result["stdout"]
-                stderr_content = result["stderr"]
+                # Use beautifier if available, otherwise fall back to existing logic
+                if self.beautifier:
+                    self.beautifier.beautify_tool_response(result)
+                else:
+                    # Existing response parsing logic as fallback
+                    stdout_content = result["stdout"]
+                    stderr_content = result["stderr"]
 
-                # Log for debugging
-                logger.debug("Raw stdout: %s", repr(stdout_content))
-                logger.debug("Raw stderr: %s", repr(stderr_content))
+                    # Log for debugging
+                    logger.debug("Raw stdout: %s", repr(stdout_content))
+                    logger.debug("Raw stderr: %s", repr(stderr_content))
 
-                # Try to parse and display the response nicely
-                # Look for JSON-RPC response in the output
-                json_responses = []
-                for line in stdout_content.split("\n"):
-                    line = line.strip()
-                    if (
-                        line.startswith('{"jsonrpc"')
-                        or line.startswith('{"result"')
-                        or line.startswith('{"error"')
-                    ):
-                        try:
-                            json_response = json.loads(line)
-                            json_responses.append(json_response)
-                        except json.JSONDecodeError:
-                            continue
+                    # Try to parse and display the response nicely
+                    # Look for JSON-RPC response in the output
+                    json_responses = []
+                    for line in stdout_content.split("\n"):
+                        line = line.strip()
+                        if (
+                            line.startswith('{"jsonrpc"')
+                            or line.startswith('{"result"')
+                            or line.startswith('{"error"')
+                        ):
+                            try:
+                                json_response = json.loads(line)
+                                json_responses.append(json_response)
+                            except json.JSONDecodeError:
+                                continue
 
-                # Find the tool call response (should be the last response or one with id=3)
-                tool_response = None
-                for response in json_responses:
-                    if response.get("id") == 3:  # Tool call has id=3 in our sequence
-                        tool_response = response
-                        break
+                    # Find the tool call response (should be the last response or one with id=3)
+                    tool_response = None
+                    for response in json_responses:
+                        if (
+                            response.get("id") == 3
+                        ):  # Tool call has id=3 in our sequence
+                            tool_response = response
+                            break
 
-                # If no id=3 response, use the last response (might be the tool result)
-                if not tool_response and json_responses:
-                    tool_response = json_responses[-1]
+                    # If no id=3 response, use the last response (might be the tool result)
+                    if not tool_response and json_responses:
+                        tool_response = json_responses[-1]
 
-                if tool_response:
-                    if "result" in tool_response:
-                        # Check if result has content (MCP response format)
-                        result_data = tool_response["result"]
-                        if isinstance(result_data, dict) and "content" in result_data:
-                            # MCP format with content array
-                            content_items = result_data["content"]
-                            if isinstance(content_items, list) and content_items:
-                                # Display the first content item
-                                first_content = content_items[0]
-                                if (
-                                    isinstance(first_content, dict)
-                                    and "text" in first_content
-                                ):
-                                    console.print(
-                                        Panel(
-                                            first_content["text"],
-                                            title="Tool Result",
-                                            border_style=(
-                                                "green"
-                                                if not result_data.get("isError")
-                                                else "red"
-                                            ),
+                    if tool_response:
+                        if "result" in tool_response:
+                            # Check if result has content (MCP response format)
+                            result_data = tool_response["result"]
+                            if (
+                                isinstance(result_data, dict)
+                                and "content" in result_data
+                            ):
+                                # MCP format with content array
+                                content_items = result_data["content"]
+                                if isinstance(content_items, list) and content_items:
+                                    # Display the first content item
+                                    first_content = content_items[0]
+                                    if (
+                                        isinstance(first_content, dict)
+                                        and "text" in first_content
+                                    ):
+                                        console.print(
+                                            Panel(
+                                                first_content["text"],
+                                                title="Tool Result",
+                                                border_style=(
+                                                    "green"
+                                                    if not result_data.get("isError")
+                                                    else "red"
+                                                ),
+                                            )
                                         )
-                                    )
+                                    else:
+                                        console.print(
+                                            Panel(
+                                                json.dumps(content_items, indent=2),
+                                                title="Tool Result",
+                                                border_style="green",
+                                            )
+                                        )
                                 else:
                                     console.print(
                                         Panel(
-                                            json.dumps(content_items, indent=2),
+                                            json.dumps(result_data, indent=2),
                                             title="Tool Result",
                                             border_style="green",
                                         )
                                     )
                             else:
+                                # Simple result
                                 console.print(
                                     Panel(
                                         json.dumps(result_data, indent=2),
@@ -778,52 +809,43 @@ else:
                                         border_style="green",
                                     )
                                 )
-                        else:
-                            # Simple result
+                        elif "error" in tool_response:
+                            # JSON-RPC error
+                            error_info = tool_response["error"]
                             console.print(
                                 Panel(
-                                    json.dumps(result_data, indent=2),
-                                    title="Tool Result",
-                                    border_style="green",
+                                    f"Error {error_info.get('code', 'unknown')}: {error_info.get('message', 'Unknown error')}",
+                                    title="Tool Error",
+                                    border_style="red",
                                 )
                             )
-                    elif "error" in tool_response:
-                        # JSON-RPC error
-                        error_info = tool_response["error"]
-                        console.print(
-                            Panel(
-                                f"Error {error_info.get('code', 'unknown')}: {error_info.get('message', 'Unknown error')}",
-                                title="Tool Error",
-                                border_style="red",
+                        else:
+                            # Raw JSON response
+                            console.print(
+                                Panel(
+                                    json.dumps(tool_response, indent=2),
+                                    title="MCP Response",
+                                    border_style="blue",
+                                )
                             )
-                        )
                     else:
-                        # Raw JSON response
+                        # No tool response found, show raw output
                         console.print(
                             Panel(
-                                json.dumps(tool_response, indent=2),
-                                title="MCP Response",
+                                stdout_content,
+                                title="Raw Output",
                                 border_style="blue",
                             )
                         )
-                else:
-                    # No tool response found, show raw output
-                    console.print(
-                        Panel(
-                            stdout_content,
-                            title="Raw Output",
-                            border_style="blue",
-                        )
-                    )
 
-                if stderr_content:
-                    console.print(
-                        Panel(
-                            stderr_content,
-                            title="Standard Error",
-                            border_style="yellow",
+                    if stderr_content:
+                        console.print(
+                            Panel(
+                                stderr_content,
+                                title="Standard Error",
+                                border_style="yellow",
+                            )
                         )
-                    )
                 return True
             else:
                 console.print(
@@ -846,6 +868,11 @@ else:
 
 def add_enhanced_cli_args(subparsers) -> None:
     """Add enhanced CLI arguments to the argument parser."""
+
+    # Interactive CLI command
+    interactive_parser = subparsers.add_parser(
+        "interactive", help="Start interactive CLI session for MCP management"
+    )
 
     # Config command
     config_parser = subparsers.add_parser(
@@ -950,7 +977,14 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
 
     console = Console()
 
-    if args.command == "config":
+    if args.command == "interactive":
+        # Start interactive CLI session
+        from mcp_template.interactive_cli import start_interactive_cli
+
+        start_interactive_cli()
+        return True
+
+    elif args.command == "config":
         enhanced_cli.show_config_options(args.template)
         return True
 

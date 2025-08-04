@@ -89,11 +89,8 @@ def test_run_stdio_tool_non_stdio_template(mock_docker_service, mock_console, en
     result = enhanced_cli.run_stdio_tool('http-template', 'tool_name')
     
     assert result is False
-    # Check that the exact error message about stdio support was printed
-    printed_messages = [str(call) for call in mock_console.print.call_args_list]
-    assert any(
-        "does not support stdio transport" in msg
-        for msg in printed_messages
+    mock_console.print.assert_called_with(
+        "[red]❌ Template 'http-template' does not support stdio transport[/red]"
     )
 
 
@@ -271,8 +268,7 @@ def test_list_tools_success(mock_docker_service, mock_console, enhanced_cli):
     }
 
     result = enhanced_cli.list_tools('github')
-    # list_tools returns None, so we check that it didn't fail (no error printed)
-    assert result is None
+    assert result is True
 
 
 @pytest.mark.docker
@@ -282,13 +278,9 @@ def test_list_tools_template_not_found(mock_docker_service, mock_console, enhanc
     """Test tool listing with non-existent template."""
     result = enhanced_cli.list_tools('nonexistent')
     
-    # list_tools returns None, check that error was printed
-    assert result is None
-    # The actual implementation prints two messages - check that template not found is printed
-    printed_messages = [str(call) for call in mock_console.print.call_args_list]
-    assert any(
-        "Template 'nonexistent' not found" in msg
-        for msg in printed_messages
+    assert result is False
+    mock_console.print.assert_called_with(
+        "[red]❌ Template 'nonexistent' not found[/red]"
     )
 
 
@@ -299,8 +291,10 @@ def test_list_tools_non_stdio_template(mock_docker_service, mock_console, enhanc
     """Test tool listing with non-stdio template."""
     result = enhanced_cli.list_tools('http-template')
     
-    # list_tools returns None, check that it processed the template
-    assert result is None
+    assert result is False
+    mock_console.print.assert_called_with(
+        "[red]❌ Template 'http-template' does not support stdio transport[/red]"
+    )
 
 
 @pytest.mark.docker
@@ -317,7 +311,7 @@ def test_list_tools_docker_failure(mock_docker_service, mock_console, enhanced_c
     }
 
     result = enhanced_cli.list_tools('github')
-    assert result is None
+    assert result is False
 
 
 @pytest.mark.docker
@@ -334,7 +328,7 @@ def test_list_tools_invalid_json_response(mock_docker_service, mock_console, enh
     }
 
     result = enhanced_cli.list_tools('github')
-    assert result is None
+    assert result is False
 
 
 @pytest.mark.docker
@@ -363,7 +357,7 @@ def test_discover_tools_from_image_success(mock_docker_service, mock_console, en
     }
 
     result = enhanced_cli.discover_tools_from_image('test/image', ['arg1'], {})
-    assert result is None
+    assert result is True
 
 
 @pytest.mark.docker
@@ -380,7 +374,7 @@ def test_discover_tools_from_image_failure(mock_docker_service, mock_console, en
     }
 
     result = enhanced_cli.discover_tools_from_image('test/image', ['arg1'], {})
-    assert result is None
+    assert result is False
 
 
 @pytest.mark.integration

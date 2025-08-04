@@ -183,9 +183,9 @@ def test_run_stdio_command_with_environment_vars(mock_run, docker_service):
     # Verify environment variables were passed to Docker
     run_call = mock_run.call_args_list[1]
     bash_command = run_call[0][0][2]
-    assert '--env GITHUB_TOKEN=test_token' in bash_command
-    assert '--env API_KEY=secret' in bash_command
-    # Note: LOG_LEVEL is from template environment, config values take precedence
+    assert '-e GITHUB_TOKEN=test_token' in bash_command
+    assert '-e API_KEY=secret' in bash_command
+    assert '-e LOG_LEVEL=debug' in bash_command
 
 
 @pytest.mark.docker
@@ -271,8 +271,8 @@ def test_run_stdio_command_timeout_handling(mock_run, docker_service):
         template_id, config, template_data, json_input
     )
 
-    assert result['status'] == 'error'
-    assert 'timeout' in result['error'].lower() or 'timed out' in result['error'].lower()
+    assert result['status'] == 'failed'
+    assert 'timeout' in result['error'].lower() or 'expired' in result['error'].lower()
 
 
 @pytest.mark.integration
