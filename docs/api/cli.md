@@ -34,7 +34,7 @@ mcp-template list --filter database
 
 ### `deploy`
 
-Deploy a template.
+Deploy a template (HTTP transport only).
 
 ```bash
 mcp-template deploy TEMPLATE [OPTIONS]
@@ -55,6 +55,75 @@ mcp-template deploy TEMPLATE [OPTIONS]
 mcp-template deploy demo
 mcp-template deploy demo --port 8080
 mcp-template deploy demo --env DEBUG=true --env LOG_LEVEL=debug
+```
+
+**Note:** Only HTTP transport templates can be deployed. Stdio transport templates will show an error with guidance to use `run-tool` instead.
+
+### `run-tool`
+
+Run a specific tool from a stdio MCP template.
+
+```bash
+mcp-template run-tool TEMPLATE TOOL_NAME [OPTIONS]
+```
+
+**Arguments:**
+- `TEMPLATE`: Template name
+- `TOOL_NAME`: Name of the tool to execute
+
+**Options:**
+- `--args TEXT`: JSON arguments to pass to the tool
+- `--config TEXT`: Configuration values (KEY=VALUE)
+- `--env TEXT`: Environment variables (KEY=VALUE)
+
+**Examples:**
+```bash
+# Basic tool execution
+mcp-template run-tool github search_repositories --args '{"query": "mcp"}'
+
+# With authentication
+mcp-template run-tool github create_issue \
+  --args '{"owner": "user", "repo": "test", "title": "Bug"}' \
+  --env GITHUB_PERSONAL_ACCESS_TOKEN=token
+
+# With configuration
+mcp-template run-tool filesystem read_file \
+  --args '{"path": "/data/file.txt"}' \
+  --config allowed_directories='["/data"]' \
+  --config read_only=true
+```
+
+### `tools`
+
+List available tools for a template or discover tools from a Docker image.
+
+```bash
+mcp-template tools [TEMPLATE] [OPTIONS]
+```
+
+**Arguments:**
+- `TEMPLATE`: Template name (optional if using --image)
+
+**Options:**
+- `--image TEXT`: Docker image name to discover tools from
+- `--no-cache`: Ignore cached results
+- `--refresh`: Force refresh cached results
+- `--config TEXT`: Configuration values for dynamic discovery (KEY=VALUE)
+
+**Examples:**
+```bash
+# List tools for a template
+mcp-template tools github
+mcp-template tools filesystem
+
+# Discover tools from Docker image
+mcp-template tools --image mcp/github:latest
+
+# List tools with configuration
+mcp-template tools github --config github_token=your_token
+
+# Force refresh tool discovery
+mcp-template tools github --refresh
 ```
 
 ### `stop`

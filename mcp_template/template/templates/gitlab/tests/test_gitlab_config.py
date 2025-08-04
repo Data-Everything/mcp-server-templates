@@ -34,7 +34,7 @@ class TestGitLabTemplateConfiguration:
         assert "stdio" in template_config["transport"]["supported"]
         assert "sse" in template_config["transport"]["supported"]
         assert "streamable-http" in template_config["transport"]["supported"]
-        assert 'http' in template_config["transport"]["supported"]
+        assert "http" in template_config["transport"]["supported"]
 
         # Verify configuration schema
         config_schema = template_config["config_schema"]

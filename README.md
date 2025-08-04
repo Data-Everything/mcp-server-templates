@@ -118,11 +118,55 @@ Each template must include:
 | Command | Description |
 |---------|-------------|
 | `mcp-template list` | List all deployments |
-| `mcp-template deploy <template>` | Deploy template with defaults |
+| `mcp-template deploy <template>` | Deploy template with defaults (HTTP transport only) |
 | `mcp-template deploy <template> --no-pull` | Deploy without pulling image (use local) |
 | `mcp-template status <deployment>` | View deployment status |
 | `mcp-template delete <deployment>` | Delete deployment |
 | `mcp-template create <template-id>` | Create new template |
+| `mcp-template run-tool <template> <tool_name>` | Run a tool from stdio MCP server |
+| `mcp-template tools <template>` | List available tools in a template |
+
+### Transport Types & Usage
+
+MCP servers support two transport types with different deployment approaches:
+
+#### HTTP Transport (Deployable)
+HTTP transport servers run as persistent containers and can be deployed using the standard `deploy` command:
+
+```bash
+# Deploy HTTP transport server (runs persistently)
+mcp-template deploy http-server --config port=8080
+
+# Check server status
+mcp-template status http-server-xyz
+
+# Access via HTTP endpoint
+curl http://localhost:8080/tools
+```
+
+#### Stdio Transport (Interactive)
+Stdio transport servers run interactively and **cannot be deployed** as persistent containers. They use standard input/output for communication and are designed for direct tool execution:
+
+```bash
+# ❌ Cannot deploy stdio servers (will show error with helpful guidance)
+mcp-template deploy stdio-server
+# Error: Cannot deploy stdio transport MCP servers
+# Stdio transport doesn't require deployment - use run-tool command instead
+
+# ✅ List available tools in stdio server
+mcp-template tools github
+# Shows all available tools with descriptions
+
+# ✅ Run specific tools from stdio server
+mcp-template run-tool github search_repositories --args '{"query": "mcp server"}'
+mcp-template run-tool github create_issue --args '{"owner": "user", "repo": "test", "title": "New issue"}'
+
+# ✅ Run tools with configuration and environment variables
+mcp-template run-tool github search_repositories \
+  --args '{"query": "python"}' \
+  --env GITHUB_PERSONAL_ACCESS_TOKEN=your_token \
+  --config timeout=30
+```
 
 ### Configuration Options
 
@@ -235,6 +279,75 @@ mcp-template deploy file-server \
 | Tool modifications | `--override` | `--override "tools__0__enabled=false"` |
 | Custom fields addition | `--override` | `--override "custom_field=value"` |
 | Complex nested structures | `--override` with `__` | `--override "config__db__host=localhost"` |
+
+### Stdio Tool Execution
+
+For stdio transport MCP servers, use the `run-tool` command to execute individual tools:
+
+**1. List Available Tools:**
+```bash
+# Show all tools available in a template
+mcp-template tools github
+mcp-template tools filesystem
+mcp-template tools --image custom/mcp-server:latest
+
+# List tools with configuration
+mcp-template tools github --config github_token=your_token
+```
+
+**2. Run Individual Tools:**
+```bash
+# Basic tool execution
+mcp-template run-tool github search_repositories \
+  --args '{"query": "mcp server", "per_page": 5}'
+
+# Tool execution with authentication
+mcp-template run-tool github create_issue \
+  --args '{"owner": "user", "repo": "test", "title": "Bug report", "body": "Description"}' \
+  --env GITHUB_PERSONAL_ACCESS_TOKEN=your_token
+
+# Tool execution with configuration
+mcp-template run-tool filesystem read_file \
+  --args '{"path": "/data/example.txt"}' \
+  --config allowed_directories='["/data", "/workspace"]' \
+  --config read_only=true
+```
+
+**3. Complex Tool Arguments:**
+```bash
+# JSON arguments for complex data structures
+mcp-template run-tool github create_pull_request \
+  --args '{
+    "owner": "user",
+    "repo": "project", 
+    "title": "Feature: Add new functionality",
+    "head": "feature-branch",
+    "base": "main",
+    "body": "This PR adds amazing new features:\n- Feature 1\n- Feature 2"
+  }' \
+  --env GITHUB_PERSONAL_ACCESS_TOKEN=your_token
+
+# Multiple configuration options
+mcp-template run-tool database query \
+  --args '{"sql": "SELECT * FROM users LIMIT 10"}' \
+  --config connection_string="postgresql://localhost:5432/mydb" \
+  --config timeout=30 \
+  --env DB_PASSWORD=secret
+```
+
+**4. Working with Different Templates:**
+```bash
+# GitHub API tools
+mcp-template run-tool github search_users --args '{"q": "mcp"}'
+mcp-template run-tool github get_file_contents --args '{"owner": "user", "repo": "project", "path": "README.md"}'
+
+# Filesystem tools  
+mcp-template run-tool filesystem list_directory --args '{"path": "/data"}'
+mcp-template run-tool filesystem create_file --args '{"path": "/data/test.txt", "content": "Hello World"}'
+
+# Custom MCP servers
+mcp-template run-tool my-custom-server my_tool --args '{"param": "value"}'
+```
 
 ### Configuration File Examples
 

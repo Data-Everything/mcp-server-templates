@@ -107,11 +107,70 @@ class DockerDeploymentService(BaseDeploymentBackend):
         Raises:
             Exception: If deployment fails for any reason
         """
+        # Prepare deployment configuration
+        env_vars = self._prepare_environment_variables(config, template_data)
+
+        # Check if this is a stdio deployment
+        is_stdio = self._identify_stdio_deployment(env_vars)
+
+        # Also check the template's default transport
+        template_transport = template_data.get("transport", {})
+        default_transport = template_transport.get("default", "http")
+
+        # If stdio transport is detected, prevent deployment
+        if is_stdio or default_transport == "stdio":
+            # Import here to avoid circular import
+            from mcp_template.tools.discovery import ToolDiscovery
+
+            tool_discovery = ToolDiscovery()
+
+            # Get available tools for this template
+            try:
+                discovery_result = tool_discovery.discover_tools(
+                    template_id,
+                    template_data.get("template_dir", ""),
+                    template_data,
+                    use_cache=True,
+                    force_refresh=False,
+                )
+                tools = discovery_result.get("tools", [])
+                tool_names = [tool.get("name", "unknown") for tool in tools]
+            except Exception as e:
+                logger.warning("Failed to discover tools for %s: %s", template_id, e)
+                tool_names = []
+
+            # Create error message with available tools
+            console.line()
+            console.print(
+                Panel(
+                    f"❌ [red]Cannot deploy stdio transport MCP servers[/red]\n\n"
+                    f"The template [cyan]{template_id}[/cyan] uses stdio transport, which doesn't require deployment.\n"
+                    f"Stdio MCP servers run interactively and cannot be deployed as persistent containers.\n\n"
+                    f"[yellow]Available tools in this template:[/yellow]\n"
+                    + (
+                        f"  • {chr(10).join(f'  • {tool}' for tool in tool_names)}"
+                        if tool_names
+                        else "  • No tools discovered"
+                    )
+                    + "\n\n"
+                    f"[green]To use this template, run tools directly:[/green]\n"
+                    f"  mcp-template tools {template_id}                    # List available tools\n"
+                    f"  mcp-template run-tool {template_id} <tool_name>     # Run a specific tool\n"
+                    f"  echo '{json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'})}' | \\\n"
+                    f"    docker run -i --rm {template_data.get('image', template_data.get('docker_image', f'mcp-{template_id}:latest'))}",
+                    title="Stdio Transport Detected",
+                    border_style="yellow",
+                )
+            )
+
+            raise ValueError(
+                f"Cannot deploy stdio transport template '{template_id}'. "
+                "Stdio templates run interactively and don't support persistent deployment."
+            )
+
         container_name = self._generate_container_name(template_id)
 
         try:
-            # Prepare deployment configuration
-            env_vars = self._prepare_environment_variables(config, template_data)
             volumes = self._prepare_volume_mounts(template_data)
             ports = self._prepare_port_mappings(template_data)
             command_args = template_data.get("command", [])
@@ -130,6 +189,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
                 volumes,
                 ports,
                 command_args,
+                is_stdio=is_stdio,
             )
 
             # Wait for container to stabilize
@@ -204,6 +264,70 @@ class DockerDeploymentService(BaseDeploymentBackend):
             ports.extend(["-p", f"{host_port}:{container_port}"])
         return ports
 
+    @staticmethod
+    def _identify_stdio_deployment(
+        env_vars: List[str],
+    ) -> bool:
+        """Identify if the deployment is using stdio transport."""
+
+        is_stdio = False
+        for env_var in env_vars:
+            if len(env_var.split("=")) == 2:
+                key, value = env_var.split("=", 1)
+                if key == "MCP_TRNSPORT" and value == "stdio":
+                    is_stdio = True
+                    break
+
+        return is_stdio
+
+    def _build_docker_command(
+        self,
+        container_name: str,
+        template_id: str,
+        image_name: str,
+        env_vars: List[str],
+        volumes: List[str],
+        ports: List[str],
+        command_args: List[str],
+        is_stdio: bool = False,
+        detached: bool = True,
+    ) -> List[str]:
+        """Build the Docker command with all configuration."""
+        docker_command = [
+            "docker",
+            "run",
+        ]
+
+        if detached:
+            docker_command.append("--detach")
+
+        docker_command.extend(
+            [
+                "--name",
+                container_name,
+            ]
+        )
+
+        if not is_stdio:
+            docker_command.extend(["--restart", "unless-stopped"])
+
+        docker_command.extend(
+            [
+                "--label",
+                f"template={template_id}",
+                "--label",
+                "managed-by=mcp-template",
+            ]
+        )
+
+        docker_command.extend(ports)
+        docker_command.extend(env_vars)
+        docker_command.extend(volumes)
+        docker_command.append(image_name)
+        docker_command.extend(command_args)
+
+        return docker_command
+
     def _deploy_container(
         self,
         container_name: str,
@@ -213,28 +337,20 @@ class DockerDeploymentService(BaseDeploymentBackend):
         volumes: List[str],
         ports: List[str],
         command_args: List[str],
+        is_stdio: bool = False,
     ) -> str:
         """Deploy the Docker container with all configuration."""
-        # Build Docker run command
-        docker_command = (
-            [
-                "docker",
-                "run",
-                "--detach",
-                "--name",
-                container_name,
-                "--restart",
-                "unless-stopped",
-                "--label",
-                f"template={template_id}",
-                "--label",
-                "managed-by=mcp-template",
-            ]
-            + ports
-            + env_vars
-            + volumes
-            + [image_name]
-            + command_args
+        # Build the Docker command
+        docker_command = self._build_docker_command(
+            container_name,
+            template_id,
+            image_name,
+            env_vars,
+            volumes,
+            ports,
+            command_args,
+            is_stdio,
+            detached=True,
         )
 
         console.line()
@@ -251,6 +367,136 @@ class DockerDeploymentService(BaseDeploymentBackend):
 
         logger.info("Started container %s with ID %s", container_name, container_id)
         return container_id
+
+    def run_stdio_command(
+        self,
+        template_id: str,
+        config: Dict[str, Any],
+        template_data: Dict[str, Any],
+        json_input: str,
+        pull_image: bool = True,
+    ) -> Dict[str, Any]:
+        """Run a stdio MCP command directly and return the result."""
+        try:
+            # Prepare deployment configuration
+            env_vars = self._prepare_environment_variables(config, template_data)
+            volumes = self._prepare_volume_mounts(template_data)
+            command_args = template_data.get("command", [])
+            image_name = template_data.get("image", f"mcp-{template_id}:latest")
+
+            # Pull image if requested
+            if pull_image:
+                self._run_command(["docker", "pull", image_name])
+
+            # Generate a temporary container name for this execution
+            container_name = f"mcp-{template_id}-stdio-{str(uuid.uuid4())[:8]}"
+
+            # Build the Docker command for interactive stdio execution
+            docker_command = self._build_docker_command(
+                container_name,
+                template_id,
+                image_name,
+                env_vars,
+                volumes,
+                [],  # No port mappings for stdio
+                command_args,
+                is_stdio=True,
+                detached=False,  # Run interactively
+            )
+
+            # Add interactive flags for stdio
+            docker_command.insert(2, "-i")  # Interactive
+            docker_command.insert(3, "--rm")  # Remove container after execution
+
+            logger.info("Running stdio command for template %s", template_id)
+            logger.debug("Docker command: %s", " ".join(docker_command))
+
+            # Parse the original JSON input to extract the tool call
+            try:
+                tool_request = json.loads(json_input)
+                tool_method = tool_request.get("method")
+                tool_params = tool_request.get("params", {})
+            except json.JSONDecodeError:
+                return {
+                    "template_id": template_id,
+                    "status": "failed",
+                    "error": "Invalid JSON input",
+                    "executed_at": datetime.now().isoformat(),
+                }
+
+            # Create the proper MCP initialization sequence
+            mcp_commands = [
+                # 1. Initialize the connection
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {},
+                            "clientInfo": {"name": "mcp-template", "version": "1.0.0"},
+                        },
+                    }
+                ),
+                # 2. Send initialized notification
+                json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}),
+                # 3. Send the actual tool call or request
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 3,
+                        "method": tool_method,
+                        "params": tool_params,
+                    }
+                ),
+            ]
+
+            # Join commands with newlines for proper MCP communication
+            full_input = "\n".join(mcp_commands)
+
+            logger.debug("Full MCP input: %s", full_input)
+
+            # Execute the command with MCP input sequence using bash heredoc
+            # This avoids creating temporary files
+            bash_command = [
+                "/bin/bash",
+                "-c",
+                f"""docker run -i --rm {' '.join(env_vars)} {' '.join(volumes)} {' '.join(['--label', f'template={template_id}'])} {image_name} {' '.join(command_args)} << 'EOF'
+{full_input}
+EOF""",
+            ]
+
+            result = subprocess.run(
+                bash_command, capture_output=True, text=True, check=True, timeout=30
+            )
+
+            return {
+                "template_id": template_id,
+                "status": "completed",
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "executed_at": datetime.now().isoformat(),
+            }
+
+        except subprocess.CalledProcessError as e:
+            logger.error("Stdio command failed for template %s: %s", template_id, e)
+            return {
+                "template_id": template_id,
+                "status": "failed",
+                "stdout": e.stdout or "",
+                "stderr": e.stderr or "",
+                "error": str(e),
+                "executed_at": datetime.now().isoformat(),
+            }
+        except Exception as e:
+            logger.error("Unexpected error running stdio command: %s", e)
+            return {
+                "template_id": template_id,
+                "status": "error",
+                "error": str(e),
+                "executed_at": datetime.now().isoformat(),
+            }
 
     def _cleanup_failed_deployment(self, container_name: str):
         """Clean up a failed deployment by removing the container."""

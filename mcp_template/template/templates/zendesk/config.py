@@ -93,7 +93,7 @@ class ZendeskServerConfig:
             env_var = schema.get("env_mapping")
             if env_var and env_var in os.environ:
                 env_value = os.environ[env_var]
-                
+
                 # Type coercion based on schema
                 schema_type = schema.get("type", "string")
                 try:
@@ -127,7 +127,7 @@ class ZendeskServerConfig:
                 # Split by double underscore and create nested structure
                 parts = key.split("__")
                 current = nested_updates
-                
+
                 for part in parts[:-1]:
                     # Handle array indices
                     if part.isdigit():
@@ -164,7 +164,11 @@ class ZendeskServerConfig:
     def _deep_update(self, base_dict: Dict, update_dict: Dict):
         """Recursively update a dictionary with another dictionary."""
         for key, value in update_dict.items():
-            if isinstance(value, dict) and key in base_dict and isinstance(base_dict[key], dict):
+            if (
+                isinstance(value, dict)
+                and key in base_dict
+                and isinstance(base_dict[key], dict)
+            ):
                 self._deep_update(base_dict[key], value)
             else:
                 base_dict[key] = value
@@ -193,34 +197,50 @@ class ZendeskServerConfig:
     def _validate_field(self, key: str, value: Any, schema: Dict):
         """Validate a single configuration field."""
         expected_type = schema.get("type", "string")
-        
+
         # Type validation
         if expected_type == "string" and not isinstance(value, str):
-            raise ValueError(f"Field '{key}' must be a string, got {type(value).__name__}")
+            raise ValueError(
+                f"Field '{key}' must be a string, got {type(value).__name__}"
+            )
         elif expected_type == "integer" and not isinstance(value, int):
-            raise ValueError(f"Field '{key}' must be an integer, got {type(value).__name__}")
+            raise ValueError(
+                f"Field '{key}' must be an integer, got {type(value).__name__}"
+            )
         elif expected_type == "boolean" and not isinstance(value, bool):
-            raise ValueError(f"Field '{key}' must be a boolean, got {type(value).__name__}")
+            raise ValueError(
+                f"Field '{key}' must be a boolean, got {type(value).__name__}"
+            )
         elif expected_type == "array" and not isinstance(value, (list, tuple)):
-            raise ValueError(f"Field '{key}' must be an array, got {type(value).__name__}")
+            raise ValueError(
+                f"Field '{key}' must be an array, got {type(value).__name__}"
+            )
 
         # Enum validation
         if "enum" in schema and value not in schema["enum"]:
-            raise ValueError(f"Field '{key}' must be one of {schema['enum']}, got '{value}'")
+            raise ValueError(
+                f"Field '{key}' must be one of {schema['enum']}, got '{value}'"
+            )
 
         # Range validation for integers
         if expected_type == "integer":
             if "minimum" in schema and value < schema["minimum"]:
-                raise ValueError(f"Field '{key}' must be >= {schema['minimum']}, got {value}")
+                raise ValueError(
+                    f"Field '{key}' must be >= {schema['minimum']}, got {value}"
+                )
             if "maximum" in schema and value > schema["maximum"]:
-                raise ValueError(f"Field '{key}' must be <= {schema['maximum']}, got {value}")
+                raise ValueError(
+                    f"Field '{key}' must be <= {schema['maximum']}, got {value}"
+                )
 
     def _validate_zendesk_config(self):
         """Validate Zendesk-specific configuration requirements."""
         # Validate subdomain format
         subdomain = self.config_dict.get("zendesk_subdomain")
         if subdomain and not re.match(r"^[a-zA-Z0-9-]+$", subdomain):
-            raise ValueError("zendesk_subdomain must contain only alphanumeric characters and hyphens")
+            raise ValueError(
+                "zendesk_subdomain must contain only alphanumeric characters and hyphens"
+            )
 
         # Validate email format
         email = self.config_dict.get("zendesk_email")
@@ -246,7 +266,7 @@ class ZendeskServerConfig:
     def get_template_config(self) -> Dict[str, Any]:
         """
         Get configuration values from the config_schema.
-        
+
         This returns the standard configuration values that can be set via
         CLI --config parameters or environment variables.
         """
@@ -267,7 +287,7 @@ class ZendeskServerConfig:
     def get_template_data(self) -> Dict[str, Any]:
         """
         Get the full template data, potentially modified by double underscore notation.
-        
+
         This returns the complete template structure that may have been modified
         by CLI parameters using double underscore notation.
         """
@@ -282,10 +302,7 @@ class ZendeskServerConfig:
 
     def get_auth_headers(self) -> Dict[str, str]:
         """Get authentication headers for Zendesk API requests."""
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
         oauth_token = self.config_dict.get("zendesk_oauth_token")
         if oauth_token:
@@ -295,15 +312,17 @@ class ZendeskServerConfig:
         # Fall back to email/token authentication
         email = self.config_dict.get("zendesk_email")
         api_token = self.config_dict.get("zendesk_api_token")
-        
+
         if email and api_token:
             import base64
+
             credentials = f"{email}/token:{api_token}"
             encoded_credentials = base64.b64encode(credentials.encode()).decode()
             headers["Authorization"] = f"Basic {encoded_credentials}"
         elif email:
             # Basic email authentication (less secure)
             import base64
+
             encoded_email = base64.b64encode(f"{email}:".encode()).decode()
             headers["Authorization"] = f"Basic {encoded_email}"
 
@@ -313,21 +332,21 @@ class ZendeskServerConfig:
         """Get rate limiting configuration."""
         return {
             "requests_per_minute": self.config_dict.get("rate_limit_requests", 200),
-            "timeout_seconds": self.config_dict.get("timeout_seconds", 30)
+            "timeout_seconds": self.config_dict.get("timeout_seconds", 30),
         }
 
     def get_cache_config(self) -> Dict[str, Any]:
         """Get caching configuration."""
         return {
             "enabled": self.config_dict.get("enable_cache", True),
-            "ttl_seconds": self.config_dict.get("cache_ttl_seconds", 300)
+            "ttl_seconds": self.config_dict.get("cache_ttl_seconds", 300),
         }
 
     def get_default_ticket_config(self) -> Dict[str, str]:
         """Get default ticket configuration."""
         return {
             "priority": self.config_dict.get("default_ticket_priority", "normal"),
-            "type": self.config_dict.get("default_ticket_type", "question")
+            "type": self.config_dict.get("default_ticket_type", "question"),
         }
 
     def is_sensitive_field(self, field_name: str) -> bool:
@@ -341,11 +360,11 @@ class ZendeskServerConfig:
         """Get configuration with sensitive fields masked."""
         config = self.get_template_config()
         sanitized = {}
-        
+
         for key, value in config.items():
             if self.is_sensitive_field(key) and value:
                 sanitized[key] = "*" * 8
             else:
                 sanitized[key] = value
-                
+
         return sanitized

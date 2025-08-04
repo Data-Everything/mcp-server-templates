@@ -228,11 +228,15 @@ class DemoMCPServer:
                 "MCP_TRANSPORT",
                 self.template_data.get("transport", {}).get("default", "http"),
             ),
-            port=int(
-                os.getenv(
-                    "MCP_PORT",
-                    self.template_data.get("transport", {}).get("port", 7071),
+            port=(
+                int(
+                    os.getenv(
+                        "MCP_PORT",
+                        self.template_data.get("transport", {}).get("port", 7071),
+                    )
                 )
+                if not os.getenv("MCP_TRANSPORT") == "stdio"
+                else None
             ),
             log_level=self.config_data.get("log_level", "info"),
         )
