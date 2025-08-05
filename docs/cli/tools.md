@@ -51,6 +51,39 @@ The tools command uses a multi-strategy approach:
 2. **HTTP Fallback**: Endpoint probing if stdio fails
 3. **Container Management**: Automatic container lifecycle
 
+## Enhanced Credential Handling
+
+The tools command features intelligent credential detection and auto-provisioning:
+
+### Schema-Based Credential Detection
+- **Config Schema Validation**: Uses template `config_schema` to identify required credentials
+- **Generic Detection**: Supports any template without hardcoded template-specific logic
+- **Automatic Dummy Generation**: Provides placeholder credentials for tool discovery when needed
+
+### Auto-Credential Injection
+```bash
+# Automatically provides dummy credentials for discovery
+mcp-template tools github
+# No need to provide real GitHub token - uses placeholder for tool discovery
+
+# Manual credential provision for functional tools
+mcp-template run-tool github search_repositories \
+  --env GITHUB_PERSONAL_ACCESS_TOKEN=your_real_token \
+  --args '{"query": "mcp"}'
+```
+
+### Credential Fallback Strategy
+1. **User-provided credentials**: Real credentials from config/environment
+2. **Schema-based dummy credentials**: Generated based on template requirements  
+3. **Generic credential detection**: Fallback for templates without schemas
+4. **Discovery-only mode**: Uses minimal credentials just for tool enumeration
+
+### Benefits
+- **Zero-friction discovery**: List tools without needing real credentials
+- **Security-first**: Never requires real credentials for discovery
+- **Template-agnostic**: Works with any MCP server template
+- **Development-friendly**: Enables tool exploration in development environments
+
 ## Examples
 
 ### Template Mode

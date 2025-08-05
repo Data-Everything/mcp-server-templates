@@ -113,25 +113,31 @@ Each template must include:
 ---
 ## 🛠️ CLI Usage
 
-### Basic Commands
+The MCP Template CLI provides two interfaces for managing MCP server templates:
 
-| Command | Description |
-|---------|-------------|
-| `mcp-template list` | List all deployments |
-| `mcp-template deploy <template>` | Deploy template with defaults (HTTP transport only) |
-| `mcp-template deploy <template> --no-pull` | Deploy without pulling image (use local) |
-| `mcp-template status <deployment>` | View deployment status |
-| `mcp-template delete <deployment>` | Delete deployment |
-| `mcp-template create <template-id>` | Create new template |
-| `mcp-template run-tool <template> <tool_name>` | Run a tool from stdio MCP server |
-| `mcp-template tools <template>` | List available tools in a template |
+### Command Overview
+
+| Category | Command | Description |
+|----------|---------|-------------|
+| **General** | `mcp-template list` | List all available/deployed templates |
+| | `mcp-template create <template-id>` | Create new template with generator |
+| **Deployment** | `mcp-template deploy <template>` | Deploy HTTP transport template |
+| | `mcp-template status <deployment>` | View deployment status |
+| | `mcp-template delete <deployment>` | Delete deployment |
+| **Tool Discovery** | `mcp-template tools <template>` | List available tools in template |
+| | `mcp-template config-options <template>` | Show template configuration options |
+| | `mcp-template discover-tools <docker-image>` | Discover tools from Docker image |
+| **Tool Execution** | `mcp-template run-tool <template> <tool>` | Execute stdio tool |
+| | `mcp-template call-stdio <template> <tool>` | Alternative stdio tool execution |
+| **Integration** | `mcp-template integration-examples <template>` | Show integration examples |
+| **Interactive** | `mcp-template interactive` | Start interactive CLI mode |
 
 ### Transport Types & Usage
 
 MCP servers support two transport types with different deployment approaches:
 
 #### HTTP Transport (Deployable)
-HTTP transport servers run as persistent containers and can be deployed using the standard `deploy` command:
+HTTP transport servers run as persistent containers and can be deployed:
 
 ```bash
 # Deploy HTTP transport server (runs persistently)
@@ -145,13 +151,12 @@ curl http://localhost:8080/tools
 ```
 
 #### Stdio Transport (Interactive)
-Stdio transport servers run interactively and **cannot be deployed** as persistent containers. They use standard input/output for communication and are designed for direct tool execution:
+Stdio transport servers run interactively for direct tool execution:
 
 ```bash
 # ❌ Cannot deploy stdio servers (will show error with helpful guidance)
 mcp-template deploy stdio-server
 # Error: Cannot deploy stdio transport MCP servers
-# Stdio transport doesn't require deployment - use run-tool command instead
 
 # ✅ List available tools in stdio server
 mcp-template tools github
@@ -168,12 +173,43 @@ mcp-template run-tool github search_repositories \
   --config timeout=30
 ```
 
+### Tool Discovery Commands
+
+**1. List Available Tools:**
+```bash
+# Discover tools from template (auto-detects Docker image)
+mcp-template tools github
+mcp-template tools zendesk
+
+# Discover tools directly from Docker image
+mcp-template discover-tools ghcr.io/modelcontextprotocol/servers/github:latest
+mcp-template discover-tools dataeverything/mcp-zendesk:latest
+```
+
+**2. View Configuration Options:**
+```bash
+# Show template configuration schema
+mcp-template config-options github
+mcp-template config-options file-server
+
+# Output shows required/optional config properties with descriptions
+```
+
+**3. Tool Discovery Features:**
+- **Auto-credential injection**: Automatically provides dummy credentials for tool discovery
+- **Schema-based validation**: Uses template config schema for credential detection  
+- **Generic credential support**: Supports any template without hardcoded logic
+- **Fallback strategies**: Docker → Static JSON → Template capabilities
+- **Caching**: Caches discovery results for performance
+
 ### Configuration Options
 
 **1. Check Template Configuration:**
 ```bash
-# View template.json to see available config options
-cat templates/file-server/template.json
+# View template configuration options
+mcp-template config-options file-server
+
+# Shows config schema properties, required fields, defaults
 ```
 
 **2. Deploy with Config File:**
@@ -181,7 +217,7 @@ cat templates/file-server/template.json
 # JSON config file
 mcp-template deploy file-server --config-file ./config.json
 
-# YAML config file
+# YAML config file  
 mcp-template deploy file-server --config-file ./config.yml
 ```
 
@@ -198,6 +234,147 @@ mcp-template deploy file-server \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
+
+# Template overrides (modifies template structure)
+mcp-template deploy file-server \
+  --override name="Custom File Server" \
+  --override description="My custom file server"
+```
+
+### Interactive CLI Mode
+
+Start interactive mode for advanced workflows:
+
+```bash
+# Start interactive CLI
+mcp-template interactive
+
+# Inside interactive mode:
+> tools github                    # List GitHub tools
+> config github token=pat_xyz     # Set configuration
+> call github search_repositories # Execute tool
+> templates                       # List templates
+> quit                           # Exit
+```
+
+**Interactive Commands:**
+- `tools <template>` - List available tools
+- `config <template> <key>=<value>` - Set configuration
+- `call <template> <tool> [args]` - Execute tool
+- `templates` - List all templates
+- `list_servers` - List running servers
+- `show_config <template>` - Show current config
+- `clear_config <template>` - Clear configuration
+- `help` - Show help
+- `quit/exit` - Exit interactive mode
+
+### Advanced Usage & Examples
+
+**1. Tool Discovery Workflows:**
+```bash
+# Discover tools without credentials (uses dummy credentials automatically)
+mcp-template tools github
+
+# Discover tools with custom Docker image
+mcp-template discover-tools custom/mcp-server:latest --timeout 30
+
+# Force server discovery (skip static fallback)
+mcp-template tools github --force-server
+
+# Show integration examples for discovered tools
+mcp-template integration-examples github
+```
+
+**2. Complex Configuration Scenarios:**
+```bash
+# Deploy with multiple config sources (priority: CLI > file > defaults)
+mcp-template deploy zendesk \
+  --config-file ./zendesk-config.yaml \
+  --config subdomain=mycompany \
+  --config email=admin@company.com \
+  --env ZENDESK_API_TOKEN=xyz123
+
+# Use double underscore notation for nested config
+mcp-template deploy file-server \
+  --config server__port=8080 \
+  --config server__host=0.0.0.0 \
+  --config limits__max_file_size=100MB
+```
+
+**3. Stdio Tool Execution:**
+```bash
+# Simple tool execution  
+mcp-template run-tool github search_repositories \
+  --args '{"query": "python mcp", "sort": "stars"}'
+
+# Tool execution with environment variables
+mcp-template run-tool github create_issue \
+  --args '{"owner": "myorg", "repo": "project", "title": "Bug fix"}' \
+  --env GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx
+
+# Alternative stdio execution method
+mcp-template call-stdio github get_issue \
+  --args '{"owner": "microsoft", "repo": "vscode", "issue_number": 1000}'
+```
+
+**4. Development & Debugging:**
+```bash
+# Create new template with interactive wizard
+mcp-template create my-api-server --config-file ./template-spec.json
+
+# Discover tools with verbose output
+mcp-template tools github --verbose
+
+# Check what configuration a template expects
+mcp-template config-options zendesk
+# Output:
+# Required: subdomain (string), email (string), api_token (string)
+# Optional: timeout (integer, default: 30), retries (integer, default: 3)
+```
+
+**5. Batch Operations:**
+```bash
+# Deploy multiple templates with different configs
+mcp-template deploy github --config github_token=xxx --name github-prod
+mcp-template deploy github --config github_token=yyy --name github-dev  
+mcp-template deploy zendesk --config subdomain=support --name zendesk-main
+
+# List all deployments
+mcp-template list --deployed
+
+# Bulk tool discovery
+for template in github zendesk file-server; do
+  echo "=== $template tools ==="
+  mcp-template tools $template
+done
+```
+
+### Configuration Priority & Sources
+
+Configuration is applied in this order (later sources override earlier ones):
+
+1. **Template Defaults** (from `template.json`)
+2. **Config File** (`--config-file config.yml`)  
+3. **CLI Config** (`--config key=value`)
+4. **Environment Variables** (`--env KEY=VALUE`)
+5. **CLI Overrides** (`--override template.field=value`)
+
+**Example showing all sources:**
+```bash
+# config.yml
+server:
+  port: 3000
+  host: localhost
+
+# Command
+mcp-template deploy api-server \
+  --config-file ./config.yml \
+  --config server__port=4000 \
+  --env API_KEY=secret123 \
+  --override name="Production API Server"
+
+# Result: port=4000 (CLI config overrides file), host=localhost (from file), API_KEY=secret123 (env)
+```
 
 # Template data overrides (for metadata, tools, custom fields)
 mcp-template deploy file-server \

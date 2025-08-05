@@ -13,7 +13,7 @@ This module extends the existing CLI with new commands for:
 import json
 import logging
 import subprocess
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from rich.console import Console
 from rich.panel import Panel
@@ -49,6 +49,64 @@ class EnhancedCLI:
         except ImportError:
             # Fallback if interactive CLI not available
             self.beautifier = None
+
+    def _is_actual_error(self, stderr_text: str) -> bool:
+        """Check if stderr contains actual errors vs informational messages."""
+        if not stderr_text:
+            return False
+
+        stderr_lower = stderr_text.lower().strip()
+
+        # These are actual error indicators
+        error_indicators = [
+            "error:",
+            "exception:",
+            "traceback",
+            "failed:",
+            "fatal:",
+            "cannot",
+            "unable to",
+            "permission denied",
+            "not found",
+            "invalid",
+            "syntax error",
+            "connection refused",
+            "timeout",
+        ]
+
+        # These are informational messages that should not be treated as errors
+        info_indicators = [
+            "running on stdio",
+            "server started",
+            "listening on",
+            "connected to",
+            "initialized",
+            "ready",
+            "starting",
+            "loading",
+            "loaded",
+            "using",
+            "found",
+        ]
+
+        # Check for actual errors first
+        for indicator in error_indicators:
+            if indicator in stderr_lower:
+                return True
+
+        # If it contains info indicators, it's likely not an error
+        for indicator in info_indicators:
+            if indicator in stderr_lower:
+                return False
+
+        # If stderr is very short and doesn't contain error words, likely not an error
+        if len(stderr_text.strip()) < 100 and not any(
+            word in stderr_lower for word in ["error", "fail", "exception"]
+        ):
+            return False
+
+        # Default to showing it if we're unsure
+        return True
 
     def show_config_options(self, template_name: str) -> None:
         """Show all configuration options including double-underscore notation."""
@@ -142,8 +200,17 @@ class EnhancedCLI:
         no_cache: bool = False,
         refresh: bool = False,
         config_values: Optional[Dict[str, str]] = None,
+        force_server_discovery: bool = False,
     ) -> None:
-        """List available tools for a template using enhanced tool discovery."""
+        """List available tools for a template using enhanced tool discovery.
+
+        Args:
+            template_name: Name of the template
+            no_cache: Ignore cached results
+            refresh: Force refresh cached results
+            config_values: Configuration values for dynamic discovery
+            force_server_discovery: Force server discovery (MCP probe only, no static fallback)
+        """
         if template_name not in self.templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             console.print(
@@ -171,14 +238,20 @@ class EnhancedCLI:
             existing_env_vars.update(config_values)
             template_with_config["env_vars"] = existing_env_vars
 
+        # For tool discovery, automatically add dummy credentials if none provided
+        # This allows users to discover tools without needing real credentials
+        template_with_config = self._add_dummy_credentials_for_discovery(
+            template_name, template_with_config
+        )
+
         discovery_result = self.tool_discovery.discover_tools(
             template_name=template_name,
             template_dir=template_dir,
             template_config=template_with_config,
             use_cache=not no_cache,
             force_refresh=refresh,
+            force_server_discovery=force_server_discovery,
         )
-
         tools = discovery_result.get("tools", [])
         discovery_method = discovery_result.get("discovery_method", "unknown")
         source = (
@@ -717,40 +790,46 @@ else:
 
                 # Use beautifier if available, otherwise fall back to existing logic
                 if self.beautifier:
-                    self.beautifier.beautify_tool_response(result)
+                    logger.debug("Using enhanced beautifier")
+                    try:
+                        self.beautifier.beautify_tool_response(result)
+                        return  # Exit after successful beautification
+                    except Exception as e:
+                        console.print(f"[yellow]⚠️  Beautifier error: {e}[/yellow]")
+                        console.print("[dim]Falling back to legacy output...[/dim]")
+                        # Fall through to legacy logic
                 else:
-                    # Existing response parsing logic as fallback
-                    stdout_content = result["stdout"]
-                    stderr_content = result["stderr"]
+                    logger.debug("No beautifier available, using legacy logic")
 
-                    # Log for debugging
-                    logger.debug("Raw stdout: %s", repr(stdout_content))
-                    logger.debug("Raw stderr: %s", repr(stderr_content))
+                stdout_content = result["stdout"]
+                stderr_content = result["stderr"]
 
-                    # Try to parse and display the response nicely
-                    # Look for JSON-RPC response in the output
-                    json_responses = []
-                    for line in stdout_content.split("\n"):
-                        line = line.strip()
-                        if (
-                            line.startswith('{"jsonrpc"')
-                            or line.startswith('{"result"')
-                            or line.startswith('{"error"')
-                        ):
-                            try:
-                                json_response = json.loads(line)
-                                json_responses.append(json_response)
-                            except json.JSONDecodeError:
-                                continue
+                # Log for debugging
+                logger.debug("Raw stdout: %s", repr(stdout_content))
+                logger.debug("Raw stderr: %s", repr(stderr_content))
 
-                    # Find the tool call response (should be the last response or one with id=3)
-                    tool_response = None
-                    for response in json_responses:
-                        if (
-                            response.get("id") == 3
-                        ):  # Tool call has id=3 in our sequence
-                            tool_response = response
-                            break
+                # Try to parse and display the response nicely
+                # Look for JSON-RPC response in the output
+                json_responses = []
+                for line in stdout_content.split("\n"):
+                    line = line.strip()
+                    if (
+                        line.startswith('{"jsonrpc"')
+                        or line.startswith('{"result"')
+                        or line.startswith('{"error"')
+                    ):
+                        try:
+                            json_response = json.loads(line)
+                            json_responses.append(json_response)
+                        except json.JSONDecodeError:
+                            continue
+
+                # Find the tool call response (should be the last response or one with id=3)
+                tool_response = None
+                for response in json_responses:
+                    if response.get("id") == 3:  # Tool call has id=3 in our sequence
+                        tool_response = response
+                        break
 
                     # If no id=3 response, use the last response (might be the tool result)
                     if not tool_response and json_responses:
@@ -838,7 +917,7 @@ else:
                             )
                         )
 
-                    if stderr_content:
+                    if stderr_content and self._is_actual_error(stderr_content):
                         console.print(
                             Panel(
                                 stderr_content,
@@ -846,6 +925,16 @@ else:
                                 border_style="yellow",
                             )
                         )
+                    elif stderr_content and not self._is_actual_error(stderr_content):
+                        # Show non-error stderr as debug info only if verbose
+                        if hasattr(self, "verbose") and self.verbose:
+                            console.print(
+                                Panel(
+                                    stderr_content,
+                                    title="Debug Info",
+                                    border_style="dim",
+                                )
+                            )
                 return True
             else:
                 console.print(
@@ -865,13 +954,22 @@ else:
             console.print(f"[red]❌ Failed to execute tool: {e}[/red]")
             return False
 
+    def _add_dummy_credentials_for_discovery(
+        self, template_name: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Add dummy credentials for tool discovery to avoid prompting users."""
+        # Use the same logic as the discovery module
+        return self.tool_discovery._add_dummy_credentials(template_name, config)
+
 
 def add_enhanced_cli_args(subparsers) -> None:
     """Add enhanced CLI arguments to the argument parser."""
 
-    # Interactive CLI command
+    # Interactive CLI command (with 'i' alias)
     interactive_parser = subparsers.add_parser(
-        "interactive", help="Start interactive CLI session for MCP management"
+        "interactive",
+        aliases=["i"],
+        help="Start interactive CLI session for MCP management",
     )
 
     # Config command
@@ -896,6 +994,11 @@ def add_enhanced_cli_args(subparsers) -> None:
     )
     tools_parser.add_argument(
         "--refresh", action="store_true", help="Force refresh cached results"
+    )
+    tools_parser.add_argument(
+        "--force-server",
+        action="store_true",
+        help="Force server discovery (MCP probe only, no static fallback)",
     )
     tools_parser.add_argument(
         "--config",
@@ -977,7 +1080,7 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
 
     console = Console()
 
-    if args.command == "interactive":
+    if args.command in ["interactive", "i"]:
         # Start interactive CLI session
         from mcp_template.interactive_cli import start_interactive_cli
 
@@ -1016,6 +1119,7 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
                 no_cache=getattr(args, "no_cache", False),
                 refresh=getattr(args, "refresh", False),
                 config_values=config_values,
+                force_server_discovery=getattr(args, "force_server", False),
             )
         else:
             # Error: must provide either template or --image
@@ -1106,5 +1210,3 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
             env_vars=env_vars,
         )
         return True
-
-    return False

@@ -222,7 +222,18 @@ class DockerDeploymentService(BaseDeploymentBackend):
         env_vars = []
         env_dict = {}  # Use dict to prevent duplicates
 
-        # Process user configuration
+        # First, add defaults from config schema
+        config_schema = template_data.get("config_schema", {})
+        properties = config_schema.get("properties", {})
+
+        for prop_name, prop_config in properties.items():
+            env_mapping = prop_config.get("env_mapping", prop_name.upper())
+            default_value = prop_config.get("default")
+
+            if default_value is not None:
+                env_dict[env_mapping] = str(default_value)
+
+        # Process user configuration (override defaults)
         for key, value in config.items():
             if isinstance(value, bool):
                 env_value = "true" if value else "false"
@@ -231,17 +242,36 @@ class DockerDeploymentService(BaseDeploymentBackend):
             else:
                 env_value = str(value)
 
-            env_dict[key] = env_value
+            # Check if this key maps to an env variable through config schema
+            env_key = key
+            for prop_name, prop_config in properties.items():
+                if prop_name == key:
+                    env_key = prop_config.get("env_mapping", key.upper())
+                    break
+
+            env_dict[env_key] = env_value
 
         # Add template default env vars (only if not already present)
         template_env = template_data.get("env_vars", {})
         for key, value in template_env.items():
-            if key not in env_dict:  # Don't override user config
+            if key not in env_dict:  # Don't override user config or schema defaults
                 env_dict[key] = str(value)
 
         # Convert dict to docker --env format
         for key, value in env_dict.items():
-            env_vars.extend(["--env", f"{key}={value}"])
+            # Properly quote values that contain spaces or special characters
+            if (
+                " " in value
+                or '"' in value
+                or "'" in value
+                or "&" in value
+                or "|" in value
+            ):
+                # Escape double quotes and wrap in double quotes
+                escaped_value = value.replace('"', '\\"')
+                env_vars.extend(["--env", f'{key}="{escaped_value}"'])
+            else:
+                env_vars.extend(["--env", f"{key}={value}"])
 
         return env_vars
 
@@ -380,6 +410,37 @@ class DockerDeploymentService(BaseDeploymentBackend):
         try:
             # Prepare deployment configuration
             env_vars = self._prepare_environment_variables(config, template_data)
+
+            # CRITICAL: Ensure MCP_TRANSPORT=stdio is set for stdio execution
+            # Convert env_vars from list format to dict to ensure we can override
+            env_dict = {}
+            for i in range(0, len(env_vars), 2):
+                if i + 1 < len(env_vars) and env_vars[i] == "--env":
+                    key_value = env_vars[i + 1]
+                    if "=" in key_value:
+                        key, value = key_value.split("=", 1)
+                        env_dict[key] = value
+
+            # Override with stdio transport
+            env_dict["MCP_TRANSPORT"] = "stdio"
+
+            # Convert back to docker --env format
+            env_vars = []
+            for key, value in env_dict.items():
+                # Properly quote values that contain spaces or special characters
+                if (
+                    " " in value
+                    or '"' in value
+                    or "'" in value
+                    or "&" in value
+                    or "|" in value
+                ):
+                    # Escape double quotes and wrap in double quotes
+                    escaped_value = value.replace('"', '\\"')
+                    env_vars.extend(["--env", f'{key}="{escaped_value}"'])
+                else:
+                    env_vars.extend(["--env", f"{key}={value}"])
+
             volumes = self._prepare_volume_mounts(template_data)
             command_args = template_data.get("command", [])
             image_name = template_data.get("image", f"mcp-{template_id}:latest")

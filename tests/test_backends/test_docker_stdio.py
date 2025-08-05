@@ -18,6 +18,7 @@ def docker_service():
 
 
 @pytest.mark.docker
+@pytest.mark.unit
 @patch('subprocess.run')
 def test_run_stdio_command_success(mock_run, docker_service):
     """Test successful stdio command execution."""
@@ -76,6 +77,7 @@ def test_run_stdio_command_success(mock_run, docker_service):
 
 
 @pytest.mark.docker
+@pytest.mark.unit
 @patch('subprocess.run')
 def test_run_stdio_command_docker_failure(mock_run, docker_service):
     """Test stdio command execution with Docker failure."""
@@ -102,6 +104,7 @@ def test_run_stdio_command_docker_failure(mock_run, docker_service):
 
 
 @pytest.mark.docker
+@pytest.mark.unit
 @patch('subprocess.run')
 def test_run_stdio_command_no_pull(mock_run, docker_service):
     """Test stdio command execution without image pull."""
@@ -130,6 +133,7 @@ def test_run_stdio_command_no_pull(mock_run, docker_service):
 
 
 @pytest.mark.docker
+@pytest.mark.unit
 @patch('subprocess.run')
 def test_run_stdio_command_pull_failure(mock_run, docker_service):
     """Test stdio command execution with Docker pull failure."""
@@ -153,6 +157,7 @@ def test_run_stdio_command_pull_failure(mock_run, docker_service):
 
 
 @pytest.mark.docker
+@pytest.mark.unit
 @patch('subprocess.run')
 def test_run_stdio_command_with_environment_vars(mock_run, docker_service):
     """Test stdio command execution with environment variables."""
@@ -185,10 +190,11 @@ def test_run_stdio_command_with_environment_vars(mock_run, docker_service):
     bash_command = run_call[0][0][2]
     assert '--env GITHUB_TOKEN=test_token' in bash_command
     assert '--env API_KEY=secret' in bash_command
-    # Note: LOG_LEVEL is from template environment, config values take precedence
+    assert '--env LOG_LEVEL=debug' in bash_command
 
 
 @pytest.mark.docker
+@pytest.mark.unit
 @patch('subprocess.run')
 def test_run_stdio_command_with_custom_command(mock_run, docker_service):
     """Test stdio command execution with custom command."""
@@ -222,6 +228,7 @@ def test_run_stdio_command_with_custom_command(mock_run, docker_service):
 
 
 @pytest.mark.docker
+@pytest.mark.unit
 @patch('subprocess.run')
 def test_run_stdio_command_json_validation(mock_run, docker_service):
     """Test stdio command execution with various JSON inputs."""
@@ -250,6 +257,7 @@ def test_run_stdio_command_json_validation(mock_run, docker_service):
 
 
 @pytest.mark.docker
+@pytest.mark.unit
 @patch('subprocess.run')
 def test_run_stdio_command_timeout_handling(mock_run, docker_service):
     """Test stdio command execution with timeout."""
@@ -271,8 +279,8 @@ def test_run_stdio_command_timeout_handling(mock_run, docker_service):
         template_id, config, template_data, json_input
     )
 
-    assert result['status'] == 'error'
-    assert 'timeout' in result['error'].lower() or 'timed out' in result['error'].lower()
+    assert result['status'] == 'failed'
+    assert 'timeout' in result['error'].lower() or 'expired' in result['error'].lower()
 
 
 @pytest.mark.integration

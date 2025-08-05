@@ -61,6 +61,16 @@ class DemoMCPServer:
             name=self.template_data.get("name", "demo-server"),
             instructions="Demo server showing config patterns",
             version=self.template_data.get("version", "1.0.0"),
+            port=(
+                int(
+                    os.getenv(
+                        "MCP_PORT",
+                        self.template_data.get("transport", {}).get("port", 7071),
+                    )
+                )
+                if not os.getenv("MCP_TRANSPORT") == "stdio"
+                else None
+            ),
         )
         logger.info("Demo MCP server %s created", self.mcp.name)
         self.register_tools()
@@ -228,17 +238,6 @@ class DemoMCPServer:
                 "MCP_TRANSPORT",
                 self.template_data.get("transport", {}).get("default", "http"),
             ),
-            port=(
-                int(
-                    os.getenv(
-                        "MCP_PORT",
-                        self.template_data.get("transport", {}).get("port", 7071),
-                    )
-                )
-                if not os.getenv("MCP_TRANSPORT") == "stdio"
-                else None
-            ),
-            log_level=self.config_data.get("log_level", "info"),
         )
 
 

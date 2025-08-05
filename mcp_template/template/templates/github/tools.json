@@ -1,0 +1,471 @@
+{
+  "tools": [
+    {
+      "name": "create_repository",
+      "description": "Create new GitHub repositories",
+      "category": "Repository Management",
+      "parameters": {}
+    },
+    {
+      "name": "fork_repository", 
+      "description": "Fork repositories to your account or organization",
+      "category": "Repository Management",
+      "parameters": {}
+    },
+    {
+      "name": "search_repositories",
+      "description": "Search for GitHub repositories",
+      "category": "Repository Management", 
+      "parameters": {}
+    },
+    {
+      "name": "get_file_contents",
+      "description": "Read file contents from repositories",
+      "category": "Repository Management",
+      "parameters": {}
+    },
+    {
+      "name": "create_or_update_file",
+      "description": "Create or update files in repositories", 
+      "category": "Repository Management",
+      "parameters": {}
+    },
+    {
+      "name": "delete_file",
+      "description": "Delete files from repositories",
+      "category": "Repository Management",
+      "parameters": {}
+    },
+    {
+      "name": "push_files",
+      "description": "Push multiple files in a single commit",
+      "category": "Repository Management", 
+      "parameters": {}
+    },
+    {
+      "name": "create_branch",
+      "description": "Create new branches",
+      "category": "Branch & Tag Management",
+      "parameters": {}
+    },
+    {
+      "name": "list_branches",
+      "description": "List all repository branches", 
+      "category": "Branch & Tag Management",
+      "parameters": {}
+    },
+    {
+      "name": "get_tag",
+      "description": "Get git tag details",
+      "category": "Branch & Tag Management",
+      "parameters": {}
+    },
+    {
+      "name": "list_tags",
+      "description": "List all repository tags",
+      "category": "Branch & Tag Management",
+      "parameters": {}
+    },
+    {
+      "name": "get_commit", 
+      "description": "Get commit details",
+      "category": "Branch & Tag Management",
+      "parameters": {}
+    },
+    {
+      "name": "list_commits",
+      "description": "List repository commits",
+      "category": "Branch & Tag Management",
+      "parameters": {}
+    },
+    {
+      "name": "create_issue",
+      "description": "Create new issues",
+      "category": "Issue Management",
+      "parameters": {}
+    },
+    {
+      "name": "get_issue",
+      "description": "Get issue details", 
+      "category": "Issue Management",
+      "parameters": {}
+    },
+    {
+      "name": "update_issue",
+      "description": "Update existing issues",
+      "category": "Issue Management", 
+      "parameters": {}
+    },
+    {
+      "name": "list_issues",
+      "description": "List repository issues",
+      "category": "Issue Management",
+      "parameters": {}
+    },
+    {
+      "name": "search_issues",
+      "description": "Search issues across repositories",
+      "category": "Issue Management",
+      "parameters": {}
+    },
+    {
+      "name": "add_issue_comment",
+      "description": "Add comments to issues",
+      "category": "Issue Management",
+      "parameters": {}
+    },
+    {
+      "name": "get_issue_comments",
+      "description": "Get issue comments",
+      "category": "Issue Management", 
+      "parameters": {}
+    },
+    {
+      "name": "add_sub_issue",
+      "description": "Add sub-issues to parent issues",
+      "category": "Issue Management",
+      "parameters": {}
+    },
+    {
+      "name": "list_sub_issues",
+      "description": "List sub-issues for an issue",
+      "category": "Issue Management",
+      "parameters": {}
+    },
+    {
+      "name": "remove_sub_issue",
+      "description": "Remove sub-issues",
+      "category": "Issue Management", 
+      "parameters": {}
+    },
+    {
+      "name": "reprioritize_sub_issue",
+      "description": "Reorder sub-issues",
+      "category": "Issue Management",
+      "parameters": {}
+    },
+    {
+      "name": "create_pull_request",
+      "description": "Create new pull requests",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "get_pull_request",
+      "description": "Get pull request details",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "update_pull_request", 
+      "description": "Update existing pull requests",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "list_pull_requests",
+      "description": "List repository pull requests",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "search_pull_requests",
+      "description": "Search pull requests",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "merge_pull_request",
+      "description": "Merge pull requests",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "get_pull_request_comments",
+      "description": "Get PR comments",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "get_pull_request_diff",
+      "description": "Get PR diff",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "get_pull_request_files",
+      "description": "Get changed files in PR",
+      "category": "Pull Request Management", 
+      "parameters": {}
+    },
+    {
+      "name": "get_pull_request_reviews",
+      "description": "Get PR reviews",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "get_pull_request_status",
+      "description": "Get PR status",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "update_pull_request_branch",
+      "description": "Update PR branch",
+      "category": "Pull Request Management",
+      "parameters": {}
+    },
+    {
+      "name": "create_pending_pull_request_review",
+      "description": "Create pending reviews",
+      "category": "Code Review & Comments",
+      "parameters": {}
+    },
+    {
+      "name": "add_comment_to_pending_pull_request_review",
+      "description": "Add review comments",
+      "category": "Code Review & Comments",
+      "parameters": {}
+    },
+    {
+      "name": "submit_pending_pull_request_review",
+      "description": "Submit reviews",
+      "category": "Code Review & Comments",
+      "parameters": {}
+    },
+    {
+      "name": "delete_pending_pull_request_review",
+      "description": "Delete pending reviews",
+      "category": "Code Review & Comments",
+      "parameters": {}
+    },
+    {
+      "name": "create_and_submit_pull_request_review",
+      "description": "Create and submit reviews",
+      "category": "Code Review & Comments",
+      "parameters": {}
+    },
+    {
+      "name": "request_copilot_review",
+      "description": "Request GitHub Copilot reviews",
+      "category": "Code Review & Comments",
+      "parameters": {}
+    },
+    {
+      "name": "assign_copilot_to_issue",
+      "description": "Assign Copilot to issues",
+      "category": "Code Review & Comments",
+      "parameters": {}
+    },
+    {
+      "name": "list_workflows",
+      "description": "List repository workflows",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "run_workflow",
+      "description": "Trigger workflow runs",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "get_workflow_run",
+      "description": "Get workflow run details",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "list_workflow_runs",
+      "description": "List workflow runs",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "cancel_workflow_run",
+      "description": "Cancel running workflows",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "rerun_workflow_run",
+      "description": "Re-run entire workflows",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "rerun_failed_jobs",
+      "description": "Re-run only failed jobs",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "list_workflow_jobs",
+      "description": "List workflow jobs",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "get_job_logs",
+      "description": "Get job logs",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "get_workflow_run_logs",
+      "description": "Get complete workflow logs",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "get_workflow_run_usage",
+      "description": "Get workflow usage metrics",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "list_workflow_run_artifacts",
+      "description": "List workflow artifacts",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "download_workflow_run_artifact",
+      "description": "Download artifacts",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "delete_workflow_run_logs",
+      "description": "Delete workflow logs",
+      "category": "GitHub Actions & Workflows",
+      "parameters": {}
+    },
+    {
+      "name": "list_code_scanning_alerts",
+      "description": "List code scanning alerts",
+      "category": "Security & Scanning",
+      "parameters": {}
+    },
+    {
+      "name": "get_code_scanning_alert",
+      "description": "Get specific code scanning alerts",
+      "category": "Security & Scanning",
+      "parameters": {}
+    },
+    {
+      "name": "list_dependabot_alerts",
+      "description": "List Dependabot alerts",
+      "category": "Security & Scanning",
+      "parameters": {}
+    },
+    {
+      "name": "get_dependabot_alert",
+      "description": "Get specific Dependabot alerts",
+      "category": "Security & Scanning",
+      "parameters": {}
+    },
+    {
+      "name": "list_secret_scanning_alerts",
+      "description": "List secret scanning alerts",
+      "category": "Security & Scanning",
+      "parameters": {}
+    },
+    {
+      "name": "get_secret_scanning_alert",
+      "description": "Get specific secret scanning alerts",
+      "category": "Security & Scanning",
+      "parameters": {}
+    },
+    {
+      "name": "list_discussions",
+      "description": "List repository discussions",
+      "category": "Discussions",
+      "parameters": {}
+    },
+    {
+      "name": "get_discussion",
+      "description": "Get discussion details",
+      "category": "Discussions",
+      "parameters": {}
+    },
+    {
+      "name": "get_discussion_comments",
+      "description": "Get discussion comments",
+      "category": "Discussions",
+      "parameters": {}
+    },
+    {
+      "name": "list_discussion_categories",
+      "description": "List discussion categories",
+      "category": "Discussions",
+      "parameters": {}
+    },
+    {
+      "name": "list_notifications",
+      "description": "List GitHub notifications",
+      "category": "Notifications & Activity",
+      "parameters": {}
+    },
+    {
+      "name": "get_notification_details",
+      "description": "Get notification details",
+      "category": "Notifications & Activity",
+      "parameters": {}
+    },
+    {
+      "name": "dismiss_notification",
+      "description": "Mark notifications as read",
+      "category": "Notifications & Activity",
+      "parameters": {}
+    },
+    {
+      "name": "mark_all_notifications_read",
+      "description": "Mark all notifications read",
+      "category": "Notifications & Activity",
+      "parameters": {}
+    },
+    {
+      "name": "manage_notification_subscription",
+      "description": "Manage notification settings",
+      "category": "Notifications & Activity",
+      "parameters": {}
+    },
+    {
+      "name": "manage_repository_notifications",
+      "description": "Manage repository notifications",
+      "category": "Notifications & Activity",
+      "parameters": {}
+    },
+    {
+      "name": "search_code",
+      "description": "Search code across repositories",
+      "category": "Search & Discovery",
+      "parameters": {}
+    },
+    {
+      "name": "search_users",
+      "description": "Search GitHub users",
+      "category": "Search & Discovery",
+      "parameters": {}
+    },
+    {
+      "name": "search_orgs",
+      "description": "Search GitHub organizations",
+      "category": "Search & Discovery",
+      "parameters": {}
+    },
+    {
+      "name": "get_me",
+      "description": "Get authenticated user details",
+      "category": "User & Profile",
+      "parameters": {}
+    }
+  ],
+  "discovery_method": "static",
+  "timestamp": 1754369000,
+  "template_name": "github",
+  "source_file": "tools.json",
+  "total_tools": 77
+}

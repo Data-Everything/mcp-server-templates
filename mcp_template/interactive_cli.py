@@ -8,10 +8,11 @@ tools, and configurations with persistent session state and beautified responses
 import json
 import os
 import sys
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 from pathlib import Path
 import cmd
 import logging
+import tempfile
 
 from rich.console import Console
 from rich.panel import Panel
@@ -20,9 +21,11 @@ from rich.text import Text
 from rich.prompt import Prompt, Confirm
 from rich.syntax import Syntax
 from rich.tree import Tree
+from rich.columns import Columns
 
 from mcp_template.cli import EnhancedCLI
 from mcp_template.tools.cache import CacheManager
+from mcp_template.tools.http_tool_caller import HTTPToolCaller
 from mcp_template.deployer import MCPDeployer
 
 console = Console()
@@ -35,8 +38,533 @@ class ResponseBeautifier:
     def __init__(self):
         self.console = Console()
 
+    def _is_actual_error(self, stderr_text: str) -> bool:
+        """Check if stderr contains actual errors vs informational messages."""
+        if not stderr_text:
+            return False
+
+        stderr_lower = stderr_text.lower().strip()
+
+        # These are actual error indicators
+        error_indicators = [
+            "error:",
+            "exception:",
+            "traceback",
+            "failed:",
+            "fatal:",
+            "cannot",
+            "unable to",
+            "permission denied",
+            "not found",
+            "invalid",
+            "syntax error",
+            "connection refused",
+            "timeout",
+        ]
+
+        # These are informational messages that should not be treated as errors
+        info_indicators = [
+            "running on stdio",
+            "server started",
+            "listening on",
+            "connected to",
+            "initialized",
+            "ready",
+            "starting",
+            "loading",
+            "loaded",
+            "using",
+            "found",
+        ]
+
+        # Check for actual errors first
+        for indicator in error_indicators:
+            if indicator in stderr_lower:
+                return True
+
+        # If it contains info indicators, it's likely not an error
+        for indicator in info_indicators:
+            if indicator in stderr_lower:
+                return False
+
+        # If stderr is very short and doesn't contain error words, likely not an error
+        if len(stderr_text.strip()) < 100 and not any(
+            word in stderr_lower for word in ["error", "fail", "exception"]
+        ):
+            return False
+
+        # Default to showing it if we're unsure
+        return True
+
+    def _analyze_data_types(self, data: Any) -> Dict[str, Any]:
+        """Analyze data structure and return metadata about its composition."""
+        analysis = {
+            "primary_type": type(data).__name__,
+            "is_homogeneous": True,
+            "element_types": {},
+            "structure_hints": [],
+            "complexity": "simple",
+            "best_display": "raw",
+        }
+
+        if isinstance(data, dict):
+            analysis["size"] = len(data)
+            analysis["element_types"] = {k: type(v).__name__ for k, v in data.items()}
+
+            # Analyze value types for homogeneity
+            value_types = set(type(v).__name__ for v in data.values())
+            analysis["is_homogeneous"] = len(value_types) == 1
+            analysis["value_types"] = list(value_types)
+
+            # Determine complexity and structure hints
+            if len(data) <= 6 and all(
+                isinstance(v, (str, int, float, bool, type(None)))
+                for v in data.values()
+            ):
+                analysis["complexity"] = "simple"
+                analysis["best_display"] = "key_value"
+                analysis["structure_hints"].append("simple_mapping")
+            elif self._is_tabular_dict(data):
+                analysis["complexity"] = "tabular"
+                analysis["best_display"] = "table"
+                analysis["structure_hints"].append("column_oriented")
+            elif any(isinstance(v, (list, dict)) for v in data.values()):
+                analysis["complexity"] = "nested"
+                analysis["best_display"] = "tree" if len(data) <= 10 else "json"
+                analysis["structure_hints"].append("hierarchical")
+            else:
+                analysis["complexity"] = "medium"
+                analysis["best_display"] = "key_value" if len(data) <= 15 else "json"
+
+        elif isinstance(data, list):
+            analysis["size"] = len(data)
+            if data:
+                element_types = [type(item).__name__ for item in data]
+                analysis["element_types"] = dict(
+                    zip(range(len(element_types)), element_types)
+                )
+                analysis["is_homogeneous"] = len(set(element_types)) == 1
+                analysis["item_type"] = (
+                    element_types[0] if analysis["is_homogeneous"] else "mixed"
+                )
+
+                if analysis["is_homogeneous"]:
+                    if isinstance(data[0], dict) and self._has_consistent_keys(data):
+                        analysis["complexity"] = "tabular"
+                        analysis["best_display"] = "table"
+                        analysis["structure_hints"].append("record_list")
+                    elif isinstance(data[0], (str, int, float)):
+                        analysis["complexity"] = "simple"
+                        analysis["best_display"] = "list"
+                        analysis["structure_hints"].append("value_list")
+                    else:
+                        analysis["complexity"] = "nested"
+                        analysis["best_display"] = "json"
+                        analysis["structure_hints"].append("complex_list")
+                else:
+                    analysis["complexity"] = "heterogeneous"
+                    analysis["best_display"] = "json"
+                    analysis["structure_hints"].append("mixed_types")
+            else:
+                analysis["best_display"] = "empty"
+
+        elif isinstance(data, str):
+            try:
+                parsed = json.loads(data)
+                nested_analysis = self._analyze_data_types(parsed)
+                analysis.update(nested_analysis)
+                analysis["structure_hints"].append("json_string")
+            except json.JSONDecodeError:
+                analysis["best_display"] = "text"
+                analysis["structure_hints"].append("plain_text")
+        else:
+            analysis["best_display"] = "simple"
+
+        return analysis
+
+    def _detect_data_structure(self, data: Any) -> str:
+        """Detect the type of data structure to apply appropriate formatting."""
+        analysis = self._analyze_data_types(data)
+        return analysis["best_display"]
+
+    def _is_tabular_dict(self, data: dict) -> bool:
+        """Check if dictionary contains tabular data."""
+        # Look for patterns like {key1: [values], key2: [values]}
+        if len(data) >= 2:
+            values = list(data.values())
+            if all(isinstance(v, list) and len(v) > 0 for v in values):
+                # Check if all lists have same length
+                lengths = [len(v) for v in values]
+                return len(set(lengths)) == 1
+        return False
+
+    def _has_consistent_keys(self, data: List[dict]) -> bool:
+        """Check if list of dicts has consistent keys for table display."""
+        if not data or not isinstance(data[0], dict):
+            return False
+
+        first_keys = set(data[0].keys())
+        return all(
+            set(item.keys()) == first_keys for item in data[:5]
+        )  # Check first 5 items
+
+    def _create_key_value_table(self, data: dict, title: str = "Data") -> Table:
+        """Create a key-value table for simple dictionaries with intelligent formatting."""
+        analysis = self._analyze_data_types(data)
+
+        table = Table(
+            title=f"{title} ({len(data)} properties)",
+            show_header=True,
+            header_style="cyan",
+        )
+        table.add_column("Property", style="cyan", width=25)
+        table.add_column("Value", style="white", width=55)
+        table.add_column("Type", style="yellow", width=10)
+
+        for key, value in data.items():
+            value_type = type(value).__name__
+
+            # Format value based on type with intelligent truncation
+            if isinstance(value, (dict, list)):
+                if isinstance(value, dict):
+                    size_info = (
+                        f" ({len(value)} keys)" if len(value) > 0 else " (empty)"
+                    )
+                    preview = (
+                        "{"
+                        + ", ".join(f"{k}: ..." for k in list(value.keys())[:3])
+                        + "}"
+                    )
+                    if len(value) > 3:
+                        preview += "..."
+                    preview += size_info
+                else:  # list
+                    size_info = (
+                        f" ({len(value)} items)" if len(value) > 0 else " (empty)"
+                    )
+                    if len(value) > 0:
+                        preview = (
+                            "["
+                            + ", ".join(
+                                str(item)[:10] + ("..." if len(str(item)) > 10 else "")
+                                for item in value[:3]
+                            )
+                            + "]"
+                        )
+                        if len(value) > 3:
+                            preview += "..."
+                    else:
+                        preview = "[]"
+                    preview += size_info
+                value_str = preview
+            elif isinstance(value, bool):
+                value_str = "[green]✓[/green]" if value else "[red]✗[/red]"
+            elif isinstance(value, str):
+                if len(value) > 50:
+                    value_str = value[:47] + "..."
+                elif value.startswith(("http://", "https://")):
+                    value_str = f"[link]{value}[/link]"
+                elif value.lower() in ["true", "false"]:
+                    value_str = f"[cyan]{value}[/cyan]"
+                else:
+                    value_str = value
+            elif isinstance(value, (int, float)):
+                if isinstance(value, float):
+                    value_str = f"{value:.3f}" if abs(value) < 1000 else f"{value:.2e}"
+                else:
+                    value_str = f"{value:,}" if abs(value) > 1000 else str(value)
+            elif value is None:
+                value_str = "[dim]null[/dim]"
+            else:
+                value_str = str(value)
+
+            table.add_row(str(key), value_str, value_type)
+
+        return table
+
+    def _create_data_table(
+        self, data: Union[List[dict], dict], title: str = "Data"
+    ) -> Table:
+        """Create a dynamic table from list of dictionaries or tabular dict with intelligent column formatting."""
+        if isinstance(data, dict) and self._is_tabular_dict(data):
+            # Convert tabular dict to list of dicts
+            keys = list(data.keys())
+            values = list(data.values())
+            rows = []
+            for i in range(len(values[0])):
+                row = {key: values[j][i] for j, key in enumerate(keys)}
+                rows.append(row)
+            data = rows
+
+        if not isinstance(data, list) or not data:
+            return None
+
+        # Get column headers from first item
+        first_item = data[0]
+        if not isinstance(first_item, dict):
+            return None
+
+        headers = list(first_item.keys())
+
+        # Analyze column types and content for intelligent formatting
+        column_analysis = {}
+        for header in headers:
+            values = [item.get(header) for item in data[:10]]  # Sample first 10 rows
+            non_null_values = [v for v in values if v is not None]
+
+            if not non_null_values:
+                column_analysis[header] = {"type": "null", "width": 10, "style": "dim"}
+                continue
+
+            # Determine predominant type
+            types = [type(v).__name__ for v in non_null_values]
+            most_common_type = max(set(types), key=types.count)
+
+            # Analyze content for formatting hints
+            analysis = {
+                "type": most_common_type,
+                "max_length": max(len(str(v)) for v in non_null_values),
+                "has_urls": any(
+                    isinstance(v, str) and v.startswith(("http://", "https://"))
+                    for v in non_null_values
+                ),
+                "is_boolean_like": all(
+                    isinstance(v, bool)
+                    or (
+                        isinstance(v, str)
+                        and v.lower() in ["true", "false", "yes", "no"]
+                    )
+                    for v in non_null_values
+                ),
+                "is_numeric": most_common_type in ["int", "float"],
+                "is_id_like": header.lower() in ["id", "name", "title", "key"]
+                or header.lower().endswith("_id"),
+            }
+
+            # Determine display properties
+            if analysis["is_id_like"]:
+                analysis["style"] = "cyan"
+                analysis["width"] = min(20, max(10, analysis["max_length"] + 2))
+            elif analysis["is_boolean_like"]:
+                analysis["style"] = "green"
+                analysis["width"] = 8
+            elif analysis["is_numeric"]:
+                analysis["style"] = "yellow"
+                analysis["width"] = min(15, max(8, analysis["max_length"] + 2))
+            elif analysis["has_urls"]:
+                analysis["style"] = "blue"
+                analysis["width"] = 30
+            elif header.lower() in ["description", "content", "message", "text"]:
+                analysis["style"] = "white"
+                analysis["width"] = 40
+            else:
+                analysis["style"] = "white"
+                analysis["width"] = min(25, max(12, analysis["max_length"] + 2))
+
+            column_analysis[header] = analysis
+
+        # Create table with intelligent column formatting
+        table = Table(
+            title=f"{title} ({len(data)} rows)", show_header=True, header_style="cyan"
+        )
+
+        for header in headers:
+            col_info = column_analysis[header]
+            table.add_column(
+                str(header).title(),
+                style=col_info["style"],
+                width=col_info["width"],
+                overflow="ellipsis",
+            )
+
+        # Add rows with intelligent value formatting
+        max_rows = 25  # Increased slightly for better data display
+        for i, item in enumerate(data[:max_rows]):
+            if not isinstance(item, dict):
+                continue
+
+            row = []
+            for header in headers:
+                value = item.get(header, "")
+                col_info = column_analysis[header]
+
+                # Format different data types intelligently
+                if value is None:
+                    formatted = "[dim]null[/dim]"
+                elif isinstance(value, bool):
+                    formatted = "[green]✓[/green]" if value else "[red]✗[/red]"
+                elif col_info["is_boolean_like"] and isinstance(value, str):
+                    if value.lower() in ["true", "yes", "1"]:
+                        formatted = "[green]✓[/green]"
+                    elif value.lower() in ["false", "no", "0"]:
+                        formatted = "[red]✗[/red]"
+                    else:
+                        formatted = value
+                elif isinstance(value, (int, float)):
+                    if isinstance(value, float):
+                        formatted = (
+                            f"{value:.3f}" if abs(value) < 1000 else f"{value:.2e}"
+                        )
+                    else:
+                        formatted = f"{value:,}" if abs(value) > 1000 else str(value)
+                elif isinstance(value, str):
+                    if col_info["has_urls"]:
+                        formatted = (
+                            f"[link]{value}[/link]"
+                            if len(value) < 35
+                            else f"[link]{value[:32]}...[/link]"
+                        )
+                    elif len(value) > col_info["width"] - 3:
+                        formatted = value[: col_info["width"] - 6] + "..."
+                    else:
+                        formatted = value
+                elif isinstance(value, (dict, list)):
+                    if isinstance(value, list):
+                        formatted = f"[{len(value)} items]"
+                    else:
+                        formatted = f"{{{len(value)} keys}}"
+                else:
+                    formatted = (
+                        str(value)
+                        if len(str(value)) < col_info["width"]
+                        else str(value)[: col_info["width"] - 3] + "..."
+                    )
+
+                row.append(formatted)
+
+            table.add_row(*row)
+
+        # Add info if truncated
+        if len(data) > max_rows:
+            table.caption = f"Showing {max_rows} of {len(data)} rows"
+
+        return table
+
+    def _create_list_display(
+        self, data: list, title: str = "Items"
+    ) -> Union[Table, Panel]:
+        """Create display for simple lists."""
+        if len(data) <= 10 and all(
+            isinstance(item, (str, int, float)) for item in data
+        ):
+            # Small list of simple values - use columns
+            items = [str(item) for item in data]
+            return Columns(items, equal=True, expand=True, title=title)
+        else:
+            # Larger or complex list - use panel
+            content = "\n".join(f"• {item}" for item in data[:20])
+            if len(data) > 20:
+                content += f"\n... and {len(data) - 20} more items"
+            return Panel(
+                content, title=f"{title} ({len(data)} items)", border_style="blue"
+            )
+
     def beautify_json(self, data: Any, title: str = "Response") -> None:
-        """Display JSON data in a beautified format."""
+        """Display JSON data in a beautified format with intelligent formatting."""
+        # Analyze data structure for intelligent display
+        analysis = self._analyze_data_types(data)
+        structure_type = analysis["best_display"]
+
+        # Check for special cases first (before generic structure-based routing)
+        if (
+            isinstance(data, dict)
+            and "tools" in data
+            and isinstance(data["tools"], list)
+        ):
+            # Special case: handle tools lists (MCP-specific but common pattern)
+            tools = data["tools"]
+            if tools and isinstance(tools[0], dict) and "name" in tools[0]:
+                self.beautify_tools_list(tools, "MCP Server Tools")
+                return
+            # Tools is just names or other simple data - fall through to generic display
+
+        # Route to appropriate display method based on analysis
+        if structure_type == "key_value" and isinstance(data, dict):
+            table = self._create_key_value_table(data, title)
+            self.console.print(table)
+
+        elif structure_type == "table":
+            table = self._create_data_table(data, title)
+            if table:
+                self.console.print(table)
+            else:
+                # Fallback to JSON
+                self._display_json_syntax(data, title)
+
+        elif structure_type == "list" and isinstance(data, list):
+            display = self._create_list_display(data, title)
+            self.console.print(display)
+
+        elif structure_type == "tree" and isinstance(data, dict):
+            # Use tree display for hierarchical data
+            self._display_tree_structure(data, title)
+
+        elif structure_type == "empty":
+            self.console.print(f"[dim]{title}: Empty collection[/dim]")
+
+        elif structure_type == "text":
+            self.console.print(Panel(str(data), title=title, border_style="blue"))
+
+        else:
+            # Default to syntax-highlighted JSON with analysis hints
+            self._display_json_syntax(data, title, analysis)
+
+    def _display_tree_structure(self, data: dict, title: str = "Data") -> None:
+        """Display hierarchical data as a tree structure."""
+        tree = Tree(f"[bold cyan]{title}[/bold cyan]")
+
+        def add_to_tree(node, key, value, max_depth=3, current_depth=0):
+            if current_depth >= max_depth:
+                node.add(f"[dim]{key}: ... (truncated)[/dim]")
+                return
+
+            if isinstance(value, dict):
+                if len(value) > 10:  # Large dicts get summary
+                    branch = node.add(f"[yellow]{key}[/yellow] ({len(value)} items)")
+                    # Show first few items
+                    for i, (k, v) in enumerate(list(value.items())[:3]):
+                        add_to_tree(branch, k, v, max_depth, current_depth + 1)
+                    if len(value) > 3:
+                        branch.add("[dim]... more items[/dim]")
+                else:
+                    branch = node.add(f"[yellow]{key}[/yellow]")
+                    for k, v in value.items():
+                        add_to_tree(branch, k, v, max_depth, current_depth + 1)
+            elif isinstance(value, list):
+                if len(value) > 5:  # Large lists get summary
+                    branch = node.add(f"[magenta]{key}[/magenta] [{len(value)} items]")
+                    for i, item in enumerate(value[:3]):
+                        add_to_tree(
+                            branch, f"[{i}]", item, max_depth, current_depth + 1
+                        )
+                    if len(value) > 3:
+                        branch.add("[dim]... more items[/dim]")
+                else:
+                    branch = node.add(f"[magenta]{key}[/magenta]")
+                    for i, item in enumerate(value):
+                        add_to_tree(
+                            branch, f"[{i}]", item, max_depth, current_depth + 1
+                        )
+            else:
+                # Format leaf values
+                if isinstance(value, bool):
+                    display_value = "✓" if value else "✗"
+                elif isinstance(value, str) and len(value) > 50:
+                    display_value = f"{value[:47]}..."
+                else:
+                    display_value = str(value)
+
+                node.add(f"[white]{key}[/white]: [green]{display_value}[/green]")
+
+        for key, value in data.items():
+            add_to_tree(tree, key, value)
+
+        self.console.print(tree)
+
+    def _display_json_syntax(
+        self, data: Any, title: str, analysis: Dict[str, Any] = None
+    ) -> None:
+        """Display data as syntax-highlighted JSON with optional analysis hints."""
         if isinstance(data, str):
             try:
                 data = json.loads(data)
@@ -47,17 +575,35 @@ class ResponseBeautifier:
 
         json_str = json.dumps(data, indent=2, ensure_ascii=False)
         syntax = Syntax(json_str, "json", theme="monokai", line_numbers=True)
-        self.console.print(Panel(syntax, title=title, border_style="green"))
+
+        # Add analysis hints as caption if provided
+        caption = None
+        if analysis:
+            hints = []
+            if analysis.get("complexity"):
+                hints.append(f"Complexity: {analysis['complexity']}")
+            if analysis.get("size"):
+                hints.append(f"Size: {analysis['size']} items")
+            if analysis.get("structure_hints"):
+                hints.append(f"Structure: {', '.join(analysis['structure_hints'])}")
+            if hints:
+                caption = " | ".join(hints)
+
+        panel = Panel(syntax, title=title, border_style="green")
+        if caption:
+            panel.subtitle = f"[dim]{caption}[/dim]"
+
+        self.console.print(panel)
 
     def beautify_tool_response(self, response: Dict[str, Any]) -> None:
-        """Beautify tool execution response."""
+        """Beautify tool execution response with enhanced formatting."""
         if response.get("status") == "completed":
             stdout = response.get("stdout", "")
             stderr = response.get("stderr", "")
 
             # Try to parse stdout as JSON-RPC response
             try:
-                lines = stdout.strip().split("\\n")
+                lines = stdout.strip().split("\n")
                 json_responses = []
 
                 for line in lines:
@@ -87,19 +633,37 @@ class ResponseBeautifier:
                     if "result" in tool_response:
                         result_data = tool_response["result"]
 
-                        # Handle MCP content format
-                        if isinstance(result_data, dict) and "content" in result_data:
+                        # Handle MCP content format - prioritize structuredContent
+                        if (
+                            isinstance(result_data, dict)
+                            and "structuredContent" in result_data
+                        ):
+                            # Use structuredContent when available (already parsed JSON)
+                            structured_data = result_data["structuredContent"]
+                            self.beautify_json(structured_data, "Tool Result")
+
+                        elif isinstance(result_data, dict) and "content" in result_data:
                             content_items = result_data["content"]
                             if isinstance(content_items, list) and content_items:
                                 for i, content in enumerate(content_items):
                                     if isinstance(content, dict) and "text" in content:
-                                        self.console.print(
-                                            Panel(
-                                                content["text"],
-                                                title=f"Tool Result {i+1}",
-                                                border_style="green",
+                                        # Try to beautify the text content if it's structured data
+                                        text_content = content["text"]
+                                        try:
+                                            # Try to parse as JSON for better formatting
+                                            parsed_content = json.loads(text_content)
+                                            self.beautify_json(
+                                                parsed_content, f"Tool Result {i+1}"
                                             )
-                                        )
+                                        except json.JSONDecodeError:
+                                            # Display as text if not JSON
+                                            self.console.print(
+                                                Panel(
+                                                    text_content,
+                                                    title=f"Tool Result {i+1}",
+                                                    border_style="green",
+                                                )
+                                            )
                                     else:
                                         self.beautify_json(content, f"Content {i+1}")
                             else:
@@ -125,16 +689,27 @@ class ResponseBeautifier:
                     )
 
             except Exception as e:
+                # Debug the exception and fallback to raw output
+                import traceback
+
+                self.console.print(f"[yellow]⚠️  Beautifier parsing error: {e}[/yellow]")
+                self.console.print(f"[dim]Traceback: {traceback.format_exc()}[/dim]")
                 # Fallback to raw output
                 self.console.print(
                     Panel(stdout, title="Tool Output", border_style="blue")
                 )
 
-            # Show stderr if present
-            if stderr:
+            # Show stderr if present and contains actual errors
+            if stderr and self._is_actual_error(stderr):
                 self.console.print(
                     Panel(stderr, title="Standard Error", border_style="yellow")
                 )
+            elif stderr and not self._is_actual_error(stderr):
+                # Show non-error stderr as debug info only if verbose
+                if hasattr(self, "verbose") and self.verbose:
+                    self.console.print(
+                        Panel(stderr, title="Debug Info", border_style="dim")
+                    )
 
         else:
             # Failed execution
@@ -166,7 +741,7 @@ class ResponseBeautifier:
         table = Table(title=f"Available Tools ({len(tools)} found)")
         table.add_column("Tool Name", style="cyan", width=20)
         table.add_column("Description", style="white", width=50)
-        table.add_column("Parameters", style="yellow", width=15)
+        table.add_column("Parameters", style="yellow", width=50)
         table.add_column("Category", style="green", width=15)
 
         for tool in tools:
@@ -174,17 +749,40 @@ class ResponseBeautifier:
             description = tool.get("description", "No description")
 
             # Handle parameters
+            parameters = tool.get("parameters", {})
             input_schema = tool.get("inputSchema", {})
-            if isinstance(input_schema, dict):
-                properties = input_schema.get("properties", {})
-                param_count = len(properties) if properties else 0
+
+            # Check both formats - MCP tools/call format and discovery format
+            if isinstance(parameters, dict) and "properties" in parameters:
+                properties = parameters.get("properties", {})
+                param_count = len(properties)
                 param_text = f"{param_count} params"
-            else:
+                param_names = ", ".join(properties.keys())
+            elif isinstance(input_schema, dict) and "properties" in input_schema:
+                properties = input_schema.get("properties", {})
+                param_count = len(properties)
+                param_text = f"{param_count} params"
+                param_names = ", ".join(properties.keys())
+            elif isinstance(parameters, list):
+                param_count = len(parameters)
+                param_text = f"{param_count} params"
+                param_names = ", ".join(parameters)
+            elif parameters or input_schema:
                 param_text = "Schema defined"
+                param_names = (
+                    ", ".join(parameters)
+                    if parameters
+                    else ", ".join(input_schema.get("properties", {}).keys())
+                )
+            else:
+                param_text = "0 params"
+                param_names = ""
 
             category = tool.get("category", "general")
 
-            table.add_row(name, description, param_text, category)
+            table.add_row(
+                name, description, param_text + " (" + param_names + ")", category
+            )
 
         self.console.print(table)
         self.console.print(f"[dim]Source: {source}[/dim]")
@@ -244,14 +842,19 @@ class InteractiveCLI(cmd.Cmd):
         self.deployer = MCPDeployer()
         self.cache = CacheManager()
         self.beautifier = ResponseBeautifier()
+        self.http_tool_caller = HTTPToolCaller()
 
         # Session state
         self.session_configs = {}  # Template name -> config
         self.deployed_servers = []  # List of deployed servers info
 
     def cmdloop(self, intro=None):
-        """Override cmdloop to handle KeyboardInterrupt gracefully."""
+        """Override cmdloop to handle KeyboardInterrupt gracefully and show help."""
         try:
+            # Show help automatically on start
+            if intro is None:
+                console.print(self.intro)
+                self.do_help("")
             super().cmdloop(intro)
         except KeyboardInterrupt:
             console.print("\\n[yellow]Session interrupted. Goodbye![/yellow]")
@@ -265,71 +868,229 @@ class InteractiveCLI(cmd.Cmd):
 
         # Get deployed servers from deployer
         try:
-            servers = self.deployer.list_active_deployments()
-            self.deployed_servers = servers
-            self.beautifier.beautify_deployed_servers(servers)
+            all_servers = self.deployer.deployment_manager.list_deployments()
+            # Filter to only show running servers
+            active_servers = [s for s in all_servers if s.get("status") == "running"]
+            self.deployed_servers = active_servers
+            self.beautifier.beautify_deployed_servers(active_servers)
         except Exception as e:
             console.print(f"[red]❌ Failed to list servers: {e}[/red]")
 
-    def do_tools(self, template_name):
+    def do_tools(self, args):
         """List available tools for a template.
-        Usage: tools <template_name>
+        Usage: tools <template_name> [--force-server] [--help]
+
+        Options:
+            --force-server    Force server discovery (MCP probe only, no static fallback)
+            --help           Show detailed help for the template and its tools
         """
-        if not template_name.strip():
+        if not args.strip():
             console.print("[red]❌ Please provide a template name[/red]")
-            console.print("Usage: tools <template_name>")
+            console.print("Usage: tools <template_name> [--force-server] [--help]")
             return
 
-        template_name = template_name.strip()
+        # Parse arguments
+        parts = args.strip().split()
+        template_name = parts[0]
+        force_server_discovery = "--force-server" in parts
+        show_help = "--help" in parts
 
-        console.print(
-            f"\\n[cyan]🔧 Discovering tools for template: {template_name}[/cyan]"
-        )
+        # Handle help request
+        if show_help:
+            self._show_template_help(template_name)
+            return
 
-        # Check if we have cached config for this template
+        if force_server_discovery:
+            console.print(
+                "[yellow]🔍 Force server discovery mode - MCP probe only (no static fallback)[/yellow]"
+            )
+
+        # Get environment variables for the template
         config_values = self.session_configs.get(template_name, {})
 
-        try:
-            # Use enhanced CLI to discover tools
-            if template_name not in self.enhanced_cli.templates:
-                console.print(f"[red]❌ Template '{template_name}' not found[/red]")
-                available = list(self.enhanced_cli.templates.keys())
-                console.print(f"[dim]Available templates: {', '.join(available)}[/dim]")
-                return
-
+        # Add environment variables to config_values if available and not already set
+        if template_name in self.enhanced_cli.templates:
             template = self.enhanced_cli.templates[template_name]
-            template_dir = self.enhanced_cli.template_discovery.get_template_dir(
-                template_name
+            config_schema = template.get("config_schema", {})
+            properties = config_schema.get("properties", {})
+
+            for prop_name, prop_config in properties.items():
+                env_mapping = prop_config.get("env_mapping")
+                if (
+                    env_mapping
+                    and env_mapping in os.environ
+                    and prop_name not in config_values
+                ):
+                    config_values[prop_name] = os.environ[env_mapping]
+
+        # Use the shared CLI method - this handles all the logic correctly
+        self.enhanced_cli.list_tools(
+            template_name=template_name,
+            no_cache=False,
+            refresh=False,
+            config_values=config_values,
+            force_server_discovery=force_server_discovery,
+        )
+
+    def _show_template_help(self, template_name: str):
+        """Show detailed help for a template including configuration and tools."""
+        if template_name not in self.enhanced_cli.templates:
+            console.print(f"[red]❌ Template '{template_name}' not found[/red]")
+            console.print(
+                f"[dim]Available templates: {', '.join(self.enhanced_cli.templates.keys())}[/dim]"
             )
+            return
 
-            # Use enhanced tool discovery with cached config
-            template_with_config = template.copy()
-            if config_values:
-                existing_env_vars = template_with_config.get("env_vars", {})
-                existing_env_vars.update(config_values)
-                template_with_config["env_vars"] = existing_env_vars
+        template = self.enhanced_cli.templates[template_name]
 
-            discovery_result = self.enhanced_cli.tool_discovery.discover_tools(
-                template_name=template_name,
-                template_dir=template_dir,
-                template_config=template_with_config,
-                use_cache=True,
-                force_refresh=False,
+        # Template overview
+        console.print(
+            Panel(
+                f"[cyan]Template: {template_name}[/cyan]\n"
+                f"Description: {template.get('description', 'No description available')}\n"
+                f"Transport: {template.get('transport', {}).get('default', 'http')}\n"
+                f"Supported: {', '.join(template.get('transport', {}).get('supported', ['http']))}",
+                title="Template Overview",
+                border_style="blue",
             )
+        )
 
-            tools = discovery_result.get("tools", [])
-            discovery_method = discovery_result.get("discovery_method", "unknown")
-            source = discovery_result.get("source_file") or "template.json"
+        # Configuration Schema
+        config_schema = template.get("config_schema", {})
+        if config_schema:
+            properties = config_schema.get("properties", {})
+            required = config_schema.get("required", [])
 
-            self.beautifier.beautify_tools_list(tools, f"{discovery_method} ({source})")
+            if properties:
+                table = Table(title="Configuration Parameters")
+                table.add_column("Parameter", style="cyan", width=20)
+                table.add_column("Type", style="yellow", width=12)
+                table.add_column("Required", style="red", width=8)
+                table.add_column("Environment", style="green", width=20)
+                table.add_column("Description", style="white", width=40)
+
+                for prop_name, prop_config in properties.items():
+                    prop_type = prop_config.get("type", "string")
+                    is_required = "✓" if prop_name in required else "✗"
+                    env_var = prop_config.get("env_mapping", f"{prop_name.upper()}")
+                    description = prop_config.get("description", "No description")
+
+                    table.add_row(
+                        prop_name, prop_type, is_required, env_var, description
+                    )
+
+                console.print(table)
+
+        # Get and show tools
+        console.print("\n[cyan]📋 Available Tools:[/cyan]")
+
+        # Try to get tools using current session config
+        config_values = self.session_configs.get(template_name, {})
+
+        # Add environment variables to config_values if available and not already set
+        if config_schema:
+            properties = config_schema.get("properties", {})
+            for prop_name, prop_config in properties.items():
+                env_mapping = prop_config.get("env_mapping")
+                if (
+                    env_mapping
+                    and env_mapping in os.environ
+                    and prop_name not in config_values
+                ):
+                    config_values[prop_name] = os.environ[env_mapping]
+
+        try:
+            # Get tools using tool discovery
+            tools = self.enhanced_cli.tool_discovery.discover_tools(
+                template_name,
+                config_values or {},
+                force_server=False,  # Allow both static and dynamic for help
+            )
 
             if tools:
+                # Show detailed tool information
+                for tool in tools:
+                    tool_name = tool.get("name", "Unknown")
+                    tool_desc = tool.get("description", "No description")
+
+                    # Handle parameters from both formats
+                    parameters = tool.get("parameters", {})
+                    input_schema = tool.get("inputSchema", {})
+
+                    param_info = []
+                    if isinstance(parameters, dict) and "properties" in parameters:
+                        properties = parameters.get("properties", {})
+                        required_params = parameters.get("required", [])
+                        for param_name, param_config in properties.items():
+                            param_type = param_config.get("type", "any")
+                            is_req = (
+                                " (required)" if param_name in required_params else ""
+                            )
+                            param_desc = param_config.get("description", "")
+                            param_info.append(
+                                f"  • {param_name}: {param_type}{is_req} - {param_desc}"
+                            )
+                    elif (
+                        isinstance(input_schema, dict) and "properties" in input_schema
+                    ):
+                        properties = input_schema.get("properties", {})
+                        required_params = input_schema.get("required", [])
+                        for param_name, param_config in properties.items():
+                            param_type = param_config.get("type", "any")
+                            is_req = (
+                                " (required)" if param_name in required_params else ""
+                            )
+                            param_desc = param_config.get("description", "")
+                            param_info.append(
+                                f"  • {param_name}: {param_type}{is_req} - {param_desc}"
+                            )
+
+                    tool_text = f"[bold]{tool_name}[/bold]: {tool_desc}"
+                    if param_info:
+                        tool_text += "\n[dim]Parameters:[/dim]\n" + "\n".join(
+                            param_info
+                        )
+                    else:
+                        tool_text += "\n[dim]No parameters required[/dim]"
+
+                    console.print(
+                        Panel(tool_text, border_style="green", padding=(1, 2))
+                    )
+            else:
                 console.print(
-                    f"\\n[green]💡 Use 'call {template_name} <tool_name> [args]' to execute a tool[/green]"
+                    "[yellow]⚠️  No tools found. Try configuring the template first.[/yellow]"
                 )
 
         except Exception as e:
             console.print(f"[red]❌ Failed to discover tools: {e}[/red]")
+            console.print(
+                "[dim]This may be due to missing configuration or connectivity issues.[/dim]"
+            )
+
+        # Usage examples
+        examples_text = f"""[cyan]Usage Examples:[/cyan]
+
+[yellow]Configuration:[/yellow]
+  config {template_name} param=value
+  
+[yellow]List Tools:[/yellow]
+  tools {template_name}
+  tools {template_name} --force-server
+  
+[yellow]Call Tools:[/yellow]
+  call {template_name} tool_name
+  call {template_name} tool_name {{"param": "value"}}
+  
+[yellow]Environment Variables:[/yellow]"""
+
+        if config_schema and config_schema.get("properties"):
+            for prop_name, prop_config in config_schema.get("properties", {}).items():
+                env_var = prop_config.get("env_mapping", f"{prop_name.upper()}")
+                examples_text += f"\n  export {env_var}=your_value"
+
+        console.print(
+            Panel(examples_text, title="Usage Examples", border_style="yellow")
+        )
 
     def do_config(self, args):
         """Set configuration for a template.
@@ -435,13 +1196,68 @@ class InteractiveCLI(cmd.Cmd):
         # Get cached config
         config_values = self.session_configs.get(template_name, {})
 
+        # Check for mandatory properties for stdio transport
+        if "stdio" in supported_transports or default_transport == "stdio":
+            # Check if template has required configuration
+            config_schema = template.get("config_schema", {})
+            required_props = config_schema.get("required", [])
+
+            if required_props:
+                missing_props = []
+                for prop in required_props:
+                    prop_config = config_schema.get("properties", {}).get(prop, {})
+                    env_mapping = prop_config.get("env_mapping", prop.upper())
+
+                    # Check if we have this config value
+                    if prop not in config_values and env_mapping not in config_values:
+                        missing_props.append(prop)
+
+                if missing_props:
+                    console.print(
+                        f"[yellow]⚠️  Missing required configuration for '{template_name}': {', '.join(missing_props)}[/yellow]"
+                    )
+                    console.print("[dim]Please set configuration using one of:[/dim]")
+                    console.print("[dim]• config <template> key=value[/dim]")
+                    console.print("[dim]• Use --config-file with deploy command[/dim]")
+                    console.print("[dim]• Set environment variables[/dim]")
+
+                    if Confirm.ask("Would you like to set configuration now?"):
+                        console.print(
+                            f"[cyan]Setting configuration for {template_name}...[/cyan]"
+                        )
+                        for prop in missing_props:
+                            prop_config = config_schema.get("properties", {}).get(
+                                prop, {}
+                            )
+                            description = prop_config.get(
+                                "description", f"Value for {prop}"
+                            )
+                            value = Prompt.ask(f"Enter {prop} ({description})")
+                            if value:
+                                config_values[prop] = value
+
+                        # Save the config
+                        self.session_configs[template_name] = config_values
+                        cache_key = f"interactive_config_{template_name}"
+                        self.cache.set(cache_key, config_values)
+                        console.print("[green]✅ Configuration saved[/green]")
+                    else:
+                        console.print(
+                            "[yellow]⚠️  Cannot proceed without required configuration[/yellow]"
+                        )
+                        return
+
         # Handle different transport protocols
         if "stdio" in supported_transports or default_transport == "stdio":
             # Use stdio approach
             console.print("[dim]Using stdio transport...[/dim]")
 
-            # Prompt for config if not cached
-            if not config_values:
+            # Check if template has required configuration - only prompt if needed
+            config_schema = template.get("config_schema", {})
+            required_props = config_schema.get("required", [])
+
+            # Only prompt for config if there are required properties and none are cached
+            if required_props and not config_values:
                 console.print(
                     f"[yellow]⚠️  No configuration found for '{template_name}'[/yellow]"
                 )
@@ -481,10 +1297,52 @@ class InteractiveCLI(cmd.Cmd):
                 )
 
                 if Confirm.ask(f"Would you like to deploy '{template_name}' now?"):
-                    # TODO: Integrate with deployment logic
                     console.print(
-                        "[blue]🚀 Deployment integration coming soon...[/blue]"
+                        f"[cyan]🚀 Deploying '{template_name}' server...[/cyan]"
                     )
+
+                    # Check for required configuration for deployment
+                    config_schema = template.get("config_schema", {})
+                    required_props = config_schema.get("required", [])
+                    deploy_config = {}
+
+                    if required_props:
+                        console.print(
+                            "[yellow]Server deployment requires configuration:[/yellow]"
+                        )
+                        for prop in required_props:
+                            prop_config = config_schema.get("properties", {}).get(
+                                prop, {}
+                            )
+                            description = prop_config.get(
+                                "description", f"Value for {prop}"
+                            )
+                            value = Prompt.ask(f"Enter {prop} ({description})")
+                            if value:
+                                deploy_config[prop] = value
+
+                    try:
+                        # Use deployer to deploy the template
+                        success = self.deployer.deploy(
+                            template_name=template_name,
+                            config_values=deploy_config,
+                            pull_image=True,
+                        )
+
+                        if success:
+                            console.print(
+                                "[green]✅ Server deployed successfully![/green]"
+                            )
+                            console.print("[dim]Refreshing server list...[/dim]")
+                            # Refresh deployed servers list
+                            self.do_list_servers("")
+                            console.print(
+                                f"[green]Now you can call tools on '{template_name}'[/green]"
+                            )
+                        else:
+                            console.print("[red]❌ Server deployment failed[/red]")
+                    except Exception as e:
+                        console.print(f"[red]❌ Deployment error: {e}[/red]")
                     return
                 else:
                     return
@@ -493,10 +1351,39 @@ class InteractiveCLI(cmd.Cmd):
             console.print(
                 f"[dim]Calling tool on deployed server at {deployed_server.get('endpoint')}[/dim]"
             )
-            # TODO: Implement HTTP tool calling
-            console.print(
-                "[blue]📡 HTTP tool calling integration coming soon...[/blue]"
-            )
+
+            # Parse tool arguments
+            try:
+                if tool_args == "{}":
+                    arguments = {}
+                else:
+                    arguments = json.loads(tool_args)
+            except json.JSONDecodeError:
+                console.print(f"[red]❌ Invalid JSON arguments: {tool_args}[/red]")
+                console.print("[dim]Use JSON format: {'param': 'value'}[/dim]")
+                return
+
+            # Call HTTP tool
+            try:
+                server_url = deployed_server.get("endpoint")
+                result = self.http_tool_caller.call_tool_sync(
+                    server_url=server_url, tool_name=tool_name, arguments=arguments
+                )
+
+                if result.get("status") == "success":
+                    console.print(
+                        f"[green]✅ Tool '{tool_name}' executed successfully[/green]"
+                    )
+                    self.beautifier.beautify_json(
+                        result.get("result", {}), f"Tool Result: {tool_name}"
+                    )
+                else:
+                    console.print(
+                        f"[red]❌ Tool execution failed: {result.get('error', 'Unknown error')}[/red]"
+                    )
+
+            except Exception as e:
+                console.print(f"[red]❌ HTTP tool call failed: {e}[/red]")
 
     def do_show_config(self, template_name):
         """Show current configuration for a template.
@@ -630,10 +1517,14 @@ class InteractiveCLI(cmd.Cmd):
   • tools <template>      - List available tools for a template
   • call <template> <tool> [args] - Call a tool (stdio or HTTP)
 
-[yellow]Configuration:[/yellow]
-  • config <template> key=value   - Set configuration for a template
+[yellow]Configuration (Multiple Ways):[/yellow]
+  • config <template> key=value   - Set configuration interactively
   • show_config <template>        - Show current template configuration
   • clear_config <template>       - Clear template configuration
+  [dim]Note: Configuration can also be set via:[/dim]
+  [dim]• Environment variables (KEY=value)[/dim]
+  [dim]• Config files (--config-file path)[/dim]
+  [dim]• CLI deployment commands (--config key=value)[/dim]
 
 [yellow]General:[/yellow]
   • help [command]        - Show this help or help for specific command
@@ -641,9 +1532,12 @@ class InteractiveCLI(cmd.Cmd):
 
 [green]Examples:[/green]
   • templates
-  • config github GITHUB_TOKEN=your_token_here
+  • config github github_token=your_token_here
   • tools github
   • call github search_repositories {"query": "python"}
+  • call demo say_hello (no config needed)
+  [dim]For stdio templates: config is prompted if missing mandatory properties[/dim]
+  [dim]For HTTP templates: server deployment is prompted if not running[/dim]
 """,
                     title="MCP Interactive CLI Help",
                     border_style="blue",

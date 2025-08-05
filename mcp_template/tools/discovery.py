@@ -55,46 +55,140 @@ class ToolDiscovery:
         template_config: Dict[str, Any],
         use_cache: bool = True,
         force_refresh: bool = False,
+        force_server_discovery: bool = False,
     ) -> Dict[str, Any]:
         """
-        Enhanced tool discovery with multiple strategies
+        Enhanced tool discovery with multiple strategies.
+
+        Args:
+            template_name: Name of the template
+            template_dir: Path to template directory
+            template_config: Template configuration
+            use_cache: Whether to use cached results
+            force_refresh: Whether to force refresh cached results
+            force_server_discovery: If True, only use MCP server probing (skip static fallback)
+
+        Returns:
+            Dictionary containing discovered tools and metadata
         """
+
         # Convert template_dir to Path object if it's a string
         if isinstance(template_dir, str):
             template_dir = Path(template_dir)
 
-        cache_key = f"{template_name}_{hash(str(sorted(template_config.items())))}"
-
-        # Check cache if not forcing refresh
-        if use_cache and not force_refresh and cache_key in self.cache:
-            cached_result = self.cache[cache_key]
-            return cached_result
+        # Check cache if not forcing refresh and not in force server discovery mode
+        if use_cache and not force_refresh and not force_server_discovery:
+            cached_result = self._load_from_cache(template_name)
+            if cached_result:
+                logger.info("Using cached tool discovery for %s", template_name)
+                return cached_result
 
         # Parse template configuration
         config = template_config or {}
         discovery_type = config.get("tool_discovery", "dynamic")
         origin = config.get("origin", "internal")
 
-        # Check cache first (if enabled and not forcing refresh)
-        if use_cache and not force_refresh:
-            cached_result = self._load_from_cache(template_name)
-            if cached_result:
-                logger.info("Using cached tool discovery for %s", template_name)
-                return cached_result
+        # Force server discovery mode - only use MCP server probing
+        if force_server_discovery:
+            logger.info(
+                "Force server discovery mode for %s - attempting MCP server probing only",
+                template_name,
+            )
+            result = self._discover_dynamic_tools(template_name, config)
+            if result and result.get("tools"):
+                result["discovery_method"] = "server_probe"
+                result["force_server_discovery"] = True
+                result["notes"] = ["Forced server discovery - MCP server probing only"]
+                self._save_to_cache(template_name, result)
+                return result
+            else:
+                logger.error(
+                    "Force server discovery failed for %s - no fallback allowed",
+                    template_name,
+                )
+                return {
+                    "tools": [],
+                    "discovery_method": "server_probe",
+                    "force_server_discovery": True,
+                    "error": "MCP server probing failed and no fallback allowed",
+                    "notes": [
+                        "Force server discovery mode",
+                        "MCP server unreachable or invalid configuration",
+                    ],
+                }
 
-        # Strategy 1: Static discovery from tools.json
-        if discovery_type == "static" or (
-            template_dir and (template_dir / "tools.json").exists()
+        # Strategy 1: Try dynamic discovery first if we have credentials
+        if discovery_type == "dynamic" and self._has_valid_credentials(
+            template_name, config
         ):
+            logger.info(
+                "Using dynamic tool discovery for %s (credentials available)",
+                template_name,
+            )
+            result = self._discover_dynamic_tools(template_name, config)
+            if result and result.get("tools"):
+                # Mark as dynamic discovery with fallback available if not already set
+                if "discovery_method" not in result:
+                    result["discovery_method"] = "dynamic"
+                result["fallback_available"] = (
+                    template_dir and (template_dir / "tools.json").exists()
+                )
+                self._save_to_cache(template_name, result)
+                return result
+            else:
+                logger.warning(
+                    "Dynamic discovery failed for %s, trying static fallback",
+                    template_name,
+                )
+
+        # Strategy 1.5: Try dynamic discovery with dummy credentials for tool discovery
+        elif discovery_type == "dynamic":
+            logger.info(
+                "Attempting dynamic tool discovery for %s with placeholder credentials",
+                template_name,
+            )
+            config_with_dummies = self._add_dummy_credentials(template_name, config)
+            if self._has_valid_credentials(template_name, config_with_dummies):
+                result = self._discover_dynamic_tools(
+                    template_name, config_with_dummies
+                )
+                if result and result.get("tools"):
+                    result["discovery_method"] = "server_probe"
+                    result["notes"] = result.get("notes", []) + [
+                        "Used placeholder credentials for discovery"
+                    ]
+                    result["fallback_available"] = (
+                        template_dir and (template_dir / "tools.json").exists()
+                    )
+                    self._save_to_cache(template_name, result)
+                    return result
+                else:
+                    logger.warning(
+                        "Dynamic discovery with placeholders failed for %s, trying static fallback",
+                        template_name,
+                    )
+
+        # Strategy 2: Static discovery from tools.json (preferred fallback)
+        if template_dir and (template_dir / "tools.json").exists():
             logger.info("Using static tool discovery for %s", template_name)
             result = self._discover_static_tools(template_name, template_dir)
             if result and result.get("tools"):
+                # Mark as static discovery with dynamic capability
+                result["discovery_method"] = "static"
+                result["dynamic_available"] = discovery_type == "dynamic"
+                result["notes"] = [
+                    "Static discovery used",
+                    "Provide valid credentials for dynamic discovery",
+                ]
                 self._save_to_cache(template_name, result)
                 return result
 
-        # Strategy 2: Dynamic discovery from live endpoints
+        # Strategy 3: Dynamic discovery as last resort (even without credentials)
         if discovery_type == "dynamic":
-            logger.info("Using dynamic tool discovery for %s", template_name)
+            logger.info(
+                "Attempting dynamic tool discovery for %s without credentials",
+                template_name,
+            )
             result = self._discover_dynamic_tools(template_name, config)
             if result and result.get("tools"):
                 self._save_to_cache(template_name, result)
@@ -183,13 +277,30 @@ class ToolDiscovery:
     ) -> Optional[Dict[str, Any]]:
         """Discover tools by probing live server endpoints and Docker containers."""
 
-        # Strategy 2a: Try Docker discovery if image is available
-        if "docker_image" in config or "image" in config:
-            docker_result = self._try_docker_discovery(template_name, config)
+        # Check transport configuration to determine discovery strategy
+        transport_config = config.get("transport", {})
+        default_transport = transport_config.get("default", "http")
+        supported_transports = transport_config.get("supported", ["http"])
+
+        # Strategy 2a: Use stdio-based Docker discovery if template supports stdio
+        if ("stdio" in supported_transports or default_transport == "stdio") and (
+            "docker_image" in config or "image" in config
+        ):
+            logger.info("Using stdio-based Docker discovery for %s", template_name)
+            stdio_result = self._try_stdio_docker_discovery(template_name, config)
+            if stdio_result and stdio_result.get("tools"):
+                return stdio_result
+
+        # Strategy 2b: Try HTTP-based Docker discovery if image is available and supports HTTP
+        elif ("http" in supported_transports or default_transport == "http") and (
+            "docker_image" in config or "image" in config
+        ):
+            logger.info("Using HTTP-based Docker discovery for %s", template_name)
+            docker_result = self._try_http_docker_discovery(template_name, config)
             if docker_result and docker_result.get("tools"):
                 return docker_result
 
-        # Strategy 2b: Try HTTP endpoints if server URL is available
+        # Strategy 2c: Try HTTP endpoints if server URL is available
         base_url = self._get_server_url(config)
         if base_url:
             http_result = self._try_http_endpoints(template_name, config, base_url)
@@ -199,10 +310,89 @@ class ToolDiscovery:
         logger.debug("No responsive dynamic discovery methods for %s", template_name)
         return None
 
-    def _try_docker_discovery(
+    def _try_stdio_docker_discovery(
         self, template_name: str, config: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
-        """Try to discover tools using Docker probe."""
+        """Try to discover tools using stdio-based Docker probe."""
+        try:
+            from .docker_probe import DockerProbe
+
+            # Get Docker image
+            docker_image = config.get("docker_image")
+            if not docker_image:
+                # Try to construct from image + docker_tag
+                image = config.get("image")
+                if image and ":" not in image:
+                    docker_tag = config.get("docker_tag", "latest")
+                    docker_image = f"{image}:{docker_tag}"
+                else:
+                    docker_image = image
+
+            if not docker_image:
+                logger.debug(
+                    "No Docker image found for stdio discovery: %s", template_name
+                )
+                return None
+
+            # Prepare environment variables for stdio mode
+            env_vars = {}
+
+            # CRITICAL: Set MCP_TRANSPORT=stdio for stdio mode
+            env_vars["MCP_TRANSPORT"] = "stdio"
+
+            # Add environment variables from config schema defaults and user config
+            config_schema = config.get("config_schema", {})
+            properties = config_schema.get("properties", {})
+
+            # First add defaults from schema
+            for prop_name, prop_config in properties.items():
+                env_mapping = prop_config.get("env_mapping", prop_name.upper())
+                default_value = prop_config.get("default")
+                if default_value is not None:
+                    env_vars[env_mapping] = str(default_value)
+
+            # Add explicit env_vars from config (can override defaults)
+            template_env = config.get("env_vars", {})
+            env_vars.update(template_env)
+
+            # Add any user-provided config values (converted to env vars)
+            user_config = config.get("user_config", {})
+            for prop_name, value in user_config.items():
+                # Map config property to environment variable
+                prop_config = properties.get(prop_name, {})
+                env_mapping = prop_config.get("env_mapping", prop_name.upper())
+                env_vars[env_mapping] = str(value)
+
+            logger.debug(
+                "Using stdio Docker discovery for %s with image %s and env vars: %s",
+                template_name,
+                docker_image,
+                list(env_vars.keys()),
+            )
+
+            # Use Docker probe for stdio discovery
+            docker_probe = DockerProbe()
+            result = docker_probe.discover_tools_from_image(
+                docker_image, server_args=None, env_vars=env_vars, timeout=15
+            )
+
+            if result:
+                result["template_name"] = template_name
+                logger.info(
+                    "Successfully discovered tools via stdio Docker for %s",
+                    template_name,
+                )
+
+            return result
+
+        except Exception as e:
+            logger.debug("Stdio Docker discovery failed for %s: %s", template_name, e)
+            return None
+
+    def _try_http_docker_discovery(
+        self, template_name: str, config: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Try to discover tools using HTTP-based Docker probe."""
         try:
             from .docker_probe import DockerProbe
 
@@ -239,16 +429,21 @@ class ToolDiscovery:
             )
 
             if result:
+                result["template_name"] = template_name
                 logger.info(
-                    "Successfully discovered tools via Docker for %s", template_name
+                    "Successfully discovered tools via HTTP Docker for %s",
+                    template_name,
                 )
                 return result
             else:
-                logger.debug("Docker discovery failed for %s", template_name)
+                logger.debug("HTTP Docker discovery failed for %s", template_name)
                 return None
 
         except ImportError:
             logger.warning("DockerProbe not available for %s", template_name)
+            return None
+        except Exception as e:
+            logger.debug("HTTP Docker discovery error for %s: %s", template_name, e)
             return None
         except Exception as e:
             logger.debug("Docker discovery error for %s: %s", template_name, e)
@@ -349,6 +544,137 @@ class ToolDiscovery:
             return True
 
         return False
+
+    def _has_valid_credentials(
+        self, template_name: str, config: Dict[str, Any]
+    ) -> bool:
+        """Check if template has valid credentials for dynamic discovery."""
+        # Get user config and environment variables
+        user_config = config.get("user_config", {})
+        env_vars = config.get("env_vars", {})
+
+        # Get config schema to understand what credentials this template expects
+        config_schema = config.get("config_schema", {})
+        properties = config_schema.get("properties", {})
+
+        # If we have a config schema, validate against it (schema-based validation)
+        if properties:
+            # Check if any expected credential properties have valid values
+            for prop_name, prop_config in properties.items():
+                if any(
+                    keyword in prop_name.lower()
+                    for keyword in ["token", "key", "secret", "password", "email"]
+                ):
+                    # Check in user_config
+                    if prop_name in user_config:
+                        value = user_config[prop_name]
+                        if value and str(value).strip() and str(value).strip() != "":
+                            return True
+
+                    # Check in env_vars using env_mapping
+                    env_mapping = prop_config.get("env_mapping", prop_name.upper())
+                    if env_mapping in env_vars:
+                        value = env_vars[env_mapping]
+                        if value and str(value).strip() and str(value).strip() != "":
+                            return True
+
+            return False
+
+        # No config schema - be conservative and only check for very generic credentials
+        # This avoids assuming that any random token is valid for any template
+
+        # Check for very generic tokens in env_vars (avoid template-specific ones)
+        for key, value in env_vars.items():
+            # Only accept very generic credential names
+            if key.upper() in [
+                "API_TOKEN",
+                "ACCESS_TOKEN",
+                "AUTH_TOKEN",
+                "API_KEY",
+                "SECRET",
+            ]:
+                if value and str(value).strip() and str(value).strip() != "":
+                    return True
+
+        # Check for generic credentials in user_config
+        for key, value in user_config.items():
+            # Only accept very generic credential names
+            if key.lower() in ["token", "api_token", "access_token", "key", "api_key"]:
+                if value and str(value).strip() and str(value).strip() != "":
+                    return True
+
+        return False
+
+    def _add_dummy_credentials(
+        self, template_name: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Add dummy/placeholder credentials for tool discovery purposes based on config schema."""
+        config_with_dummies = config.copy()
+
+        # Get or create env_vars section
+        env_vars = config_with_dummies.get("env_vars", {})
+
+        # Get config schema to understand what credentials are needed
+        config_schema = config.get("config_schema", {})
+        properties = config_schema.get("properties", {})
+        required = config_schema.get("required", [])
+
+        # Add dummy values for required properties that look like credentials
+        for prop_name in required:
+            prop_config = properties.get(prop_name, {})
+            env_mapping = prop_config.get("env_mapping", prop_name.upper())
+
+            # Skip if already has a value
+            if env_vars.get(env_mapping) or config.get(prop_name):
+                continue
+
+            # Generate dummy value based on property name/type
+            if any(
+                keyword in prop_name.lower()
+                for keyword in ["token", "key", "secret", "password"]
+            ):
+                env_vars[env_mapping] = (
+                    f"dummy-{prop_name.lower().replace('_', '-')}-for-discovery"
+                )
+            elif any(keyword in prop_name.lower() for keyword in ["email"]):
+                env_vars[env_mapping] = "dummy@example.com"
+            elif any(
+                keyword in prop_name.lower() for keyword in ["subdomain", "domain"]
+            ):
+                env_vars[env_mapping] = "dummy-subdomain"
+            elif any(keyword in prop_name.lower() for keyword in ["url", "endpoint"]):
+                env_vars[env_mapping] = "https://dummy-endpoint.example.com"
+            elif any(keyword in prop_name.lower() for keyword in ["username", "user"]):
+                env_vars[env_mapping] = "dummy-user"
+            else:
+                # Generic dummy value
+                env_vars[env_mapping] = f"dummy-{prop_name.lower().replace('_', '-')}"
+
+            logger.debug(f"Added dummy {env_mapping} for tool discovery")
+
+        # Also add dummy values for non-required credential-looking properties
+        for prop_name, prop_config in properties.items():
+            if prop_name in required:
+                continue  # Already handled above
+
+            env_mapping = prop_config.get("env_mapping", prop_name.upper())
+
+            # Skip if already has a value
+            if env_vars.get(env_mapping) or config.get(prop_name):
+                continue
+
+            # Only add if it looks like a credential
+            if any(
+                keyword in prop_name.lower()
+                for keyword in ["token", "key", "secret", "password"]
+            ):
+                env_vars[env_mapping] = (
+                    f"dummy-{prop_name.lower().replace('_', '-')}-for-discovery"
+                )
+                logger.debug(f"Added dummy {env_mapping} for tool discovery")
+
+        config_with_dummies["env_vars"] = env_vars
+        return config_with_dummies
 
     def _normalize_tools(self, raw_data: Any) -> List[Dict[str, Any]]:
         """Normalize tools data to consistent format."""
