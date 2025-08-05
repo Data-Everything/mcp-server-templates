@@ -20,6 +20,18 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
+STDIO_TIMEOUT = os.getenv("MCP_STDIO_TIMEOUT", 30)
+if isinstance(STDIO_TIMEOUT, str):
+    try:
+        STDIO_TIMEOUT = int(STDIO_TIMEOUT)
+    except ValueError:
+        logger.warning(
+            "Invalid MCP_STDIO_TIMEOUT value '%s', using default 30 seconds",
+            os.getenv("MCP_STDIO_TIMEOUT", "30")
+        )
+        STDIO_TIMEOUT = 30
+
+
 class DockerDeploymentService(BaseDeploymentBackend):
     """Docker deployment service using CLI commands.
 
@@ -529,7 +541,7 @@ EOF""",
             ]
 
             result = subprocess.run(
-                bash_command, capture_output=True, text=True, check=True, timeout=30
+                bash_command, capture_output=True, text=True, check=True, timeout=STDIO_TIMEOUT
             )
 
             return {
@@ -548,6 +560,16 @@ EOF""",
                 "stdout": e.stdout or "",
                 "stderr": e.stderr or "",
                 "error": str(e),
+                "executed_at": datetime.now().isoformat(),
+            }
+        except subprocess.TimeoutExpired:
+            logger.error(
+                "Stdio command timed out for template %s after %d seconds", template_id, STDIO_TIMEOUT
+            )
+            return {
+                "template_id": template_id,
+                "status": "timeout",
+                "error": f"Command execution timed out after {STDIO_TIMEOUT} seconds",
                 "executed_at": datetime.now().isoformat(),
             }
         except Exception as e:

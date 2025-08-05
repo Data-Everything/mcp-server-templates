@@ -27,7 +27,7 @@ def test_run_stdio_command_success(mock_run, docker_service):
     template_data = {
         'image': 'test/github:latest',
         'command': ['mcp-server-github'],
-        'environment': {}
+        'env_vars': {}
     }
     json_input = json.dumps({
         "jsonrpc": "2.0",
@@ -166,7 +166,7 @@ def test_run_stdio_command_with_environment_vars(mock_run, docker_service):
     template_data = {
         'image': 'test/github:latest',
         'command': ['mcp-server-github'],
-        'environment': {'LOG_LEVEL': 'debug'}
+        'env_vars': {'LOG_LEVEL': 'debug'}
     }
     json_input = '{"jsonrpc": "2.0", "method": "test"}'
 
@@ -279,8 +279,8 @@ def test_run_stdio_command_timeout_handling(mock_run, docker_service):
         template_id, config, template_data, json_input
     )
 
-    assert result['status'] == 'failed'
-    assert 'timeout' in result['error'].lower() or 'expired' in result['error'].lower()
+    assert result['status'] == 'timeout'
+    assert 'timeout' in result['error'].lower() or 'expired' in result['error'].lower() or 'timed out' in result['error'].lower()
 
 
 @pytest.mark.integration
