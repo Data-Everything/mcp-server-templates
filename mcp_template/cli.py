@@ -1073,13 +1073,10 @@ def add_enhanced_cli_args(subparsers) -> None:
         "--env", action="append", help="Environment variables (KEY=VALUE)"
     )
 
-
-def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
+def handle_enhanced_cli_commands(args) -> bool:
     """Handle enhanced CLI commands."""
-    from rich.console import Console
-
-    console = Console()
-
+    
+    enhanced_cli = EnhancedCLI()
     if args.command in ["interactive", "i"]:
         # Start interactive CLI session
         from mcp_template.interactive_cli import start_interactive_cli

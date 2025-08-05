@@ -52,7 +52,7 @@ class TestMainCLI:
         main()
         mock_deployer.list_templates.assert_called_with(deployed_only=True)
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_deploy_command(self, mock_deployer_class, mock_enhanced_cli_class):
         """Test deploy command."""
@@ -112,7 +112,7 @@ class TestMainCLI:
         main()
         mock_deployer.logs.assert_called_once_with("demo", custom_name=None)
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_tools_command_with_template(
         self, mock_deployer_class, mock_enhanced_cli_class
@@ -132,7 +132,7 @@ class TestMainCLI:
             "demo", no_cache=False, refresh=False, config_values={}
         )
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_tools_command_with_image(
         self, mock_deployer_class, mock_enhanced_cli_class
@@ -152,7 +152,7 @@ class TestMainCLI:
             "mcp/filesystem", ["/tmp"], {}
         )
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_tools_command_with_cache_options(
         self, mock_deployer_class, mock_enhanced_cli_class
@@ -172,7 +172,7 @@ class TestMainCLI:
             "demo", no_cache=True, refresh=True, config_values={}
         )
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_discover_tools_command_deprecated(
         self, mock_deployer_class, mock_enhanced_cli_class
@@ -227,7 +227,7 @@ class TestMainCLI:
         main()
         mock_creator.create_template_interactive.assert_called_once()
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_error_handling(self, mock_deployer_class, mock_enhanced_cli_class):
         """Test error handling in main CLI."""

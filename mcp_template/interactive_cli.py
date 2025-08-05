@@ -8,16 +8,13 @@ tools, and configurations with persistent session state and beautified responses
 import json
 import os
 import sys
-from typing import Dict, List, Optional, Any, Union
-from pathlib import Path
+from typing import Dict, List, Any, Union
 import cmd
 import logging
-import tempfile
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 from rich.prompt import Prompt, Confirm
 from rich.syntax import Syntax
 from rich.tree import Tree

@@ -30,7 +30,6 @@ from mcp_template.backends.docker import DockerDeploymentService
 
 # Import enhanced CLI modules
 from mcp_template.cli import (
-    EnhancedCLI,
     add_enhanced_cli_args,
     handle_enhanced_cli_commands,
 )
@@ -190,16 +189,13 @@ Examples:
     if "deployer" not in locals():
         deployer = MCPDeployer()
 
-    # Initialize enhanced CLI
-    enhanced_cli = EnhancedCLI()
-
     if not args.command:
         parser.print_help()
         sys.exit(0)
 
     try:
-        # Try enhanced CLI commands first
-        if handle_enhanced_cli_commands(args, enhanced_cli):
+        # Try enhanced CLI commands first, If the response is handled, return early
+        if handle_enhanced_cli_commands(args):
             return
 
         if args.command == "list":
