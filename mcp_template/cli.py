@@ -406,7 +406,7 @@ class EnhancedCLI:
                 border_style="blue",
             )
         )
-
+        
         # Use Docker probe to discover tools
         result = self.docker_probe.discover_tools_from_image(
             image_name, server_args, env_vars
