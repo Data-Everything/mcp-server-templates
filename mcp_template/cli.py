@@ -788,7 +788,7 @@ else:
                     logger.debug("Using enhanced beautifier")
                     try:
                         self.beautifier.beautify_tool_response(result)
-                        return  True
+                        return True
                     except Exception as e:
                         console.print(f"[yellow]⚠️  Beautifier error: {e}[/yellow]")
                         console.print("[dim]Falling back to legacy output...[/dim]")
@@ -1068,6 +1068,7 @@ def add_enhanced_cli_args(subparsers) -> None:
         "--env", action="append", help="Environment variables (KEY=VALUE)"
     )
 
+
 def handle_enhanced_cli_commands(args) -> bool:
     """Handle enhanced CLI commands."""
     enhanced_cli = EnhancedCLI()
@@ -1200,6 +1201,6 @@ def handle_enhanced_cli_commands(args) -> bool:
             config_values=config_values,
             env_vars=env_vars,
         )
-    
+
     # Handle invalid commands
     return False

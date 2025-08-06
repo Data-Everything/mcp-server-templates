@@ -68,9 +68,9 @@ class TestToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            template_name="test-template", 
+            template_name="test-template",
             template_dir=str(self.template_dir),
-            template_config=template_config
+            template_config=template_config,
         )
 
         assert result["discovery_method"] == "template_json"
@@ -94,9 +94,9 @@ class TestToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            template_name="test-template", 
+            template_name="test-template",
             template_dir=str(self.template_dir),
-            template_config=template_config
+            template_config=template_config,
         )
 
         assert result["discovery_method"] == "dynamic_http"
@@ -133,9 +133,9 @@ class TestToolDiscovery:
         }
 
         result1 = self.discovery.discover_tools(
-            template_name="test-template", 
+            template_name="test-template",
             template_dir=str(self.template_dir),
-            template_config=template_config
+            template_config=template_config,
         )
 
         # Second discovery should use cache

@@ -165,8 +165,9 @@ class TestDeploymentIntegration:
         deployer = MCPDeployer()
         deployer.templates = {"demo": self.mock_template}
 
-        with patch.object(deployer, "deployment_manager") as mock_manager, patch.object(
-            deployer, "_generate_mcp_config"
+        with (
+            patch.object(deployer, "deployment_manager") as mock_manager,
+            patch.object(deployer, "_generate_mcp_config"),
         ):
             mock_manager.deploy_template.return_value = {
                 "deployment_name": "test-deployment",
@@ -203,7 +204,9 @@ class TestDeploymentIntegration:
         "mcp_template.backends.docker.DockerDeploymentService._ensure_docker_available"
     )
     @patch("mcp_template.backends.docker.time")
-    def test_env_vars_reach_docker_command(self, mock_time, mock_ensure_docker, mock_run_command):
+    def test_env_vars_reach_docker_command(
+        self, mock_time, mock_ensure_docker, mock_run_command
+    ):
         """Test that config overrides become environment variables in Docker command."""
         # Setup mocks
         mock_run_command.side_effect = [
@@ -216,7 +219,7 @@ class TestDeploymentIntegration:
         mock_backend = Mock()
         manager.deployment_backend = mock_backend
         manager.deployment_backend._run_command = mock_run_command
-        #manager._get_deployment_backend = mock_backend
+        # manager._get_deployment_backend = mock_backend
 
         # Test config with overrides
         config = {

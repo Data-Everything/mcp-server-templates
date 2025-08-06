@@ -81,19 +81,31 @@ class TestMCPDeploymentSystem:
         template_config = self.deployer.templates[test_template]
         transport_config = template_config.get("transport", {})
         default_transport = transport_config.get("default", "http")
-        
+
         if default_transport == "stdio":
             # Verify that stdio deployment fails appropriately
             try:
-                success = self.deployer.deploy(test_template, env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"}, pull_image=False)
-                assert not success, f"Stdio template {test_template} should not be deployable as persistent container"
+                success = self.deployer.deploy(
+                    test_template,
+                    env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"},
+                    pull_image=False,
+                )
+                assert (
+                    not success
+                ), f"Stdio template {test_template} should not be deployable as persistent container"
             except ValueError as e:
                 # Expected - stdio templates should raise ValueError
-                assert "stdio transport" in str(e).lower(), f"Expected stdio transport error, got: {e}"
+                assert (
+                    "stdio transport" in str(e).lower()
+                ), f"Expected stdio transport error, got: {e}"
             return
 
         # For HTTP-based templates, test normal deployment
-        success = self.deployer.deploy(test_template, env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"}, pull_image=False)
+        success = self.deployer.deploy(
+            test_template,
+            env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"},
+            pull_image=False,
+        )
         assert success, f"Failed to deploy {test_template}"
 
         # Wait for container to start
@@ -119,24 +131,36 @@ class TestMCPDeploymentSystem:
             pytest.skip("No templates available for testing")
 
         test_template = templates[0]
-        
+
         # Check if template is stdio-based and skip if it is
         template_config = self.deployer.templates[test_template]
         transport_config = template_config.get("transport", {})
         default_transport = transport_config.get("default", "http")
-        
+
         if default_transport == "stdio":
             # Verify that stdio deployment fails appropriately
             try:
-                success = self.deployer.deploy(test_template, env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"}, pull_image=False)
-                assert not success, f"Stdio template {test_template} should not be deployable as persistent container"
+                success = self.deployer.deploy(
+                    test_template,
+                    env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"},
+                    pull_image=False,
+                )
+                assert (
+                    not success
+                ), f"Stdio template {test_template} should not be deployable as persistent container"
             except ValueError as e:
                 # Expected - stdio templates should raise ValueError
-                assert "stdio transport" in str(e).lower(), f"Expected stdio transport error, got: {e}"
+                assert (
+                    "stdio transport" in str(e).lower()
+                ), f"Expected stdio transport error, got: {e}"
             return
-            
+
         # For HTTP-based templates, test normal deployment
-        success = self.deployer.deploy(test_template, env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"}, pull_image=False)
+        success = self.deployer.deploy(
+            test_template,
+            env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"},
+            pull_image=False,
+        )
         assert success, f"Failed to deploy {test_template}"
 
     def test_cleanup_functionality(self):
@@ -147,24 +171,36 @@ class TestMCPDeploymentSystem:
             pytest.skip("No templates available for testing")
 
         test_template = templates[0]
-        
+
         # Check if template is stdio-based and skip if it is
         template_config = self.deployer.templates[test_template]
         transport_config = template_config.get("transport", {})
         default_transport = transport_config.get("default", "http")
-        
+
         if default_transport == "stdio":
             # Verify that stdio deployment fails appropriately
             try:
-                success = self.deployer.deploy(test_template, env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"}, pull_image=False)
-                assert not success, f"Stdio template {test_template} should not be deployable as persistent container"
+                success = self.deployer.deploy(
+                    test_template,
+                    env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"},
+                    pull_image=False,
+                )
+                assert (
+                    not success
+                ), f"Stdio template {test_template} should not be deployable as persistent container"
             except ValueError as e:
                 # Expected - stdio templates should raise ValueError
-                assert "stdio transport" in str(e).lower(), f"Expected stdio transport error, got: {e}"
+                assert (
+                    "stdio transport" in str(e).lower()
+                ), f"Expected stdio transport error, got: {e}"
             return
-            
+
         # For HTTP-based templates, test normal deployment
-        success = self.deployer.deploy(test_template, env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"}, pull_image=False)
+        success = self.deployer.deploy(
+            test_template,
+            env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"},
+            pull_image=False,
+        )
         assert success, f"Failed to deploy {test_template}"
 
         time.sleep(3)

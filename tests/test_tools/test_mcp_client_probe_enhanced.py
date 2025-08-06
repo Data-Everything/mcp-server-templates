@@ -30,10 +30,10 @@ class TestMCPClientProbeEnhancements:
         # Simulate output with startup messages followed by JSON
         responses = [
             b"Starting MCP server with stdio transport\n",  # Non-JSON startup message
-            b"GitHub MCP Server running on stdio\n",        # Another startup message
-            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":true}},"serverInfo":{"name":"github-mcp-server","version":"v0.9.1"}}}\n'
+            b"GitHub MCP Server running on stdio\n",  # Another startup message
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":true}},"serverInfo":{"name":"github-mcp-server","version":"v0.9.1"}}}\n',
         ]
-        
+
         mock_process.stdout.readline = AsyncMock(side_effect=responses)
 
         result = await self.probe._initialize_mcp_session(mock_process)
@@ -53,9 +53,9 @@ class TestMCPClientProbeEnhancements:
         # Simulate mixed output for tools list
         responses = [
             b"Loading tools...\n",  # Non-JSON message
-            b'{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"create_repository","description":"Create repos"},{"name":"search_repositories","description":"Search repos"}]}}\n'
+            b'{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"create_repository","description":"Create repos"},{"name":"search_repositories","description":"Search repos"}]}}\n',
         ]
-        
+
         mock_process.stdout.readline = AsyncMock(side_effect=responses)
 
         result = await self.probe._list_tools(mock_process)
@@ -68,44 +68,45 @@ class TestMCPClientProbeEnhancements:
     @pytest.mark.asyncio
     async def test_discover_tools_from_docker_environment_variables(self):
         """Test that Docker discovery properly sets environment variables."""
-        with patch('asyncio.create_subprocess_exec') as mock_create_process:
+        with patch("asyncio.create_subprocess_exec") as mock_create_process:
             mock_process = AsyncMock()
             mock_process.returncode = None
             mock_create_process.return_value = mock_process
 
             # Mock the MCP communication
-            with patch.object(self.probe, 'discover_tools_from_command') as mock_discover:
+            with patch.object(
+                self.probe, "discover_tools_from_command"
+            ) as mock_discover:
                 mock_discover.return_value = {
                     "tools": [{"name": "test_tool"}],
-                    "discovery_method": "mcp_client"
+                    "discovery_method": "mcp_client",
                 }
 
                 env_vars = {
                     "GITHUB_PERSONAL_ACCESS_TOKEN": "test_token",
                     "MCP_TRANSPORT": "stdio",
-                    "GITHUB_TOOLSET": "all"
+                    "GITHUB_TOOLSET": "all",
                 }
 
                 result = await self.probe.discover_tools_from_docker_mcp(
-                    "dataeverything/mcp-github:latest",
-                    env_vars=env_vars
+                    "dataeverything/mcp-github:latest", env_vars=env_vars
                 )
 
                 # Verify the docker command includes environment variables
                 args, kwargs = mock_discover.call_args
                 docker_cmd = args[0]
-                
+
                 assert "docker" in docker_cmd
                 assert "run" in docker_cmd
                 assert "--rm" in docker_cmd
                 assert "-i" in docker_cmd
-                
+
                 # Check environment variables are included
                 env_args = []
                 for i, arg in enumerate(docker_cmd):
                     if arg == "-e":
                         env_args.append(docker_cmd[i + 1])
-                
+
                 assert "GITHUB_PERSONAL_ACCESS_TOKEN=test_token" in env_args
                 assert "MCP_TRANSPORT=stdio" in env_args
                 assert "GITHUB_TOOLSET=all" in env_args
@@ -119,15 +120,17 @@ class TestMCPClientProbeEnhancements:
 
         # Capture the request sent to verify protocol version
         written_data = []
-        
+
         def capture_write(data):
             written_data.append(data)
-            
+
         mock_process.stdin.write = capture_write
         mock_process.stdin.drain = AsyncMock()
 
         # Mock successful response
-        mock_process.stdout.readline = AsyncMock(return_value=b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}\n')
+        mock_process.stdout.readline = AsyncMock(
+            return_value=b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}\n'
+        )
 
         await self.probe._initialize_mcp_session(mock_process)
 
@@ -161,9 +164,9 @@ class TestMCPClientProbeEnhancements:
         responses = [
             b"Starting server...\n",
             b'{"jsonrpc":"2.0","id":1,"result":{"incomplete":}\n',  # Malformed JSON
-            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}\n'  # Valid JSON
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}\n',  # Valid JSON
         ]
-        
+
         mock_process.stdout.readline = AsyncMock(side_effect=responses)
 
         result = await self.probe._initialize_mcp_session(mock_process)
@@ -185,9 +188,9 @@ class TestMCPClientProbeEnhancements:
             b"Server ready\n",
             b"Waiting for input\n",
             b"Invalid JSON here\n",
-            b"Still no JSON\n"
+            b"Still no JSON\n",
         ]
-        
+
         mock_process.stdout.readline = AsyncMock(side_effect=responses)
 
         result = await self.probe._initialize_mcp_session(mock_process)
@@ -196,21 +199,21 @@ class TestMCPClientProbeEnhancements:
 
     def test_synchronous_wrapper_functionality(self):
         """Test the synchronous wrapper for Docker discovery."""
-        with patch.object(self.probe, 'discover_tools_from_docker_mcp') as mock_async:
+        with patch.object(self.probe, "discover_tools_from_docker_mcp") as mock_async:
             mock_async.return_value = {
                 "tools": [{"name": "sync_test_tool"}],
-                "discovery_method": "mcp_client"
+                "discovery_method": "mcp_client",
             }
 
             result = self.probe.discover_tools_from_docker_sync(
-                "test/image:latest",
-                args=["stdio"],
-                env_vars={"TEST_VAR": "value"}
+                "test/image:latest", args=["stdio"], env_vars={"TEST_VAR": "value"}
             )
 
             assert result is not None
             assert result["tools"][0]["name"] == "sync_test_tool"
-            mock_async.assert_called_once_with("test/image:latest", ["stdio"], {"TEST_VAR": "value"})
+            mock_async.assert_called_once_with(
+                "test/image:latest", ["stdio"], {"TEST_VAR": "value"}
+            )
 
 
 @pytest.mark.integration
@@ -225,14 +228,10 @@ class TestMCPClientProbeIntegration:
     def test_demo_server_stdio_discovery(self):
         """Test MCP discovery with demo server (requires --run-integration)."""
         # Test with demo server which should be more reliable
-        env_vars = {
-            "MCP_TRANSPORT": "stdio",
-            "MCP_HELLO_FROM": "Test Platform"
-        }
+        env_vars = {"MCP_TRANSPORT": "stdio", "MCP_HELLO_FROM": "Test Platform"}
 
         result = self.probe.discover_tools_from_docker_sync(
-            "dataeverything/mcp-demo:latest",
-            env_vars=env_vars
+            "dataeverything/mcp-demo:latest", env_vars=env_vars
         )
 
         if result:  # Only assert if discovery succeeded

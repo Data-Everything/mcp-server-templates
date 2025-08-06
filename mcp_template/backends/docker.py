@@ -27,7 +27,7 @@ if isinstance(STDIO_TIMEOUT, str):
     except ValueError:
         logger.warning(
             "Invalid MCP_STDIO_TIMEOUT value '%s', using default 30 seconds",
-            os.getenv("MCP_STDIO_TIMEOUT", "30")
+            os.getenv("MCP_STDIO_TIMEOUT", "30"),
         )
         STDIO_TIMEOUT = 30
 
@@ -541,7 +541,11 @@ EOF""",
             ]
 
             result = subprocess.run(
-                bash_command, capture_output=True, text=True, check=True, timeout=STDIO_TIMEOUT
+                bash_command,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=STDIO_TIMEOUT,
             )
 
             return {
@@ -564,7 +568,9 @@ EOF""",
             }
         except subprocess.TimeoutExpired:
             logger.error(
-                "Stdio command timed out for template %s after %d seconds", template_id, STDIO_TIMEOUT
+                "Stdio command timed out for template %s after %d seconds",
+                template_id,
+                STDIO_TIMEOUT,
             )
             return {
                 "template_id": template_id,

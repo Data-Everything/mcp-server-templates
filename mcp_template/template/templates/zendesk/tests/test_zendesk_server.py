@@ -174,7 +174,7 @@ class TestZendeskMCPServer:
             assert cached_data is None
 
     @pytest.mark.asyncio
-    @pytest.mark.skip # Until zendesk is ready for async testing
+    @pytest.mark.skip  # Until zendesk is ready for async testing
     async def test_make_request_success(self, server):
         """Test successful API request."""
         mock_response_data = {"ticket": {"id": 123, "subject": "Test"}}
@@ -202,7 +202,7 @@ class TestZendeskMCPServer:
         mock_session.request.assert_called_once()
 
     @pytest.mark.asyncio
-    @pytest.mark.skip # Until zendesk is ready for async testing
+    @pytest.mark.skip  # Until zendesk is ready for async testing
     async def test_make_request_rate_limited(self, server):
         """Test API request with rate limiting."""
         mock_response_data = {"ticket": {"id": 123}}
