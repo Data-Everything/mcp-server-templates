@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-templates"
+version = "0.0.0"
 description = "Deploy MCP server templates with zero configuration"
 readme = "README.md"
 authors = [
@@ -65,4 +66,4 @@ exclude = [
 version_scheme = "release-branch-semver"
 fallback_version = "0.3.0"
 local_scheme = "no-local-version"
-tag_regex = "^release-pypi-(?P<version>[0-9]+\.[0-9]+\.[0-9]+)$"
+tag_regex = "^release-pypi-(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)$"
