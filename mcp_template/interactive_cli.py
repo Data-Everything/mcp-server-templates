@@ -5,12 +5,14 @@ This module provides an interactive command-line interface for managing MCP serv
 tools, and configurations with persistent session state and beautified responses.
 """
 
+import argparse
 import json
 import os
 import sys
 from typing import Dict, List, Any, Union
-import cmd
+import cmd2
 import logging
+from cmd2 import with_argparser
 
 from rich.console import Console
 from rich.panel import Panel
@@ -27,6 +29,82 @@ from mcp_template.deployer import MCPDeployer
 
 console = Console()
 logger = logging.getLogger(__name__)
+
+# Argparse parser for `call` command flags: --config-file, --env, --config
+call_parser = argparse.ArgumentParser(prog="call")
+call_parser.add_argument(
+    "-c", "--config-file", dest="config_file", help="Path to JSON config file"
+)
+call_parser.add_argument(
+    "-e", "--env", dest="env", action="append", help="Environment var KEY=VALUE"
+)
+call_parser.add_argument(
+    "-C",
+    "--config",
+    dest="config",
+    action="append",
+    help="Temporary config KEY=VALUE pairs",
+)
+call_parser.add_argument("template_name", help="Template name to call")
+call_parser.add_argument("tool_name", help="Tool name to execute")
+call_parser.add_argument(
+    "json_args", nargs="?", default="{}", help="JSON string arguments"
+)
+
+
+def merge_config_sources(
+    session_config: Dict[str, Any],
+    config_file: str = None,
+    env_vars: List[str] = None,
+    inline_config: List[str] = None,
+) -> Dict[str, Any]:
+    """Utility to merge configuration from multiple sources.
+
+    Priority order (highest to lowest):
+    1. Inline config (--config)
+    2. Environment variables (--env)
+    3. Config file (--config-file)
+    4. Session config
+
+    Args:
+        session_config: Base configuration from interactive session
+        config_file: Path to JSON config file
+        env_vars: List of KEY=VALUE environment variable pairs
+        inline_config: List of KEY=VALUE inline config pairs
+
+    Returns:
+        Merged configuration dictionary
+    """
+    config_values = session_config.copy()
+
+    # Load config file if provided (lower priority)
+    if config_file:
+        try:
+            with open(config_file, "r") as f:
+                file_cfg = json.load(f)
+                config_values.update(file_cfg)
+                console.print(f"[dim]✓ Loaded config from {config_file}[/dim]")
+        except Exception as e:
+            console.print(f"[red]❌ Failed to load config file: {e}[/red]")
+            raise
+
+    # Apply environment overrides (medium priority)
+    if env_vars:
+        for pair in env_vars:
+            if "=" in pair:
+                k, v = pair.split("=", 1)
+                config_values[k] = v
+                console.print(f"[dim]✓ Set env var: {k}=***[/dim]")
+
+    # Apply inline config overrides (highest priority)
+    if inline_config:
+        for pair in inline_config:
+            if "=" in pair:
+                k, v = pair.split("=", 1)
+                config_values[k] = v
+                console.print(f"[dim]✓ Set inline config: {k}=***[/dim]")
+
+    return config_values
 
 
 class ResponseBeautifier:
@@ -763,14 +841,10 @@ class ResponseBeautifier:
             elif isinstance(parameters, list):
                 param_count = len(parameters)
                 param_text = f"{param_count} params"
-                param_names = ", ".join(parameters)
+                param_names = ", ".join([p.get("name", "Unknown") for p in parameters])
             elif parameters or input_schema:
                 param_text = "Schema defined"
-                param_names = (
-                    ", ".join(parameters)
-                    if parameters
-                    else ", ".join(input_schema.get("properties", {}).keys())
-                )
+                param_names = ""
             else:
                 param_text = "0 params"
                 param_names = ""
@@ -778,7 +852,10 @@ class ResponseBeautifier:
             category = tool.get("category", "general")
 
             table.add_row(
-                name, description, param_text + " (" + param_names + ")", category
+                name,
+                description,
+                param_text + " (" + param_names + ")" if param_names else "",
+                category,
             )
 
         self.console.print(table)
@@ -791,17 +868,23 @@ class ResponseBeautifier:
             return
 
         table = Table(title=f"Deployed MCP Servers ({len(servers)} active)")
+        table.add_column("ID", style="cyan", width=10)
         table.add_column("Template", style="cyan", width=20)
         table.add_column("Transport", style="yellow", width=12)
         table.add_column("Status", style="green", width=10)
         table.add_column("Endpoint", style="blue", width=30)
+        table.add_column("Ports", style="blue", width=20)
+        table.add_column("Since", style="blue", width=25)
         table.add_column("Tools", style="magenta", width=10)
 
         for server in servers:
-            template_name = server.get("template_name", "Unknown")
+            id = server.get("id", "N/A")
+            template_name = server.get("name", "Unknown")
             transport = server.get("transport", "unknown")
             status = server.get("status", "unknown")
             endpoint = server.get("endpoint", "N/A")
+            ports = server.get("ports", "N/A")
+            since = server.get("since", "N/A")
             tool_count = len(server.get("tools", []))
 
             # Color status
@@ -813,23 +896,23 @@ class ResponseBeautifier:
                 status_text = f"[yellow]{status}[/yellow]"
 
             table.add_row(
-                template_name, transport, status_text, endpoint, str(tool_count)
+                id,
+                template_name,
+                transport,
+                status_text,
+                endpoint,
+                ports,
+                since,
+                str(tool_count),
             )
 
         self.console.print(table)
 
 
-class InteractiveCLI(cmd.Cmd):
+class InteractiveCLI(cmd2.Cmd):
     """Interactive command-line interface for MCP Template management."""
 
-    intro = """
-╔══════════════════════════════════════════════════════════════╗
-║                    MCP Interactive CLI                       ║
-╠══════════════════════════════════════════════════════════════╣
-║  Welcome to the MCP Template Interactive CLI!               ║
-║  Type 'help' for available commands or 'quit' to exit.      ║
-╚══════════════════════════════════════════════════════════════╝
-"""
+    intro = None  # Set to None to prevent automatic intro display
 
     prompt = "mcp> "
 
@@ -848,13 +931,61 @@ class InteractiveCLI(cmd.Cmd):
     def cmdloop(self, intro=None):
         """Override cmdloop to handle KeyboardInterrupt gracefully and show help."""
         try:
-            # Show help automatically on start
+            # Show intro and help automatically on start
             if intro is None:
-                console.print(self.intro)
-                self.do_help("")
-            super().cmdloop(intro)
+                # Custom intro display
+                intro_text = """
+╔══════════════════════════════════════════════════════════════╗
+║                    MCP Interactive CLI                       ║
+╠══════════════════════════════════════════════════════════════╣
+║  Welcome to the MCP Template Interactive CLI!               ║
+║  Type 'help' for available commands or 'quit' to exit.      ║
+╚══════════════════════════════════════════════════════════════╝
+"""
+                console.print(intro_text)
+                # Show help directly instead of calling do_help to avoid empty command issue
+                console.print(
+                    Panel(
+                        """
+[cyan]Available Commands:[/cyan]
+
+[yellow]Server Management:[/yellow]
+  • list_servers          - List all deployed MCP servers
+  • templates             - List all available templates
+
+[yellow]Tool Operations:[/yellow]
+  • tools <template>      - List available tools for a template
+  • call <template> <tool> [args] - Call a tool (stdio or HTTP)
+    [dim]Options: --config-file, --env KEY=VALUE, --config KEY=VALUE[/dim]
+
+[yellow]Configuration (Multiple Ways):[/yellow]
+  • config <template> key=value   - Set configuration interactively
+  • show_config <template>        - Show current template configuration
+  • clear_config <template>       - Clear template configuration
+
+[yellow]General:[/yellow]
+  • help [command]        - Show this help or help for specific command
+  • quit / exit           - Exit the interactive CLI
+
+[green]Examples:[/green]
+  • templates
+  • config github github_token=your_token_here
+  • tools github
+  • call github search_repositories {"query": "python"}
+  • call --config-file config.json demo say_hello
+  • call --env API_KEY=xyz --config timeout=30 github search_repositories '{"query": "python"}'
+  • call demo say_hello (no config needed)
+  [dim]For stdio templates: config is prompted if missing mandatory properties[/dim]
+  [dim]For HTTP templates: server deployment is prompted if not running[/dim]
+""",
+                        title="MCP Interactive CLI Help",
+                        border_style="blue",
+                    )
+                )
+            # Don't pass any intro to super() to prevent duplicate display
+            super().cmdloop(None)
         except KeyboardInterrupt:
-            console.print("\\n[yellow]Session interrupted. Goodbye![/yellow]")
+            console.print("\n[yellow]Session interrupted. Goodbye![/yellow]")
             return
 
     def do_list_servers(self, arg):
@@ -1156,30 +1287,33 @@ class InteractiveCLI(cmd.Cmd):
 
         console.print(table)
 
+    @with_argparser(call_parser)
     def do_call(self, args):
-        """Call a tool from a template.
-        Usage: call <template_name> <tool_name> [json_args]
+        """Call a tool from a template using argparse flags.
+
+        Usage:
+          call <template_name> <tool_name> [json_args]
+          call --config-file config.json <template_name> <tool_name> [json_args]
+          call --env API_KEY=value --config timeout=30 <template_name> <tool_name> [json_args]
         """
-        if not args.strip():
-            console.print("[red]❌ Please provide template name and tool name[/red]")
-            console.print("Usage: call <template_name> <tool_name> [json_args]")
-            return
-
-        parts = args.strip().split(None, 2)
-        if len(parts) < 2:
-            console.print(
-                "[red]❌ Please provide both template name and tool name[/red]"
+        # Merge configuration from all sources
+        template_name = args.template_name
+        try:
+            config_values = merge_config_sources(
+                session_config=self.session_configs.get(template_name, {}),
+                config_file=args.config_file,
+                env_vars=args.env,
+                inline_config=args.config,
             )
-            return
+        except Exception:
+            return  # Error already printed in merge_config_sources
 
-        template_name = parts[0]
-        tool_name = parts[1]
-        tool_args = parts[2] if len(parts) > 2 else "{}"
+        tool_name = args.tool_name
+        tool_args = args.json_args
 
         console.print(
-            f"\\n[cyan]🚀 Calling tool '{tool_name}' from template '{template_name}'[/cyan]"
+            f"\n[cyan]🚀 Calling tool '{tool_name}' from template '{template_name}'[/cyan]"
         )
-
         # Check if template exists
         if template_name not in self.enhanced_cli.templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
@@ -1189,9 +1323,6 @@ class InteractiveCLI(cmd.Cmd):
         transport_config = template.get("transport", {})
         default_transport = transport_config.get("default", "http")
         supported_transports = transport_config.get("supported", ["http"])
-
-        # Get cached config
-        config_values = self.session_configs.get(template_name, {})
 
         # Check for mandatory properties for stdio transport
         if "stdio" in supported_transports or default_transport == "stdio":
@@ -1213,10 +1344,15 @@ class InteractiveCLI(cmd.Cmd):
                     console.print(
                         f"[yellow]⚠️  Missing required configuration for '{template_name}': {', '.join(missing_props)}[/yellow]"
                     )
-                    console.print("[dim]Please set configuration using one of:[/dim]")
+                    console.print("[dim]Please set configuration using:[/dim]")
+                    console.print(
+                        "[dim]• call --config key=value <template> <tool>[/dim]"
+                    )
+                    console.print(
+                        "[dim]• call --config-file path.json <template> <tool>[/dim]"
+                    )
+                    console.print("[dim]• call --env KEY=VALUE <template> <tool>[/dim]")
                     console.print("[dim]• config <template> key=value[/dim]")
-                    console.print("[dim]• Use --config-file with deploy command[/dim]")
-                    console.print("[dim]• Set environment variables[/dim]")
 
                     if Confirm.ask("Would you like to set configuration now?"):
                         console.print(
@@ -1248,19 +1384,6 @@ class InteractiveCLI(cmd.Cmd):
         if "stdio" in supported_transports or default_transport == "stdio":
             # Use stdio approach
             console.print("[dim]Using stdio transport...[/dim]")
-
-            # Check if template has required configuration - only prompt if needed
-            config_schema = template.get("config_schema", {})
-            required_props = config_schema.get("required", [])
-
-            # Only prompt for config if there are required properties and none are cached
-            if required_props and not config_values:
-                console.print(
-                    f"[yellow]⚠️  No configuration found for '{template_name}'[/yellow]"
-                )
-                if Confirm.ask("Would you like to set configuration now?"):
-                    self.do_config(f"{template_name} ")
-                    return
 
             try:
                 result = self.enhanced_cli.run_stdio_tool(
@@ -1298,31 +1421,11 @@ class InteractiveCLI(cmd.Cmd):
                         f"[cyan]🚀 Deploying '{template_name}' server...[/cyan]"
                     )
 
-                    # Check for required configuration for deployment
-                    config_schema = template.get("config_schema", {})
-                    required_props = config_schema.get("required", [])
-                    deploy_config = {}
-
-                    if required_props:
-                        console.print(
-                            "[yellow]Server deployment requires configuration:[/yellow]"
-                        )
-                        for prop in required_props:
-                            prop_config = config_schema.get("properties", {}).get(
-                                prop, {}
-                            )
-                            description = prop_config.get(
-                                "description", f"Value for {prop}"
-                            )
-                            value = Prompt.ask(f"Enter {prop} ({description})")
-                            if value:
-                                deploy_config[prop] = value
-
                     try:
-                        # Use deployer to deploy the template
+                        # Use deployer to deploy the template with merged config
                         success = self.deployer.deploy(
                             template_name=template_name,
-                            config_values=deploy_config,
+                            config_values=config_values,
                             pull_image=True,
                         )
 
@@ -1473,7 +1576,7 @@ class InteractiveCLI(cmd.Cmd):
 
         console.print(table)
         console.print(
-            "\\n[green]💡 Use 'tools <template_name>' to see available tools[/green]"
+            "\n[green]💡 Use 'tools <template_name>' to see available tools[/green]"
         )
         console.print(
             "[green]💡 Use 'config <template_name> key=value' to set configuration[/green]"
@@ -1484,7 +1587,7 @@ class InteractiveCLI(cmd.Cmd):
         Usage: quit
         """
         console.print(
-            "\\n[green]👋 Goodbye! Thanks for using MCP Interactive CLI![/green]"
+            "\n[green]👋 Goodbye! Thanks for using MCP Interactive CLI![/green]"
         )
         return True
 
@@ -1513,15 +1616,12 @@ class InteractiveCLI(cmd.Cmd):
 [yellow]Tool Operations:[/yellow]
   • tools <template>      - List available tools for a template
   • call <template> <tool> [args] - Call a tool (stdio or HTTP)
+    [dim]Options: --config-file, --env KEY=VALUE, --config KEY=VALUE[/dim]
 
 [yellow]Configuration (Multiple Ways):[/yellow]
   • config <template> key=value   - Set configuration interactively
   • show_config <template>        - Show current template configuration
   • clear_config <template>       - Clear template configuration
-  [dim]Note: Configuration can also be set via:[/dim]
-  [dim]• Environment variables (KEY=value)[/dim]
-  [dim]• Config files (--config-file path)[/dim]
-  [dim]• CLI deployment commands (--config key=value)[/dim]
 
 [yellow]General:[/yellow]
   • help [command]        - Show this help or help for specific command
@@ -1532,6 +1632,8 @@ class InteractiveCLI(cmd.Cmd):
   • config github github_token=your_token_here
   • tools github
   • call github search_repositories {"query": "python"}
+  • call --config-file config.json demo say_hello
+  • call --env API_KEY=xyz --config timeout=30 github search_repositories '{"query": "python"}'
   • call demo say_hello (no config needed)
   [dim]For stdio templates: config is prompted if missing mandatory properties[/dim]
   [dim]For HTTP templates: server deployment is prompted if not running[/dim]
@@ -1547,6 +1649,10 @@ class InteractiveCLI(cmd.Cmd):
 
     def default(self, line):
         """Handle unknown commands."""
+        # Debug: Let's see what's causing the empty command
+        if not line or line.strip() == "":
+            # Skip empty lines/commands without error
+            return
         console.print(f"[red]❌ Unknown command: {line}[/red]")
         console.print("[dim]Type 'help' for available commands[/dim]")
 

@@ -90,13 +90,14 @@ class TestDockerDeploymentService:
     @patch("mcp_template.backends.docker.DockerDeploymentService._run_command")
     def test_list_deployments(self, mock_run_command, mock_ensure_docker):
         """Test listing deployments."""
-        mock_response = """{"Names": "mcp-test-123", "State": "running", "CreatedAt": "2024-01-01", "Image": "test:latest", "Labels": "template=test,managed-by=mcp-template"}"""
+        mock_response = """{"ID": "abc123def456", "Names": "mcp-test-123", "State": "running", "CreatedAt": "2024-01-01", "RunningFor": "2 hours ago", "Image": "test:latest", "Labels": "template=test,managed-by=mcp-template", "Ports": "0.0.0.0:8080->8080/tcp"}"""
         mock_run_command.return_value = Mock(stdout=mock_response)
 
         service = DockerDeploymentService()
         deployments = service.list_deployments()
 
         assert len(deployments) == 1
+        assert deployments[0]["id"] == "abc123def456"
         assert deployments[0]["name"] == "mcp-test-123"
         assert deployments[0]["template"] == "test"
 

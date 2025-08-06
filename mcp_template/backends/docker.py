@@ -2,14 +2,15 @@
 Docker backend for managing deployments using Docker containers.
 """
 
+from datetime import datetime
 import json
 import logging
 import os
+import socket
 import subprocess
 import time
-import uuid
-from datetime import datetime
 from typing import Any, Dict, List
+import uuid
 
 from rich.console import Console
 from rich.panel import Panel
@@ -128,9 +129,8 @@ class DockerDeploymentService(BaseDeploymentBackend):
         # Also check the template's default transport
         template_transport = template_data.get("transport", {})
         default_transport = template_transport.get("default", "http")
-
         # If stdio transport is detected, prevent deployment
-        if is_stdio or default_transport == "stdio":
+        if is_stdio is True or (is_stdio is None and default_transport == "stdio"):
             # Import here to avoid circular import
             from mcp_template.tools.discovery import ToolDiscovery
 
@@ -299,11 +299,26 @@ class DockerDeploymentService(BaseDeploymentBackend):
         return volumes
 
     def _prepare_port_mappings(self, template_data: Dict[str, Any]) -> List[str]:
-        """Prepare port mappings for container deployment."""
+        """Prepare port mappings for container deployment, using a free port if needed."""
         ports = []
         template_ports = template_data.get("ports", {})
         for host_port, container_port in template_ports.items():
-            ports.extend(["-p", f"{host_port}:{container_port}"])
+            port_to_use = int(host_port)
+            # Check if port is available
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                try:
+                    s.bind(("", port_to_use))
+                    s.listen(1)
+                except OSError:
+                    # Port is in use, find a free port
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as free_sock:
+                        free_sock.bind(("", 0))
+                        port_to_use = free_sock.getsockname()[1]
+                    logger.warning(
+                        f"Port {host_port} is in use, remapping to free port {port_to_use} for container port {container_port}"
+                    )
+            ports.extend(["-p", f"{port_to_use}:{container_port}"])
         return ports
 
     @staticmethod
@@ -312,12 +327,15 @@ class DockerDeploymentService(BaseDeploymentBackend):
     ) -> bool:
         """Identify if the deployment is using stdio transport."""
 
-        is_stdio = False
+        is_stdio = None
         for env_var in env_vars:
             if len(env_var.split("=")) == 2:
                 key, value = env_var.split("=", 1)
-                if key == "MCP_TRANSPORT" and value == "stdio":
-                    is_stdio = True
+                if key == "MCP_TRANSPORT":
+                    if value == "stdio":
+                        is_stdio = True
+                    else:
+                        is_stdio = False
                     break
 
         return is_stdio
@@ -634,11 +652,16 @@ EOF""",
 
                         deployments.append(
                             {
+                                "id": container["ID"],
                                 "name": container["Names"],
                                 "template": template_name,
                                 "status": container["State"],
-                                "created": container["CreatedAt"],
+                                "since": container["RunningFor"],
                                 "image": container["Image"],
+                                "ports": container.get("Ports", "")
+                                .split(", ")[-1]
+                                .split(":")[-1]
+                                .split("/")[0],
                             }
                         )
                     except json.JSONDecodeError:

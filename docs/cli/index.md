@@ -41,8 +41,6 @@ mcp-template tools demo
 - [stop](stop.md) - Stop deployed templates or specific deployments
 
 ### Tool Discovery & Interaction
-- [tools](tools.md) - List tools from templates OR discover tools from Docker images
-- ~~[discover-tools](discover-tools.md)~~ - **DEPRECATED**: Use `tools --image` instead
 - [connect](connect.md) - Connect to deployed MCP servers with LLM clients
 
 ### Configuration & Monitoring

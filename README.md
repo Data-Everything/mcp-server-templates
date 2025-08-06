@@ -53,6 +53,33 @@ Want the full scoop? [Check out the docs for more features & details!](docs/inde
 - **Multi-source Configuration**: File-based, CLI options, and environment variables
 
 ---
+## 📚 Installation
+There are many ways to install the MCP Server Templates CLI tool:
+
+### PyPI Package
+Install the MCP Server Templates CLI tool via PyPI:
+
+```bash
+pip install mcp-templates
+```
+
+### Docker Image
+Run the MCP Server Templates CLI tool using Docker:
+
+```bash
+docker run --rm -it dataeverything/mcp-server-templates:latest
+```
+
+### Source Code
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/DataEverything/mcp-server-templates.git
+cd mcp-server-templates
+pip install -r requirements.txt
+```
+
+---
 ## 📦 Template Structure
 
 Each template must include:
@@ -260,7 +287,7 @@ mcp-template interactive
 **Interactive Commands:**
 - `tools <template>` - List available tools
 - `config <template> <key>=<value>` - Set configuration
-- `call <template> <tool> [args]` - Execute tool
+- `call --config <key>=<value> --env <key>=<value> <template> <tool> [args as json {}]` - Execute tool
 - `templates` - List all templates
 - `list_servers` - List running servers
 - `show_config <template>` - Show current config

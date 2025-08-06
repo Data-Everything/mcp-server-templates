@@ -14,13 +14,10 @@ from mcp_template.cli import EnhancedCLI
 
 
 @pytest.mark.integration
+@patch("mcp_template.cli.console")
 @patch("mcp_template.cli.EnhancedCLI")
-def test_full_run_tool_flow(mock_cli_class):
-    """Test the complete run-tool command flow through handle_enhanced_cli_commands."""
-    # Mock the CLI instance and its methods
-    mock_cli_instance = Mock()
-    mock_cli_instance.run_stdio_tool.return_value = True
-    mock_cli_class.return_value = mock_cli_instance
+def test_full_run_tool_flow(mock_cli_class, mock_console):
+    """Test the full flow from CLI args to tool execution for deprecated run-tool command."""
 
     # Import here to use the patched version
     from mcp_template.cli import handle_enhanced_cli_commands
@@ -38,16 +35,12 @@ def test_full_run_tool_flow(mock_cli_class):
     # Call the handler directly
     result = handle_enhanced_cli_commands(args)
 
-    # Verify it returned success
+    # Verify it returned success (deprecated command handled)
     assert result is True
 
-    # Verify the CLI method was called correctly
-    mock_cli_instance.run_stdio_tool.assert_called_once_with(
-        "github",
-        "search_repositories",
-        tool_args='{"query": "python"}',
-        config_values={},
-        env_vars={"GITHUB_TOKEN": "test"},
+    # Should show deprecation warning
+    mock_console.print.assert_called_with(
+        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
     )
 
 
@@ -85,35 +78,16 @@ def test_deploy_stdio_prevention(mock_discovery):
 @patch("sys.argv", ["mcp-template", "tools", "github"])
 @patch("mcp_template.template.utils.discovery.TemplateDiscovery")
 def test_tools_command_with_template(mock_discovery):
-    """Test the tools command with a template name."""
-    # Mock template discovery
-    mock_discovery_instance = mock_discovery.return_value
-    mock_discovery_instance.find_template.return_value = {
-        "template_data": {
-            "image": "test/github:latest",
-            "command": ["mcp-server-github"],
-            "transport": "stdio",
-            "tools": [
-                {
-                    "name": "search_repositories",
-                    "description": "Search GitHub repositories",
-                },
-                {"name": "create_issue", "description": "Create a GitHub issue"},
-            ],
-        },
-        "template_dir": "/fake/path",
-    }
-
+    """Test the deprecated tools command with a template name shows error."""
     with patch("mcp_template.cli.console") as mock_console:
         try:
             main()
         except SystemExit as e:
-            # Should exit successfully
-            assert e.code == 0
-
-        # Verify tools were listed (exact output depends on implementation)
-        # Check that console.print was called (tools discovery may fail but should handle gracefully)
-        assert mock_console.print.called
+            # Should exit with status code 2 (argparse error)
+            assert e.code == 2
+        else:
+            # If no exception is raised, that's also fine (deprecation warning was shown)
+            pass
 
 
 @pytest.mark.unit

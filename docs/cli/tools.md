@@ -1,6 +1,8 @@
-# tools
+# [DEPRECATED] tools
 
-**List and analyze tools available from MCP server templates or discover tools from Docker images.**
+**[DEPRECATED]  List and analyze tools available from MCP server templates or discover tools from Docker images.**
+
+⚠️ **This command is deprecated**. The functionality has been merged into the unified `tools` under interactive CLI. This command will be removed in a future version.
 
 ## Synopsis
 
