@@ -40,6 +40,7 @@ Documentation = "https://github.com/Data-Everything/mcp-server-templates#readme"
 
 [project.scripts]
 mcp-template = "mcp_template:main"
+mcpt = "mcp_template:main"
 
 [tool.setuptools]
 include-package-data = true

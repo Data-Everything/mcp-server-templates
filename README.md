@@ -15,6 +15,10 @@
 
 Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options. Built for developers who want to focus on AI integration, not infrastructure setup.
 
+## 📢 Announcements
+- **🚀 Version 0.3.0 Released!**: New features, bug fixes, and performance improvements.
+- **🔧 CLI Shorthand Alias**: Introducing new `mcpt` alias for faster access to all CLI commands with full backward compatibility.
+
 ## 🌟 Why MCP Server Templates?
 
 | Traditional MCP Setup | With MCP Templates |
@@ -73,7 +77,7 @@ Want the full scoop? [Check out the docs for more features & details!](https://d
 **Configuration Flow:**
 1. **Template Defaults** → 2. **Config File** → 3. **CLI Options** → 4. **Environment Variables**
 
-- **CLI Tool**: `mcp-template` with comprehensive config support
+- **CLI Tool**: `mcp-template` or `mcpt` with comprehensive config support
 - **DeploymentManager**: Unified interface for Docker, Kubernetes, or Mock backends
 - **TemplateDiscovery**: Auto-discovers templates with config schema validation
 - **ConfigMapping**: Generic mapping system supporting nested JSON/YAML configs
