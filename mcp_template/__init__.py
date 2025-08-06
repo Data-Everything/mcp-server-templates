@@ -30,8 +30,8 @@ from mcp_template.backends.docker import DockerDeploymentService
 
 # Import enhanced CLI modules
 from mcp_template.cli import (
-    EnhancedCLI,
     add_enhanced_cli_args,
+    EnhancedCLI,
     handle_enhanced_cli_commands,
 )
 from mcp_template.deployer import MCPDeployer
@@ -56,6 +56,7 @@ CUSTOM_NAME_HELP = "Custom container name"
 
 console = Console()
 logger = logging.getLogger(__name__)
+enhanced_cli = EnhancedCLI()
 
 
 def main():
@@ -190,16 +191,22 @@ Examples:
     if "deployer" not in locals():
         deployer = MCPDeployer()
 
-    # Initialize enhanced CLI
-    enhanced_cli = EnhancedCLI()
-
     if not args.command:
         parser.print_help()
         sys.exit(0)
 
+    if (
+        (hasattr(args, "image") and args.image)
+        and (hasattr(args, "template") and args.template)
+        and (hasattr(args, "server_args") and not args.server_args)
+    ):
+        # Assume the user meant to pass this as server_args
+        args.server_args = [args.template]
+        args.template = None
+
     try:
-        # Try enhanced CLI commands first
-        if handle_enhanced_cli_commands(args, enhanced_cli):
+        # Try enhanced CLI commands first, If the response is handled, return early
+        if handle_enhanced_cli_commands(args):
             return
 
         if args.command == "list":

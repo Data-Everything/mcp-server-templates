@@ -111,7 +111,6 @@ class DeploymentManager:
                 template_id,
                 configuration,
             )
-
             # Get the appropriate backend (may have been overridden)
             backend = self._get_deployment_backend()
             result = backend.deploy_template(

@@ -121,12 +121,14 @@ mcp-template connect demo --llm claude
 #### 📖 User Guide
 - **[Template Usage](user-guide/templates.md)** - Working with pre-built templates
 - **[Configuration Management](user-guide/configuration.md)** - Advanced configuration patterns
+- **[Stdio Tool Execution](stdio-tool-execution.md)** - Interactive tool execution for stdio MCP servers
 - **[Integration Patterns](user-guide/integration.md)** - Connect to LLMs and frameworks
 - **[Monitoring & Management](user-guide/monitoring.md)** - Production deployment management
 
 #### 🛠️ CLI Reference
 - **[Command Overview](cli/index.md)** - Complete CLI documentation
-- **[deploy](cli/deploy.md)** - Deploy templates with configuration options
+- **[deploy](cli/deploy.md)** - Deploy HTTP transport templates with configuration options
+- **[run-tool](stdio-tool-execution.md#basic-usage)** - Execute tools from stdio MCP servers
 - **[tools](cli/tools.md)** - Discover and analyze MCP server capabilities
 - **[tools](cli/tools.md)** - List tools from templates OR discover from Docker images
 - ~~**[discover-tools](cli/discover-tools.md)**~~ - **DEPRECATED**: Use `tools --image` instead

@@ -4,7 +4,6 @@ Deployer
 
 import json
 import logging
-import os
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -1045,15 +1044,6 @@ class MCPDeployer:
         except ValueError:
             pass
 
-        # Handle JSON structures
-        if value.startswith(("{", "[")):
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError:
-                pass
-
-        # Default to string
-        return value
         # Handle JSON structures
         if value.startswith(("{", "[")):
             try:

@@ -21,6 +21,8 @@ class TestCLIIntegration:
             "mcp_template",
             "deploy",
             "demo",
+            "--transport",
+            "http",
             "--override",
             "metadata__version=2.0.0",
             "--override",
@@ -82,23 +84,26 @@ class TestCLIIntegration:
         deployer = MCPDeployer()
 
         # Mock deployment manager and templates
-        with patch.object(deployer, "deployment_manager") as mock_manager, patch.object(
-            deployer,
-            "templates",
-            {
-                "demo": {
-                    "name": "demo",
-                    "image": "demo-image:latest",  # Add missing image field
-                    "config_schema": {
-                        "properties": {
-                            "log_level": {
-                                "env_mapping": "MCP_LOG_LEVEL",
-                                "type": "string",
+        with (
+            patch.object(deployer, "deployment_manager") as mock_manager,
+            patch.object(
+                deployer,
+                "templates",
+                {
+                    "demo": {
+                        "name": "demo",
+                        "image": "demo-image:latest",  # Add missing image field
+                        "config_schema": {
+                            "properties": {
+                                "log_level": {
+                                    "env_mapping": "MCP_LOG_LEVEL",
+                                    "type": "string",
+                                }
                             }
-                        }
-                    },
-                }
-            },
+                        },
+                    }
+                },
+            ),
         ):
 
             mock_manager.deploy_template.return_value = {

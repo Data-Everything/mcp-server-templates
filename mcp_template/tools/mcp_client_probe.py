@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class MCPClientProbe:
     """Client for probing MCP servers to discover their tools."""
 
-    def __init__(self, timeout: int = 30):
+    def __init__(self, timeout: int = 15):
         """
         Initialize MCP client probe.
 
@@ -121,11 +121,9 @@ class MCPClientProbe:
 
             docker_cmd.append(image_name)
 
-            # For GitHub MCP server and similar, try to add "stdio" command if no args provided
+            # Add custom arguments if provided
             if args:
                 docker_cmd.extend(args)
-            elif "github" in image_name.lower():
-                docker_cmd.append("stdio")
 
             return await self.discover_tools_from_command(docker_cmd)
 
@@ -159,8 +157,8 @@ class MCPClientProbe:
                 "id": 1,
                 "method": "initialize",
                 "params": {
-                    "protocolVersion": "2025-06-18",
-                    "capabilities": {"tools": {}},
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"experimental": {}, "sampling": {}},
                     "clientInfo": {"name": "mcp-tool-discovery", "version": "1.0.0"},
                 },
             }
@@ -170,16 +168,33 @@ class MCPClientProbe:
             process.stdin.write(request_line.encode())
             await process.stdin.drain()
 
-            # Read response
-            response_line = await asyncio.wait_for(
-                process.stdout.readline(), timeout=self.timeout
-            )
+            # Read response, skipping any non-JSON output (like status messages)
+            max_attempts = 5
+            response = None
 
-            if not response_line:
-                logger.error("No response from MCP server during initialization")
+            for attempt in range(max_attempts):
+                response_line = await asyncio.wait_for(
+                    process.stdout.readline(), timeout=self.timeout
+                )
+
+                if not response_line:
+                    logger.error("No response from MCP server during initialization")
+                    return None
+
+                line = response_line.decode().strip()
+                logger.debug("Raw MCP response line %d: %s", attempt + 1, line)
+
+                # Skip non-JSON lines (like "Starting MCP server with stdio transport")
+                if line.startswith("{") and line.endswith("}"):
+                    try:
+                        response = json.loads(line)
+                        break
+                    except json.JSONDecodeError:
+                        continue
+
+            if response is None:
+                logger.error("No valid JSON response found from MCP server")
                 return None
-
-            response = json.loads(response_line.decode().strip())
 
             if "error" in response:
                 logger.error("MCP initialization error: %s", response["error"])
@@ -213,16 +228,35 @@ class MCPClientProbe:
             process.stdin.write(request_line.encode())
             await process.stdin.drain()
 
-            # Read response
-            response_line = await asyncio.wait_for(
-                process.stdout.readline(), timeout=self.timeout
-            )
+            # Read response, skipping any non-JSON output
+            max_attempts = 5
+            response = None
 
-            if not response_line:
-                logger.error("No response from MCP server for tools/list")
+            for attempt in range(max_attempts):
+                response_line = await asyncio.wait_for(
+                    process.stdout.readline(), timeout=self.timeout
+                )
+
+                if not response_line:
+                    logger.error("No response from MCP server for tools/list")
+                    return None
+
+                line = response_line.decode().strip()
+                logger.debug("Raw MCP tools response line %d: %s", attempt + 1, line)
+
+                # Skip non-JSON lines
+                if line.startswith("{") and line.endswith("}"):
+                    try:
+                        response = json.loads(line)
+                        break
+                    except json.JSONDecodeError:
+                        continue
+
+            if response is None:
+                logger.error(
+                    "No valid JSON response found from MCP server for tools/list"
+                )
                 return None
-
-            response = json.loads(response_line.decode().strip())
 
             if "error" in response:
                 logger.error("MCP tools/list error: %s", response["error"])

@@ -12,6 +12,7 @@ import pytest
 
 from mcp_template import MCPDeployer, main
 
+
 @pytest.mark.unit
 class TestMainCLI:
     """Test main CLI functionality."""
@@ -34,7 +35,6 @@ class TestMainCLI:
             # Should exit without error (help is shown)
             assert exc_info.value.code is None or exc_info.value.code == 0
 
-
     @patch("mcp_template.MCPDeployer")
     def test_list_command(self, mock_deployer_class):
         """Test list command."""
@@ -52,23 +52,20 @@ class TestMainCLI:
         main()
         mock_deployer.list_templates.assert_called_with(deployed_only=True)
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.enhanced_cli")
     @patch("mcp_template.MCPDeployer")
-    def test_deploy_command(self, mock_deployer_class, mock_enhanced_cli_class):
+    def test_deploy_command(self, mock_deployer_class, mock_enhanced_cli):
         """Test deploy command."""
         mock_deployer = Mock()
         mock_deployer.templates.keys.return_value = ["demo"]
         mock_deployer_class.return_value = mock_deployer
 
-        mock_enhanced_cli = Mock()
         mock_enhanced_cli.deploy_with_transport.return_value = True
-        mock_enhanced_cli_class.return_value = mock_enhanced_cli
 
         sys.argv = ["mcp_template", "deploy", "demo"]
 
         main()
         mock_enhanced_cli.deploy_with_transport.assert_called_once()
-
 
     @patch("mcp_template.MCPDeployer")
     def test_stop_command(self, mock_deployer_class):
@@ -80,25 +77,33 @@ class TestMainCLI:
         # Stop by template
         sys.argv = ["mcp_template", "stop", "demo"]
         main()
-        mock_deployer.stop.assert_called_with("demo", custom_name=None, all_containers=False)
+        mock_deployer.stop.assert_called_with(
+            "demo", custom_name=None, all_containers=False
+        )
         mock_deployer.stop.reset_mock()
 
         # Stop all deployments of a template
         sys.argv = ["mcp_template", "stop", "demo", "--all"]
         main()
-        mock_deployer.stop.assert_called_with("demo", custom_name=None, all_containers=True)
+        mock_deployer.stop.assert_called_with(
+            "demo", custom_name=None, all_containers=True
+        )
         mock_deployer.stop.reset_mock()
 
         # Stop by custom name
         sys.argv = ["mcp_template", "stop", "--name", "mcp-demo-123"]
         main()
-        mock_deployer.stop.assert_called_with(None, custom_name="mcp-demo-123", all_containers=False)
+        mock_deployer.stop.assert_called_with(
+            None, custom_name="mcp-demo-123", all_containers=False
+        )
         mock_deployer.stop.reset_mock()
 
         # Stop all deployments (global)
         sys.argv = ["mcp_template", "stop", "--all"]
         main()
-        mock_deployer.stop.assert_called_with(None, custom_name=None, all_containers=True)
+        mock_deployer.stop.assert_called_with(
+            None, custom_name=None, all_containers=True
+        )
 
     @patch("mcp_template.MCPDeployer")
     def test_logs_command(self, mock_deployer_class):
@@ -112,7 +117,7 @@ class TestMainCLI:
         main()
         mock_deployer.logs.assert_called_once_with("demo", custom_name=None)
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_tools_command_with_template(
         self, mock_deployer_class, mock_enhanced_cli_class
@@ -129,10 +134,14 @@ class TestMainCLI:
 
         main()
         mock_enhanced_cli.list_tools.assert_called_once_with(
-            "demo", no_cache=False, refresh=False, config_values={}
+            "demo",
+            no_cache=False,
+            refresh=False,
+            config_values={},
+            force_server_discovery=False,
         )
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_tools_command_with_image(
         self, mock_deployer_class, mock_enhanced_cli_class
@@ -152,7 +161,7 @@ class TestMainCLI:
             "mcp/filesystem", ["/tmp"], {}
         )
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_tools_command_with_cache_options(
         self, mock_deployer_class, mock_enhanced_cli_class
@@ -166,13 +175,16 @@ class TestMainCLI:
         mock_enhanced_cli_class.return_value = mock_enhanced_cli
 
         sys.argv = ["mcp_template", "tools", "demo", "--no-cache", "--refresh"]
-
         main()
         mock_enhanced_cli.list_tools.assert_called_once_with(
-            "demo", no_cache=True, refresh=True, config_values={}
+            "demo",
+            no_cache=True,
+            refresh=True,
+            config_values={},
+            force_server_discovery=False,
         )
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_discover_tools_command_deprecated(
         self, mock_deployer_class, mock_enhanced_cli_class
@@ -227,7 +239,7 @@ class TestMainCLI:
         main()
         mock_creator.create_template_interactive.assert_called_once()
 
-    @patch("mcp_template.EnhancedCLI")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_error_handling(self, mock_deployer_class, mock_enhanced_cli_class):
         """Test error handling in main CLI."""

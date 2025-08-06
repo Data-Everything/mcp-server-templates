@@ -165,8 +165,9 @@ class TestDeploymentIntegration:
         deployer = MCPDeployer()
         deployer.templates = {"demo": self.mock_template}
 
-        with patch.object(deployer, "deployment_manager") as mock_manager, patch.object(
-            deployer, "_generate_mcp_config"
+        with (
+            patch.object(deployer, "deployment_manager") as mock_manager,
+            patch.object(deployer, "_generate_mcp_config"),
         ):
             mock_manager.deploy_template.return_value = {
                 "deployment_name": "test-deployment",
@@ -202,7 +203,10 @@ class TestDeploymentIntegration:
     @patch(
         "mcp_template.backends.docker.DockerDeploymentService._ensure_docker_available"
     )
-    def test_env_vars_reach_docker_command(self, mock_ensure_docker, mock_run_command):
+    @patch("mcp_template.backends.docker.time")
+    def test_env_vars_reach_docker_command(
+        self, mock_time, mock_ensure_docker, mock_run_command
+    ):
         """Test that config overrides become environment variables in Docker command."""
         # Setup mocks
         mock_run_command.side_effect = [
@@ -212,6 +216,10 @@ class TestDeploymentIntegration:
 
         # Create a deployment manager with Docker backend
         manager = DeploymentManager(backend_type="docker")
+        mock_backend = Mock()
+        manager.deployment_backend = mock_backend
+        manager.deployment_backend._run_command = mock_run_command
+        # manager._get_deployment_backend = mock_backend
 
         # Test config with overrides
         config = {
@@ -229,6 +237,7 @@ class TestDeploymentIntegration:
         assert mock_run_command.call_count == 2
         docker_run_call = mock_run_command.call_args_list[1]
         docker_command = docker_run_call[0][0]
+        assert isinstance(docker_command, list)
 
         # Verify environment variables are in the command
         env_vars = []
@@ -236,10 +245,10 @@ class TestDeploymentIntegration:
             if arg == "--env" and i + 1 < len(docker_command):
                 env_vars.append(docker_command[i + 1])
 
-        # Check that our config overrides became env vars
-        assert any("hello_from=Docker Test" in env_var for env_var in env_vars)
-        assert any("debug_mode=true" in env_var for env_var in env_vars)
-        assert any("max_connections=15" in env_var for env_var in env_vars)
+        assert len(env_vars) > 0, "No environment variables found in Docker command"
+        assert any('MCP_HELLO_FROM="Docker Test"' in env_var for env_var in env_vars)
+        assert any("MCP_DEBUG_MODE=true" in env_var for env_var in env_vars)
+        assert any("MCP_MAX_CONNECTIONS=15" in env_var for env_var in env_vars)
 
     @patch("mcp_template.backends.docker.DockerDeploymentService._run_command")
     @patch(
@@ -255,16 +264,16 @@ class TestDeploymentIntegration:
 
         manager = DeploymentManager(backend_type="docker")
 
-        # Config with potential duplicates
+        # Config with the same property set twice in different ways
         config = {
             "hello_from": "No Duplicate Test",
-            "hello_from_alt": "Another Value",  # This could cause duplication
+            "debug_mode": "true",  # Different property to avoid confusion
         }
 
         template_data = {
             **self.mock_template,
             "env_vars": {
-                "HELLO_FROM_TEMPLATE": "Template Default"  # Another potential duplicate
+                "MCP_HELLO_FROM": "Template Default"  # This might conflict with config
             },
         }
 
@@ -277,12 +286,12 @@ class TestDeploymentIntegration:
         docker_run_call = mock_run_command.call_args_list[1]
         docker_command = docker_run_call[0][0]
 
-        # Count hello_from occurrences
+        # Count MCP_HELLO_FROM occurrences (properly mapped env var name)
         hello_from_count = 0
         for i, arg in enumerate(docker_command):
             if arg == "--env" and i + 1 < len(docker_command):
                 env_var = docker_command[i + 1]
-                if "hello_from=" in env_var:
+                if "MCP_HELLO_FROM=" in env_var:
                     hello_from_count += 1
 
         # Should only appear once (no duplication)

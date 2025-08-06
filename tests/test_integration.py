@@ -211,7 +211,7 @@ class TestEndToEndDeployment:
         template_data = templates.get("demo")
         assert template_data is not None, "Demo template not found"
 
-        # This will fail if the image doesn't exist locally, which is expected
+        # Since demo template is stdio-based, deployment should fail with transport error
         try:
             result = manager.deploy_template(
                 template_id="demo",
@@ -221,12 +221,21 @@ class TestEndToEndDeployment:
                 pull_image=False,
             )
 
-            # If it succeeds, clean up
+            # If it somehow succeeds (shouldn't for stdio), clean up
             manager.delete_deployment(result["deployment_name"])
+            assert (
+                False
+            ), "Demo template deployment should have failed due to stdio transport"
 
         except Exception as e:
-            # Expected if image doesn't exist locally
-            assert "No such image" in str(e) or "Unable to find image" in str(e)
+            # Expected - should fail because demo template uses stdio transport
+            error_msg = str(e)
+            assert (
+                "stdio transport" in error_msg.lower()
+                or "Cannot deploy stdio transport template" in error_msg
+                or "No such image" in error_msg
+                or "Unable to find image" in error_msg
+            ), f"Unexpected error: {error_msg}"
 
     def test_invalid_template_deployment(self):
         """Test deploying non-existent template."""
@@ -323,8 +332,8 @@ class TestConfigurationIntegration:
 
         # Check that environment variables are in the command
         command_str = " ".join(call_args)
-        assert "hello_from=Test" in command_str
-        assert "log_level=debug" in command_str
+        assert "MCP_HELLO_FROM=Test" in command_str
+        assert "MCP_LOG_LEVEL=debug" in command_str
 
     def test_config_defaults_handling(self):
         """Test handling of default configuration values."""
@@ -356,18 +365,17 @@ class TestTemplateStructureValidation:
 
         for template_id in templates:
             template_path = manager.get_template_path(template_id)
-            
+
             # Load template.json to check if it uses external image
             template_json_path = template_path / "template.json"
             with open(template_json_path) as f:
                 template_config = json.load(f)
-            
+
             # Check if template uses external image
-            uses_external_image = (
-                template_config.get("origin") == "external" or
-                template_config.get("has_image", False)
-            )
-            
+            uses_external_image = template_config.get(
+                "origin"
+            ) == "external" or template_config.get("has_image", False)
+
             required_files = base_required_files.copy()
             if not uses_external_image:
                 required_files.append("Dockerfile")
@@ -400,21 +408,20 @@ class TestTemplateStructureValidation:
 
         for template_id in templates:
             template_path = manager.get_template_path(template_id)
-            
+
             # Load template.json to check if it uses external image
             template_json_path = template_path / "template.json"
             with open(template_json_path) as f:
                 template_config = json.load(f)
-            
+
             # Skip templates that use external images
-            uses_external_image = (
-                template_config.get("origin") == "external" or
-                template_config.get("has_image", False)
-            )
-            
+            uses_external_image = template_config.get(
+                "origin"
+            ) == "external" or template_config.get("has_image", False)
+
             if uses_external_image:
                 continue
-                
+
             dockerfile_path = template_path / "Dockerfile"
 
             content = dockerfile_path.read_text()

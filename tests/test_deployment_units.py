@@ -118,11 +118,10 @@ class TestMCPDeployer:
 
     def test_init(self):
         """Test MCPDeployer initialization."""
-        with patch(
-            "mcp_template.deployer.TemplateDiscovery"
-        ) as mock_discovery_class, patch(
-            "mcp_template.deployer.DeploymentManager"
-        ) as mock_manager_class:
+        with (
+            patch("mcp_template.deployer.TemplateDiscovery") as mock_discovery_class,
+            patch("mcp_template.deployer.DeploymentManager") as mock_manager_class,
+        ):
 
             # Configure the mock instance
             mock_discovery_instance = mock_discovery_class.return_value

@@ -10,17 +10,17 @@ This module extends the existing CLI with new commands for:
 - HTTP-first transport with stdio fallback
 """
 
+import datetime
+import json
 import logging
 import subprocess
-
-# Import existing components
-# Note: Import classes directly to avoid circular import
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from mcp_template.backends.docker import DockerDeploymentService
 from mcp_template.deployer import MCPDeployer
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.tools import DockerProbe, ToolDiscovery
@@ -42,6 +42,74 @@ class EnhancedCLI:
         self.templates = self.template_discovery.discover_templates()
         self.tool_discovery = ToolDiscovery()
         self.docker_probe = DockerProbe()
+        self.docker_service = DockerDeploymentService()
+
+        # Initialize response beautifier
+        try:
+            from mcp_template.interactive_cli import ResponseBeautifier
+
+            self.beautifier = ResponseBeautifier()
+        except ImportError:
+            # Fallback if interactive CLI not available
+            self.beautifier = None
+
+    def _is_actual_error(self, stderr_text: str) -> bool:
+        """Check if stderr contains actual errors vs informational messages."""
+        if not stderr_text:
+            return False
+
+        stderr_lower = stderr_text.lower().strip()
+
+        # These are actual error indicators
+        error_indicators = [
+            "error:",
+            "exception:",
+            "traceback",
+            "failed:",
+            "fatal:",
+            "cannot",
+            "unable to",
+            "permission denied",
+            "not found",
+            "invalid",
+            "syntax error",
+            "connection refused",
+            "timeout",
+        ]
+
+        # These are informational messages that should not be treated as errors
+        info_indicators = [
+            "running on stdio",
+            "server started",
+            "listening on",
+            "connected to",
+            "initialized",
+            "ready",
+            "starting",
+            "loading",
+            "loaded",
+            "using",
+            "found",
+        ]
+
+        # Check for actual errors first
+        for indicator in error_indicators:
+            if indicator in stderr_lower:
+                return True
+
+        # If it contains info indicators, it's likely not an error
+        for indicator in info_indicators:
+            if indicator in stderr_lower:
+                return False
+
+        # If stderr is very short and doesn't contain error words, likely not an error
+        if len(stderr_text.strip()) < 100 and not any(
+            word in stderr_lower for word in ["error", "fail", "exception"]
+        ):
+            return False
+
+        # Default to showing it if we're unsure
+        return True
 
     def show_config_options(self, template_name: str) -> None:
         """Show all configuration options including double-underscore notation."""
@@ -135,8 +203,17 @@ class EnhancedCLI:
         no_cache: bool = False,
         refresh: bool = False,
         config_values: Optional[Dict[str, str]] = None,
+        force_server_discovery: bool = False,
     ) -> None:
-        """List available tools for a template using enhanced tool discovery."""
+        """List available tools for a template using enhanced tool discovery.
+
+        Args:
+            template_name: Name of the template
+            no_cache: Ignore cached results
+            refresh: Force refresh cached results
+            config_values: Configuration values for dynamic discovery
+            force_server_discovery: Force server discovery (MCP probe only, no static fallback)
+        """
         if template_name not in self.templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             console.print(
@@ -164,14 +241,20 @@ class EnhancedCLI:
             existing_env_vars.update(config_values)
             template_with_config["env_vars"] = existing_env_vars
 
+        # For tool discovery, automatically add dummy credentials if none provided
+        # This allows users to discover tools without needing real credentials
+        template_with_config = self._add_dummy_credentials_for_discovery(
+            template_name, template_with_config
+        )
+
         discovery_result = self.tool_discovery.discover_tools(
             template_name=template_name,
             template_dir=template_dir,
             template_config=template_with_config,
             use_cache=not no_cache,
             force_refresh=refresh,
+            force_server_discovery=force_server_discovery,
         )
-
         tools = discovery_result.get("tools", [])
         discovery_method = discovery_result.get("discovery_method", "unknown")
         source = (
@@ -234,8 +317,6 @@ class EnhancedCLI:
         console.print(f"[dim]Source: {source}[/dim]")
 
         if "timestamp" in discovery_result:
-            import datetime
-
             timestamp = datetime.datetime.fromtimestamp(discovery_result["timestamp"])
             console.print(
                 f"[dim]Last updated: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}[/dim]"
@@ -247,12 +328,15 @@ class EnhancedCLI:
                 for warning in discovery_result["warnings"]:
                     console.print(f"[yellow]⚠️  {warning}[/yellow]")
             return
-
         # Display tools in a table
-        self._display_tools_table(tools)
+        if self.beautifier:
+            self.beautifier.beautify_tools_list(tools, f"{discovery_method} ({source})")
+        else:
+            self._display_tools_table(tools)
 
         # Show usage examples
         self._show_tool_usage_examples(template_name, template, tools)
+        return True
 
     def _display_tools_table(self, tools):
         """Display tools in a formatted table."""
@@ -314,7 +398,7 @@ class EnhancedCLI:
         image_name: str,
         server_args: Optional[List[str]] = None,
         env_vars: Optional[Dict[str, str]] = None,
-    ) -> None:
+    ) -> bool:
         """Discover tools from a Docker image."""
         console.print(
             Panel(
@@ -323,22 +407,18 @@ class EnhancedCLI:
                 border_style="blue",
             )
         )
-
         # Use Docker probe to discover tools
         result = self.docker_probe.discover_tools_from_image(
             image_name, server_args, env_vars
         )
-
         if result:
             tools = result.get("tools", [])
             discovery_method = result.get("discovery_method", "unknown")
             console.print(
-                f"[green]✅ Discovered {len(tools)} tools via {discovery_method}[/green]"
+                f"[green]✅ Discovered {len(tools)} tools via {discovery_method}[green]"
             )
-
             if tools:
                 self._display_tools_table(tools)
-
                 # Show MCP client usage example
                 console.print("\n[cyan]💡 Usage Example:[/cyan]")
                 console.print("  # Using MCP client directly:")
@@ -351,9 +431,11 @@ class EnhancedCLI:
                     f"  result = client.discover_tools_from_docker_sync('{image_name}', {args_str})"
                 )
             else:
-                console.print("[yellow]⚠️  No tools found in the image[/yellow]")
+                console.print("[yellow]⚠️  No tools found in the image[yellow]")
+            return True
         else:
-            console.print("[red]❌ Failed to discover tools from image[/red]")
+            console.print("[red]❌ Failed to discover tools from image[red]")
+            return False
 
     def show_integration_examples(
         self, template_name: str, llm: Optional[str] = None
@@ -555,6 +637,48 @@ else:
             console.print(f"Supported transports: {', '.join(supported_transports)}")
             return False
 
+        # Check if this is a stdio deployment - prevent it with helpful message
+        if transport == "stdio":
+            # Get available tools for this template
+            try:
+                discovery_result = self.tool_discovery.discover_tools(
+                    template_name,
+                    template.get("template_dir", ""),
+                    template,
+                    use_cache=True,
+                    force_refresh=False,
+                )
+                tools = discovery_result.get("tools", [])
+                tool_names = [tool.get("name", "unknown") for tool in tools]
+            except Exception as e:
+                logger.warning("Failed to discover tools for %s: %s", template_name, e)
+                tool_names = []
+
+            # Create error message with available tools
+            console.line()
+            console.print(
+                Panel(
+                    f"❌ [red]Cannot deploy stdio transport MCP servers[/red]\n\n"
+                    f"The template [cyan]{template_name}[/cyan] uses stdio transport, which doesn't require deployment.\n"
+                    f"Stdio MCP servers run interactively and cannot be deployed as persistent containers.\n\n"
+                    f"[yellow]Available tools in this template:[/yellow]\n"
+                    + (
+                        f"  • {chr(10).join(f'  • {tool}' for tool in tool_names)}"
+                        if tool_names
+                        else "  • No tools discovered"
+                    )
+                    + "\n\n"
+                    f"[green]To use this template, run tools directly:[/green]\n"
+                    f"  mcp-template tools {template_name}                    # List available tools\n"
+                    f"  mcp-template run-tool {template_name} <tool_name>     # Run a specific tool\n"
+                    f"  echo '{json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'})}' | \\\n"
+                    f"    docker run -i --rm {template.get('docker_image', f'mcp-{template_name}:latest')}",
+                    title="Stdio Transport Detected",
+                    border_style="yellow",
+                )
+            )
+            return False
+
         console.print(
             Panel(
                 f"🚀 Deploying [cyan]{template_name}[/cyan] with [yellow]{transport}[/yellow] transport",
@@ -583,9 +707,265 @@ else:
         # Deploy using the existing deployer
         return self.deployer.deploy(template_name, **kwargs)
 
+    def run_stdio_tool(
+        self,
+        template_name: str,
+        tool_name: str,
+        tool_args: Optional[str] = None,
+        config_values: Optional[Dict[str, str]] = None,
+        env_vars: Optional[Dict[str, str]] = None,
+    ) -> bool:
+        """Run a specific tool from a stdio MCP template."""
+        if template_name not in self.templates:
+            console.print(f"[red]❌ Template '{template_name}' not found[/red]")
+            return False
+
+        template = self.templates[template_name]
+
+        # Check if template supports stdio
+        transport = template.get("transport", {})
+        default_transport = transport.get("default", "http")
+        supported_transports = transport.get("supported", ["http"])
+
+        if "stdio" not in supported_transports and default_transport != "stdio":
+            console.print(
+                f"[red]❌ Template '{template_name}' does not support stdio transport[/red]"
+            )
+            console.print(f"Supported transports: {', '.join(supported_transports)}")
+            return False
+
+        console.print(
+            Panel(
+                f"🔧 Running tool [yellow]{tool_name}[/yellow] from template [cyan]{template_name}[/cyan]",
+                title="MCP Tool Execution",
+                border_style="blue",
+            )
+        )
+
+        # Prepare configuration
+        config = {}
+        if config_values:
+            config.update(config_values)
+        if env_vars:
+            config.update(env_vars)
+
+        # Parse tool arguments if provided
+        tool_arguments = {}
+        if tool_args:
+            try:
+                tool_arguments = json.loads(tool_args)
+            except json.JSONDecodeError:
+                console.print(
+                    f"[red]❌ Invalid JSON in tool arguments: {tool_args}[/red]"
+                )
+                return False
+
+        # Create the MCP request
+        mcp_request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": tool_arguments},
+        }
+
+        # Convert to JSON string
+        json_input = json.dumps(mcp_request)
+
+        try:
+            result = self.docker_service.run_stdio_command(
+                template_name,
+                config,
+                template,
+                json_input,
+                pull_image=True,
+            )
+
+            if result["status"] == "completed":
+                console.print("[green]✅ Tool executed successfully[/green]")
+
+                # Use beautifier if available, otherwise fall back to existing logic
+                if self.beautifier:
+                    logger.debug("Using enhanced beautifier")
+                    try:
+                        self.beautifier.beautify_tool_response(result)
+                        return True
+                    except Exception as e:
+                        console.print(f"[yellow]⚠️  Beautifier error: {e}[/yellow]")
+                        console.print("[dim]Falling back to legacy output...[/dim]")
+                        # Fall through to legacy logic
+                else:
+                    logger.debug("No beautifier available, using legacy logic")
+
+                stdout_content = result["stdout"]
+                stderr_content = result["stderr"]
+
+                # Log for debugging
+                logger.debug("Raw stdout: %s", repr(stdout_content))
+                logger.debug("Raw stderr: %s", repr(stderr_content))
+
+                # Try to parse and display the response nicely
+                # Look for JSON-RPC response in the output
+                json_responses = []
+                for line in stdout_content.split("\n"):
+                    line = line.strip()
+                    if (
+                        line.startswith('{"jsonrpc"')
+                        or line.startswith('{"result"')
+                        or line.startswith('{"error"')
+                    ):
+                        try:
+                            json_response = json.loads(line)
+                            json_responses.append(json_response)
+                        except json.JSONDecodeError:
+                            continue
+
+                # Find the tool call response (should be the last response or one with id=3)
+                tool_response = None
+                for response in json_responses:
+                    if response.get("id") == 3:  # Tool call has id=3 in our sequence
+                        tool_response = response
+                        break
+
+                    # If no id=3 response, use the last response (might be the tool result)
+                    if not tool_response and json_responses:
+                        tool_response = json_responses[-1]
+
+                    if tool_response:
+                        if "result" in tool_response:
+                            # Check if result has content (MCP response format)
+                            result_data = tool_response["result"]
+                            if (
+                                isinstance(result_data, dict)
+                                and "content" in result_data
+                            ):
+                                # MCP format with content array
+                                content_items = result_data["content"]
+                                if isinstance(content_items, list) and content_items:
+                                    # Display the first content item
+                                    first_content = content_items[0]
+                                    if (
+                                        isinstance(first_content, dict)
+                                        and "text" in first_content
+                                    ):
+                                        console.print(
+                                            Panel(
+                                                first_content["text"],
+                                                title="Tool Result",
+                                                border_style=(
+                                                    "green"
+                                                    if not result_data.get("isError")
+                                                    else "red"
+                                                ),
+                                            )
+                                        )
+                                    else:
+                                        console.print(
+                                            Panel(
+                                                json.dumps(content_items, indent=2),
+                                                title="Tool Result",
+                                                border_style="green",
+                                            )
+                                        )
+                                else:
+                                    console.print(
+                                        Panel(
+                                            json.dumps(result_data, indent=2),
+                                            title="Tool Result",
+                                            border_style="green",
+                                        )
+                                    )
+                            else:
+                                # Simple result
+                                console.print(
+                                    Panel(
+                                        json.dumps(result_data, indent=2),
+                                        title="Tool Result",
+                                        border_style="green",
+                                    )
+                                )
+                        elif "error" in tool_response:
+                            # JSON-RPC error
+                            error_info = tool_response["error"]
+                            console.print(
+                                Panel(
+                                    f"Error {error_info.get('code', 'unknown')}: {error_info.get('message', 'Unknown error')}",
+                                    title="Tool Error",
+                                    border_style="red",
+                                )
+                            )
+                        else:
+                            # Raw JSON response
+                            console.print(
+                                Panel(
+                                    json.dumps(tool_response, indent=2),
+                                    title="MCP Response",
+                                    border_style="blue",
+                                )
+                            )
+                    else:
+                        # No tool response found, show raw output
+                        console.print(
+                            Panel(
+                                stdout_content,
+                                title="Raw Output",
+                                border_style="blue",
+                            )
+                        )
+
+                    if stderr_content and self._is_actual_error(stderr_content):
+                        console.print(
+                            Panel(
+                                stderr_content,
+                                title="Standard Error",
+                                border_style="yellow",
+                            )
+                        )
+                    elif stderr_content and not self._is_actual_error(stderr_content):
+                        # Show non-error stderr as debug info only if verbose
+                        if hasattr(self, "verbose") and self.verbose:
+                            console.print(
+                                Panel(
+                                    stderr_content,
+                                    title="Debug Info",
+                                    border_style="dim",
+                                )
+                            )
+                return True
+            else:
+                console.print(
+                    f"[red]❌ Tool execution failed: {result.get('error', 'Unknown error')}[/red]"
+                )
+                if result.get("stderr"):
+                    console.print(
+                        Panel(
+                            result["stderr"],
+                            title="Error Output",
+                            border_style="red",
+                        )
+                    )
+                return False
+
+        except Exception as e:
+            console.print(f"[red]❌ Failed to execute tool: {e}[/red]")
+            return False
+
+    def _add_dummy_credentials_for_discovery(
+        self, template_name: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Add dummy credentials for tool discovery to avoid prompting users."""
+        # Use the same logic as the discovery module
+        return self.tool_discovery._add_dummy_credentials(template_name, config)
+
 
 def add_enhanced_cli_args(subparsers) -> None:
     """Add enhanced CLI arguments to the argument parser."""
+
+    # Interactive CLI command (with 'i' alias)
+    interactive_parser = subparsers.add_parser(
+        "interactive",
+        aliases=["i"],
+        help="Start interactive CLI session for MCP management",
+    )
 
     # Config command
     config_parser = subparsers.add_parser(
@@ -599,6 +979,9 @@ def add_enhanced_cli_args(subparsers) -> None:
         help="List available tools for a template or discover tools from a Docker image",
     )
     tools_parser.add_argument(
+        "template", nargs="?", help="Template name (optional if using --image)"
+    )
+    tools_parser.add_argument(
         "--image", help="Docker image name to discover tools from"
     )
     tools_parser.add_argument(
@@ -608,14 +991,19 @@ def add_enhanced_cli_args(subparsers) -> None:
         "--refresh", action="store_true", help="Force refresh cached results"
     )
     tools_parser.add_argument(
+        "--force-server",
+        action="store_true",
+        help="Force server discovery (MCP probe only, no static fallback)",
+    )
+    tools_parser.add_argument(
         "--config",
         action="append",
         help="Configuration values for dynamic discovery (KEY=VALUE)",
     )
     tools_parser.add_argument(
-        "template_or_args",
+        "server_args",
         nargs="*",
-        help="Template name (if no --image) or server arguments (if --image specified)",
+        help="Server arguments (when using --image)",
     )
 
     # Discover tools command (deprecated, for backward compatibility)
@@ -664,14 +1052,34 @@ def add_enhanced_cli_args(subparsers) -> None:
         "--config", action="append", help="Configuration values (KEY=VALUE)"
     )
 
+    # Run-tool command for stdio MCP servers
+    run_tool_parser = subparsers.add_parser(
+        "run-tool", help="Run a specific tool from a stdio MCP template"
+    )
+    run_tool_parser.add_argument("template", help="Template name")
+    run_tool_parser.add_argument("tool_name", help="Name of the tool to run")
+    run_tool_parser.add_argument(
+        "--args", help="JSON arguments to pass to the tool (optional)"
+    )
+    run_tool_parser.add_argument(
+        "--config", action="append", help="Configuration values (KEY=VALUE)"
+    )
+    run_tool_parser.add_argument(
+        "--env", action="append", help="Environment variables (KEY=VALUE)"
+    )
 
-def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
+
+def handle_enhanced_cli_commands(args) -> bool:
     """Handle enhanced CLI commands."""
-    from rich.console import Console
+    enhanced_cli = EnhancedCLI()
+    if args.command in ["interactive", "i"]:
+        # Start interactive CLI session
+        from mcp_template.interactive_cli import start_interactive_cli
 
-    console = Console()
+        start_interactive_cli()
+        return True
 
-    if args.command == "config":
+    elif args.command == "config":
         enhanced_cli.show_config_options(args.template)
         return True
 
@@ -692,25 +1100,18 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
         # Handle unified tools command
         if args.image:
             # Docker image discovery (former discover-tools functionality)
-            server_args = (
-                args.template_or_args
-            )  # All positional args become server args
+            server_args = args.server_args if hasattr(args, "server_args") else []
             enhanced_cli.discover_tools_from_image(
                 args.image, server_args, config_values
             )
-        elif args.template_or_args:
+        elif hasattr(args, "template") and args.template:
             # Template-based discovery (former tools functionality)
-            if len(args.template_or_args) != 1:
-                console.print(
-                    "[red]❌ When not using --image, provide exactly one template name[/red]"
-                )
-                return False
-            template_name = args.template_or_args[0]
             enhanced_cli.list_tools(
-                template_name,
+                args.template,
                 no_cache=getattr(args, "no_cache", False),
                 refresh=getattr(args, "refresh", False),
                 config_values=config_values,
+                force_server_discovery=getattr(args, "force_server", False),
             )
         else:
             # Error: must provide either template or --image
@@ -766,4 +1167,40 @@ def handle_enhanced_cli_commands(args, enhanced_cli: EnhancedCLI) -> bool:
         )
         return True
 
+    elif args.command == "run-tool":
+        # Parse config values if provided
+        config_values = {}
+        if hasattr(args, "config") and args.config:
+            for config_var in args.config:
+                try:
+                    key, value = config_var.split("=", 1)
+                    config_values[key] = value
+                except ValueError:
+                    console.print(
+                        f"[red]❌ Invalid config format: {config_var}. Use KEY=VALUE[/red]"
+                    )
+                    return False
+
+        # Parse env vars if provided
+        env_vars = {}
+        if hasattr(args, "env") and args.env:
+            for env_var in args.env:
+                try:
+                    key, value = env_var.split("=", 1)
+                    env_vars[key] = value
+                except ValueError:
+                    console.print(
+                        f"[red]❌ Invalid env format: {env_var}. Use KEY=VALUE[/red]"
+                    )
+                    return False
+        # Return the result of run_stdio_tool instead of always True
+        return enhanced_cli.run_stdio_tool(
+            args.template,
+            args.tool_name,
+            tool_args=getattr(args, "args", None),
+            config_values=config_values,
+            env_vars=env_vars,
+        )
+
+    # Handle invalid commands
     return False

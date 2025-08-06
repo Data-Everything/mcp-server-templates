@@ -113,14 +113,14 @@ class TestCLIOverrides:
     def test_deploy_method_integration(self):
         """Test that override values are properly passed through deploy method."""
         # Mock the deployment manager and template discovery
-        with patch.object(
-            self.deployer, "deployment_manager"
-        ) as mock_manager, patch.object(
-            self.deployer,
-            "templates",
-            {"test": {"name": "test", "image": "test:latest"}},
-        ), patch.object(
-            self.deployer, "_generate_mcp_config"
+        with (
+            patch.object(self.deployer, "deployment_manager") as mock_manager,
+            patch.object(
+                self.deployer,
+                "templates",
+                {"test": {"name": "test", "image": "test:latest"}},
+            ),
+            patch.object(self.deployer, "_generate_mcp_config"),
         ):
 
             mock_manager.deploy_template.return_value = {
