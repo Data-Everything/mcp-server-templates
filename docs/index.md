@@ -1,8 +1,12 @@
-# MCP Server Templates Documentation
 
-[![Version](https://img.shields.io/pypi/v/mcp-templa**Release Timeline:** All this and more dropping mid-August 2025—don't miss out!
+# MCP Server Templates
 
-Ready to dive in? Check out our [Getting Started Guide](getting-started/quickstart.md)!.svg)](https://pypi.org/project/mcp-templates/)
+**Production-ready Model Context Protocol (MCP) server templates for instant, zero-configuration deployment.**
+
+MCP Server Templates is a mature, open-source platform for deploying, managing, and scaling MCP servers with ease. Designed for developers and teams who want to focus on AI integration—not infrastructure headaches. Get started in minutes with Docker-powered deployments, a powerful CLI, and flexible configuration options.
+
+Ready to dive in? Start with our [Getting Started Guide](getting-started/quickstart.md).
+
 [![Python](https://img.shields.io/pypi/pyversions/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
 [![License](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](/LICENSE)
 [![Discord](https://img.shields.io/discord/XXXXX?color=7289da&logo=discord&logoColor=white)](https://discord.gg/55Cfxe9gnr)
@@ -19,19 +23,19 @@ Join our [Discord Community](https://discord.gg/55Cfxe9gnr) for support, discuss
 
 <div class="grid cards" markdown>
 
--   :octicons-zap-16: **[Getting Started](getting-started/installation.md)**
+-   ⚡ **[Getting Started](getting-started/installation.md)**
 
     Install MCP Templates and deploy your first server in under 2 minutes
 
--   :octicons-terminal-16: **[CLI Reference](cli/index.md)**
+-   💻 **[CLI Reference](cli/index.md)**
 
     Complete command reference for the `mcp-template` CLI tool
 
--   :octicons-package-16: **[Server Templates](server-templates/index.md)**
+-   📦 **[Server Templates](server-templates/index.md)**
 
     Browse available templates: GitHub, Zendesk, GitLab, Demo, and more
 
--   :octicons-book-16: **[User Guide](user-guide/)**
+-   📖 **[User Guide](user-guide/)**
 
     In-depth guides for configuration, deployment, and management
 
