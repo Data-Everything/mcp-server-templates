@@ -2,7 +2,70 @@
 
 **Production-ready deployment system for Model Context Protocol (MCP) servers with zero-configuration deployment, comprehensive tool discovery, and enterprise-grade management capabilities.**
 
-MCP Server Templates is a self-hosted deployment system that enables rapid deployment, management, and scaling of MCP servers on your own infrastructure. It provides a unified CLI, flexible configuration system, advanced tool discovery, and pre-built templates for common use cases.
+# MCP Server Templates Documentation
+
+[![Version](https://img.shields.io/pypi/v/mcp-templates.svg)](https://pypi.o- **💬 Discord Community**: [Join our Discord server](https://discord.gg/55Cfxe9gnr)g/project/mcp-templates/)
+[![Python](https://img.shields.io/pypi/pyversions/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
+[![License](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](/LICENSE)
+[![Discord](https://img.shields.io/discord/XXXXX?color=7289da&logo=discord&logoColor=white)](https://discord.gg/55Cfxe9gnr)
+
+> **Production-ready Model Context Protocol (MCP) server templates with zero-configuration deployment**
+
+Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options.
+
+## 🚀 Quick Navigation
+
+<div class="grid cards" markdown>
+
+-   :octicons-zap-16: **[Getting Started](getting-started/installation.md)**
+
+    Install MCP Templates and deploy your first server in under 2 minutes
+
+-   :octicons-terminal-16: **[CLI Reference](cli/index.md)**
+
+    Complete command reference for the `mcp-template` CLI tool
+
+-   :octicons-package-16: **[Server Templates](server-templates/index.md)**
+
+    Browse available templates: GitHub, Zendesk, GitLab, Demo, and more
+
+-   :octicons-book-16: **[User Guide](user-guide/)**
+
+    In-depth guides for configuration, deployment, and management
+
+</div>
+
+## ⚡ What is MCP Templates?
+
+MCP Server Templates is a **self-hosted deployment system** that enables rapid deployment, management, and scaling of Model Context Protocol servers on your own infrastructure. 
+
+### Key Benefits
+
+| Traditional MCP Setup | With MCP Templates |
+|----------------------|-------------------|
+| ❌ Complex server configuration | ✅ One-command deployment |
+| ❌ Docker knowledge required | ✅ Zero configuration needed |
+| ❌ Manual tool discovery | ✅ Automatic tool detection |
+| ❌ Environment setup headaches | ✅ Pre-built, tested containers |
+| ❌ No deployment management | ✅ Full lifecycle management |
+
+### Core Features
+
+- **🔧 Zero Configuration**: Deploy MCP servers with sensible defaults
+- **🐳 Docker-Based**: Containerized deployments for consistency and security
+- **🛠️ Tool Discovery**: Automatic detection of available tools and capabilities
+- **📱 Interactive CLI**: Streamlined command-line interface for all operations
+- **🔄 Lifecycle Management**: Deploy, configure, monitor, and cleanup with ease
+- **🎯 Multiple Templates**: Pre-built servers for GitHub, Zendesk, GitLab, and more
+
+## 📋 Available Templates
+
+| Template | Description | Status |
+|----------|-------------|--------|
+| **demo** | Simple demonstration server | ✅ Available |
+| **github** | GitHub repository management | ✅ Available |
+| **gitlab** | GitLab integration server | ✅ Available |
+| **zendesk** | Customer support integration | ✅ Available |
 
 ## � What’s Inside
 

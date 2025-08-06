@@ -1572,7 +1572,7 @@ make security      # Security checks
 
 - **Documentation**: [Testing guides](../guides/testing.md)
 - **GitHub Issues**: [Report test issues](https://github.com/Data-Everything/mcp-server-templates/issues)
-- **Community Slack**: [Join testing discussions](https://join.slack.com/t/mcp-platform/shared_invite/zt-39z1p559j-8aWEML~IsSPwFFgr7anHRA)
+- **Discord Community**: [Join testing discussions](https://discord.gg/55Cfxe9gnr)
 
 ### Professional Support
 
