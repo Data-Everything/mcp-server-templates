@@ -316,7 +316,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
         for env_var in env_vars:
             if len(env_var.split("=")) == 2:
                 key, value = env_var.split("=", 1)
-                if key == "MCP_TRNSPORT" and value == "stdio":
+                if key == "MCP_TRANSPORT" and value == "stdio":
                     is_stdio = True
                     break
 

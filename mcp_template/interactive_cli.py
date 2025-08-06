@@ -861,7 +861,7 @@ class InteractiveCLI(cmd.Cmd):
         """List all deployed MCP servers.
         Usage: list_servers
         """
-        console.print("\\n[cyan]🔍 Discovering deployed MCP servers...[/cyan]")
+        console.print("\n[cyan]🔍 Discovering deployed MCP servers...[/cyan]")
 
         # Get deployed servers from deployer
         try:

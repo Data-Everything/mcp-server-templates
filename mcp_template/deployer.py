@@ -1053,12 +1053,3 @@ class MCPDeployer:
 
         # Default to string
         return value
-        # Handle JSON structures
-        if value.startswith(("{", "[")):
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError:
-                pass
-
-        # Default to string
-        return value
