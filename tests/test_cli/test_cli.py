@@ -52,17 +52,15 @@ class TestMainCLI:
         main()
         mock_deployer.list_templates.assert_called_with(deployed_only=True)
 
-    @patch("mcp_template.cli.EnhancedCLI")
+    @patch("mcp_template.enhanced_cli")
     @patch("mcp_template.MCPDeployer")
-    def test_deploy_command(self, mock_deployer_class, mock_enhanced_cli_class):
+    def test_deploy_command(self, mock_deployer_class, mock_enhanced_cli):
         """Test deploy command."""
         mock_deployer = Mock()
         mock_deployer.templates.keys.return_value = ["demo"]
         mock_deployer_class.return_value = mock_deployer
 
-        mock_enhanced_cli = Mock()
         mock_enhanced_cli.deploy_with_transport.return_value = True
-        mock_enhanced_cli_class.return_value = mock_enhanced_cli
 
         sys.argv = ["mcp_template", "deploy", "demo"]
 

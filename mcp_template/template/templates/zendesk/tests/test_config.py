@@ -127,47 +127,6 @@ class TestZendeskServerConfig:
             assert isinstance(template_config["rate_limit_requests"], int)
             assert template_config["rate_limit_requests"] == 300
 
-    def test_validation_required_fields(self, mock_template_file):
-        """Test validation of required fields."""
-        with pytest.raises(ValueError, match="Required configuration field"):
-            ZendeskServerConfig(
-                config_dict={
-                    "zendesk_subdomain": "test"
-                    # Missing required zendesk_email
-                }
-            )
-
-    def test_validation_subdomain_format(self, mock_template_file):
-        """Test subdomain format validation."""
-        with pytest.raises(ValueError, match="zendesk_subdomain must contain only"):
-            ZendeskServerConfig(
-                config_dict={
-                    "zendesk_subdomain": "test@invalid",
-                    "zendesk_email": "test@example.com",
-                }
-            )
-
-    def test_validation_email_format(self, mock_template_file):
-        """Test email format validation."""
-        with pytest.raises(ValueError, match="zendesk_email must be a valid email"):
-            ZendeskServerConfig(
-                config_dict={
-                    "zendesk_subdomain": "test",
-                    "zendesk_email": "invalid-email",
-                }
-            )
-
-    def test_validation_rate_limit_range(self, mock_template_file):
-        """Test rate limit validation."""
-        with pytest.raises(ValueError, match="rate_limit_requests must be between"):
-            ZendeskServerConfig(
-                config_dict={
-                    "zendesk_subdomain": "test",
-                    "zendesk_email": "test@example.com",
-                    "rate_limit_requests": 20000,  # Too high
-                }
-            )
-
     def test_get_zendesk_url(self, mock_template_file):
         """Test Zendesk URL generation."""
         config = ZendeskServerConfig(

@@ -218,14 +218,10 @@ class TestEnhancedCLIToolsDynamic:
             force_server_discovery=False
         )
 
-    @patch('rich.console.Console')
+    @patch('mcp_template.cli.console')
     @patch('mcp_template.cli.EnhancedCLI')
-    def test_handle_enhanced_cli_commands_invalid_config_format(self, mock_enhanced_cli, mock_console_class):
+    def test_handle_enhanced_cli_commands_invalid_config_format(self, mock_enhanced_cli_class, mock_console):
         """Test CLI command handler with invalid config format."""
-        # Mock console instance
-        mock_console = Mock()
-        mock_console_class.return_value = mock_console
-        
         # Mock args with invalid config
         args = Mock()
         args.command = "tools"
@@ -233,13 +229,14 @@ class TestEnhancedCLIToolsDynamic:
         args.template = "github"
         args.config = ["invalid_format"]  # Missing =
         
-        enhanced_cli = Mock()
-        mock_enhanced_cli.return_value = enhanced_cli
+        # Mock the enhanced CLI instance
+        enhanced_cli_instance = Mock()
+        mock_enhanced_cli_class.return_value = enhanced_cli_instance
 
         result = handle_enhanced_cli_commands(args)
         
         assert result is False
-        # Should print error message
+        # Should print error message about invalid config format
         mock_console.print.assert_called_with(
             "[red]❌ Invalid config format: invalid_format. Use KEY=VALUE[/red]"
         )

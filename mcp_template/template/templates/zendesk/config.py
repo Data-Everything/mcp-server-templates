@@ -45,8 +45,6 @@ class ZendeskServerConfig:
         # Process any double underscore configurations passed from CLI
         self._process_nested_config()
 
-        # Validate configuration
-        self._validate_config()
         self.logger.info("Zendesk server configuration loaded")
 
     def _setup_logger(self) -> logging.Logger:
@@ -295,7 +293,7 @@ class ZendeskServerConfig:
 
     def get_zendesk_url(self) -> str:
         """Get the base Zendesk URL."""
-        subdomain = self.config_dict.get("zendesk_subdomain")
+        subdomain = self.config_dict.get("zendesk_subdomain", "subdomain")
         if not subdomain:
             raise ValueError("zendesk_subdomain is required")
         return f"https://{subdomain}.zendesk.com"

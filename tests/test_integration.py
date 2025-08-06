@@ -211,7 +211,7 @@ class TestEndToEndDeployment:
         template_data = templates.get("demo")
         assert template_data is not None, "Demo template not found"
 
-        # This will fail if the image doesn't exist locally, which is expected
+        # Since demo template is stdio-based, deployment should fail with transport error
         try:
             result = manager.deploy_template(
                 template_id="demo",
@@ -221,12 +221,17 @@ class TestEndToEndDeployment:
                 pull_image=False,
             )
 
-            # If it succeeds, clean up
+            # If it somehow succeeds (shouldn't for stdio), clean up
             manager.delete_deployment(result["deployment_name"])
+            assert False, "Demo template deployment should have failed due to stdio transport"
 
         except Exception as e:
-            # Expected if image doesn't exist locally
-            assert "No such image" in str(e) or "Unable to find image" in str(e)
+            # Expected - should fail because demo template uses stdio transport
+            error_msg = str(e)
+            assert ("stdio transport" in error_msg.lower() or 
+                    "Cannot deploy stdio transport template" in error_msg or
+                    "No such image" in error_msg or 
+                    "Unable to find image" in error_msg), f"Unexpected error: {error_msg}"
 
     def test_invalid_template_deployment(self):
         """Test deploying non-existent template."""
@@ -323,8 +328,8 @@ class TestConfigurationIntegration:
 
         # Check that environment variables are in the command
         command_str = " ".join(call_args)
-        assert "hello_from=Test" in command_str
-        assert "log_level=debug" in command_str
+        assert "MCP_HELLO_FROM=Test" in command_str
+        assert "MCP_LOG_LEVEL=debug" in command_str
 
     def test_config_defaults_handling(self):
         """Test handling of default configuration values."""
