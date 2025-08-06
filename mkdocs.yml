@@ -43,8 +43,7 @@ markdown_extensions:
 - pymdownx.snippets
 - pymdownx.tabbed:
     alternate_style: true
-- pymdownx.emoji:
-    emoji_generator: !!python/name:pymdownx.emoji.to_svg
+- pymdownx.emoji
 - attr_list
 - md_in_html
 - toc:
