@@ -61,6 +61,23 @@ nav:
   - Testing Templates: guides/testing.md
   - Deployment: guides/deployment.md
   - Contributing: guides/contributing.md
+- CLI Reference:
+  - Overview: cli/index.md
+  - Commands:
+    - list: cli/list.md
+    - create: cli/create.md
+    - deploy: cli/deploy.md
+    - stop: cli/stop.md
+    - logs: cli/logs.md
+    - shell: cli/shell.md
+    - cleanup: cli/cleanup.md
+    - interactive: cli/interactive.md
+    - config: cli/config.md
+    - tools: cli/tools.md
+    - discover-tools: cli/discover-tools.md
+    - connect: cli/connect.md
+    - run: cli/run.md
+    - run-tool: cli/run-tool.md
 - API Reference:
   - CLI Commands: api/cli.md
   - Template Schema: api/schema.md

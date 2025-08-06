@@ -1,6 +1,25 @@
 # MCP Server Templates
 
-Production-ready Model Context Protocol (MCP) server templates with a **unified deployment architecture** and **comprehensive configuration support**. Easily deploy, manage, and extend AI server templates with flexible configuration options matching commercial platform capabilities.
+[![Version](https://img.shields.io/pypi/v/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
+[![License](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](LICENSE)
+[![Discord](https://img.shields.io/discord/XXXXX?color=7289da&logo=discord&logoColor=white)](https://discord.gg/55Cfxe9gnr)
+
+> **Production-ready Model Context Protocol (MCP) server templates with zero-configuration deployment**
+
+Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options. Built for developers who want to focus on AI integration, not infrastructure setup.
+
+## 🌟 Why MCP Server Templates?
+
+| Traditional MCP Setup | With MCP Templates |
+|----------------------|-------------------|
+| ❌ Complex server configuration | ✅ One-command deployment |
+| ❌ Docker knowledge required | ✅ Zero configuration needed |
+| ❌ Manual tool discovery | ✅ Automatic tool detection |
+| ❌ Environment setup headaches | ✅ Pre-built, tested containers |
+| ❌ No deployment management | ✅ Full lifecycle management |
+
+**Perfect for:** AI developers, data scientists, DevOps teams, and anyone building with MCP who wants infrastructure that "just works".
 
 ## ⚡ Features
 
@@ -146,61 +165,80 @@ The MCP Template CLI provides two interfaces for managing MCP server templates:
 
 | Category | Command | Description |
 |----------|---------|-------------|
-| **General** | `mcp-template list` | List all available/deployed templates |
+| **General** | `mcp-template list` | List all available templates |
 | | `mcp-template create <template-id>` | Create new template with generator |
-| **Deployment** | `mcp-template deploy <template>` | Deploy HTTP transport template |
-| | `mcp-template status <deployment>` | View deployment status |
-| | `mcp-template delete <deployment>` | Delete deployment |
-| **Tool Discovery** | `mcp-template tools <template>` | List available tools in template |
-| | `mcp-template config-options <template>` | Show template configuration options |
-| | `mcp-template discover-tools <docker-image>` | Discover tools from Docker image |
-| **Tool Execution** | `mcp-template run-tool <template> <tool>` | Execute stdio tool |
-| | `mcp-template call-stdio <template> <tool>` | Alternative stdio tool execution |
-| **Integration** | `mcp-template integration-examples <template>` | Show integration examples |
+| **Deployment** | `mcp-template deploy <template>` | Deploy template with Docker |
+| | `mcp-template stop <deployment>` | Stop running deployment |
+| | `mcp-template logs <deployment>` | View deployment logs |
+| | `mcp-template shell <deployment>` | Open shell in deployment container |
+| | `mcp-template cleanup [deployment]` | Clean up deployments |
+| **Configuration** | `mcp-template config <template>` | Configure template settings |
+| | `mcp-template tools <template>` | List available tools in template |
+| | `mcp-template discover-tools <image>` | Discover tools from Docker image |
+| **Integration** | `mcp-template connect <deployment>` | Connect to deployed template |
+| | `mcp-template run` | Run template with transport options |
 | **Interactive** | `mcp-template interactive` | Start interactive CLI mode |
+| **Deprecated** | ~~`mcp-template run-tool`~~ | ❌ Use `interactive` mode with `call` command instead |
 
-### Transport Types & Usage
+### Getting Started with CLI
 
-MCP servers support two transport types with different deployment approaches:
+The MCP Template CLI provides comprehensive tools for deploying and managing MCP server templates:
 
-#### HTTP Transport (Deployable)
-HTTP transport servers run as persistent containers and can be deployed:
+#### Basic Workflow
 
 ```bash
-# Deploy HTTP transport server (runs persistently)
-mcp-template deploy http-server --config port=8080
+# 1. List available templates
+mcp-template list
 
-# Check server status
-mcp-template status http-server-xyz
+# 2. Deploy a template
+mcp-template deploy github
 
-# Access via HTTP endpoint
-curl http://localhost:8080/tools
+# 3. Check deployment logs
+mcp-template logs github
+
+# 4. Open interactive shell in deployment
+mcp-template shell github
+
+# 5. Use interactive mode for tool execution
+mcp-template interactive
+# In interactive mode:
+mcp> call list_repositories
+mcp> call create_issue --title "Bug fix" --body "Description"
+
+# 6. Clean up when done
+mcp-template cleanup github
 ```
 
-#### Stdio Transport (Interactive)
-Stdio transport servers run interactively for direct tool execution:
+#### Configuration Management
 
 ```bash
-# ❌ Cannot deploy stdio servers (will show error with helpful guidance)
-mcp-template deploy stdio-server
-# Error: Cannot deploy stdio transport MCP servers
+# Configure template settings
+mcp-template config github
 
-# ✅ List available tools in stdio server
+# List available tools
 mcp-template tools github
-# Shows all available tools with descriptions
 
-# ✅ Run specific tools from stdio server
-mcp-template run-tool github search_repositories --args '{"query": "mcp server"}'
-mcp-template run-tool github create_issue --args '{"owner": "user", "repo": "test", "title": "New issue"}'
-
-# ✅ Run tools with configuration and environment variables
-mcp-template run-tool github search_repositories \
-  --args '{"query": "python"}' \
-  --env GITHUB_PERSONAL_ACCESS_TOKEN=your_token \
-  --config timeout=30
+# Discover tools from any Docker image
+mcp-template discover-tools dataeverything/mcp-github:latest
 ```
 
-### Tool Discovery Commands
+#### Advanced Usage
+
+```bash
+# Run template with specific transport
+mcp-template run --transport http --port 8080
+
+# Connect to deployed template
+mcp-template connect github
+
+# Deploy with cleanup of old instances
+mcp-template deploy github --cleanup
+
+# View comprehensive logs with follow
+mcp-template logs github --follow
+```
+
+### Template Discovery and Management
 
 **1. List Available Tools:**
 ```bash
@@ -328,161 +366,50 @@ mcp-template deploy file-server \
   --config limits__max_file_size=100MB
 ```
 
-**3. Stdio Tool Execution:**
-```bash
-# Simple tool execution  
-mcp-template run-tool github search_repositories \
-  --args '{"query": "python mcp", "sort": "stars"}'
+---
+## 🔧 Development
 
-# Tool execution with environment variables
-mcp-template run-tool github create_issue \
-  --args '{"owner": "myorg", "repo": "project", "title": "Bug fix"}' \
-  --env GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx
-
-# Alternative stdio execution method
-mcp-template call-stdio github get_issue \
-  --args '{"owner": "microsoft", "repo": "vscode", "issue_number": 1000}'
-```
-
-**4. Development & Debugging:**
-```bash
-# Create new template with interactive wizard
-mcp-template create my-api-server --config-file ./template-spec.json
-
-# Discover tools with verbose output
-mcp-template tools github --verbose
-
-# Check what configuration a template expects
-mcp-template config-options zendesk
-# Output:
-# Required: subdomain (string), email (string), api_token (string)
-# Optional: timeout (integer, default: 30), retries (integer, default: 3)
-```
-
-**5. Batch Operations:**
-```bash
-# Deploy multiple templates with different configs
-mcp-template deploy github --config github_token=xxx --name github-prod
-mcp-template deploy github --config github_token=yyy --name github-dev  
-mcp-template deploy zendesk --config subdomain=support --name zendesk-main
-
-# List all deployments
-mcp-template list --deployed
-
-# Bulk tool discovery
-for template in github zendesk file-server; do
-  echo "=== $template tools ==="
-  mcp-template tools $template
-done
-```
-
-### Configuration Priority & Sources
-
-Configuration is applied in this order (later sources override earlier ones):
-
-1. **Template Defaults** (from `template.json`)
-2. **Config File** (`--config-file config.yml`)  
-3. **CLI Config** (`--config key=value`)
-4. **Environment Variables** (`--env KEY=VALUE`)
-5. **CLI Overrides** (`--override template.field=value`)
-
-**Example showing all sources:**
-```bash
-# config.yml
-server:
-  port: 3000
-  host: localhost
-
-# Command
-mcp-template deploy api-server \
-  --config-file ./config.yml \
-  --config server__port=4000 \
-  --env API_KEY=secret123 \
-  --override name="Production API Server"
-
-# Result: port=4000 (CLI config overrides file), host=localhost (from file), API_KEY=secret123 (env)
-```
-
-# Template data overrides (for metadata, tools, custom fields)
-mcp-template deploy file-server \
-  --override "metadata__version=2.0.0" \
-  --override "metadata__author=MyName" \
-  --override "tools__0__enabled=false"
-
-# Combined usage with custom name
-mcp-template deploy file-server \
-  --name my-file-server \
-  --no-pull \
-  --config read_only_mode=true \
-  --override "metadata__description=Custom file server"
-```
-
-**4. Double Underscore Notation for Nested Configuration:**
-
-Both `--config` and `--override` support double underscore notation for nested structures:
+### Building from Source
 
 ```bash
-# Config schema properties (nested configuration)
-mcp-template deploy file-server \
-  --config security__read_only=true \
-  --config security__max_file_size=50 \
-  --config logging__level=debug
-
-# Template data overrides (nested modifications)
-mcp-template deploy file-server \
-  --override "metadata__version=2.0.0" \
-  --override "config__custom_setting=value" \
-  --override "tools__0__description=Modified tool" \
-  --override "servers__0__config__host=remote.example.com"
+git clone https://github.com/Data-Everything/mcp-server-templates.git
+cd mcp-server-templates
+pip install -r requirements.txt
+pip install -e .
 ```
 
-**5. Advanced Override Examples:**
+### Running Tests
 
 ```bash
-# Array modifications with automatic type conversion
-mcp-template deploy demo \
-  --override "tools__0__enabled=false" \
-  --override "tools__1__timeout=30.5" \
-  --override "metadata__tags=[\"custom\",\"modified\"]"
+# Run all tests
+make test
 
-# Complex nested structure creation
-mcp-template deploy demo \
-  --override "config__database__connection__host=localhost" \
-  --override "config__database__connection__port=5432" \
-  --override "config__security__enabled=true"
+# Run with coverage
+make test-coverage
 
-# JSON object overrides
-mcp-template deploy demo \
-  --override "metadata__custom={\"key\":\"value\",\"nested\":{\"prop\":true}}"
+# Lint code
+make lint
+
+# Format code
+make format
 ```
 
-**6. Deploy with Environment Variables:**
+### Creating Templates
+
 ```bash
-mcp-template deploy file-server \
-  --env MCP_READ_ONLY=true \
-  --env MCP_MAX_FILE_SIZE=50 \
-  --env MCP_LOG_LEVEL=debug
+# Use the interactive template generator
+mcp-template create my-custom-server
+
+# Or manually create template structure:
+mkdir templates/my-server
+cd templates/my-server
+# Create template.json, Dockerfile, README.md
 ```
 
-**7. Mixed Configuration (precedence: env > cli > file > defaults):**
-```bash
-mcp-template deploy file-server \
-  --config-file ./base-config.json \
-  --config log_level=warning \
-  --override "metadata__version=1.5.0" \
-  --env MCP_READ_ONLY=true
-```
+---
+## 📚 Documentation
 
-### Configuration vs Override Usage Guide
-
-| Use Case | Recommended Method | Example |
-|----------|-------------------|---------|
-| Server settings (logging, security, performance) | `--config` | `--config log_level=debug` |
-| Nested server configuration | `--config` with `__` | `--config security__read_only=true` |
-| Template metadata changes | `--override` | `--override "metadata__version=2.0.0"` |
-| Tool modifications | `--override` | `--override "tools__0__enabled=false"` |
-| Custom fields addition | `--override` | `--override "custom_field=value"` |
-| Complex nested structures | `--override` with `__` | `--override "config__db__host=localhost"` |
+### Core Documentation
 
 ### Stdio Tool Execution
 
@@ -730,20 +657,20 @@ Each template includes:
 # 1. Install from PyPI
 pip install mcp-templates
 
-# 2. List available deployments
+# 2. List available templates
 mcp-template list
 
-# 3. Deploy with defaults
-mcp-template deploy file-server
+# 3. Deploy a template with defaults
+mcp-template deploy github
 
-# 4. Deploy with custom config and skip image pull
-mcp-template deploy file-server --config-file ./my-config.json --no-pull
+# 4. View deployment logs
+mcp-template logs github
 
-# 5. View deployment status
-mcp-template status file-server-deployment
+# 5. Use interactive mode for tool execution
+mcp-template interactive
 
-# 6. Delete when done
-mcp-template delete file-server-deployment
+# 6. Clean up when done
+mcp-template cleanup github
 ```
 
 ### Template Discovery
@@ -782,5 +709,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
 
 - **Issues**: [GitHub Issues](https://github.com/Data-Everything/mcp-server-templates/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/Data-Everything/mcp-server-templates/discussions)
-- **Community Slack**: [Join mcp-platform workspace](https://join.slack.com/t/mcp-platform/shared_invite/zt-39z1p559j-8aWEML~IsSPwFFgr7anHRA)
+- **Discord Community**: [Join our Discord server](https://discord.gg/55Cfxe9gnr)
 - **Documentation**: [docs/index.md](docs/index.md)

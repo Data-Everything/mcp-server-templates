@@ -1383,7 +1383,7 @@ make deploy-test
 
 - **Documentation**: [Template docs](docs/)
 - **Issues**: [GitHub Issues](https://github.com/Data-Everything/mcp-server-templates/issues)
-- **Community**: [Join our Slack](https://join.slack.com/t/mcp-platform/shared_invite/zt-39z1p559j-8aWEML~IsSPwFFgr7anHRA)
+- **Community**: [Join our Discord](https://discord.gg/55Cfxe9gnr)
 - **Professional Support**: [Contact us](mailto:support@dataeverything.ai)
 
 ## License
