@@ -65,17 +65,17 @@ def enhanced_cli():
 
 @pytest.mark.docker
 @patch('mcp_template.cli.console')
-@patch('mcp_template.cli.DockerDeploymentService')
-def test_run_stdio_tool_success(mock_docker_service, mock_console, enhanced_cli):
+def test_run_stdio_tool_success(mock_console, enhanced_cli):
     """Test successful stdio tool execution."""
-    # Mock Docker service response
-    mock_docker_instance = mock_docker_service.return_value
-    mock_docker_instance.run_stdio_command.return_value = {
+    # Mock the docker service instance directly
+    mock_docker_service = Mock()
+    mock_docker_service.run_stdio_command.return_value = {
         'status': 'completed',
         'stdout': '{"jsonrpc": "2.0", "id": 3, "result": {"content": [{"type": "text", "text": "Success!"}]}}',
         'stderr': '',
         'executed_at': '2024-01-01T00:00:00'
     }
+    enhanced_cli.docker_service = mock_docker_service
 
     # Run the tool
     result = enhanced_cli.run_stdio_tool(
@@ -86,7 +86,7 @@ def test_run_stdio_tool_success(mock_docker_service, mock_console, enhanced_cli)
     )
 
     # Verify the call was made correctly
-    mock_docker_instance.run_stdio_command.assert_called_once()
+    mock_docker_service.run_stdio_command.assert_called_once()
     assert result is True
 
 
@@ -298,28 +298,20 @@ def test_list_tools_template_not_found(mock_docker_service, mock_console, enhanc
 
 @pytest.mark.docker
 @patch('mcp_template.cli.console')
-@patch('mcp_template.cli.DockerDeploymentService')
-def test_discover_tools_from_image_success(mock_docker_service, mock_console, enhanced_cli):
+def test_discover_tools_from_image_success(mock_console, enhanced_cli):
     """Test successful tool discovery from image."""
-    mock_docker_instance = mock_docker_service.return_value
-    mock_docker_instance.run_stdio_command.return_value = {
-        'status': 'completed',
-        'stdout': json.dumps({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "result": {
-                "tools": [
-                    {
-                        "name": "test_tool",
-                        "description": "A test tool",
-                        "inputSchema": {"type": "object"}
-                    }
-                ]
+    # Mock the docker probe instead of docker service
+    mock_docker_probe = Mock()
+    mock_docker_probe.discover_tools_from_image.return_value = {
+        'tools': [
+            {
+                'name': 'test_tool',
+                'description': 'A test tool'
             }
-        }),
-        'stderr': '',
-        'executed_at': '2024-01-01T00:00:00'
+        ],
+        'discovery_method': 'docker_probe'
     }
+    enhanced_cli.docker_probe = mock_docker_probe
 
     result = enhanced_cli.discover_tools_from_image('test/image', ['arg1'], {})
     assert result is True
@@ -327,16 +319,12 @@ def test_discover_tools_from_image_success(mock_docker_service, mock_console, en
 
 @pytest.mark.docker
 @patch('mcp_template.cli.console')
-@patch('mcp_template.cli.DockerDeploymentService')
-def test_discover_tools_from_image_failure(mock_docker_service, mock_console, enhanced_cli):
+def test_discover_tools_from_image_failure(mock_console, enhanced_cli):
     """Test tool discovery from image failure."""
-    mock_docker_instance = mock_docker_service.return_value
-    mock_docker_instance.run_stdio_command.return_value = {
-        'status': 'failed',
-        'error': 'Container error',
-        'stderr': 'Failed to start',
-        'executed_at': '2024-01-01T00:00:00'
-    }
+    # Mock the docker probe to return None (failure)
+    mock_docker_probe = Mock()
+    mock_docker_probe.discover_tools_from_image.return_value = None
+    enhanced_cli.docker_probe = mock_docker_probe
 
     result = enhanced_cli.discover_tools_from_image('test/image', ['arg1'], {})
     assert result is False
@@ -354,7 +342,7 @@ def test_handle_enhanced_cli_commands_invalid_command(mock_console, enhanced_cli
 
 @pytest.mark.integration
 @patch('mcp_template.cli.console')
-def test_handle_enhanced_cli_commands_run_tool_with_env_vars(mock_console, enhanced_cli):
+def test_handle_enhanced_cli_commands_run_tool_with_env_vars(mock_console):
     """Test handle_enhanced_cli_commands with run-tool and environment variables."""
     args = Namespace(
         command='run-tool',
@@ -365,13 +353,15 @@ def test_handle_enhanced_cli_commands_run_tool_with_env_vars(mock_console, enhan
         env=['DEBUG=true', 'LOG_LEVEL=info']
     )
 
-    with patch.object(enhanced_cli, 'run_stdio_tool') as mock_run_tool:
-        mock_run_tool.return_value = True
+    with patch('mcp_template.cli.EnhancedCLI') as mock_cli_class:
+        mock_cli_instance = Mock()
+        mock_cli_instance.run_stdio_tool.return_value = True
+        mock_cli_class.return_value = mock_cli_instance
         
         result = handle_enhanced_cli_commands(args)
         
         assert result is True
-        mock_run_tool.assert_called_once_with(
+        mock_cli_instance.run_stdio_tool.assert_called_once_with(
             'github',
             'search_repositories',
             tool_args='{"query": "test"}',
@@ -382,7 +372,7 @@ def test_handle_enhanced_cli_commands_run_tool_with_env_vars(mock_console, enhan
 
 @pytest.mark.integration
 @patch('mcp_template.cli.console')
-def test_handle_enhanced_cli_commands_run_tool_no_args(mock_console, enhanced_cli):
+def test_handle_enhanced_cli_commands_run_tool_no_args(mock_console):
     """Test handle_enhanced_cli_commands with run-tool but no arguments."""
     args = Namespace(
         command='run-tool',
@@ -393,13 +383,15 @@ def test_handle_enhanced_cli_commands_run_tool_no_args(mock_console, enhanced_cl
         env=None
     )
 
-    with patch.object(enhanced_cli, 'run_stdio_tool') as mock_run_tool:
-        mock_run_tool.return_value = True
+    with patch('mcp_template.cli.EnhancedCLI') as mock_cli_class:
+        mock_cli_instance = Mock()
+        mock_cli_instance.run_stdio_tool.return_value = True
+        mock_cli_class.return_value = mock_cli_instance
         
         result = handle_enhanced_cli_commands(args)
         
         assert result is True
-        mock_run_tool.assert_called_once_with(
+        mock_cli_instance.run_stdio_tool.assert_called_once_with(
             'github',
             'search_repositories',
             tool_args=None,

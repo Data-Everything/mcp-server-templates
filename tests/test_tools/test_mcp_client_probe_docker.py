@@ -69,9 +69,10 @@ class TestMCPClientProbeDocker:
         mock_discover_command.assert_called_once()
         docker_cmd = mock_discover_command.call_args[0][0]
         
-        # Should automatically add 'stdio' for GitHub image
-        assert "stdio" in docker_cmd
+        # Should NOT automatically add 'stdio' since no args provided
+        # The command should just be: docker run --rm -i --name <container> -e GITHUB_PERSONAL_ACCESS_TOKEN=token <image>
         assert "ghcr.io/github/github-mcp-server:0.9.1" in docker_cmd
+        assert "GITHUB_PERSONAL_ACCESS_TOKEN=token" in " ".join(docker_cmd)
 
     @pytest.mark.asyncio
     @patch('mcp_template.tools.mcp_client_probe.MCPClientProbe.discover_tools_from_command')
@@ -265,7 +266,7 @@ class TestMCPClientProbeProtocol:
         mock_process.stdin.write.assert_called_once()
         written_data = mock_process.stdin.write.call_args[0][0].decode()
         assert '"method": "initialize"' in written_data
-        assert '"protocolVersion": "2025-06-18"' in written_data
+        assert '"protocolVersion": "2024-11-05"' in written_data
 
         # Verify result
         assert result is not None

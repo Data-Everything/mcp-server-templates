@@ -1200,3 +1200,6 @@ def handle_enhanced_cli_commands(args) -> bool:
             config_values=config_values,
             env_vars=env_vars,
         )
+    
+    # Handle invalid commands
+    return False

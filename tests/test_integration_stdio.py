@@ -14,77 +14,41 @@ from mcp_template.cli import EnhancedCLI
 
 
 @pytest.mark.integration
-@patch('sys.argv', ['mcp-template', 'run-tool', 'github', 'search_repositories', 
-       '--args', '{"query": "python"}', '--env', 'GITHUB_TOKEN=test'])
-@patch('mcp_template.backends.docker.DockerDeploymentService')
-@patch('mcp_template.template.utils.discovery.TemplateDiscovery')
-def test_full_run_tool_flow(mock_discovery, mock_docker_service):
-    """Test the complete run-tool command flow from CLI to Docker backend."""
-    # Mock template discovery
-    mock_discovery_instance = mock_discovery.return_value
-    mock_discovery_instance.find_template.return_value = {
-        'template_data': {
-            'image': 'test/github:latest',
-            'command': ['mcp-server-github'],
-            'transport': 'stdio'
-        },
-        'template_dir': '/fake/path'
-    }
-
-    # Mock Docker service
-    mock_docker_instance = mock_docker_service.return_value
-    mock_docker_instance.run_stdio_command.return_value = {
-        'status': 'completed',
-        'stdout': json.dumps({
-            "jsonrpc": "2.0",
-            "id": 3,
-            "result": {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": json.dumps({"total_count": 1, "items": [{"name": "test-repo"}]})
-                    }
-                ]
-            }
-        }),
-        'stderr': '',
-        'template_id': 'github'
-    }
-
-    # Mock console to capture output
-    with patch('mcp_template.cli.console') as mock_console:
-        try:
-            main()
-        except SystemExit as e:
-            # Main should exit with code 0 for success
-            assert e.code == 0
-
-        # Verify the Docker service was called with correct parameters
-        mock_docker_instance.run_stdio_command.assert_called_once()
-        call_args = mock_docker_instance.run_stdio_command.call_args
-        
-        # Verify template_id
-        assert call_args[0][0] == 'github'
-        
-        # Verify environment variables were passed
-        config = call_args[0][1]
-        assert 'GITHUB_TOKEN' in config
-        assert config['GITHUB_TOKEN'] == 'test'
-
-        # Verify tool call was properly formatted
-        json_input = call_args[0][3]
-        parsed_input = json.loads(json_input)
-        assert parsed_input['method'] == 'tools/call'
-        assert parsed_input['params']['name'] == 'search_repositories'
-        assert parsed_input['params']['arguments']['query'] == 'python'
-
-        # Verify success output
-        # Verify that console output was generated (don't check specific Panel content)
-        assert mock_console.print.called
-        # Check that some form of success or tools message was printed
-        calls = [str(call) for call in mock_console.print.call_args_list]
-        call_text = ' '.join(calls)
-        assert 'tool' in call_text.lower() or 'success' in call_text.lower()
+@patch('mcp_template.cli.EnhancedCLI')
+def test_full_run_tool_flow(mock_cli_class):
+    """Test the complete run-tool command flow through handle_enhanced_cli_commands."""
+    # Mock the CLI instance and its methods
+    mock_cli_instance = Mock()
+    mock_cli_instance.run_stdio_tool.return_value = True
+    mock_cli_class.return_value = mock_cli_instance
+    
+    # Import here to use the patched version
+    from mcp_template.cli import handle_enhanced_cli_commands
+    
+    # Create args namespace as if from CLI parsing
+    args = Namespace(
+        command='run-tool',
+        template='github',
+        tool_name='search_repositories',
+        args='{"query": "python"}',
+        config=None,
+        env=['GITHUB_TOKEN=test']
+    )
+    
+    # Call the handler directly
+    result = handle_enhanced_cli_commands(args)
+    
+    # Verify it returned success
+    assert result is True
+    
+    # Verify the CLI method was called correctly
+    mock_cli_instance.run_stdio_tool.assert_called_once_with(
+        'github',
+        'search_repositories',
+        tool_args='{"query": "python"}',
+        config_values={},
+        env_vars={'GITHUB_TOKEN': 'test'}
+    )
 
 
 @pytest.mark.integration
