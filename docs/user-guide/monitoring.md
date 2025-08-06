@@ -50,7 +50,7 @@ mcp-template dashboard
 ┌──────────────────┬─────────────┬────────────┬──────────────────┐
 │ Deployment       │ Template    │ Status     │ Resource Usage   │
 ├──────────────────┼─────────────┼────────────┼──────────────────┤
-│ file-server-prod │ file-server │ ✅ Healthy │ 🟢 15% CPU, 180MB│
+│ filesystem-prod │ filesystem │ ✅ Healthy │ 🟢 15% CPU, 180MB│
 │ github-api       │ github      │ ✅ Healthy │ 🟢 8% CPU, 95MB  │
 │ database-conn    │ database    │ ⚠️ Warning │ 🟡 65% CPU, 340MB│
 │ slack-bot        │ slack       │ ✅ Healthy │ 🟢 12% CPU, 120MB│
@@ -69,7 +69,7 @@ mcp-template monitor --config health-check.json
 # Example health-check.json:
 {
   "interval": 30,
-  "deployments": ["critical-app", "file-server-prod"],
+  "deployments": ["critical-app", "filesystem-prod"],
   "actions": {
     "on_failure": "restart",
     "on_warning": "alert",
@@ -198,12 +198,12 @@ if __name__ == "__main__":
 mcp-template metrics --output prometheus
 
 # Example Prometheus metrics:
-# mcp_deployment_status{deployment="file-server"} 1
-# mcp_deployment_uptime_seconds{deployment="file-server"} 86400
-# mcp_deployment_memory_bytes{deployment="file-server"} 185073664
-# mcp_deployment_cpu_percent{deployment="file-server"} 5.2
-# mcp_tool_calls_total{deployment="file-server",tool="read_file"} 157
-# mcp_tool_errors_total{deployment="file-server",tool="read_file"} 2
+# mcp_deployment_status{deployment="filesystem"} 1
+# mcp_deployment_uptime_seconds{deployment="filesystem"} 86400
+# mcp_deployment_memory_bytes{deployment="filesystem"} 185073664
+# mcp_deployment_cpu_percent{deployment="filesystem"} 5.2
+# mcp_tool_calls_total{deployment="filesystem",tool="read_file"} 157
+# mcp_tool_errors_total{deployment="filesystem",tool="read_file"} 2
 ```
 
 ### Custom Metrics

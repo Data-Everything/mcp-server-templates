@@ -456,9 +456,9 @@ mcp-template connect deployment --debug
 ### Self-Service Resources
 
 1. **Check Documentation**
-   - [CLI Reference](cli/index.md)
-   - [Template Development Guide](development/template-development.md)
-   - [Tool Discovery Documentation](tool-discovery.md)
+   - [CLI Reference](../cli/index.md)
+   - [Template Creation Guide](creating-templates.md)
+   - [Tool Discovery Documentation](../tool-discovery.md)
 
 2. **Search Common Issues**
    ```bash

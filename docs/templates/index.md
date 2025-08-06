@@ -20,7 +20,7 @@ MCP Server Templates are pre-configured, production-ready implementations of the
 | Template | Description | Use Cases | Status |
 |----------|-------------|-----------|---------|
 | **[demo](demo.md)** | Basic greeting and echo server | Learning, testing, examples | ✅ Ready |
-| **[file-server](file-server.md)** | Secure filesystem operations | Document processing, file management | ✅ Ready |
+| **[filesystem](filesystem.md)** | Secure filesystem operations | Document processing, file management | ✅ Ready |
 
 ### Database Templates
 
@@ -50,7 +50,7 @@ mcp-template list
 mcp-template deploy demo
 
 # Deploy with custom configuration
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config security__allowed_dirs='["/data", "/workspace"]' \
   --config security__read_only=false
 ```
@@ -62,7 +62,7 @@ mcp-template deploy file-server \
 mcp-template tools demo
 
 # Get detailed tool information
-mcp-template tools file-server --detailed
+mcp-template tools filesystem --detailed
 
 # Generate integration examples
 mcp-template connect demo --llm claude
@@ -75,7 +75,7 @@ mcp-template connect demo --llm claude
 - Includes comprehensive examples and documentation
 
 ### File Operations
-- **file-server** - Secure filesystem access with configurable permissions
+- **filesystem** - Secure filesystem access with configurable permissions
 - Supports directory restrictions, read-only modes, and audit logging
 
 ### Data & Analytics

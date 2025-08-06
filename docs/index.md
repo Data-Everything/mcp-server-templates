@@ -1,10 +1,8 @@
-# MCP Server Templates
-
-**Production-ready deployment system for Model Context Protocol (MCP) servers with zero-configuration deployment, comprehensive tool discovery, and enterprise-grade management capabilities.**
-
 # MCP Server Templates Documentation
 
-[![Version](https://img.shields.io/pypi/v/mcp-templates.svg)](https://pypi.o- **💬 Discord Community**: [Join our Discord server](https://discord.gg/55Cfxe9gnr)g/project/mcp-templates/)
+[![Version](https://img.shields.io/pypi/v/mcp-templa**Release Timeline:** All this and more dropping mid-August 2025—don't miss out!
+
+Ready to dive in? Check out our [Getting Started Guide](getting-started/quickstart.md)!.svg)](https://pypi.org/project/mcp-templates/)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
 [![License](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](/LICENSE)
 [![Discord](https://img.shields.io/discord/XXXXX?color=7289da&logo=discord&logoColor=white)](https://discord.gg/55Cfxe9gnr)
@@ -12,6 +10,10 @@
 > **Production-ready Model Context Protocol (MCP) server templates with zero-configuration deployment**
 
 Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options.
+
+## 💬 Community
+
+Join our [Discord Community](https://discord.gg/55Cfxe9gnr) for support, discussions, and updates!
 
 ## 🚀 Quick Navigation
 
@@ -90,7 +92,7 @@ Welcome to the MCP Platform—where server deployment meets pure excitement! Her
 
 **Release Timeline:** All this and more dropping mid-August 2025—don’t miss out!
 
-Ready to dive in? [Get Started with the README!](../../README.md)
+Ready to dive in? Check out our [Getting Started Guide](getting-started/quickstart.md)!
 
 ## �🌟 MCP Platform - Managed Cloud Solution
 
@@ -179,40 +181,36 @@ mcp-template connect demo --llm claude
 #### 🚀 Getting Started
 - **[Installation Guide](getting-started/installation.md)** - Setup and initial configuration
 - **[Quick Start Tutorial](getting-started/quickstart.md)** - Deploy your first MCP server
-- **[Basic Concepts](getting-started/concepts.md)** - Understanding templates, deployments, and tools
+- **[Configuration](getting-started/configuration.md)** - Understanding templates, deployments, and tools
 
 #### 📖 User Guide
-- **[Template Usage](user-guide/templates.md)** - Working with pre-built templates
-- **[Configuration Management](user-guide/configuration.md)** - Advanced configuration patterns
+- **[CLI Reference](user-guide/cli-reference.md)** - Complete command reference
+- **[Monitoring](user-guide/monitoring.md)** - Monitor your deployments
 - **[Stdio Tool Execution](stdio-tool-execution.md)** - Interactive tool execution for stdio MCP servers
-- **[Integration Patterns](user-guide/integration.md)** - Connect to LLMs and frameworks
 - **[Monitoring & Management](user-guide/monitoring.md)** - Production deployment management
 
 #### 🛠️ CLI Reference
 - **[Command Overview](cli/index.md)** - Complete CLI documentation
 - **[deploy](cli/deploy.md)** - Deploy HTTP transport templates with configuration options
 - **[run-tool](stdio-tool-execution.md#basic-usage)** - Execute tools from stdio MCP servers
-- **[tools](cli/tools.md)** - Discover and analyze MCP server capabilities
-- **[tools](cli/tools.md)** - List tools from templates OR discover from Docker images
-- ~~**[discover-tools](cli/discover-tools.md)**~~ - **DEPRECATED**: Use `tools --image` instead
+- ~~**[tools](cli/tools.md)**~~ - **DEPRECATED**: Use interactive CLI instead
+- ~~**[discover-tools](cli/discover-tools.md)**~~ - **DEPRECATED**: Use interactive CLI instead
 - **[connect](cli/connect.md)** - Generate integration examples for LLMs
 - **[config](cli/config.md)** - View template configuration options
 - **[list](cli/list.md)** - List templates and deployments
 - **[logs](cli/logs.md)** - Monitor deployment logs
-- **[status](cli/status.md)** - Check deployment health
+- **[interactive](cli/interactive.md)** - Interactive CLI for deployment management
 
 #### 🔧 Development
 - **[Creating Templates](guides/creating-templates.md)** - Build custom MCP server templates
-- **[Template Development Guide](guides/development.md)** - Advanced template development
-- **[Template Discovery System](template-discovery.md)** - Understanding template discovery architecture
+- **[Template Development](templates/creating.md)** - Advanced template development
 - **[Tool Discovery System](tool-discovery.md)** - Understanding tool discovery architecture
 - **[Testing & Validation](guides/testing.md)** - Test templates and deployments
 - **[Contributing](guides/contributing.md)** - Contribute to the project
 
 #### 🏗️ System Architecture
 - **[Architecture Overview](development/architecture.md)** - System design and components
-- **[Backend Abstraction](development/backends.md)** - Docker, Kubernetes, and custom backends
-- **[Template System](development/templates.md)** - Template structure and lifecycle
+- **[Development Setup](development/setup.md)** - Setting up development environment
 - **[API Reference](api/)** - Complete API documentation
 
 ### 🎯 Use Cases
@@ -220,12 +218,12 @@ mcp-template connect demo --llm claude
 #### File Operations
 ```bash
 # Deploy secure file server
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config security__allowed_dirs='["/data", "/workspace"]' \
   --config security__read_only=false
 
 # Connect to Claude Desktop for file operations
-mcp-template connect file-server --llm claude
+mcp-template connect filesystem --llm claude
 ```
 
 #### Database Integration
@@ -279,7 +277,7 @@ mcp-template connect demo --llm vscode
 | Template | Description | Use Cases |
 |----------|-------------|-----------|
 | **demo** | Basic greeting and echo server | Learning, testing, examples |
-| **file-server** | Secure filesystem operations | Document processing, file management |
+| **filesystem** | Secure filesystem operations | Document processing, file management |
 | **postgres-server** | PostgreSQL database integration | Data analysis, query execution |
 | **api-server** | REST API client with auth | External service integration |
 | **mongodb-server** | MongoDB document operations | NoSQL data operations |
@@ -298,7 +296,7 @@ mcp-template connect demo --llm vscode
 #### Security Considerations
 ```bash
 # Deploy with security hardening
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config security__read_only=true \
   --config security__max_file_size=10 \
   --config logging__enable_audit=true \
@@ -311,17 +309,17 @@ mcp-template deploy file-server \
 mcp-template list --format json | jq '.summary'
 
 # Log monitoring
-mcp-template logs file-server --follow --since 1h
+mcp-template logs filesystem --follow --since 1h
 ```
 
 #### Backup and Recovery
 ```bash
 # Export deployment configuration
-mcp-template status file-server --format json > backup.json
+mcp-template status filesystem --format json > backup.json
 
 # Cleanup and redeploy
-mcp-template cleanup file-server
-mcp-template deploy file-server --config-file backup.json
+mcp-template cleanup filesystem
+mcp-template deploy filesystem --config-file backup.json
 ```
 
 ### 🤝 Community & Support
@@ -360,10 +358,10 @@ pip install -e .
 mcp-template list
 
 # Deploy a template
-mcp-template deploy file-server
+mcp-template deploy filesystem
 
 # View logs
-mcp-template logs file-server
+mcp-template logs filesystem
 
 ```
 
@@ -371,13 +369,13 @@ mcp-template logs file-server
 
 ```bash
 # View configuration options for any template
-mcp-template deploy file-server --show-config
+mcp-template deploy filesystem --show-config
 
 # Deploy with custom configuration
-mcp-template deploy file-server --config read_only_mode=true
+mcp-template deploy filesystem --config read_only_mode=true
 
 # Deploy with config file
-mcp-template deploy file-server --config-file config.json
+mcp-template deploy filesystem --config-file config.json
 ```
 
 ## Available Templates
@@ -387,7 +385,7 @@ Our templates are automatically discovered and validated using the `TemplateDisc
 *Use `mcp-template list` to see all currently available templates, or visit the [Templates](server-templates/index.md) section for detailed documentation.*
 
 **Popular Templates:**
-- **file-server** - Secure filesystem access for AI assistants
+- **filesystem** - Secure filesystem access for AI assistants
 - **demo** - Demonstration server with greeting tools
 - **github** - GitHub API integration for repository access
 - **database** - Database connectivity for SQL operations
@@ -425,18 +423,18 @@ Templates support flexible configuration from multiple sources:
 **Example configuration:**
 ```bash
 # Using CLI options
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
 
 # Using environment variables
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50
 
 # Using config file
-mcp-template deploy file-server --config-file production.json
+mcp-template deploy filesystem --config-file production.json
 ```
 
 ## Template Development

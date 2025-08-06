@@ -25,19 +25,19 @@ The `stop` command allows you to stop a specific deployment, all deployments of 
 ### Stop a specific template deployment
 
 ```bash
-mcp-template stop file-server
+mcp-template stop filesystem
 ```
 
 ### Stop a deployment by custom container name
 
 ```bash
-mcp-template stop --name mcp-file-server-abc123
+mcp-template stop --name mcp-filesystem-abc123
 ```
 
 ### Stop all deployments of a template
 
 ```bash
-mcp-template stop file-server --all
+mcp-template stop filesystem --all
 ```
 
 ### Stop all deployments across all templates

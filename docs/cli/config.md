@@ -73,7 +73,7 @@ mcp-template config demo
 
 ```bash
 # Show file server configuration options
-mcp-template config file-server
+mcp-template config filesystem
 
 # Example output shows comprehensive security and performance options:
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -81,16 +81,16 @@ mcp-template config file-server
 ┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
 │ allowed_directories  │ array           │ --config allowed_directories='["/data","/workspace"]'                             │
 │                      │                 │ --env MCP_ALLOWED_DIRS='["/data","/workspace"]'                                   │
-│                      │                 │ --config file-server__security__allowed_dirs='["/data","/workspace"]'            │
+│                      │                 │ --config filesystem__security__allowed_dirs='["/data","/workspace"]'            │
 │ read_only_mode       │ boolean         │ --config read_only_mode=false                                                     │
 │                      │                 │ --env MCP_READ_ONLY=false                                                         │
-│                      │                 │ --config file-server__security__read_only=false                                   │
+│                      │                 │ --config filesystem__security__read_only=false                                   │
 │ max_file_size        │ integer         │ --config max_file_size=100                                                        │
 │                      │                 │ --env MCP_MAX_FILE_SIZE=100                                                       │
-│                      │                 │ --config file-server__security__max_file_size=100                                │
+│                      │                 │ --config filesystem__security__max_file_size=100                                │
 │ log_level            │ string          │ --config log_level=info                                                           │
 │                      │                 │ --env MCP_LOG_LEVEL=info                                                          │
-│                      │                 │ --config file-server__logging__level=info                                        │
+│                      │                 │ --config filesystem__logging__level=info                                        │
 └──────────────────────┴─────────────────┴────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -123,12 +123,12 @@ Each config display includes practical usage examples:
 ### Basic Examples
 ```bash
 # Simple configuration
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config read_only_mode=true \
   --config max_file_size=50
 
 # Environment variables
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50
 ```
@@ -136,14 +136,14 @@ mcp-template deploy file-server \
 ### Advanced Examples
 ```bash
 # Nested configuration
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config security__read_only=true \
   --config security__max_file_size=50 \
   --config logging__level=debug \
   --config performance__max_concurrent=20
 
 # Mixed configuration sources
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config-file base-config.json \
   --config log_level=warning \
   --env MCP_READ_ONLY=true
@@ -152,7 +152,7 @@ mcp-template deploy file-server \
 ### Configuration File Examples
 ```bash
 # JSON configuration file
-mcp-template deploy file-server --config-file config.json
+mcp-template deploy filesystem --config-file config.json
 ```
 
 ## Configuration Schema Types
@@ -279,7 +279,7 @@ performance:
 ### Template Not Found
 ```bash
 ❌ Template 'nonexistent' not found
-Available templates: demo, file-server, postgres-server
+Available templates: demo, filesystem, postgres-server
 ```
 
 ### No Configuration Schema

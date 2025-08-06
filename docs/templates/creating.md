@@ -128,7 +128,7 @@ mcp-template create --config-file template-config.json --non-interactive
 
 ```bash
 # Create template from MCP-compatible Docker image
-mcp-template create --from-image mcp/filesystem my-file-server
+mcp-template create --from-image mcp/filesystem my-filesystem
 
 # Automatically discovers tools and generates template structure
 ```

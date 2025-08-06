@@ -170,7 +170,7 @@ mcp-template tools --image mcp/filesystem \
 
 ```bash
 # List file server tools
-mcp-template tools file-server
+mcp-template tools filesystem
 
 # Example output shows comprehensive file operations:
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -315,7 +315,7 @@ mcp-template tools demo 2>/dev/null | \
 ### Template Not Found
 ```bash
 ❌ Template 'nonexistent' not found
-Available templates: demo, file-server, postgres-server
+Available templates: demo, filesystem, postgres-server
 ```
 **Solution**: Use `mcp-template list` to see available templates.
 

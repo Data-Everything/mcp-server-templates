@@ -91,7 +91,7 @@ make test-all         # Run all tests
 make test             # Alias for test-all
 
 # Template-specific testing
-make test-template TEMPLATE=file-server  # Test specific template
+make test-template TEMPLATE=filesystem  # Test specific template
 make test-templates   # Test all templates
 
 # Test with coverage

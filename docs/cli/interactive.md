@@ -1,6 +1,6 @@
 # Interactive Command
 
-The `interactive` command launches an interactive CLI session for streamlined template management and testing.
+The `interactive` command launches a comprehensive CLI session for deployment management and direct interaction with MCP servers.
 
 ## Usage
 
@@ -10,44 +10,55 @@ mcp-template interactive
 
 ## Description
 
-The interactive mode provides a command-line interface with enhanced features:
+The interactive mode provides a unified interface for managing MCP server deployments and executing tools directly from the command line. This is the primary way to:
 
-- **Streamlined workflow**: Execute multiple commands without retyping the base command
-- **Command completion**: Tab completion for commands and arguments
-- **Session persistence**: Maintain context across multiple operations
-- **Enhanced tool calling**: Use the `call` command for tool execution
-- **Real-time feedback**: Immediate responses to your actions
+- **Manage Deployments**: List, monitor, and control running MCP server deployments
+- **Discover Tools**: Automatically discover available tools from deployed servers  
+- **Execute Tools**: Run MCP server tools directly without writing integration code
+- **Interactive Debugging**: Test and debug MCP server functionality in real-time
 
-## Available Commands in Interactive Mode
+## Key Features
 
-Once in interactive mode, you can use all standard mcp-template commands plus:
+### Deployment Management
+- List active deployments and their status
+- Monitor deployment health and logs
+- Start, stop, and manage server lifecycles
+- View deployment configuration and metadata
 
-- `call` - Execute tools from deployed templates (replaces deprecated `run-tool`)
-- `exit` or `quit` - Exit interactive session
-- All other CLI commands work without the `mcp-template` prefix
+### Tool Discovery & Execution
+- Automatically discover tools available in deployed MCP servers
+- Execute tools with real-time feedback and error handling
+- Pass arguments and configuration dynamically
+- Support for both simple and complex tool interactions
 
-## Examples
+### Session Management
+- Persistent session across multiple commands
+- Command history and tab completion
+- Context-aware help and suggestions
+- Graceful error handling and recovery
 
-Start interactive session:
+## Example Session
+
 ```bash
+# Start interactive session
 mcp-template interactive
-```
 
-Example interactive session:
-```
-$ mcp-template interactive
 Welcome to MCP Template Interactive CLI
 Type 'help' for available commands, 'exit' to quit
 
-mcp> list
-[Shows available templates]
+# List available deployments
+mcp> deployments
 
-mcp> deploy github
-[Deploys GitHub template]
+# Discover tools from a deployment
+mcp> discover github-server
 
-mcp> call list_repositories
-[Calls tool from deployed template]
+# Execute a tool
+mcp> call github-server search_repositories --query "mcp"
 
+# View deployment logs
+mcp> logs github-server
+
+# Exit session
 mcp> exit
 ```
 

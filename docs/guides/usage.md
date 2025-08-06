@@ -30,7 +30,7 @@ Perfect for AI-powered document processing, analysis, and automation.
 docker ps --filter "label=mcp.template-id" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 
 # Example output:
-# mcp-file-server-0725-123456-abcdef    dataeverything/mcp-file-server:latest    Up 2 minutes
+# mcp-filesystem-0725-123456-abcdef    dataeverything/mcp-filesystem:latest    Up 2 minutes
 # mcp-demo-0725-789012-ghijkl           dataeverything/mcp-demo:latest           Up 1 minute
 ```
 
@@ -56,9 +56,9 @@ docker ps --filter "label=mcp.template-id" --format "table {{.Names}}\t{{.Image}
 ```json
 {
   "mcpServers": {
-    "file-server": {
+    "filesystem": {
       "command": "docker",
-      "args": ["exec", "-i", "mcp-file-server-0725-123456-abcdef", "python", "-m", "src.server"]
+      "args": ["exec", "-i", "mcp-filesystem-0725-123456-abcdef", "python", "-m", "src.server"]
     },
     "demo-server": {
       "command": "docker",
@@ -79,7 +79,7 @@ After updating the configuration:
 
 ```
 Example prompts:
-• "List files in my Documents folder" (file-server)
+• "List files in my Documents folder" (filesystem)
 • "Say hello to Alice" (demo server)
 • "Get server information" (any server)
 • "Show me the configuration options"
@@ -103,7 +103,7 @@ code --install-extension mcp-client
 ```json
 {
   "mcp.servers": {
-    "file-server": {
+    "filesystem": {
       "command": "docker",
       "args": ["exec", "-i", "CONTAINER_NAME", "python", "-m", "src.server"],
       "description": "File system access server"
@@ -227,7 +227,7 @@ class AdvancedMCPClient(MCPClient):
 
 # Batch operations example
 async def process_batch():
-    client = AdvancedMCPClient("mcp-file-server-0725-123456-abcdef")
+    client = AdvancedMCPClient("mcp-filesystem-0725-123456-abcdef")
 
     await client.connect()
 

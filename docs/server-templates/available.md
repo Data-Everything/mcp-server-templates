@@ -13,15 +13,3 @@ A simple demonstration MCP server that provides greeting tools
 **Author:** Unknown
 
 ---
-
-## [File Server MCP](file-server/index.md)
-
-Secure file system access for AI assistants using the official MCP filesystem server with additional platform integration and configuration options.
-
-**Template ID:** `file-server`
-
-**Version:** 1.0.1
-
-**Author:** Unknown
-
----

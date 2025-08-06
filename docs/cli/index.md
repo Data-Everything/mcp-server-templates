@@ -45,7 +45,7 @@ mcp-template tools demo
 
 ### Configuration & Monitoring
 - [config](config.md) - View and validate configuration settings
-- [status](status.md) - Check deployment health and detailed status information
+- [logs](logs.md) - View deployment logs and monitor status
 - [logs](logs.md) - Access deployment logs and monitoring
 
 ## Configuration System
@@ -59,7 +59,7 @@ The CLI supports comprehensive template creation alongside deployment and config
 mcp-template create
 
 # Create from existing image
-mcp-template create --from-image mcp/filesystem my-file-server
+mcp-template create --from-image mcp/filesystem my-filesystem
 
 # Non-interactive creation
 mcp-template create --config-file template-config.json --non-interactive
@@ -86,13 +86,13 @@ Use double underscores for nested configuration:
 
 ```bash
 # Standard format
-mcp-template deploy file-server --config read_only_mode=true
+mcp-template deploy filesystem --config read_only_mode=true
 
 # Nested format (equivalent)
-mcp-template deploy file-server --config security__read_only=true
+mcp-template deploy filesystem --config security__read_only=true
 
 # Template-prefixed format
-mcp-template deploy file-server --config file-server__security__read_only=true
+mcp-template deploy filesystem --config filesystem__security__read_only=true
 ```
 
 ## Common Usage Patterns
@@ -114,14 +114,14 @@ mcp-template connect my-server --llm claude
 
 ```bash
 # Deploy with production config
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config-file production.json \
-  --name prod-file-server \
+  --name prod-filesystem \
   --no-pull
 
 # Monitor deployment
-mcp-template status prod-file-server
-mcp-template logs prod-file-server --tail 100
+mcp-template status prod-filesystem
+mcp-template logs prod-filesystem --tail 100
 ```
 
 ### Tool Discovery
@@ -162,7 +162,7 @@ The CLI provides comprehensive error handling with helpful messages:
 ```bash
 # Template not found
 ❌ Template 'nonexistent' not found
-Available templates: demo, file-server, postgres-server
+Available templates: demo, filesystem, postgres-server
 
 # Configuration error
 ❌ Invalid configuration: security.max_file_size must be a number
