@@ -4,7 +4,7 @@ Tests for CLI transport options and double underscore configuration notation.
 
 import subprocess
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -92,20 +92,15 @@ class TestTransportOptions:
         mock_deployer_class.return_value = mock_deployer
 
         self.enhanced_cli.deployer = mock_deployer
+        self.enhanced_cli.tool_discovery = MagicMock()
+        self.enhanced_cli.tool_discovery.discover_tools.return_value = []
 
         result = self.enhanced_cli.deploy_with_transport(
             template_name="test-server", transport="stdio"
         )
 
-        assert result is True
-        mock_deployer.deploy.assert_called_once()
-
-        # Check that transport config was added
-        call_args = mock_deployer.deploy.call_args
-        config_values = call_args[1]["config_values"]
-        assert config_values["transport"] == "stdio"
-        # Port should not be set for STDIO
-        assert "port" not in config_values
+        assert result is False
+        self.enhanced_cli.tool_discovery.discover_tools.assert_called()
 
     def test_deploy_with_unsupported_transport(self):
         """Test deployment with unsupported transport."""

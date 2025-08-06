@@ -189,19 +189,22 @@ class TestEnhancedCLIToolsDynamic:
         assert "❌ Template 'nonexistent' not found" in captured.out
 
     @patch('mcp_template.cli.console')
-    def test_handle_enhanced_cli_commands_tools_with_config(self, mock_console):
+    @patch('mcp_template.cli.EnhancedCLI')
+    def test_handle_enhanced_cli_commands_tools_with_config(self, mock_enhanced_cli, mock_console):
         """Test CLI command handler with config values."""
         args = Mock()
         args.command = "tools"
         args.image = None
-        args.template_or_args = ["github"]
+        args.template = "github"
         args.config = ["github_token=test123", "log_level=DEBUG"]
         args.no_cache = False
         args.refresh = False
+        args.force_server = False
         
         enhanced_cli = Mock()
-        
-        result = handle_enhanced_cli_commands(args, enhanced_cli)
+        mock_enhanced_cli.return_value = enhanced_cli
+
+        result = handle_enhanced_cli_commands(args)
         
         assert result is True
         enhanced_cli.list_tools.assert_called_once_with(
@@ -211,11 +214,13 @@ class TestEnhancedCLIToolsDynamic:
             config_values={
                 "github_token": "test123",
                 "log_level": "DEBUG"
-            }
+            },
+            force_server_discovery=False
         )
 
     @patch('rich.console.Console')
-    def test_handle_enhanced_cli_commands_invalid_config_format(self, mock_console_class):
+    @patch('mcp_template.cli.EnhancedCLI')
+    def test_handle_enhanced_cli_commands_invalid_config_format(self, mock_enhanced_cli, mock_console_class):
         """Test CLI command handler with invalid config format."""
         # Mock console instance
         mock_console = Mock()
@@ -225,12 +230,13 @@ class TestEnhancedCLIToolsDynamic:
         args = Mock()
         args.command = "tools"
         args.image = None
-        args.template_or_args = ["github"]
+        args.template = "github"
         args.config = ["invalid_format"]  # Missing =
         
         enhanced_cli = Mock()
-        
-        result = handle_enhanced_cli_commands(args, enhanced_cli)
+        mock_enhanced_cli.return_value = enhanced_cli
+
+        result = handle_enhanced_cli_commands(args)
         
         assert result is False
         # Should print error message
@@ -238,7 +244,7 @@ class TestEnhancedCLIToolsDynamic:
             "[red]❌ Invalid config format: invalid_format. Use KEY=VALUE[/red]"
         )
 
-    @patch('rich.console.Console')
+    @patch('mcp_template.cli.console')
     def test_handle_enhanced_cli_commands_tools_help_examples(self, mock_console_class):
         """Test that help examples include config option."""
         # Mock console instance
@@ -248,17 +254,16 @@ class TestEnhancedCLIToolsDynamic:
         args = Mock()
         args.command = "tools"
         args.image = None
-        args.template_or_args = []  # No template provided
+        args.template = None
         args.config = None
         
-        enhanced_cli = Mock()
-        
-        result = handle_enhanced_cli_commands(args, enhanced_cli)
+        result = handle_enhanced_cli_commands(args)
         
         assert result is False
-        # Check that help examples are printed including config option
-        help_calls = [str(call) for call in mock_console.print.call_args_list]
-        assert any("--config github_token=your_token" in call for call in help_calls)
+        # Get console output
+        mock_console_class.print.assert_called()
+        output = ''.join(str(call) for call in mock_console_class.print.call_args_list)
+        assert "Must provide either a template name" in output
 
 
 class TestEnhancedCLIIntegration:

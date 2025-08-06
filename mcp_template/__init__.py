@@ -195,7 +195,11 @@ Examples:
         parser.print_help()
         sys.exit(0)
 
-    if args.image and args.template and not args.server_args:
+    if (
+        (hasattr(args, "image") and args.image)
+        and (hasattr(args, "template") and args.template)
+        and (hasattr(args, "server_args") and not args.server_args)
+    ):
         # Assume the user meant to pass this as server_args
         args.server_args = [args.template]
         args.template = None

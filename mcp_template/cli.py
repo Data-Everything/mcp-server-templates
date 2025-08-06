@@ -10,6 +10,7 @@ This module extends the existing CLI with new commands for:
 - HTTP-first transport with stdio fallback
 """
 
+import datetime
 import json
 import logging
 import subprocess
@@ -19,6 +20,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from mcp_template.backends.docker import DockerDeploymentService
 from mcp_template.deployer import MCPDeployer
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.tools import DockerProbe, ToolDiscovery
@@ -40,6 +42,7 @@ class EnhancedCLI:
         self.templates = self.template_discovery.discover_templates()
         self.tool_discovery = ToolDiscovery()
         self.docker_probe = DockerProbe()
+        self.docker_service = DockerDeploymentService()
 
         # Initialize response beautifier
         try:
@@ -314,8 +317,6 @@ class EnhancedCLI:
         console.print(f"[dim]Source: {source}[/dim]")
 
         if "timestamp" in discovery_result:
-            import datetime
-
             timestamp = datetime.datetime.fromtimestamp(discovery_result["timestamp"])
             console.print(
                 f"[dim]Last updated: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}[/dim]"
@@ -327,7 +328,6 @@ class EnhancedCLI:
                 for warning in discovery_result["warnings"]:
                     console.print(f"[yellow]⚠️  {warning}[/yellow]")
             return
-
         # Display tools in a table
         if self.beautifier:
             self.beautifier.beautify_tools_list(tools, f"{discovery_method} ({source})")
@@ -336,6 +336,7 @@ class EnhancedCLI:
 
         # Show usage examples
         self._show_tool_usage_examples(template_name, template, tools)
+        return True
 
     def _display_tools_table(self, tools):
         """Display tools in a formatted table."""
@@ -397,7 +398,7 @@ class EnhancedCLI:
         image_name: str,
         server_args: Optional[List[str]] = None,
         env_vars: Optional[Dict[str, str]] = None,
-    ) -> None:
+    ) -> bool:
         """Discover tools from a Docker image."""
         console.print(
             Panel(
@@ -406,22 +407,18 @@ class EnhancedCLI:
                 border_style="blue",
             )
         )
-        
         # Use Docker probe to discover tools
         result = self.docker_probe.discover_tools_from_image(
             image_name, server_args, env_vars
         )
-
         if result:
             tools = result.get("tools", [])
             discovery_method = result.get("discovery_method", "unknown")
             console.print(
-                f"[green]✅ Discovered {len(tools)} tools via {discovery_method}[/green]"
+                f"[green]✅ Discovered {len(tools)} tools via {discovery_method}[green]"
             )
-
             if tools:
                 self._display_tools_table(tools)
-
                 # Show MCP client usage example
                 console.print("\n[cyan]💡 Usage Example:[/cyan]")
                 console.print("  # Using MCP client directly:")
@@ -434,9 +431,11 @@ class EnhancedCLI:
                     f"  result = client.discover_tools_from_docker_sync('{image_name}', {args_str})"
                 )
             else:
-                console.print("[yellow]⚠️  No tools found in the image[/yellow]")
+                console.print("[yellow]⚠️  No tools found in the image[yellow]")
+            return True
         else:
-            console.print("[red]❌ Failed to discover tools from image[/red]")
+            console.print("[red]❌ Failed to discover tools from image[red]")
+            return False
 
     def show_integration_examples(
         self, template_name: str, llm: Optional[str] = None
@@ -773,11 +772,7 @@ else:
         json_input = json.dumps(mcp_request)
 
         try:
-            # Use Docker backend to run the stdio command
-            from mcp_template.backends.docker import DockerDeploymentService
-
-            docker_service = DockerDeploymentService()
-            result = docker_service.run_stdio_command(
+            result = self.docker_service.run_stdio_command(
                 template_name,
                 config,
                 template,
@@ -793,7 +788,7 @@ else:
                     logger.debug("Using enhanced beautifier")
                     try:
                         self.beautifier.beautify_tool_response(result)
-                        return  # Exit after successful beautification
+                        return  True
                     except Exception as e:
                         console.print(f"[yellow]⚠️  Beautifier error: {e}[/yellow]")
                         console.print("[dim]Falling back to legacy output...[/dim]")
@@ -1075,7 +1070,6 @@ def add_enhanced_cli_args(subparsers) -> None:
 
 def handle_enhanced_cli_commands(args) -> bool:
     """Handle enhanced CLI commands."""
-    
     enhanced_cli = EnhancedCLI()
     if args.command in ["interactive", "i"]:
         # Start interactive CLI session
@@ -1198,12 +1192,11 @@ def handle_enhanced_cli_commands(args) -> bool:
                         f"[red]❌ Invalid env format: {env_var}. Use KEY=VALUE[/red]"
                     )
                     return False
-
-        enhanced_cli.run_stdio_tool(
+        # Return the result of run_stdio_tool instead of always True
+        return enhanced_cli.run_stdio_tool(
             args.template,
             args.tool_name,
             tool_args=getattr(args, "args", None),
             config_values=config_values,
             env_vars=env_vars,
         )
-        return True

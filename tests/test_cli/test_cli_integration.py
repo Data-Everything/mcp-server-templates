@@ -21,6 +21,8 @@ class TestCLIIntegration:
             "mcp_template",
             "deploy",
             "demo",
+            "--transport",
+            "http",
             "--override",
             "metadata__version=2.0.0",
             "--override",
