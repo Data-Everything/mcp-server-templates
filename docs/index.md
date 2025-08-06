@@ -33,7 +33,7 @@ Join our [Discord Community](https://discord.gg/55Cfxe9gnr) for support, discuss
 
 -   📦 **[Server Templates](server-templates/index.md)**
 
-    Browse available templates: GitHub, Zendesk, GitLab, Demo, and more
+    Browse available templates: GitHub, Zendesk, GitLab, Demo, and more to get started quickly
 
 -   📖 **[User Guide](user-guide/)**
 
@@ -71,7 +71,12 @@ MCP Server Templates is a **self-hosted deployment system** that enables rapid d
 | **demo** | Simple demonstration server | ✅ Available |
 | **github** | GitHub repository management | ✅ Available |
 | **gitlab** | GitLab integration server | ✅ Available |
-| **zendesk** | Customer support integration | ✅ Available |
+| **zendesk** | Customer support integration | 🚧 In Progress |
+| **filesystem** | Secure file operations server | ✅ Available |
+| **postgres** | PostgreSQL database integration | 🚧 In Progress |
+| **slack** | Slack bot integration | 🚧 In Progress |
+
+and many more in flight ✈
 
 ## � What’s Inside
 
