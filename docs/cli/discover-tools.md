@@ -1,6 +1,6 @@
-# discover-tools
+# [DEPRECATED] discover-tools
 
-**[DEPRECATED] Use `tools --image` instead. This command will be removed in a future version.**
+**[DEPRECATED] Use `tools --image` instead under the interactive CLI. This command will be removed in a future version.**
 
 ⚠️ **This command is deprecated**. The functionality has been merged into the unified `tools` command. 
 

@@ -49,7 +49,6 @@ class MCPDeployer:
         table.add_column("Template", style="cyan")
         table.add_column("Description", style="white")
         table.add_column("Status", style="green")
-
         for name, template in self.templates.items():
             if deployed_only:
                 add_row = False

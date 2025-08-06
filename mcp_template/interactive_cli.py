@@ -733,7 +733,7 @@ class ResponseBeautifier:
         if not tools:
             self.console.print("[yellow]⚠️  No tools found[/yellow]")
             return
-
+    
         # Create tools table
         table = Table(title=f"Available Tools ({len(tools)} found)")
         table.add_column("Tool Name", style="cyan", width=20)
@@ -763,14 +763,10 @@ class ResponseBeautifier:
             elif isinstance(parameters, list):
                 param_count = len(parameters)
                 param_text = f"{param_count} params"
-                param_names = ", ".join(parameters)
+                param_names = ", ".join([p.get("name", "Unknown") for p in parameters])
             elif parameters or input_schema:
                 param_text = "Schema defined"
-                param_names = (
-                    ", ".join(parameters)
-                    if parameters
-                    else ", ".join(input_schema.get("properties", {}).keys())
-                )
+                param_names = ""
             else:
                 param_text = "0 params"
                 param_names = ""
@@ -778,7 +774,7 @@ class ResponseBeautifier:
             category = tool.get("category", "general")
 
             table.add_row(
-                name, description, param_text + " (" + param_names + ")", category
+                name, description, param_text + " (" + param_names + ")" if param_names else '', category
             )
 
         self.console.print(table)
@@ -791,17 +787,23 @@ class ResponseBeautifier:
             return
 
         table = Table(title=f"Deployed MCP Servers ({len(servers)} active)")
+        table.add_column("ID", style="cyan", width=10)
         table.add_column("Template", style="cyan", width=20)
         table.add_column("Transport", style="yellow", width=12)
         table.add_column("Status", style="green", width=10)
         table.add_column("Endpoint", style="blue", width=30)
+        table.add_column("Ports", style="blue", width=20)
+        table.add_column("Since", style="blue", width=25)
         table.add_column("Tools", style="magenta", width=10)
 
         for server in servers:
-            template_name = server.get("template_name", "Unknown")
+            id = server.get("id", "N/A")
+            template_name = server.get("name", "Unknown")
             transport = server.get("transport", "unknown")
             status = server.get("status", "unknown")
             endpoint = server.get("endpoint", "N/A")
+            ports = server.get("ports", "N/A")
+            since = server.get("since", "N/A")
             tool_count = len(server.get("tools", []))
 
             # Color status
@@ -813,7 +815,7 @@ class ResponseBeautifier:
                 status_text = f"[yellow]{status}[/yellow]"
 
             table.add_row(
-                template_name, transport, status_text, endpoint, str(tool_count)
+                id, template_name, transport, status_text, endpoint, ports, since, str(tool_count)
             )
 
         self.console.print(table)
@@ -1160,6 +1162,7 @@ class InteractiveCLI(cmd.Cmd):
         """Call a tool from a template.
         Usage: call <template_name> <tool_name> [json_args]
         """
+        
         if not args.strip():
             console.print("[red]❌ Please provide template name and tool name[/red]")
             console.print("Usage: call <template_name> <tool_name> [json_args]")

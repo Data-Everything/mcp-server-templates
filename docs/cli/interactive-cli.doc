@@ -1,0 +1,20 @@
+# MCP Interactive CLI
+
+The MCP Interactive CLI is a powerful, user-friendly command-line interface for managing Model Context Protocol (MCP) server templates, deployments, configuration, and tool execution. It provides a persistent session experience, interactive prompts, and rich output formatting using the Rich library.
+
+## Key Features
+- **Interactive Session:** Persistent state for configs and deployed servers, with graceful handling of interruptions.
+- **Template Management:** List available templates, view details, and manage configuration interactively.
+- **Server Deployment:** Deploy MCP servers, list running servers, and manage their lifecycle.
+- **Tool Operations:** Discover available tools for a template and execute them via stdio or HTTP transport.
+- **Configuration Management:** Set, show, and clear configuration for templates, with support for environment variables and config files.
+- **Rich Output:** Beautified tables, panels, syntax highlighting, and error handling for a modern CLI experience.
+
+## Typical Workflow
+1. List available templates and servers.
+2. Configure a template interactively or via environment/config file.
+3. Discover and call tools for a template.
+4. Manage server deployments and view their status.
+5. Get help and usage examples for all commands.
+
+The Interactive CLI is ideal for both new users and advanced operators, providing a guided, discoverable interface for all MCP template operations.

@@ -976,44 +976,44 @@ def add_enhanced_cli_args(subparsers) -> None:
     # Tools command (unified)
     tools_parser = subparsers.add_parser(
         "tools",
-        help="List available tools for a template or discover tools from a Docker image",
+        help="[DEPRECATED] List available tools for a template or discover tools from a Docker image",
     )
-    tools_parser.add_argument(
-        "template", nargs="?", help="Template name (optional if using --image)"
-    )
-    tools_parser.add_argument(
-        "--image", help="Docker image name to discover tools from"
-    )
-    tools_parser.add_argument(
-        "--no-cache", action="store_true", help="Ignore cached results"
-    )
-    tools_parser.add_argument(
-        "--refresh", action="store_true", help="Force refresh cached results"
-    )
-    tools_parser.add_argument(
-        "--force-server",
-        action="store_true",
-        help="Force server discovery (MCP probe only, no static fallback)",
-    )
-    tools_parser.add_argument(
-        "--config",
-        action="append",
-        help="Configuration values for dynamic discovery (KEY=VALUE)",
-    )
-    tools_parser.add_argument(
-        "server_args",
-        nargs="*",
-        help="Server arguments (when using --image)",
-    )
+    #tools_parser.add_argument(
+    #    "template", nargs="?", help="Template name (optional if using --image)"
+    #)
+    #tools_parser.add_argument(
+    #    "--image", help="Docker image name to discover tools from"
+    #)
+    #tools_parser.add_argument(
+    #    "--no-cache", action="store_true", help="Ignore cached results"
+    #)
+    #tools_parser.add_argument(
+    #    "--refresh", action="store_true", help="Force refresh cached results"
+    #)
+    #tools_parser.add_argument(
+    #    "--force-server",
+    #    action="store_true",
+    #    help="Force server discovery (MCP probe only, no static fallback)",
+    #)
+    #tools_parser.add_argument(
+    #    "--config",
+    #    action="append",
+    #    help="Configuration values for dynamic discovery (KEY=VALUE)",
+    #)
+    #tools_parser.add_argument(
+    #    "server_args",
+    #    nargs="*",
+    #    help="Server arguments (when using --image)",
+    #)
 
     # Discover tools command (deprecated, for backward compatibility)
     discover_parser = subparsers.add_parser(
         "discover-tools", help="[DEPRECATED] Use 'tools --image' instead"
     )
-    discover_parser.add_argument("--image", required=True, help="Docker image name")
-    discover_parser.add_argument(
-        "server_args", nargs="*", help="Arguments to pass to the MCP server"
-    )
+    #discover_parser.add_argument("--image", required=True, help="Docker image name")
+    #discover_parser.add_argument(
+    #    "server_args", nargs="*", help="Arguments to pass to the MCP server"
+    #)
 
     # Connect command
     connect_parser = subparsers.add_parser(
@@ -1054,19 +1054,19 @@ def add_enhanced_cli_args(subparsers) -> None:
 
     # Run-tool command for stdio MCP servers
     run_tool_parser = subparsers.add_parser(
-        "run-tool", help="Run a specific tool from a stdio MCP template"
+        "run-tool", help="[DEPRECATED] Run a specific tool from a stdio MCP template"
     )
-    run_tool_parser.add_argument("template", help="Template name")
-    run_tool_parser.add_argument("tool_name", help="Name of the tool to run")
-    run_tool_parser.add_argument(
-        "--args", help="JSON arguments to pass to the tool (optional)"
-    )
-    run_tool_parser.add_argument(
-        "--config", action="append", help="Configuration values (KEY=VALUE)"
-    )
-    run_tool_parser.add_argument(
-        "--env", action="append", help="Environment variables (KEY=VALUE)"
-    )
+    #run_tool_parser.add_argument("template", help="Template name")
+    #run_tool_parser.add_argument("tool_name", help="Name of the tool to run")
+    #run_tool_parser.add_argument(
+    #    "--args", help="JSON arguments to pass to the tool (optional)"
+    #)
+    #run_tool_parser.add_argument(
+    #    "--config", action="append", help="Configuration values (KEY=VALUE)"
+    #)
+    #run_tool_parser.add_argument(
+    #    "--env", action="append", help="Environment variables (KEY=VALUE)"
+    #)
 
 
 def handle_enhanced_cli_commands(args) -> bool:
@@ -1084,55 +1084,17 @@ def handle_enhanced_cli_commands(args) -> bool:
         return True
 
     elif args.command == "tools":
-        # Parse config values if provided
-        config_values = {}
-        if hasattr(args, "config") and args.config:
-            for config_var in args.config:
-                try:
-                    key, value = config_var.split("=", 1)
-                    config_values[key] = value
-                except ValueError:
-                    console.print(
-                        f"[red]❌ Invalid config format: {config_var}. Use KEY=VALUE[/red]"
-                    )
-                    return False
-
-        # Handle unified tools command
-        if args.image:
-            # Docker image discovery (former discover-tools functionality)
-            server_args = args.server_args if hasattr(args, "server_args") else []
-            enhanced_cli.discover_tools_from_image(
-                args.image, server_args, config_values
-            )
-        elif hasattr(args, "template") and args.template:
-            # Template-based discovery (former tools functionality)
-            enhanced_cli.list_tools(
-                args.template,
-                no_cache=getattr(args, "no_cache", False),
-                refresh=getattr(args, "refresh", False),
-                config_values=config_values,
-                force_server_discovery=getattr(args, "force_server", False),
-            )
-        else:
-            # Error: must provide either template or --image
-            console.print(
-                "[red]❌ Must provide either a template name or --image parameter[/red]"
-            )
-            console.print("Examples:")
-            console.print("  python -m mcp_template tools demo")
-            console.print("  python -m mcp_template tools --image mcp/filesystem /tmp")
-            console.print(
-                "  python -m mcp_template tools github --config github_token=your_token"
-            )
-            return False
+        console.print(
+            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+        )
         return True
 
     elif args.command == "discover-tools":
         # Legacy command - redirect to unified tools command
         console.print(
-            "[yellow]⚠️  The 'discover-tools' command is deprecated. Use 'tools --image' instead.[/yellow]"
+            "[red]🚫  The 'discover-tools' command is deprecated. Use 'tools' command with -image parameter in interactive CLI instead [magenta]`mcp-template interactive`[/magenta][/red]"
         )
-        enhanced_cli.discover_tools_from_image(args.image, args.server_args)
+        # enhanced_cli.discover_tools_from_image(args.image, args.server_args)
         return True
 
     elif args.command == "connect":
@@ -1169,38 +1131,10 @@ def handle_enhanced_cli_commands(args) -> bool:
 
     elif args.command == "run-tool":
         # Parse config values if provided
-        config_values = {}
-        if hasattr(args, "config") and args.config:
-            for config_var in args.config:
-                try:
-                    key, value = config_var.split("=", 1)
-                    config_values[key] = value
-                except ValueError:
-                    console.print(
-                        f"[red]❌ Invalid config format: {config_var}. Use KEY=VALUE[/red]"
-                    )
-                    return False
-
-        # Parse env vars if provided
-        env_vars = {}
-        if hasattr(args, "env") and args.env:
-            for env_var in args.env:
-                try:
-                    key, value = env_var.split("=", 1)
-                    env_vars[key] = value
-                except ValueError:
-                    console.print(
-                        f"[red]❌ Invalid env format: {env_var}. Use KEY=VALUE[/red]"
-                    )
-                    return False
-        # Return the result of run_stdio_tool instead of always True
-        return enhanced_cli.run_stdio_tool(
-            args.template,
-            args.tool_name,
-            tool_args=getattr(args, "args", None),
-            config_values=config_values,
-            env_vars=env_vars,
+        console.print(
+            "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
         )
+        return True
 
     # Handle invalid commands
     return False
