@@ -60,6 +60,7 @@ nav:
   - Creating Templates: guides/creating-templates.md
   - Testing Templates: guides/testing.md
   - Deployment: guides/deployment.md
+  - Troubleshooting: guides/troubleshooting.md
   - Contributing: guides/contributing.md
 - CLI Reference:
   - Overview: cli/index.md
@@ -73,19 +74,31 @@ nav:
     - cleanup: cli/cleanup.md
     - interactive: cli/interactive.md
     - config: cli/config.md
-    - tools: cli/tools.md
-    - discover-tools: cli/discover-tools.md
     - connect: cli/connect.md
     - run: cli/run.md
-    - run-tool: cli/run-tool.md
+    - "⚠️ Deprecated":
+      - tools (deprecated): cli/tools.md
+      - discover-tools (deprecated): cli/discover-tools.md
+      - run-tool (deprecated): cli/run-tool.md
+- Interactive CLI:
+  - Commands: interactive-cli/commands.md
+  - Call Tools: interactive-cli/call.md
+  - Configuration: interactive-cli/config.md
+  - Help: interactive-cli/help.md
+- User Guide:
+  - CLI Reference: user-guide/cli-reference.md
+  - Monitoring: user-guide/monitoring.md
 - API Reference:
   - CLI Commands: api/cli.md
   - Template Schema: api/schema.md
 - Development:
   - Setup: development/setup.md
-  - Template Development: development/template-development.md
   - Architecture: development/architecture.md
-  - Testing: development/testing.md
+- FAQ: faq.md
+- Resources:
+  - Tool Discovery: tool-discovery.md
+  - Filesystem Server Usage: filesystem-server-usage.md
+  - STDIO Tool Execution: stdio-tool-execution.md
 extra:
   social:
   - icon: fontawesome/brands/github

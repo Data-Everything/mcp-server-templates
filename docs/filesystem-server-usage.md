@@ -10,11 +10,11 @@ The Filesystem MCP Server provides secure file system access through the Model C
 
 ```bash
 # Using the MCP deployment tool
-mcp-template deploy file-server --name my-file-server
+mcp-template deploy filesystem --name my-filesystem
 
 # Or with custom configuration
-mcp-template deploy file-server \
-  --name my-file-server \
+mcp-template deploy filesystem \
+  --name my-filesystem \
   --config '{"allowed_directories": ["/home/user/documents", "/tmp"], "max_file_size": "10MB"}'
 ```
 
@@ -26,7 +26,7 @@ mcp-template deploy file-server \
   "mcpServers": {
     "filesystem": {
       "command": "docker",
-      "args": ["exec", "-i", "my-file-server", "python", "-m", "src.server"]
+      "args": ["exec", "-i", "my-filesystem", "python", "-m", "src.server"]
     }
   }
 }
@@ -41,7 +41,7 @@ from mcp.client.stdio import stdio_client
 async def use_filesystem_server():
     server_params = StdioServerParameters(
         command="docker",
-        args=["exec", "-i", "my-file-server", "python", "-m", "src.server"]
+        args=["exec", "-i", "my-filesystem", "python", "-m", "src.server"]
     )
 
     async with stdio_client(server_params) as (read, write):
@@ -245,8 +245,8 @@ The container shuts down automatically because:
 **Option 1: Long-running Mode (Recommended)**
 ```bash
 # Deploy with keep-alive configuration
-mcp-template deploy file-server \
-  --name my-file-server \
+mcp-template deploy filesystem \
+  --name my-filesystem \
   --config '{"keep_alive": true, "idle_timeout": 3600}'
 
 # This keeps a background process running to prevent container shutdown
@@ -255,13 +255,13 @@ mcp-template deploy file-server \
 **Option 2: On-demand Mode**
 ```bash
 # Start container only when needed
-docker run -d --name file-server-pool \
+docker run -d --name filesystem-pool \
   -v /host/data:/container/data \
-  your-org/file-server:latest \
+  your-org/filesystem:latest \
   sleep infinity
 
 # Use with exec for each MCP call
-docker exec -i file-server-pool python -m src.server
+docker exec -i filesystem-pool python -m src.server
 ```
 
 **Option 3: Service Mode with Restart Policy**
@@ -269,9 +269,9 @@ docker exec -i file-server-pool python -m src.server
 # docker-compose.yml
 version: '3.8'
 services:
-  file-server:
-    image: your-org/file-server:latest
-    container_name: my-file-server
+  filesystem:
+    image: your-org/filesystem:latest
+    container_name: my-filesystem
     restart: unless-stopped
     command: tail -f /dev/null  # Keep container alive
     volumes:
@@ -287,16 +287,16 @@ services:
 ```bash
 # Create a pool of file server containers
 for i in {1..5}; do
-  docker run -d --name file-server-worker-$i \
+  docker run -d --name filesystem-worker-$i \
     -v /data:/app/data \
-    your-org/file-server:latest \
+    your-org/filesystem:latest \
     sleep infinity
 done
 
 # Load balancer script for client connections
 #!/bin/bash
 WORKER_ID=$((RANDOM % 5 + 1))
-docker exec -i file-server-worker-$WORKER_ID python -m src.server
+docker exec -i filesystem-worker-$WORKER_ID python -m src.server
 ```
 
 #### Pattern 2: Docker Swarm Service
@@ -305,8 +305,8 @@ docker exec -i file-server-worker-$WORKER_ID python -m src.server
 # docker-stack.yml
 version: '3.8'
 services:
-  file-server:
-    image: your-org/file-server:latest
+  filesystem:
+    image: your-org/filesystem:latest
     deploy:
       replicas: 3
       restart_policy:
@@ -324,20 +324,20 @@ services:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: file-server
+  name: filesystem
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: file-server
+      app: filesystem
   template:
     metadata:
       labels:
-        app: file-server
+        app: filesystem
     spec:
       containers:
-      - name: file-server
-        image: your-org/file-server:latest
+      - name: filesystem
+        image: your-org/filesystem:latest
         command: ["tail", "-f", "/dev/null"]
         volumeMounts:
         - name: data-volume
@@ -412,7 +412,7 @@ spec:
 
 ```bash
 # Check if container is responsive
-docker exec my-file-server python -c "
+docker exec my-filesystem python -c "
 import sys
 from src.server import health_check
 print('Health:', health_check())
@@ -420,7 +420,7 @@ print('Health:', health_check())
 
 # Test MCP protocol response
 echo '{"method": "tools/list", "params": {}}' | \
-  docker exec -i my-file-server python -m src.server
+  docker exec -i my-filesystem python -m src.server
 ```
 
 ### Performance Monitoring
@@ -456,10 +456,10 @@ async def monitor_filesystem_performance():
 
 ```bash
 # Wrong: Container exits after MCP call
-docker run your-org/file-server:latest python -m src.server
+docker run your-org/filesystem:latest python -m src.server
 
 # Right: Keep container running
-docker run -d your-org/file-server:latest tail -f /dev/null
+docker run -d your-org/filesystem:latest tail -f /dev/null
 ```
 
 #### Issue: Permission Denied Errors
@@ -469,11 +469,11 @@ docker run -d your-org/file-server:latest tail -f /dev/null
 
 ```bash
 # Fix file permissions
-docker exec my-file-server chown -R app:app /app/data
-docker exec my-file-server chmod -R 755 /app/data
+docker exec my-filesystem chown -R app:app /app/data
+docker exec my-filesystem chmod -R 755 /app/data
 
 # Run container with correct user ID
-docker run --user $(id -u):$(id -g) your-org/file-server:latest
+docker run --user $(id -u):$(id -g) your-org/filesystem:latest
 ```
 
 #### Issue: Slow File Operations

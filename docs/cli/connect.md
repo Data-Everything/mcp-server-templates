@@ -335,7 +335,7 @@ Different templates provide specialized integration examples:
 
 ### File Server Template
 ```bash
-mcp-template connect file-server --llm claude
+mcp-template connect filesystem --llm claude
 # Shows examples for file operations, directory listing, etc.
 ```
 
@@ -394,6 +394,5 @@ mcp-template connect demo --llm custom > integration_template.py
 ## See Also
 
 - [deploy](deploy.md) - Deploy templates before connecting
-- [tools](tools.md) - Discover available tools for integration
+- [interactive](interactive.md) - Use interactive mode for tool discovery
 - [logs](logs.md) - Monitor server activity during integration
-- [Integration Guide](../guides/integration.md) - Detailed integration patterns

@@ -15,7 +15,7 @@ mcp-template list
 mcp-template deploy demo
 
 # Deploy with custom configuration
-mcp-template deploy file-server --port 8080
+mcp-template deploy filesystem --port 8080
 ```
 
 ## 3. Test Your Deployment

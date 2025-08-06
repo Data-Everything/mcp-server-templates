@@ -194,7 +194,7 @@ mcp-template create --config-file template-config.json --non-interactive
 
 ```bash
 # Create template from existing MCP-compatible image
-mcp-template create --from-image mcp/filesystem my-file-server
+mcp-template create --from-image mcp/filesystem my-filesystem
 
 # Automatically discovers tools and generates template
 # Example output:
@@ -206,7 +206,7 @@ mcp-template create --from-image mcp/filesystem my-file-server
 ✅ Generated configuration schema from analysis
 ✅ Created template structure
 
-📁 Template created: templates/my-file-server/
+📁 Template created: templates/my-filesystem/
 🛠️  Discovered tools:
   - read_file: Read complete file contents
   - write_file: Create or overwrite files

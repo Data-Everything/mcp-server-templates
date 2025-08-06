@@ -5,6 +5,12 @@
 [![License](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/discord/XXXXX?color=7289da&logo=discord&logoColor=white)](https://discord.gg/55Cfxe9gnr)
 
+<div align="center">
+
+**[📚 Documentation](https://data-everything.github.io/mcp-server-templates/)** • **[💬 Discord Community](https://discord.gg/55Cfxe9gnr)** • **[🚀 Quick Start](#-installation)**
+
+</div>
+
 > **Production-ready Model Context Protocol (MCP) server templates with zero-configuration deployment**
 
 Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options. Built for developers who want to focus on AI integration, not infrastructure setup.
@@ -30,10 +36,12 @@ Get ready to supercharge your MCP journey! The MCP Platform is packed with elect
 - **🖱️ One-Click Docker Deployment**: Launch MCP servers instantly with pre-built templates—no hassle, just pure speed.
 - **🔎 Smart Tool Discovery**: Automatically finds and showcases every tool your server can offer. No more guesswork!
 - **💻 Slick CLI Management**: Command-line magic for easy, powerful control over all deployments.
-- **🤝 Bring Your Own MCP Server**: Plug in your own MCP server and run it on our network—even with limited features!
+- **🤝 Bring Your Own MCP Server**: Plug in your own MCP server and run it on our network — with limited features!
 - **🐳 Effortless Docker Image Integration**: Add any existing MCP Docker image to the templates library with minimal setup and unlock all the platform’s cool benefits.
 - **⚡ Boilerplate Template Generator**: Instantly create new MCP server projects with a CLI-powered generator—kickstart your next big idea!
 - **🛠️ Multiple Ways to Set Configuration**: Flex your setup with config via JSON, YAML, environment variables, CLI config, or CLI override options—total flexibility for every workflow!
+- **🔧 Comprehensive CLI Tools**: From deployment to tool execution, manage everything with a single command-line interface.
+- **📦 Template Library**: Access a growing library of ready-to-use templates for common use cases.
 
 ### 🌈 Planned Features
 
@@ -42,7 +50,7 @@ Get ready to supercharge your MCP journey! The MCP Platform is packed with elect
 
 **Release Timeline:** All this and more dropping mid-August 2025—don’t miss out!
 
-Want the full scoop? [Check out the docs for more features & details!](docs/index.md)
+Want the full scoop? [Check out the docs for more features & details!](https://data-everything.github.io/mcp-server-templates/)
 
 ---
 
@@ -117,7 +125,7 @@ Each template must include:
   "author": "Data Everything",
   "category": "File System",
   "tags": ["filesystem", "files", "security"],
-  "docker_image": "dataeverything/mcp-file-server",
+  "docker_image": "dataeverything/mcp-demo",
   "docker_tag": "latest",
   "ports": {
     "8080": 8080
@@ -172,13 +180,13 @@ The MCP Template CLI provides two interfaces for managing MCP server templates:
 | | `mcp-template logs <deployment>` | View deployment logs |
 | | `mcp-template shell <deployment>` | Open shell in deployment container |
 | | `mcp-template cleanup [deployment]` | Clean up deployments |
-| **Configuration** | `mcp-template config <template>` | Configure template settings |
-| | `mcp-template tools <template>` | List available tools in template |
-| | `mcp-template discover-tools <image>` | Discover tools from Docker image |
-| **Integration** | `mcp-template connect <deployment>` | Connect to deployed template |
+| **Configuration** | `mcp-template config <template>` | Show template configuration options |
+| **Integration** | `mcp-template connect <deployment>` | Show integration examples |
 | | `mcp-template run` | Run template with transport options |
 | **Interactive** | `mcp-template interactive` | Start interactive CLI mode |
-| **Deprecated** | ~~`mcp-template run-tool`~~ | ❌ Use `interactive` mode with `call` command instead |
+| **Deprecated** | ~~`mcp-template tools`~~ | ❌ Use `interactive` mode instead |
+| | ~~`mcp-template discover-tools`~~ | ❌ Use `interactive` mode instead |
+| | ~~`mcp-template run-tool`~~ | ❌ Use `interactive` mode with `call` command instead |
 
 ### Getting Started with CLI
 
@@ -199,11 +207,13 @@ mcp-template logs github
 # 4. Open interactive shell in deployment
 mcp-template shell github
 
-# 5. Use interactive mode for tool execution
+# 5. Use interactive mode for deployment management and tool execution
 mcp-template interactive
-# In interactive mode:
-mcp> call list_repositories
-mcp> call create_issue --title "Bug fix" --body "Description"
+# Interactive mode provides:
+# - List and manage deployments
+# - Discover available tools from MCP servers
+# - Execute tools directly from command line
+# - Real-time interaction with deployed servers
 
 # 6. Clean up when done
 mcp-template cleanup github
@@ -212,14 +222,18 @@ mcp-template cleanup github
 #### Configuration Management
 
 ```bash
-# Configure template settings
+# Show template configuration options
 mcp-template config github
 
-# List available tools
-mcp-template tools github
+# Connect to deployed template (show integration examples)
+mcp-template connect github
 
-# Discover tools from any Docker image
-mcp-template discover-tools dataeverything/mcp-github:latest
+# Use interactive mode for tool discovery and execution
+mcp-template interactive
+# In interactive mode:
+# - Discover available tools
+# - Execute tools directly
+# - Configure templates interactively
 ```
 
 #### Advanced Usage
@@ -240,30 +254,15 @@ mcp-template logs github --follow
 
 ### Template Discovery and Management
 
-**1. List Available Tools:**
+**Available Templates:**
 ```bash
-# Discover tools from template (auto-detects Docker image)
-mcp-template tools github
-mcp-template tools zendesk
+# List all available templates
+mcp-template list
+# Outputs: demo, github, gitlab, zendesk
 
-# Discover tools directly from Docker image
-mcp-template discover-tools ghcr.io/modelcontextprotocol/servers/github:latest
-mcp-template discover-tools dataeverything/mcp-zendesk:latest
+# Create new template using generator
+mcp-template create my-custom-server
 ```
-
-**2. View Configuration Options:**
-```bash
-# Show template configuration schema
-mcp-template config-options github
-mcp-template config-options file-server
-
-# Output shows required/optional config properties with descriptions
-```
-
-**3. Tool Discovery Features:**
-- **Auto-credential injection**: Automatically provides dummy credentials for tool discovery
-- **Schema-based validation**: Uses template config schema for credential detection  
-- **Generic credential support**: Supports any template without hardcoded logic
 - **Fallback strategies**: Docker → Static JSON → Template capabilities
 - **Caching**: Caches discovery results for performance
 
@@ -272,7 +271,7 @@ mcp-template config-options file-server
 **1. Check Template Configuration:**
 ```bash
 # View template configuration options
-mcp-template config-options file-server
+mcp-template config demo
 
 # Shows config schema properties, required fields, defaults
 ```
@@ -280,10 +279,10 @@ mcp-template config-options file-server
 **2. Deploy with Config File:**
 ```bash
 # JSON config file
-mcp-template deploy file-server --config-file ./config.json
+mcp-template deploy demo --config-file ./config.json
 
 # YAML config file  
-mcp-template deploy file-server --config-file ./config.yml
+mcp-template deploy demo --config-file ./config.yml
 ```
 
 **3. Deploy with CLI Configuration Options:**
@@ -295,43 +294,45 @@ There are **two types** of CLI configuration:
 
 ```bash
 # Configuration schema properties (recommended for server settings)
-mcp-template deploy file-server \
+mcp-template deploy demo \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
 
 # Template overrides (modifies template structure)
-mcp-template deploy file-server \
+mcp-template deploy demo \
   --override name="Custom File Server" \
   --override description="My custom file server"
 ```
 
 ### Interactive CLI Mode
 
-Start interactive mode for advanced workflows:
+The interactive CLI provides comprehensive deployment management and MCP server interaction:
 
 ```bash
 # Start interactive CLI
 mcp-template interactive
-
-# Inside interactive mode:
-> tools github                    # List GitHub tools
-> config github token=pat_xyz     # Set configuration
-> call github search_repositories # Execute tool
-> templates                       # List templates
-> quit                           # Exit
 ```
 
-**Interactive Commands:**
-- `tools <template>` - List available tools
-- `config <template> <key>=<value>` - Set configuration
-- `call --config <key>=<value> --env <key>=<value> <template> <tool> [args as json {}]` - Execute tool
-- `templates` - List all templates
-- `list_servers` - List running servers
-- `show_config <template>` - Show current config
-- `clear_config <template>` - Clear configuration
-- `help` - Show help
-- `quit/exit` - Exit interactive mode
+**Key Features:**
+- **Deployment Management**: List, monitor, and manage running deployments
+- **Tool Discovery**: Discover available tools from deployed MCP servers
+- **Tool Execution**: Execute tools directly from the command line
+- **Real-time Interaction**: Interactive session with deployed servers
+- **Configuration Management**: Configure templates and servers dynamically
+
+**Use Cases:**
+- Manage multiple deployments from a single interface
+- Discover what tools are available in your MCP servers
+- Execute MCP server tools without writing integration code
+- Debug and test MCP server functionality
+- Interactive exploration of server capabilities
+
+**Benefits:**
+- **Streamlined workflow**: No need to retype `mcp-template` for each command
+- **Server discovery**: Automatically find and interact with deployed servers
+- **Tool execution**: Direct command-line access to MCP server tools
+- **Session persistence**: Maintain context across multiple operations
 
 ### Advanced Usage & Examples
 
@@ -360,7 +361,7 @@ mcp-template deploy zendesk \
   --env ZENDESK_API_TOKEN=xyz123
 
 # Use double underscore notation for nested config
-mcp-template deploy file-server \
+mcp-template deploy demo \
   --config server__port=8080 \
   --config server__host=0.0.0.0 \
   --config limits__max_file_size=100MB
@@ -584,7 +585,7 @@ pytest tests/test_all_templates.py  # Template validation tests
 ### Test Configuration Files
 
 Sample configuration files are available in `examples/config/`:
-- `file-server-config.json`: Example file-server configuration
+- `demo-config.json`: Example demo configuration
 - Additional template configs as they're added
 
 ### Development Setup
@@ -609,7 +610,7 @@ make test
 make test-templates
 
 # Run tests for a specific template
-make test-template TEMPLATE=file-server
+make test-template TEMPLATE=demo
 
 # Run unit tests only
 make test-unit
@@ -636,7 +637,7 @@ make docs-clean
 
 ### Core Documentation
 
-- **[Documentation Index](docs/index.md)**: Central hub for all documentation
+- **[Documentation Index](https://data-everything.github.io/mcp-server-templates/)**: Central hub for all documentation
 - **[Configuration Strategy](docs/CONFIGURATION_FINAL_RECOMMENDATIONS.md)**: Configuration design decisions
 - **[Template Development Guide](docs/template-development-guide.md)**: Creating new templates
 - **[Testing Guide](docs/TESTING.md)**: Testing strategies and tools
@@ -710,4 +711,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
 - **Issues**: [GitHub Issues](https://github.com/Data-Everything/mcp-server-templates/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/Data-Everything/mcp-server-templates/discussions)
 - **Discord Community**: [Join our Discord server](https://discord.gg/55Cfxe9gnr)
-- **Documentation**: [docs/index.md](docs/index.md)
+- **Documentation**: [Read the Docs](https://data-everything.github.io/mcp-server-templates/)

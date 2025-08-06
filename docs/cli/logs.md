@@ -332,7 +332,7 @@ logging:
 ```bash
 # Monitor multiple templates simultaneously
 mcp-template logs demo --follow &
-mcp-template logs file-server --follow &
+mcp-template logs filesystem --follow &
 wait
 ```
 
@@ -367,7 +367,7 @@ wait
 
 ## See Also
 
-- [status](status.md) - Check deployment health and status
+- [`list`](list.md) - List deployments
 - [shell](shell.md) - Access deployment containers for debugging
 - [deploy](deploy.md) - Deploy templates with logging configuration
 - [Monitoring Guide](../user-guide/monitoring.md) - Comprehensive monitoring setup

@@ -50,7 +50,7 @@ The `run-tool` command was replaced with the more powerful interactive CLI that 
 
 - [Interactive CLI](interactive.md) - Learn about the interactive mode
 - [Call Command](../interactive-cli/call.md) - Documentation for the call command
-- [Tools Discovery](../user-guide/tool-discovery.md) - How to discover available tools
+- [FAQ](../faq.md) - Common questions
 
 ## Need Help?
 

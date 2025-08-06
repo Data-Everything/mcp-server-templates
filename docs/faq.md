@@ -62,12 +62,12 @@ mcp-template --version
 mcp-template deploy demo
 ```
 
-See the [Installation Guide](../getting-started/installation.md) for detailed instructions.
+See the [Installation Guide](getting-started/installation.md) for detailed instructions.
 
 ### What templates are available?
 
 **Popular Templates:**
-- **file-server**: Secure filesystem access
+- **filesystem**: Secure filesystem access
 - **demo**: Basic demonstration server
 - **github**: GitHub API integration
 - **database**: SQL database connectivity
@@ -77,7 +77,7 @@ See the [Installation Guide](../getting-started/installation.md) for detailed in
 mcp-template list
 ```
 
-View detailed information in the [Template Library](../server-templates/index.md).
+View detailed information in the [Template Library](server-templates/index.md).
 
 ## Template Usage
 
@@ -88,7 +88,7 @@ View detailed information in the [Template Library](../server-templates/index.md
 mcp-template deploy template-name
 
 # With configuration
-mcp-template deploy file-server --config base_path=/home/user/documents
+mcp-template deploy filesystem --config base_path=/home/user/documents
 
 # With config file
 mcp-template deploy database --config-file db-config.json
@@ -168,7 +168,7 @@ mcp-template create --from-image existing/mcp-server my-template
 ```
 
 **Manual Creation:**
-See the [Template Development Guide](../development/template-development.md) for detailed instructions.
+See the [Template Creation Guide](guides/creating-templates.md) for detailed instructions.
 
 ### What files does a template need?
 
@@ -319,7 +319,7 @@ mcp-template deploy template \
    docker run -it template-image:latest /bin/bash
    ```
 
-See the [Troubleshooting Guide](troubleshooting.md) for comprehensive solutions.
+See the [Troubleshooting Guide](guides/troubleshooting.md) for comprehensive solutions.
 
 ### Tools aren't being discovered. Why?
 
@@ -344,9 +344,9 @@ mcp-template logs deployment --follow
 ### How do I get help with specific issues?
 
 1. **Check Documentation:**
-   - [CLI Reference](../cli/index.md)
-   - [Troubleshooting Guide](troubleshooting.md)
-   - [Template Development Guide](../development/template-development.md)
+   - [CLI Reference](cli/index.md)
+   - [Troubleshooting Guide](guides/troubleshooting.md)
+   - [Template Creation Guide](guides/creating-templates.md)
 
 2. **Community Support:**
    - GitHub Issues: Report bugs and feature requests
@@ -543,7 +543,7 @@ Kubernetes backend support is planned for future releases.
 4. Add tests
 5. Submit a pull request
 
-See the [Contributing Guide](contributing.md) for detailed guidelines.
+See the [Contributing Guide](guides/contributing.md) for detailed guidelines.
 
 ### What templates are most needed?
 
@@ -631,7 +631,7 @@ The template ecosystem encourages both open source and commercial contributions.
 
 **Still have questions?**
 
-- 📖 Check the [full documentation](../index.md)
+- 📖 Check the [full documentation](index.md)
 - 💬 Join our [community discussions](https://github.com/data-everything/mcp-server-templates/discussions)
 - 🐛 [Report issues](https://github.com/data-everything/mcp-server-templates/issues)
 - 📧 Contact us: support@dataeverything.ai

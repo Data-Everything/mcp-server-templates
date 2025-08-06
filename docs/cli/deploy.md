@@ -10,7 +10,7 @@ mcp-template deploy TEMPLATE [OPTIONS]
 
 ## Description
 
-The `deploy` command is the core functionality of MCP Templates, allowing you to deploy MCP server templates with extensive configuration options. It supports multiple configuration sources, deployment backends, and provides zero-configuration deployment for quick starts.
+The `deploy` command is the core functionality of MCP Templates, allowing you to deploy MCP- [`logs`](logs.md) - View deployment logs and statusserver templates with extensive configuration options. It supports multiple configuration sources, deployment backends, and provides zero-configuration deployment for quick starts.
 
 ## Arguments
 
@@ -72,24 +72,24 @@ mcp-template deploy demo --name my-demo-server
 
 ```bash
 # Using CLI configuration (config_schema properties)
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config read_only_mode=true \
   --config max_file_size=100 \
   --config log_level=debug
 
 # Using double-underscore notation for nested config
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config security__read_only=true \
   --config security__max_file_size=100 \
   --config logging__level=debug
 
 # Using template-prefixed configuration
-mcp-template deploy file-server \
-  --config file-server__security__read_only=true \
-  --config file-server__logging__level=debug
+mcp-template deploy filesystem \
+  --config filesystem__security__read_only=true \
+  --config filesystem__logging__level=debug
 
 # Using template data overrides (modifies template.json structure)
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --override "metadata__version=2.0.0" \
   --override "metadata__author=Your Name" \
   --override "tools__0__enabled=false" \
@@ -109,10 +109,10 @@ mcp-template deploy demo \
 
 ```bash
 # Using JSON configuration file
-mcp-template deploy file-server --config-file config.json
+mcp-template deploy filesystem --config-file config.json
 
 # Using YAML configuration file
-mcp-template deploy file-server --config-file config.yml
+mcp-template deploy filesystem --config-file config.yml
 ```
 
 **config.json example:**
@@ -138,13 +138,13 @@ mcp-template deploy file-server --config-file config.yml
 
 ```bash
 # Using environment variables
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50 \
   --env MCP_LOG_LEVEL=debug
 
 # Mixed configuration (env variables override CLI)
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config-file base-config.json \
   --config log_level=warning \
   --env MCP_READ_ONLY=true
@@ -172,7 +172,7 @@ mcp-template deploy demo \
 Use the `--show-config` flag to see all available configuration options:
 
 ```bash
-mcp-template deploy file-server --show-config
+mcp-template deploy filesystem --show-config
 ```
 
 This displays a comprehensive table showing:
@@ -190,7 +190,7 @@ Each template has its own configuration schema. Common patterns include:
 ### File Server Template
 
 ```bash
-mcp-template deploy file-server \
+mcp-template deploy filesystem \
   --config security__allowed_dirs='["/data", "/workspace"]' \
   --config security__read_only=false \
   --config security__max_file_size=100 \
@@ -251,7 +251,7 @@ Common deployment errors and solutions:
 ### Template Not Found
 ```
 ❌ Template 'mytemplate' not found
-Available templates: demo, file-server, postgres-server
+Available templates: demo, filesystem, postgres-server
 ```
 **Solution**: Use `mcp-template list` to see available templates.
 
@@ -281,4 +281,4 @@ Available templates: demo, file-server, postgres-server
 - [config](config.md) - View template configuration options
 - [logs](logs.md) - Monitor deployment logs
 - [stop](stop.md) - Stop deployments
-- [status](status.md) - Check deployment status
+- [logs](logs.md) - View deployment logs and status

@@ -51,7 +51,7 @@ mcp-template list --deployed
 ┃ Template             ┃ Description                           ┃ Status                                ┃ Container   ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
 │ demo                 │ Demo MCP server with greeting tools   │ ✅ Active (2 minutes ago)           │ mcp-demo-123│
-│ file-server          │ Secure filesystem operations server   │ ✅ Active (1 hour ago)              │ mcp-file-456│
+│ filesystem          │ Secure filesystem operations server   │ ✅ Active (1 hour ago)              │ mcp-file-456│
 │ postgres-server      │ PostgreSQL database integration       │ ⏸️  Stopped                         │ -           │
 │ api-server           │ REST API integration template         │ ❌ Error (Connection failed)        │ mcp-api-789 │
 └──────────────────────┴───────────────────────────────────────┴───────────────────────────────────────┴─────────────┘
@@ -129,7 +129,7 @@ Templates are organized by category for easier discovery:
 - **hello-world**: Minimal example server
 
 ### File Operations (`file`)
-- **file-server**: Comprehensive file system operations
+- **filesystem**: Comprehensive file system operations
 - **document-processor**: Document analysis and processing
 
 ### Database Integration (`database`)
@@ -303,6 +303,6 @@ def check_deployment_health():
 ## See Also
 
 - [deploy](deploy.md) - Deploy templates
-- [status](status.md) - Get detailed deployment status
+- [logs](logs.md) - Get detailed deployment logs
 - [logs](logs.md) - View deployment logs
 - [stop](stop.md) - Stop active deployments
