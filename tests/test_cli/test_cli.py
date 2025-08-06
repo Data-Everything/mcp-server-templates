@@ -117,86 +117,38 @@ class TestMainCLI:
         main()
         mock_deployer.logs.assert_called_once_with("demo", custom_name=None)
 
-    @patch("mcp_template.cli.EnhancedCLI")
-    @patch("mcp_template.MCPDeployer")
-    def test_tools_command_with_template(
-        self, mock_deployer_class, mock_enhanced_cli_class
-    ):
-        """Test tools command with template name."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer_class.return_value = mock_deployer
-
-        mock_enhanced_cli = Mock()
-        mock_enhanced_cli_class.return_value = mock_enhanced_cli
-
+    def test_tools_command_with_template_deprecated(self):
+        """Test tools command shows deprecation message."""
         sys.argv = ["mcp_template", "tools", "demo"]
 
-        main()
-        mock_enhanced_cli.list_tools.assert_called_once_with(
-            "demo",
-            no_cache=False,
-            refresh=False,
-            config_values={},
-            force_server_discovery=False,
-        )
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
-    @patch("mcp_template.cli.EnhancedCLI")
-    @patch("mcp_template.MCPDeployer")
-    def test_tools_command_with_image(
-        self, mock_deployer_class, mock_enhanced_cli_class
-    ):
-        """Test tools command with Docker image."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer_class.return_value = mock_deployer
+        # The command should exit with status code 2 (argparse error)
+        assert exc_info.value.code == 2
 
-        mock_enhanced_cli = Mock()
-        mock_enhanced_cli_class.return_value = mock_enhanced_cli
-
+    def test_tools_command_with_image_deprecated(self):
+        """Test tools command with Docker image shows deprecation message."""
         sys.argv = ["mcp_template", "tools", "--image", "mcp/filesystem", "/tmp"]
 
-        main()
-        mock_enhanced_cli.discover_tools_from_image.assert_called_once_with(
-            "mcp/filesystem", ["/tmp"], {}
-        )
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
-    @patch("mcp_template.cli.EnhancedCLI")
-    @patch("mcp_template.MCPDeployer")
-    def test_tools_command_with_cache_options(
-        self, mock_deployer_class, mock_enhanced_cli_class
-    ):
-        """Test tools command with cache options."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer_class.return_value = mock_deployer
+        # The command should exit with status code 2 (argparse error)
+        assert exc_info.value.code == 2
 
-        mock_enhanced_cli = Mock()
-        mock_enhanced_cli_class.return_value = mock_enhanced_cli
-
+    def test_tools_command_with_cache_options_deprecated(self):
+        """Test tools command with cache options shows deprecation message."""
         sys.argv = ["mcp_template", "tools", "demo", "--no-cache", "--refresh"]
-        main()
-        mock_enhanced_cli.list_tools.assert_called_once_with(
-            "demo",
-            no_cache=True,
-            refresh=True,
-            config_values={},
-            force_server_discovery=False,
-        )
 
-    @patch("mcp_template.cli.EnhancedCLI")
-    @patch("mcp_template.MCPDeployer")
-    def test_discover_tools_command_deprecated(
-        self, mock_deployer_class, mock_enhanced_cli_class
-    ):
-        """Test deprecated discover-tools command shows warning."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer_class.return_value = mock_deployer
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
-        mock_enhanced_cli = Mock()
-        mock_enhanced_cli_class.return_value = mock_enhanced_cli
+        # The command should exit with status code 2 (argparse error)
+        assert exc_info.value.code == 2
 
+    def test_discover_tools_command_deprecated(self):
+        """Test deprecated discover-tools command shows error."""
         sys.argv = [
             "mcp_template",
             "discover-tools",
@@ -205,15 +157,11 @@ class TestMainCLI:
             "/tmp",
         ]
 
-        with patch("rich.console.Console.print") as mock_print:
+        with pytest.raises(SystemExit) as exc_info:
             main()
-            # Should show deprecation warning
-            mock_print.assert_any_call(
-                "[yellow]⚠️  The 'discover-tools' command is deprecated. Use 'tools --image' instead.[/yellow]"
-            )
-            mock_enhanced_cli.discover_tools_from_image.assert_called_once_with(
-                "mcp/filesystem", ["/tmp"]
-            )
+
+        # The command should exit with status code 2 (argparse error)
+        assert exc_info.value.code == 2
 
     @patch("mcp_template.MCPDeployer")
     def test_cleanup_command(self, mock_deployer_class):

@@ -185,7 +185,7 @@ class TestEnhancedCLIToolsDynamic:
     def test_handle_enhanced_cli_commands_tools_with_config(
         self, mock_enhanced_cli, mock_console
     ):
-        """Test CLI command handler with config values."""
+        """Test CLI command handler with config values for deprecated tools command."""
         args = Mock()
         args.command = "tools"
         args.image = None
@@ -195,18 +195,13 @@ class TestEnhancedCLIToolsDynamic:
         args.refresh = False
         args.force_server = False
 
-        enhanced_cli = Mock()
-        mock_enhanced_cli.return_value = enhanced_cli
-
         result = handle_enhanced_cli_commands(args)
 
+        # Should return True since tools command is deprecated but handled
         assert result is True
-        enhanced_cli.list_tools.assert_called_once_with(
-            "github",
-            no_cache=False,
-            refresh=False,
-            config_values={"github_token": "test123", "log_level": "DEBUG"},
-            force_server_discovery=False,
+        # Should show deprecation warning
+        mock_console.print.assert_called_with(
+            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
         )
 
     @patch("mcp_template.cli.console")
@@ -214,7 +209,7 @@ class TestEnhancedCLIToolsDynamic:
     def test_handle_enhanced_cli_commands_invalid_config_format(
         self, mock_enhanced_cli_class, mock_console
     ):
-        """Test CLI command handler with invalid config format."""
+        """Test CLI command handler with invalid config format for deprecated tools command."""
         # Mock args with invalid config
         args = Mock()
         args.command = "tools"
@@ -222,25 +217,18 @@ class TestEnhancedCLIToolsDynamic:
         args.template = "github"
         args.config = ["invalid_format"]  # Missing =
 
-        # Mock the enhanced CLI instance
-        enhanced_cli_instance = Mock()
-        mock_enhanced_cli_class.return_value = enhanced_cli_instance
-
         result = handle_enhanced_cli_commands(args)
 
-        assert result is False
-        # Should print error message about invalid config format
+        # Should return True since tools command is deprecated but handled
+        assert result is True
+        # Should show deprecation warning, not config error
         mock_console.print.assert_called_with(
-            "[red]❌ Invalid config format: invalid_format. Use KEY=VALUE[/red]"
+            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
         )
 
     @patch("mcp_template.cli.console")
-    def test_handle_enhanced_cli_commands_tools_help_examples(self, mock_console_class):
-        """Test that help examples include config option."""
-        # Mock console instance
-        mock_console = Mock()
-        mock_console_class.return_value = mock_console
-
+    def test_handle_enhanced_cli_commands_tools_help_examples(self, mock_console):
+        """Test that deprecated tools command shows deprecation message."""
         args = Mock()
         args.command = "tools"
         args.image = None
@@ -249,11 +237,12 @@ class TestEnhancedCLIToolsDynamic:
 
         result = handle_enhanced_cli_commands(args)
 
-        assert result is False
-        # Get console output
-        mock_console_class.print.assert_called()
-        output = "".join(str(call) for call in mock_console_class.print.call_args_list)
-        assert "Must provide either a template name" in output
+        # Should return True since tools command is deprecated but handled
+        assert result is True
+        # Should show deprecation warning
+        mock_console.print.assert_called_with(
+            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+        )
 
 
 class TestEnhancedCLIIntegration:

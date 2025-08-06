@@ -275,11 +275,14 @@ class TestDockerDeploymentService:
     def test_list_deployments_with_containers(self, mock_run, mock_ensure):
         """Test listing deployments with containers."""
         container_json = {
+            "ID": "abc123def456",
             "Names": "test-container",
             "State": "running",
+            "RunningFor": "2 hours ago",
             "CreatedAt": "2024-01-01",
             "Image": "test/image",
             "Labels": "template=test,managed-by=mcp-deploy",
+            "Ports": "0.0.0.0:8080->8080/tcp",
         }
         mock_run.return_value.stdout = json.dumps(container_json)
 
@@ -287,6 +290,7 @@ class TestDockerDeploymentService:
         deployments = service.list_deployments()
 
         assert len(deployments) == 1
+        assert deployments[0]["id"] == "abc123def456"
         assert deployments[0]["name"] == "test-container"
         assert deployments[0]["template"] == "test"
         assert deployments[0]["status"] == "running"

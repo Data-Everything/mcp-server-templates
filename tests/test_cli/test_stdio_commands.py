@@ -141,7 +141,7 @@ def test_run_stdio_tool_docker_failure(mock_docker_service, mock_console, enhanc
 @pytest.mark.integration
 @patch("mcp_template.cli.console")
 def test_handle_enhanced_cli_commands_run_tool(mock_console, mock_cli):
-    """Test handle_enhanced_cli_commands with run-tool command."""
+    """Test handle_enhanced_cli_commands with deprecated run-tool command."""
     args = Namespace(
         command="run-tool",
         template="github",
@@ -151,38 +151,38 @@ def test_handle_enhanced_cli_commands_run_tool(mock_console, mock_cli):
         env=["LOG_LEVEL=debug"],
     )
 
-    with patch("mcp_template.cli.EnhancedCLI", return_value=mock_cli):
-        result = handle_enhanced_cli_commands(args)
+    result = handle_enhanced_cli_commands(args)
 
-        assert result is True
-        mock_cli.run_stdio_tool.assert_called_once()
+    # Should return True since run-tool command is deprecated but handled
+    assert result is True
+    # Should show deprecation warning
+    mock_console.print.assert_called_with(
+        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
+    )
 
 
 @pytest.mark.integration
 @patch("mcp_template.cli.console")
 def test_handle_enhanced_cli_commands_tools(mock_console, mock_cli):
-    """Test handle_enhanced_cli_commands with tools command."""
+    """Test handle_enhanced_cli_commands with deprecated tools command."""
     args = Namespace(
         command="tools", template="github", image=None, config=["API_KEY=test"]
     )
 
-    with patch("mcp_template.cli.EnhancedCLI", return_value=mock_cli):
-        result = handle_enhanced_cli_commands(args)
+    result = handle_enhanced_cli_commands(args)
 
-        assert result is True
-        mock_cli.list_tools.assert_called_once_with(
-            "github",
-            no_cache=False,
-            refresh=False,
-            config_values={"API_KEY": "test"},
-            force_server_discovery=False,
-        )
+    # Should return True since tools command is deprecated but handled
+    assert result is True
+    # Should show deprecation warning
+    mock_console.print.assert_called_with(
+        "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+    )
 
 
 @pytest.mark.integration
 @patch("mcp_template.cli.console")
 def test_handle_enhanced_cli_commands_tools_with_image(mock_console, mock_cli):
-    """Test handle_enhanced_cli_commands with tools command using image."""
+    """Test handle_enhanced_cli_commands with deprecated tools command using image."""
     args = Namespace(
         command="tools",
         template=None,
@@ -190,24 +190,31 @@ def test_handle_enhanced_cli_commands_tools_with_image(mock_console, mock_cli):
         server_args=["/tmp"],
         config=[],
     )
-    with patch("mcp_template.cli.EnhancedCLI", return_value=mock_cli):
-        result = handle_enhanced_cli_commands(args)
 
-        assert result is True
-        mock_cli.discover_tools_from_image.assert_called_once_with(
-            "mcp/filesystem", ["/tmp"], {}
-        )
+    result = handle_enhanced_cli_commands(args)
+
+    # Should return True since tools command is deprecated but handled
+    assert result is True
+    # Should show deprecation warning
+    mock_console.print.assert_called_with(
+        "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+    )
 
 
 @pytest.mark.integration
 @patch("mcp_template.cli.console")
 def test_handle_enhanced_cli_commands_tools_no_args(mock_console, enhanced_cli):
-    """Test handle_enhanced_cli_commands with tools command but no args."""
+    """Test handle_enhanced_cli_commands with deprecated tools command but no args."""
     args = Namespace(command="tools", template=None, image=None, config=None)
 
     result = handle_enhanced_cli_commands(args)
 
-    assert result is False
+    # Should return True since tools command is deprecated but handled
+    assert result is True
+    # Should show deprecation warning
+    mock_console.print.assert_called_with(
+        "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+    )
 
 
 @pytest.mark.docker
@@ -320,7 +327,7 @@ def test_handle_enhanced_cli_commands_invalid_command(mock_console, enhanced_cli
 @pytest.mark.integration
 @patch("mcp_template.cli.console")
 def test_handle_enhanced_cli_commands_run_tool_with_env_vars(mock_console):
-    """Test handle_enhanced_cli_commands with run-tool and environment variables."""
+    """Test handle_enhanced_cli_commands with deprecated run-tool and environment variables."""
     args = Namespace(
         command="run-tool",
         template="github",
@@ -330,27 +337,20 @@ def test_handle_enhanced_cli_commands_run_tool_with_env_vars(mock_console):
         env=["DEBUG=true", "LOG_LEVEL=info"],
     )
 
-    with patch("mcp_template.cli.EnhancedCLI") as mock_cli_class:
-        mock_cli_instance = Mock()
-        mock_cli_instance.run_stdio_tool.return_value = True
-        mock_cli_class.return_value = mock_cli_instance
+    result = handle_enhanced_cli_commands(args)
 
-        result = handle_enhanced_cli_commands(args)
-
-        assert result is True
-        mock_cli_instance.run_stdio_tool.assert_called_once_with(
-            "github",
-            "search_repositories",
-            tool_args='{"query": "test"}',
-            config_values={"API_KEY": "secret"},
-            env_vars={"DEBUG": "true", "LOG_LEVEL": "info"},
-        )
+    # Should return True since run-tool command is deprecated but handled
+    assert result is True
+    # Should show deprecation warning
+    mock_console.print.assert_called_with(
+        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
+    )
 
 
 @pytest.mark.integration
 @patch("mcp_template.cli.console")
 def test_handle_enhanced_cli_commands_run_tool_no_args(mock_console):
-    """Test handle_enhanced_cli_commands with run-tool but no arguments."""
+    """Test handle_enhanced_cli_commands with deprecated run-tool but no arguments."""
     args = Namespace(
         command="run-tool",
         template="github",
@@ -360,18 +360,11 @@ def test_handle_enhanced_cli_commands_run_tool_no_args(mock_console):
         env=None,
     )
 
-    with patch("mcp_template.cli.EnhancedCLI") as mock_cli_class:
-        mock_cli_instance = Mock()
-        mock_cli_instance.run_stdio_tool.return_value = True
-        mock_cli_class.return_value = mock_cli_instance
+    result = handle_enhanced_cli_commands(args)
 
-        result = handle_enhanced_cli_commands(args)
-
-        assert result is True
-        mock_cli_instance.run_stdio_tool.assert_called_once_with(
-            "github",
-            "search_repositories",
-            tool_args=None,
-            config_values={},
-            env_vars={},
-        )
+    # Should return True since run-tool command is deprecated but handled
+    assert result is True
+    # Should show deprecation warning
+    mock_console.print.assert_called_with(
+        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
+    )

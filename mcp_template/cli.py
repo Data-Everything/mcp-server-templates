@@ -978,42 +978,42 @@ def add_enhanced_cli_args(subparsers) -> None:
         "tools",
         help="[DEPRECATED] List available tools for a template or discover tools from a Docker image",
     )
-    #tools_parser.add_argument(
+    # tools_parser.add_argument(
     #    "template", nargs="?", help="Template name (optional if using --image)"
-    #)
-    #tools_parser.add_argument(
+    # )
+    # tools_parser.add_argument(
     #    "--image", help="Docker image name to discover tools from"
-    #)
-    #tools_parser.add_argument(
+    # )
+    # tools_parser.add_argument(
     #    "--no-cache", action="store_true", help="Ignore cached results"
-    #)
-    #tools_parser.add_argument(
+    # )
+    # tools_parser.add_argument(
     #    "--refresh", action="store_true", help="Force refresh cached results"
-    #)
-    #tools_parser.add_argument(
+    # )
+    # tools_parser.add_argument(
     #    "--force-server",
     #    action="store_true",
     #    help="Force server discovery (MCP probe only, no static fallback)",
-    #)
-    #tools_parser.add_argument(
+    # )
+    # tools_parser.add_argument(
     #    "--config",
     #    action="append",
     #    help="Configuration values for dynamic discovery (KEY=VALUE)",
-    #)
-    #tools_parser.add_argument(
+    # )
+    # tools_parser.add_argument(
     #    "server_args",
     #    nargs="*",
     #    help="Server arguments (when using --image)",
-    #)
+    # )
 
     # Discover tools command (deprecated, for backward compatibility)
     discover_parser = subparsers.add_parser(
         "discover-tools", help="[DEPRECATED] Use 'tools --image' instead"
     )
-    #discover_parser.add_argument("--image", required=True, help="Docker image name")
-    #discover_parser.add_argument(
+    # discover_parser.add_argument("--image", required=True, help="Docker image name")
+    # discover_parser.add_argument(
     #    "server_args", nargs="*", help="Arguments to pass to the MCP server"
-    #)
+    # )
 
     # Connect command
     connect_parser = subparsers.add_parser(
@@ -1056,17 +1056,17 @@ def add_enhanced_cli_args(subparsers) -> None:
     run_tool_parser = subparsers.add_parser(
         "run-tool", help="[DEPRECATED] Run a specific tool from a stdio MCP template"
     )
-    #run_tool_parser.add_argument("template", help="Template name")
-    #run_tool_parser.add_argument("tool_name", help="Name of the tool to run")
-    #run_tool_parser.add_argument(
+    # run_tool_parser.add_argument("template", help="Template name")
+    # run_tool_parser.add_argument("tool_name", help="Name of the tool to run")
+    # run_tool_parser.add_argument(
     #    "--args", help="JSON arguments to pass to the tool (optional)"
-    #)
-    #run_tool_parser.add_argument(
+    # )
+    # run_tool_parser.add_argument(
     #    "--config", action="append", help="Configuration values (KEY=VALUE)"
-    #)
-    #run_tool_parser.add_argument(
+    # )
+    # run_tool_parser.add_argument(
     #    "--env", action="append", help="Environment variables (KEY=VALUE)"
-    #)
+    # )
 
 
 def handle_enhanced_cli_commands(args) -> bool:

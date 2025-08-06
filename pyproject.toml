@@ -16,6 +16,7 @@ dependencies = [
     "rich>=13.0.0",
     "pyyaml>=6.0",
     "requests>=2.25.1",
+    "cmd2==2.7",
 ]
 keywords = ["mcp", "model-context-protocol", "ai", "deployment", "docker", "templates"]
 classifiers = [

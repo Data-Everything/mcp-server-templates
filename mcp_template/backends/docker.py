@@ -315,7 +315,9 @@ class DockerDeploymentService(BaseDeploymentBackend):
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as free_sock:
                         free_sock.bind(("", 0))
                         port_to_use = free_sock.getsockname()[1]
-                    logger.warning(f"Port {host_port} is in use, remapping to free port {port_to_use} for container port {container_port}")
+                    logger.warning(
+                        f"Port {host_port} is in use, remapping to free port {port_to_use} for container port {container_port}"
+                    )
             ports.extend(["-p", f"{port_to_use}:{container_port}"])
         return ports
 
@@ -656,7 +658,10 @@ EOF""",
                                 "status": container["State"],
                                 "since": container["RunningFor"],
                                 "image": container["Image"],
-                                "ports": container.get("Ports", "").split(", ")[-1].split(":")[-1].split("/")[0],
+                                "ports": container.get("Ports", "")
+                                .split(", ")[-1]
+                                .split(":")[-1]
+                                .split("/")[0],
                             }
                         )
                     except json.JSONDecodeError:
