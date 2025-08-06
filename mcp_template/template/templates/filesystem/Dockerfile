@@ -5,7 +5,7 @@ LABEL description="Demo MCP Server using FastMCP"
 LABEL version="1.0.0"
 
 # Set working directory
-WORKDIR /app
+WORKDIR /data
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends     && rm -rf /var/lib/apt/lists/*
@@ -19,18 +19,11 @@ COPY . .
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash mcp
-RUN chown -R mcp:mcp /app
+RUN chown -R mcp:mcp /data
 USER mcp
 
 # Expose the default HTTP port
 EXPOSE 7071
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3     CMD curl -f http://localhost:7071/health || exit 1
-
 # Set environment variables
-ENV MCP_LOG_LEVEL=info
-ENV MCP_HELLO_FROM="MCP Platform"
-
-# Default command
-CMD ["python", "server.py"]
+ENV LOG_LEVEL=info

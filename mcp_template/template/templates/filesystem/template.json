@@ -24,6 +24,12 @@
         "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
         "default": "INFO",
         "env_mapping": "LOG_LEVEL"
+      },
+      "allowed_dirs": {
+        "type": "string",
+        "description": "Allowed directories to scan, create or read from. Defaults to anything that gets mounted to /data directory in container",
+        "default": "/app",
+        "env_mapping": "ALLOWED_DIRS"
       }
     },
     "required": []
