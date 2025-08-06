@@ -166,12 +166,16 @@ jobs:
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build twine
+        pip install build twine setuptools_scm
 
     - name: Install package dependencies
       run: |
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
+
+    - name: Show package version (from git tag)
+      run: |
+        python -c "from mcp_template import __version__; print(f'PyPI version from git tag: {__version__}')"
 
     - name: Run final tests before deploy
       run: |
