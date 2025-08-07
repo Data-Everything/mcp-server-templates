@@ -17,6 +17,7 @@ dependencies = [
     "pyyaml>=6.0",
     "requests>=2.25.1",
     "cmd2==2.7",
+    "aiohttp>=3.8.0",
     "setuptools_scm>=8.3.1",
 ]
 keywords = ["mcp", "model-context-protocol", "ai", "deployment", "docker", "templates"]

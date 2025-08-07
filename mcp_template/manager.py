@@ -3,6 +3,7 @@ Deployment manager for MCP server templates with backend abstraction.
 """
 
 import logging
+import os
 from typing import Any, Dict, List
 
 from mcp_template.backends.docker import DockerDeploymentService
@@ -11,12 +12,12 @@ from mcp_template.backends.mock import MockDeploymentService
 from mcp_template.template.utils.discovery import TemplateDiscovery
 
 logger = logging.getLogger(__name__)
-
+default_backend = os.environ.get("MCP_TEMPLATE_BACKEND", "docker")
 
 class DeploymentManager:
     """Unified deployment manager with backend abstraction."""
 
-    def __init__(self, backend_type: str = "docker"):
+    def __init__(self, backend_type: str = default_backend):
         """Initialize deployment manager with specified backend."""
         self.backend_type = backend_type
         self._cached_backend = None

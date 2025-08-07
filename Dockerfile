@@ -6,18 +6,19 @@ LABEL backend="docker"
 LABEL description="MCP Server Templates for rapid deployment and management of AI servers with Docker, Kubernetes, or Mock backends."
 LABEL original-backend="podman"
 
-# Install pythhon 3.13.5 and cleanup to keep image size small
-RUN apt-get update && \
-    apt-get install -y python3.13 python3.13-venv python3.13-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
+# Install pythhon and cleanup to keep image size small
+RUN apk add --no-cache python3 py3-pip && \
+    rm -rf /var/cache/apk/* && \
+    ln -sf python3 /usr/bin/python
 # Install dependencies
 WORKDIR /app
 COPY mcp_template /app/mcp_template
 COPY pyproject.toml /app/
 COPY README.md /app/
-RUN pip install --no-cache-dir -e .
+RUN python3 -m venv /app/venv && \
+    . /app/venv/bin/activate && \
+    pip install --no-cache-dir -e .
+ENV PATH="/app/venv/bin:$PATH"
 
 # Set the entrypoint to the CLI tool
 ENTRYPOINT ["mcpt"]

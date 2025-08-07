@@ -637,34 +637,88 @@ EOF""",
 
             deployments = []
             if result.stdout.strip():
-                for line in result.stdout.strip().split("\n"):
+                # Handle both Docker (newline-separated JSON objects) and Podman (JSON array) formats
+                stdout = result.stdout.strip()
+                containers = []
+                
+                if stdout.startswith('['):
+                    # Podman format: JSON array
                     try:
-                        container = json.loads(line)
-                        # Parse template from labels
+                        containers = json.loads(stdout)
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to parse JSON array: {e}")
+                        return []
+                else:
+                    # Docker format: newline-separated JSON objects
+                    for line in stdout.split("\n"):
+                        if line.strip():
+                            try:
+                                containers.append(json.loads(line))
+                            except json.JSONDecodeError as e:
+                                logger.debug(f"Failed to parse container JSON line: {line}, error: {e}")
+                                continue
+                
+                # Process each container
+                for container in containers:
+                    try:
+                        # Parse template from labels - handle both Docker and Podman formats
                         labels = container.get("Labels", "")
                         template_name = "unknown"
-                        if "template=" in labels:
-                            # Extract template value from labels string
-                            for label in labels.split(","):
-                                if label.strip().startswith("template="):
-                                    template_name = label.split("=", 1)[1]
-                                    break
+                        
+                        # Handle different label formats
+                        if isinstance(labels, dict):
+                            # Podman format: Labels is a dictionary
+                            template_name = labels.get("template", "unknown")
+                        elif isinstance(labels, str) and labels:
+                            # Docker format: Labels is a comma-separated string
+                            if "template=" in labels:
+                                for label in labels.split(","):
+                                    if label.strip().startswith("template="):
+                                        template_name = label.split("=", 1)[1]
+                                        break
+                        
+                        # Handle port parsing safely - Podman has different port format
+                        ports_str = container.get("Ports", "")
+                        ports_display = ""
+                        
+                        if isinstance(ports_str, list):
+                            # Podman format: Ports is a list of port objects
+                            if ports_str:
+                                try:
+                                    port_obj = ports_str[0]
+                                    if isinstance(port_obj, dict):
+                                        host_port = port_obj.get("host_port", "")
+                                        ports_display = str(host_port) if host_port else ""
+                                except (IndexError, KeyError):
+                                    ports_display = ""
+                        elif isinstance(ports_str, str) and ports_str:
+                            # Docker format: Ports is a string
+                            try:
+                                port_parts = ports_str.split(", ")[-1].split(":")[-1].split("/")
+                                ports_display = port_parts[0] if port_parts else ""
+                            except (IndexError, AttributeError):
+                                ports_display = str(ports_str)
+                        
+                        # Handle Names field - can be array or string
+                        names = container.get("Names", "unknown")
+                        if isinstance(names, list) and names:
+                            name = names[0]
+                        else:
+                            name = str(names)
 
                         deployments.append(
                             {
-                                "id": container["ID"],
-                                "name": container["Names"],
+                                "id": container.get("ID", "unknown"),
+                                "name": name,
                                 "template": template_name,
-                                "status": container["State"],
-                                "since": container["RunningFor"],
-                                "image": container["Image"],
-                                "ports": container.get("Ports", "")
-                                .split(", ")[-1]
-                                .split(":")[-1]
-                                .split("/")[0],
+                                "status": container.get("State", "unknown"),
+                                "since": container.get("RunningFor", "unknown"),
+                                "image": container.get("Image", "unknown"),
+                                "ports": ports_display,
                             }
                         )
-                    except json.JSONDecodeError:
+                    except (KeyError, AttributeError) as e:
+                        logger.debug(f"Failed to parse container data: {container}, error: {e}")
                         continue
 
             return deployments
