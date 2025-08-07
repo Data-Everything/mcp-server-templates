@@ -4,11 +4,11 @@ on:
   push:
     branches: [ main, refactor ]
     paths:
-      - 'templates/**'
+      - 'mcp_template/template/templates/**'
   pull_request:
     branches: [ main ]
     paths:
-      - 'templates/**'
+      - 'mcp_template/template/templates/**'
   workflow_dispatch:
 
 jobs:
@@ -65,9 +65,9 @@ jobs:
             echo "Checking template: $template_name"
 
             # Check if any files in this template directory changed
-            if echo "$changed_files" | grep -q "^templates/$template_name/"; then
+            if echo "$changed_files" | grep -q "^mcp_template/template/templates/$template_name/"; then
               echo "  ✅ Has changes - Files changed:"
-              echo "$changed_files" | grep "^templates/$template_name/" | sed 's/^/    /'
+              echo "$changed_files" | grep "^mcp_template/template/templates/$template_name/" | sed 's/^/    /'
               changed_templates+=("$template_name")
             else
               echo "  ⏭️  No changes"
@@ -136,7 +136,7 @@ jobs:
       - name: Check if template has tests
         id: check-tests
         run: |
-          if [ -d "templates/${{ matrix.template }}/tests" ]; then
+          if [ -d "mcp_template/template/templates/${{ matrix.template }}/tests" ]; then
             echo "has-tests=true" >> $GITHUB_OUTPUT
             echo "Template ${{ matrix.template }} has tests directory"
           else
@@ -147,14 +147,14 @@ jobs:
       - name: Run template unit tests
         if: steps.check-tests.outputs.has-tests == 'true'
         run: |
-          cd templates/${{ matrix.template }}
+          cd mcp_template/template/templates/${{ matrix.template }}
           python -m pytest tests/ -v --tb=short -m "not integration"
         timeout-minutes: 10
 
       - name: Run template integration tests
         if: steps.check-tests.outputs.has-tests == 'true'
         run: |
-          cd templates/${{ matrix.template }}
+          cd templmcp_template/template/templatesates/${{ matrix.template }}
           python -m pytest tests/ -v --tb=short -m integration
         timeout-minutes: 15
         continue-on-error: true
@@ -162,7 +162,7 @@ jobs:
       - name: Check test coverage
         if: steps.check-tests.outputs.has-tests == 'true'
         run: |
-          cd templates/${{ matrix.template }}
+          cd mcp_template/template/templates/${{ matrix.template }}
           python -m pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=80
         continue-on-error: true
 
@@ -192,7 +192,7 @@ jobs:
               print(f'✅ Description: {template_config[\"description\"]}')
 
               # Check required files exist
-              template_dir = Path(f'templates/{template_name}')
+              template_dir = Path(f'mcp_template/template/templates/{template_name}')
 
               required_files = ['template.json', 'docs/index.md']
               if template_config.get('has_dockerfile', False):
@@ -211,7 +211,7 @@ jobs:
           "
       - name: Test template server startup
         run: |
-          cd templates/${{ matrix.template }}
+          cd mcp_template/template/templates/${{ matrix.template }}
           if [ -f "src/server.py" ]; then
             echo "🚀 Testing server startup for ${{ matrix.template }}..."
             timeout 10s python -m src.server --help || echo "Server startup test completed"
@@ -223,7 +223,7 @@ jobs:
 
       - name: Test Docker build
         run: |
-          cd templates/${{ matrix.template }}
+          cd mcp_template/template/templates/${{ matrix.template }}
           if [ -f "Dockerfile" ]; then
             echo "🐳 Testing Docker build for ${{ matrix.template }}..."
             docker build -t test-${{ matrix.template }} .
@@ -284,7 +284,7 @@ jobs:
       - name: Build and push to Docker Hub
         uses: docker/build-push-action@v5
         with:
-          context: ./templates/${{ matrix.template }}
+          context: ./mcp_template/template/templates/${{ matrix.template }}
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
