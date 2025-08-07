@@ -98,7 +98,7 @@ pip install mcp-templates
 Run the MCP Server Templates CLI tool using Docker:
 
 ```bash
-docker run --privileged --rm -it dataeverything/mcp-server-templates:latest
+docker run --privileged -it dataeverything/mcp-server-templates:latest deploy demo --transport http
 # This requires --privileged to access as it runs podman as alaias to docker. Check https://hub.docker.com/r/mgoltzsche/podman for more details.
 ```
 

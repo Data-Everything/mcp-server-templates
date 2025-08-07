@@ -1,4 +1,3 @@
-
 """
 Podman backend for managing deployments using Podman containers.
 
@@ -275,18 +274,22 @@ class PodmanDeploymentService(BaseDeploymentBackend):
         ]
         if detached:
             podman_command.append("--detach")
-        podman_command.extend([
-            "--name",
-            container_name,
-        ])
+        podman_command.extend(
+            [
+                "--name",
+                container_name,
+            ]
+        )
         if not is_stdio:
             podman_command.extend(["--restart", "unless-stopped"])
-        podman_command.extend([
-            "--label",
-            f"template={template_id}",
-            "--label",
-            "managed-by=mcp-template",
-        ])
+        podman_command.extend(
+            [
+                "--label",
+                f"template={template_id}",
+                "--label",
+                "managed-by=mcp-template",
+            ]
+        )
         podman_command.extend(ports)
         podman_command.extend(env_vars)
         podman_command.extend(volumes)
@@ -373,6 +376,7 @@ class PodmanDeploymentService(BaseDeploymentBackend):
         default_transport = template_transport.get("default", "http")
         if is_stdio is True or (is_stdio is None and default_transport == "stdio"):
             from mcp_template.tools.discovery import ToolDiscovery
+
             tool_discovery = ToolDiscovery()
             try:
                 discovery_result = tool_discovery.discover_tools(
@@ -735,6 +739,7 @@ class PodmanDeploymentService(BaseDeploymentBackend):
         import os
         from pathlib import Path
         from mcp_template.template.utils.discovery import TemplateDiscovery
+
         discovery = TemplateDiscovery()
         template_dir = discovery.template_root / template_id
         if not template_dir.exists() or not (template_dir / "Dockerfile").exists():

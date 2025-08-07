@@ -613,8 +613,6 @@ EOF""",
             pass  # Ignore cleanup failures
 
     # Container Management Methods
-
-    # Container Management Methods
     def list_deployments(self) -> List[Dict[str, Any]]:
         """List all MCP deployments managed by this Docker service.
 
@@ -640,8 +638,8 @@ EOF""",
                 # Handle both Docker (newline-separated JSON objects) and Podman (JSON array) formats
                 stdout = result.stdout.strip()
                 containers = []
-                
-                if stdout.startswith('['):
+
+                if stdout.startswith("["):
                     # Podman format: JSON array
                     try:
                         containers = json.loads(stdout)
@@ -655,16 +653,18 @@ EOF""",
                             try:
                                 containers.append(json.loads(line))
                             except json.JSONDecodeError as e:
-                                logger.debug(f"Failed to parse container JSON line: {line}, error: {e}")
+                                logger.debug(
+                                    f"Failed to parse container JSON line: {line}, error: {e}"
+                                )
                                 continue
-                
+
                 # Process each container
                 for container in containers:
                     try:
                         # Parse template from labels - handle both Docker and Podman formats
                         labels = container.get("Labels", "")
                         template_name = "unknown"
-                        
+
                         # Handle different label formats
                         if isinstance(labels, dict):
                             # Podman format: Labels is a dictionary
@@ -676,11 +676,11 @@ EOF""",
                                     if label.strip().startswith("template="):
                                         template_name = label.split("=", 1)[1]
                                         break
-                        
+
                         # Handle port parsing safely - Podman has different port format
                         ports_str = container.get("Ports", "")
                         ports_display = ""
-                        
+
                         if isinstance(ports_str, list):
                             # Podman format: Ports is a list of port objects
                             if ports_str:
@@ -688,17 +688,21 @@ EOF""",
                                     port_obj = ports_str[0]
                                     if isinstance(port_obj, dict):
                                         host_port = port_obj.get("host_port", "")
-                                        ports_display = str(host_port) if host_port else ""
+                                        ports_display = (
+                                            str(host_port) if host_port else ""
+                                        )
                                 except (IndexError, KeyError):
                                     ports_display = ""
                         elif isinstance(ports_str, str) and ports_str:
                             # Docker format: Ports is a string
                             try:
-                                port_parts = ports_str.split(", ")[-1].split(":")[-1].split("/")
+                                port_parts = (
+                                    ports_str.split(", ")[-1].split(":")[-1].split("/")
+                                )
                                 ports_display = port_parts[0] if port_parts else ""
                             except (IndexError, AttributeError):
                                 ports_display = str(ports_str)
-                        
+
                         # Handle Names field - can be array or string
                         names = container.get("Names", "unknown")
                         if isinstance(names, list) and names:
@@ -718,7 +722,9 @@ EOF""",
                             }
                         )
                     except (KeyError, AttributeError) as e:
-                        logger.debug(f"Failed to parse container data: {container}, error: {e}")
+                        logger.debug(
+                            f"Failed to parse container data: {container}, error: {e}"
+                        )
                         continue
 
             return deployments

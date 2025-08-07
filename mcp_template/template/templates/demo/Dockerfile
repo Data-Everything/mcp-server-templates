@@ -23,12 +23,14 @@ RUN useradd --create-home --shell /bin/bash mcp
 RUN chown -R mcp:mcp /app
 USER mcp
 
+ENV MCP_PORT=7071
+
 # Expose the default HTTP port
-EXPOSE 7071
+EXPOSE ${MCP_PORT}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:7071/health || exit 1
+    CMD curl -f "http://localhost:${MCP_PORT}/health" || exit 1
 
 # Set environment variables
 ENV MCP_LOG_LEVEL=info

@@ -14,6 +14,7 @@ from mcp_template.template.utils.discovery import TemplateDiscovery
 logger = logging.getLogger(__name__)
 default_backend = os.environ.get("MCP_TEMPLATE_BACKEND", "docker")
 
+
 class DeploymentManager:
     """Unified deployment manager with backend abstraction."""
 

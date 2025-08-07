@@ -14,6 +14,8 @@ import os
 import sys
 
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -243,6 +245,16 @@ class DemoMCPServer:
 
 # Create the server instance
 server = DemoMCPServer(config_dict={})
+
+
+@server.mcp.custom_route(path="/health", methods=["GET"])
+async def health_check(request: Request):
+    """
+    Health check endpoint to verify server status.
+    """
+
+    return JSONResponse({"status": "healthy"})
+
 
 if __name__ == "__main__":
     server.run()
