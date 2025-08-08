@@ -284,9 +284,9 @@ class TestVolumeAndCommandIntegrationWithDeployer:
         # Test with demo template that has volume mount and command arg
         config_values = {"allowed_dirs": "/test/data"}
 
-        # This should call _handle_volume_and_args_config_properties internally
+        # This should call handle_volume_and_args_config_properties on the config processor
         with patch.object(
-            deployer, "_handle_volume_and_args_config_properties"
+            deployer.config_processor, "handle_volume_and_args_config_properties"
         ) as mock_handler:
             mock_handler.return_value = {
                 "template": {

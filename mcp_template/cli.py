@@ -25,6 +25,7 @@ from mcp_template.deployer import MCPDeployer
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.tools import DockerProbe, ToolDiscovery
 from mcp_template.utils import TEMPLATES_DIR
+from mcp_template.utils.config_processor import ConfigProcessor
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class EnhancedCLI:
         self.tool_discovery = ToolDiscovery()
         self.docker_probe = DockerProbe()
         self.docker_service = DockerDeploymentService()
+        self.config_processor = ConfigProcessor()
 
         # Initialize response beautifier
         try:
@@ -50,7 +52,6 @@ class EnhancedCLI:
 
             self.beautifier = ResponseBeautifier()
         except ImportError:
-            # Fallback if interactive CLI not available
             self.beautifier = None
 
     def _is_actual_error(self, stderr_text: str) -> bool:
@@ -743,12 +744,21 @@ else:
             )
         )
 
-        # Prepare configuration
-        config = {}
-        if config_values:
-            config.update(config_values)
-        if env_vars:
-            config.update(env_vars)
+        # Prepare configuration using the unified config processor
+        config = self.config_processor.prepare_configuration(
+            template=template,
+            config_values=config_values,
+            env_vars=env_vars,
+        )
+
+        # Handle volume mounts and command arguments
+        template_config_dict = (
+            self.config_processor.handle_volume_and_args_config_properties(
+                template, config
+            )
+        )
+        config = template_config_dict.get("config", config)
+        template = template_config_dict.get("template", template)
 
         # Parse tool arguments if provided
         tool_arguments = {}

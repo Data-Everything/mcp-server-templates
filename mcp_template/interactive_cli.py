@@ -26,6 +26,7 @@ from mcp_template.cli import EnhancedCLI
 from mcp_template.deployer import MCPDeployer
 from mcp_template.tools.cache import CacheManager
 from mcp_template.tools.http_tool_caller import HTTPToolCaller
+from mcp_template.utils.config_processor import ConfigProcessor
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -64,8 +65,12 @@ def merge_config_sources(
     config_file: str = None,
     env_vars: List[str] = None,
     inline_config: List[str] = None,
+    template: Dict[str, Any] = None,
 ) -> Dict[str, Any]:
-    """Utility to merge configuration from multiple sources.
+    """Utility to merge configuration from multiple sources using ConfigProcessor.
+
+    This is a wrapper around ConfigProcessor.prepare_configuration to maintain
+    backward compatibility with the interactive CLI interface.
 
     Priority order (highest to lowest):
     1. Inline config (--config)
@@ -78,40 +83,80 @@ def merge_config_sources(
         config_file: Path to JSON config file
         env_vars: List of KEY=VALUE environment variable pairs
         inline_config: List of KEY=VALUE inline config pairs
+        template: Template configuration for proper type conversion
 
     Returns:
         Merged configuration dictionary
     """
-    config_values = session_config.copy()
+    # For backward compatibility with existing tests, we need to handle the case
+    # where no template is provided (older API)
+    if template is None:
+        # Fall back to simple merging for backward compatibility
+        config_values = session_config.copy()
 
-    # Load config file if provided (lower priority)
-    if config_file:
-        try:
-            with open(config_file, "r") as f:
-                file_cfg = json.load(f)
-                config_values.update(file_cfg)
-                console.print(f"[dim]✓ Loaded config from {config_file}[/dim]")
-        except Exception as e:
-            console.print(f"[red]❌ Failed to load config file: {e}[/red]")
-            raise
+        # Load config file if provided (lower priority)
+        if config_file:
+            try:
+                with open(config_file, "r") as f:
+                    file_cfg = json.load(f)
+                    config_values.update(file_cfg)
+                    console.print(f"[dim]✓ Loaded config from {config_file}[/dim]")
+            except Exception as e:
+                console.print(f"[red]❌ Failed to load config file: {e}[/red]")
+                raise
 
-    # Apply environment overrides (medium priority)
-    if env_vars:
-        for pair in env_vars:
-            if "=" in pair:
-                k, v = pair.split("=", 1)
-                config_values[k] = v
-                console.print(f"[dim]✓ Set env var: {k}=***[/dim]")
+        # Apply environment overrides (medium priority)
+        if env_vars:
+            for pair in env_vars:
+                if "=" in pair:
+                    k, v = pair.split("=", 1)
+                    config_values[k] = v
+                    console.print(f"[dim]✓ Set env var: {k}=***[/dim]")
 
-    # Apply inline config overrides (highest priority)
-    if inline_config:
-        for pair in inline_config:
-            if "=" in pair:
-                k, v = pair.split("=", 1)
-                config_values[k] = v
-                console.print(f"[dim]✓ Set inline config: {k}=***[/dim]")
+        # Apply inline config overrides (highest priority)
+        if inline_config:
+            for pair in inline_config:
+                if "=" in pair:
+                    k, v = pair.split("=", 1)
+                    config_values[k] = v
+                    console.print(f"[dim]✓ Set inline config: {k}=***[/dim]")
 
-    return config_values
+        return config_values
+
+    # Use the unified config processor when template is provided
+    config_processor = ConfigProcessor()
+
+    try:
+        # Convert list inputs to dict format for the config processor
+        config_values = {}
+        env_dict = {}
+
+        # Process inline config into dict (highest priority)
+        if inline_config:
+            for pair in inline_config:
+                if "=" in pair:
+                    k, v = pair.split("=", 1)
+                    config_values[k] = v
+                    console.print(f"[dim]✓ Set inline config: {k}=***[/dim]")
+
+        # Process env vars into dict (medium priority)
+        if env_vars:
+            for pair in env_vars:
+                if "=" in pair:
+                    k, v = pair.split("=", 1)
+                    env_dict[k] = v
+                    console.print(f"[dim]✓ Set env var: {k}=***[/dim]")
+
+        return config_processor.prepare_configuration(
+            template=template,
+            session_config=session_config,
+            config_file=config_file,
+            config_values=config_values,
+            env_vars=env_dict,
+        )
+    except Exception as e:
+        console.print(f"[red]❌ Failed to merge config sources: {e}[/red]")
+        raise
 
 
 class ResponseBeautifier:
@@ -1305,12 +1350,21 @@ class InteractiveCLI(cmd2.Cmd):
         """
         # Merge configuration from all sources
         template_name = args.template_name
+
+        # Get template info for proper config processing
+        if template_name not in self.enhanced_cli.templates:
+            console.print(f"[red]❌ Template '{template_name}' not found[/red]")
+            return
+
+        template = self.enhanced_cli.templates[template_name]
+
         try:
             config_values = merge_config_sources(
                 session_config=self.session_configs.get(template_name, {}),
                 config_file=args.config_file,
                 env_vars=args.env,
                 inline_config=args.config,
+                template=template,
             )
         except Exception:
             return  # Error already printed in merge_config_sources

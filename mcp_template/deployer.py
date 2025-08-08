@@ -16,6 +16,7 @@ from rich.table import Table
 
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
+from mcp_template.utils.config_processor import ConfigProcessor
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -39,6 +40,9 @@ class MCPDeployer:
         # Initialize template discovery
         self.template_discovery = TemplateDiscovery()
         self.templates = self.template_discovery.discover_templates()
+
+        # Initialize configuration processor
+        self.config_processor = ConfigProcessor()
 
     def list_templates(self, deployed_only: bool = False):
         """List available templates."""
@@ -106,8 +110,11 @@ class MCPDeployer:
             task = progress.add_task(f"Deploying {template_name}...", total=None)
             try:
                 # Prepare configuration from multiple sources
-                config = self._prepare_configuration(
-                    template, env_vars, config_file, config_values
+                config = self.config_processor.prepare_configuration(
+                    template=template,
+                    env_vars=env_vars,
+                    config_file=config_file,
+                    config_values=config_values,
                 )
 
                 required_properties = template.get("config_schema", {}).get(
@@ -157,8 +164,10 @@ class MCPDeployer:
                     )
                     config.update(override_env_vars)
 
-                template_config_dict = self._handle_volume_and_args_config_properties(
-                    template=template_copy, config=config
+                template_config_dict = (
+                    self.config_processor.handle_volume_and_args_config_properties(
+                        template, config
+                    )
                 )
                 config = template_config_dict.get("config", config)
                 template_copy = template_config_dict.get("template", template_copy)

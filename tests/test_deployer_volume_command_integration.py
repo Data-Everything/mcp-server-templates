@@ -371,7 +371,7 @@ class TestDeployerVolumeAndCommandIntegration:
 
         # Since filesystem is stdio, it should not actually deploy but we can test the processing
         with patch.object(
-            deployer, "_handle_volume_and_args_config_properties"
+            deployer.config_processor, "handle_volume_and_args_config_properties"
         ) as mock_handler:
             mock_handler.return_value = {
                 "template": {
