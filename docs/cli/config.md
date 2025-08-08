@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-mcp-template config TEMPLATE [OPTIONS]
+mcpt config TEMPLATE [OPTIONS]
 ```
 
 ## Description
@@ -37,7 +37,7 @@ The command shows configuration information in a structured table format:
 
 ```bash
 # Show configuration for demo template
-mcp-template config demo
+mcpt config demo
 
 # Example output:
 ╭─────────────────────────────────────────────────────────────╮
@@ -60,20 +60,20 @@ mcp-template config demo
 
 💡 Usage Examples:
   # Basic configuration:
-  mcp-template deploy demo --config hello_from="Custom Server" --config debug_mode=true
+  mcpt deploy demo --config hello_from="Custom Server" --config debug_mode=true
 
   # Double-underscore notation:
-  mcp-template deploy demo --config demo__hello_from="Custom Server"
+  mcpt deploy demo --config demo__hello_from="Custom Server"
 
   # Configuration file:
-  mcp-template deploy demo --config-file config.json
+  mcpt deploy demo --config-file config.json
 ```
 
 ### File Server Configuration
 
 ```bash
 # Show file server configuration options
-mcp-template config filesystem
+mcpt config filesystem
 
 # Example output shows comprehensive security and performance options:
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -123,12 +123,12 @@ Each config display includes practical usage examples:
 ### Basic Examples
 ```bash
 # Simple configuration
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config read_only_mode=true \
   --config max_file_size=50
 
 # Environment variables
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50
 ```
@@ -136,14 +136,14 @@ mcp-template deploy filesystem \
 ### Advanced Examples
 ```bash
 # Nested configuration
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config security__read_only=true \
   --config security__max_file_size=50 \
   --config logging__level=debug \
   --config performance__max_concurrent=20
 
 # Mixed configuration sources
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config-file base-config.json \
   --config log_level=warning \
   --env MCP_READ_ONLY=true
@@ -152,7 +152,7 @@ mcp-template deploy filesystem \
 ### Configuration File Examples
 ```bash
 # JSON configuration file
-mcp-template deploy filesystem --config-file config.json
+mcpt deploy filesystem --config-file config.json
 ```
 
 ## Configuration Schema Types
@@ -203,7 +203,7 @@ Have sensible defaults and can be omitted for basic usage.
 ### Example with Requirements
 ```bash
 # Template with required API key
-mcp-template config api-server
+mcpt config api-server
 
 # Shows:
 # api_key (string) ✓ Required - API authentication key

@@ -7,6 +7,7 @@ These tests verify that the interactive CLI correctly handles:
 3. Complex command lines with both features
 """
 
+import shlex
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -216,9 +217,7 @@ class TestIntegrationWithRealCLI:
 
     def test_shlex_handling_of_quotes(self):
         """Test that shlex correctly handles quoted arguments."""
-        import shlex
 
-        # Test the problematic case
         command = '-C allowed_dirs="/path1 /path2" filesystem list_directory'
         tokens = shlex.split(command)
 
@@ -227,7 +226,6 @@ class TestIntegrationWithRealCLI:
 
     def test_json_reconstruction_logic(self):
         """Test the JSON reconstruction logic for split arguments."""
-        import shlex
 
         # Test JSON that gets split by shlex
         command = 'filesystem list_directory {"path": "/tmp"}'

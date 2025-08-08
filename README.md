@@ -237,7 +237,7 @@ Generate new templates with comprehensive configuration examples:
 
 ```bash
 # Interactive template creation with MCP-specific properties
-mcp-template create my-custom-template
+mcpt create my-custom-template
 
 # The generator includes examples for:
 # - volume_mount: Auto Docker volume configuration
@@ -256,20 +256,20 @@ The MCP Template CLI provides two interfaces for managing MCP server templates:
 
 | Category | Command | Description |
 |----------|---------|-------------|
-| **General** | `mcp-template list` | List all available templates |
-| | `mcp-template create <template-id>` | Create new template with generator |
-| **Deployment** | `mcp-template deploy <template>` | Deploy template with Docker |
-| | `mcp-template stop <deployment>` | Stop running deployment |
-| | `mcp-template logs <deployment>` | View deployment logs |
-| | `mcp-template shell <deployment>` | Open shell in deployment container |
-| | `mcp-template cleanup [deployment]` | Clean up deployments |
-| **Configuration** | `mcp-template config <template>` | Show template configuration options |
-| **Integration** | `mcp-template connect <deployment>` | Show integration examples |
-| | `mcp-template run` | Run template with transport options |
-| **Interactive** | `mcp-template interactive` | Start interactive CLI mode |
-| **Deprecated** | ~~`mcp-template tools`~~ | ❌ Use `interactive` mode instead |
-| | ~~`mcp-template discover-tools`~~ | ❌ Use `interactive` mode instead |
-| | ~~`mcp-template run-tool`~~ | ❌ Use `interactive` mode with `call` command instead |
+| **General** | `mcpt list` | List all available templates |
+| | `mcpt create <template-id>` | Create new template with generator |
+| **Deployment** | `mcpt deploy <template>` | Deploy template with Docker |
+| | `mcpt stop <deployment>` | Stop running deployment |
+| | `mcpt logs <deployment>` | View deployment logs |
+| | `mcpt shell <deployment>` | Open shell in deployment container |
+| | `mcpt cleanup [deployment]` | Clean up deployments |
+| **Configuration** | `mcpt config <template>` | Show template configuration options |
+| **Integration** | `mcpt connect <deployment>` | Show integration examples |
+| | `mcpt run` | Run template with transport options |
+| **Interactive** | `mcpt interactive` | Start interactive CLI mode |
+| **Deprecated** | ~~`mcpt tools`~~ | ❌ Use `interactive` mode instead |
+| | ~~`mcpt discover-tools`~~ | ❌ Use `interactive` mode instead |
+| | ~~`mcpt run-tool`~~ | ❌ Use `interactive` mode with `call` command instead |
 
 ### Getting Started with CLI
 
@@ -279,19 +279,19 @@ The MCP Template CLI provides comprehensive tools for deploying and managing MCP
 
 ```bash
 # 1. List available templates
-mcp-template list
+mcpt list
 
 # 2. Deploy a template
-mcp-template deploy github
+mcpt deploy github
 
 # 3. Check deployment logs
-mcp-template logs github
+mcpt logs github
 
 # 4. Open interactive shell in deployment
-mcp-template shell github
+mcpt shell github
 
 # 5. Use interactive mode for deployment management and tool execution
-mcp-template interactive
+mcpt interactive
 # Interactive mode provides:
 # - List and manage deployments
 # - Discover available tools from MCP servers
@@ -299,20 +299,20 @@ mcp-template interactive
 # - Real-time interaction with deployed servers
 
 # 6. Clean up when done
-mcp-template cleanup github
+mcpt cleanup github
 ```
 
 #### Configuration Management
 
 ```bash
 # Show template configuration options
-mcp-template config github
+mcpt config github
 
 # Connect to deployed template (show integration examples)
-mcp-template connect github
+mcpt connect github
 
 # Use interactive mode for tool discovery and execution
-mcp-template interactive
+mcpt interactive
 # In interactive mode:
 # - Discover available tools
 # - Execute tools directly
@@ -323,16 +323,16 @@ mcp-template interactive
 
 ```bash
 # Run template with specific transport
-mcp-template run --transport http --port 8080
+mcpt run --transport http --port 8080
 
 # Connect to deployed template
-mcp-template connect github
+mcpt connect github
 
 # Deploy with cleanup of old instances
-mcp-template deploy github --cleanup
+mcpt deploy github --cleanup
 
 # View comprehensive logs with follow
-mcp-template logs github --follow
+mcpt logs github --follow
 ```
 
 ### Template Discovery and Management
@@ -340,11 +340,11 @@ mcp-template logs github --follow
 **Available Templates:**
 ```bash
 # List all available templates
-mcp-template list
+mcpt list
 # Outputs: demo, github, gitlab, zendesk, filesystem
 
 # Create new template using generator
-mcp-template create my-custom-server
+mcpt create my-custom-server
 ```
 
 **Featured Template - Filesystem:**
@@ -352,15 +352,15 @@ The filesystem template provides secure local file system access with 14 compreh
 
 ```bash
 # Interactive usage (recommended for stdio templates)
-mcp-template interactive
-mcp> config filesystem allowed_dirs="/tmp /home/user/documents"
-mcp> tools filesystem
-mcp> call filesystem list_directory '{"path": "/tmp"}'
-mcp> call filesystem read_file '{"path": "/tmp/example.txt"}'
-mcp> call filesystem search_files '{"path": "/tmp", "pattern": "*.txt"}'
+mcpt interactive
+mcpt> config filesystem allowed_dirs="/tmp /home/user/documents"
+mcpt> tools filesystem
+mcpt> call filesystem list_directory '{"path": "/tmp"}'
+mcpt> call filesystem read_file '{"path": "/tmp/example.txt"}'
+mcpt> call filesystem search_files '{"path": "/tmp", "pattern": "*.txt"}'
 
 # Direct usage with complex path configurations
-mcp> call -C allowed_dirs="/path with spaces /another/path" filesystem tree '{"path": "/tmp"}'
+mcpt> call -C allowed_dirs="/path with spaces /another/path" filesystem tree '{"path": "/tmp"}'
 ```
 
 **Filesystem Tools Available:**
@@ -377,7 +377,7 @@ mcp> call -C allowed_dirs="/path with spaces /another/path" filesystem tree '{"p
 **1. Check Template Configuration:**
 ```bash
 # View template configuration options
-mcp-template config demo
+mcpt config demo
 
 # Shows config schema properties, required fields, defaults
 ```
@@ -385,15 +385,15 @@ mcp-template config demo
 **2. Deploy with Config File:**
 ```bash
 # JSON config file
-mcp-template deploy demo --config-file ./config.json
+mcpt deploy demo --config-file ./config.json
 
 # YAML config file
-mcp-template deploy demo --config-file ./config.yml
+mcpt deploy demo --config-file ./config.yml
 
 # Advanced filesystem template with volume mounts
 # (paths automatically mounted as Docker volumes)
 echo '{"allowed_dirs": "/home/user/documents /tmp/workspace"}' > filesystem-config.json
-mcp-template run-tool filesystem list_directory \
+mcpt run-tool filesystem list_directory \
   --config-file filesystem-config.json \
   '{"path": "/tmp"}'
 ```
@@ -407,19 +407,19 @@ There are **two types** of CLI configuration:
 
 ```bash
 # Configuration schema properties (recommended for server settings)
-mcp-template deploy demo \
+mcpt deploy demo \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
 
 # Advanced volume mount configuration (automatic Docker volume handling)
-mcp-template run-tool filesystem list_directory \
+mcpt run-tool filesystem list_directory \
   --config allowed_dirs="/home/user/docs /tmp/workspace" \
   '{"path": "/tmp"}'
 # This automatically creates: -v "/home/user/docs:/data/docs" -v "/tmp/workspace:/data/workspace"
 
 # Template overrides (modifies template structure)
-mcp-template deploy demo \
+mcpt deploy demo \
   --override name="Custom File Server" \
   --override description="My custom file server"
 ```
@@ -430,12 +430,12 @@ New features include automatic volume mount handling and command argument proces
 
 ```bash
 # Space-separated paths in configuration (quoted for safety)
-mcp-template run-tool filesystem tree \
+mcpt run-tool filesystem tree \
   --config allowed_dirs="/path with spaces /another/path" \
   '{"path": "/tmp"}'
 
 # Multiple configuration sources with precedence
-mcp-template run-tool filesystem list_directory \
+mcpt run-tool filesystem list_directory \
   --config-file base-config.json \
   --config allowed_dirs="/override/path" \
   --env LOG_LEVEL=DEBUG \
@@ -449,7 +449,7 @@ The interactive CLI provides comprehensive deployment management and MCP server 
 
 ```bash
 # Start interactive CLI
-mcp-template interactive
+mcpt interactive
 ```
 
 **Key Features:**
@@ -463,33 +463,33 @@ mcp-template interactive
 **Enhanced Configuration Support:**
 ```bash
 # In interactive mode - multiple configuration methods
-mcp> config filesystem allowed_dirs="/home/user/docs /tmp/workspace"
-mcp> call --config-file config.json filesystem list_directory '{"path": "/tmp"}'
-mcp> call --env API_KEY=xyz --config timeout=30 github search_repositories '{"query": "python"}'
+mcpt> config filesystem allowed_dirs="/home/user/docs /tmp/workspace"
+mcpt> call --config-file config.json filesystem list_directory '{"path": "/tmp"}'
+mcpt> call --env API_KEY=xyz --config timeout=30 github search_repositories '{"query": "python"}'
 
 # Advanced argument parsing with quotes for space-separated values
-mcp> call -C allowed_dirs="/path1 /path2" filesystem list_directory '{"path": "/tmp"}'
+mcpt> call -C allowed_dirs="/path1 /path2" filesystem list_directory '{"path": "/tmp"}'
 
 # Complex JSON arguments with proper parsing
-mcp> call filesystem search_within_files '{"path": "/tmp", "pattern": "error log", "file_pattern": "*.log"}'
+mcpt> call filesystem search_within_files '{"path": "/tmp", "pattern": "error log", "file_pattern": "*.log"}'
 ```
 
 **Configuration Methods in Interactive Mode:**
 ```bash
 # 1. Session configuration (persistent during session)
-mcp> config template_name key=value key2=value2
+mcpt> config template_name key=value key2=value2
 
 # 2. Inline configuration flags
-mcp> call --config key=value --env VAR=value template tool '{"args": "here"}'
+mcpt> call --config key=value --env VAR=value template tool '{"args": "here"}'
 
 # 3. Configuration files
-mcp> call --config-file /path/to/config.json template tool '{"args": "here"}'
+mcpt> call --config-file /path/to/config.json template tool '{"args": "here"}'
 
 # 4. Environment variables
-mcp> call --env API_KEY=token --env DEBUG=true template tool '{"args": "here"}'
+mcpt> call --env API_KEY=token --env DEBUG=true template tool '{"args": "here"}'
 
 # 5. No-pull option for faster execution
-mcp> call --no-pull template tool '{"args": "here"}'
+mcpt> call --no-pull template tool '{"args": "here"}'
 ```
 
 **Use Cases:**
@@ -511,39 +511,39 @@ mcp> call --no-pull template tool '{"args": "here"}'
 **1. Tool Discovery Workflows (Updated Commands):**
 ```bash
 # Interactive mode (recommended approach)
-mcp-template interactive
-mcp> tools github
-mcp> call github search_repositories '{"query": "python"}'
+mcpt interactive
+mcpt> tools github
+mcpt> call github search_repositories '{"query": "python"}'
 
 # Legacy commands (still available but deprecated)
 # Use interactive mode for better experience
-mcp-template tools github  # ⚠️  Consider using interactive mode
-mcp-template discover-tools  # ⚠️  Use interactive mode instead
-mcp-template run-tool filesystem list_directory '{"path": "/tmp"}'  # ⚠️  Use interactive mode
+mcpt tools github  # ⚠️  Consider using interactive mode
+mcpt discover-tools  # ⚠️  Use interactive mode instead
+mcpt run-tool filesystem list_directory '{"path": "/tmp"}'  # ⚠️  Use interactive mode
 
 # Stdio templates (filesystem) - interactive mode recommended
-mcp-template interactive
-mcp> config filesystem allowed_dirs="/tmp /home/user/docs"
-mcp> tools filesystem
-mcp> call filesystem list_directory '{"path": "/tmp"}'
+mcpt interactive
+mcpt> config filesystem allowed_dirs="/tmp /home/user/docs"
+mcpt> tools filesystem
+mcpt> call filesystem list_directory '{"path": "/tmp"}'
 ```
 
 **2. Complex Configuration Scenarios:**
 ```bash
 # Interactive mode with complex configurations
-mcp-template interactive
-mcp> call --config-file ./zendesk-config.yaml \
+mcpt interactive
+mcpt> call --config-file ./zendesk-config.yaml \
      --config subdomain=mycompany \
      --config email=admin@company.com \
      --env ZENDESK_API_TOKEN=xyz123 \
      zendesk search_tickets '{"query": "urgent"}'
 
 # Direct usage with space-separated paths (enhanced parsing)
-mcp> call -C allowed_dirs="/path with spaces /another path" \
+mcpt> call -C allowed_dirs="/path with spaces /another path" \
      filesystem search_files '{"path": "/tmp", "pattern": "*.log"}'
 
 # Multiple configuration sources with enhanced precedence handling
-mcp> call --config-file base-config.json \
+mcpt> call --config-file base-config.json \
      --config allowed_dirs="/override/path" \
      --env LOG_LEVEL=DEBUG \
      filesystem tree '{"path": "/tmp", "max_depth": 3}'
@@ -552,18 +552,18 @@ mcp> call --config-file base-config.json \
 **3. Enhanced Features in Latest Version:**
 ```bash
 # Volume mount auto-configuration (filesystem template)
-mcp> call -C allowed_dirs="/home/user/documents /tmp/workspace" \
+mcpt> call -C allowed_dirs="/home/user/documents /tmp/workspace" \
      filesystem list_directory '{"path": "/tmp"}'
 # Automatically creates Docker volume mounts:
 # -v "/home/user/documents:/data/documents" -v "/tmp/workspace:/data/workspace"
 
 # Hybrid argument parsing for complex quoted values
-mcp> call -C config_path="/path with spaces/config.json" \
+mcpt> call -C config_path="/path with spaces/config.json" \
      -C debug_mode="true" \
      custom_template process_data '{"input": "complex data"}'
 
 # No-pull option for faster development cycles
-mcp> call --no-pull filesystem read_file '{"path": "/tmp/test.txt"}'
+mcpt> call --no-pull filesystem read_file '{"path": "/tmp/test.txt"}'
 ```
 
 ---
@@ -598,7 +598,7 @@ make format
 
 ```bash
 # Use the interactive template generator
-mcp-template create my-custom-server
+mcpt create my-custom-server
 
 # Or manually create template structure:
 mkdir templates/my-server
@@ -618,27 +618,28 @@ For stdio transport MCP servers, use the `run-tool` command to execute individua
 **1. List Available Tools:**
 ```bash
 # Show all tools available in a template
-mcp-template tools github
-mcp-template tools filesystem
-mcp-template tools --image custom/mcp-server:latest
+mcpt interactive
+mcpt> tools github
+mcpt> tools filesystem
+mcpt> tools --image custom/mcp-server:latest
 
 # List tools with configuration
-mcp-template tools github --config github_token=your_token
+mcpt> tools github --config github_token=your_token
 ```
 
 **2. Run Individual Tools:**
 ```bash
 # Basic tool execution
-mcp-template run-tool github search_repositories \
+mcpt run-tool github search_repositories \
   --args '{"query": "mcp server", "per_page": 5}'
 
 # Tool execution with authentication
-mcp-template run-tool github create_issue \
+mcpt run-tool github create_issue \
   --args '{"owner": "user", "repo": "test", "title": "Bug report", "body": "Description"}' \
   --env GITHUB_PERSONAL_ACCESS_TOKEN=your_token
 
 # Tool execution with configuration
-mcp-template run-tool filesystem read_file \
+mcpt run-tool filesystem read_file \
   --args '{"path": "/data/example.txt"}' \
   --config allowed_directories='["/data", "/workspace"]' \
   --config read_only=true
@@ -647,7 +648,7 @@ mcp-template run-tool filesystem read_file \
 **3. Complex Tool Arguments:**
 ```bash
 # JSON arguments for complex data structures
-mcp-template run-tool github create_pull_request \
+mcpt run-tool github create_pull_request \
   --args '{
     "owner": "user",
     "repo": "project",
@@ -659,7 +660,7 @@ mcp-template run-tool github create_pull_request \
   --env GITHUB_PERSONAL_ACCESS_TOKEN=your_token
 
 # Multiple configuration options
-mcp-template run-tool database query \
+mcpt run-tool database query \
   --args '{"sql": "SELECT * FROM users LIMIT 10"}' \
   --config connection_string="postgresql://localhost:5432/mydb" \
   --config timeout=30 \
@@ -669,15 +670,15 @@ mcp-template run-tool database query \
 **4. Working with Different Templates:**
 ```bash
 # GitHub API tools
-mcp-template run-tool github search_users --args '{"q": "mcp"}'
-mcp-template run-tool github get_file_contents --args '{"owner": "user", "repo": "project", "path": "README.md"}'
+mcpt run-tool github search_users --args '{"q": "mcp"}'
+mcpt run-tool github get_file_contents --args '{"owner": "user", "repo": "project", "path": "README.md"}'
 
 # Filesystem tools
-mcp-template run-tool filesystem list_directory --args '{"path": "/data"}'
-mcp-template run-tool filesystem create_file --args '{"path": "/data/test.txt", "content": "Hello World"}'
+mcpt run-tool filesystem list_directory --args '{"path": "/data"}'
+mcpt run-tool filesystem create_file --args '{"path": "/data/test.txt", "content": "Hello World"}'
 
 # Custom MCP servers
-mcp-template run-tool my-custom-server my_tool --args '{"param": "value"}'
+mcpt run-tool my-custom-server my_tool --args '{"param": "value"}'
 ```
 
 ### Configuration File Examples
@@ -755,7 +756,7 @@ Templates automatically build and tag images as:
 1. Create `templates/{name}/` directory
 2. Add `template.json` with config schema and environment mappings
 3. Add `Dockerfile` for container build
-4. Test with `mcp-template {name} --show-config`
+4. Test with `mcpt {name} --show-config`
 
 ### Adding New Backends
 
@@ -796,7 +797,7 @@ cd mcp-server-templates
 pip install -e .
 
 # Run in development mode
-mcp-template list
+mcpt list
 ```
 
 ### Testing
@@ -858,29 +859,29 @@ Each template includes:
 pip install mcp-templates
 
 # 2. List available templates
-mcp-template list
+mcpt list
 
 # 3. Deploy a template with defaults
-mcp-template deploy github
+mcpt deploy github
 
 # 4. View deployment logs
-mcp-template logs github
+mcpt logs github
 
 # 5. Use interactive mode for tool execution
-mcp-template interactive
+mcpt interactive
 
 # 6. Clean up when done
-mcp-template cleanup github
+mcpt cleanup github
 ```
 
 ### Template Discovery
 
 ```bash
 # List all available templates
-mcp-template create --help
+mcpt create --help
 
 # Create new template interactively
-mcp-template create my-custom-template
+mcpt create my-custom-template
 ```
 
 ---

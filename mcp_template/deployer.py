@@ -197,9 +197,9 @@ class MCPDeployer:
                         f"[cyan]🔧 MCP Configuration:[/cyan]\n"
                         f"Config saved to: ~/.mcp/{template_name}.json\n\n"
                         f"[cyan]💡 Management:[/cyan]\n"
-                        f"• View logs: mcp-template logs {template_name}\n"
-                        f"• Stop: mcp-template stop {template_name}\n"
-                        f"• Shell: mcp-template shell {template_name}",
+                        f"• View logs: mcpt logs {template_name}\n"
+                        f"• Stop: mcpt stop {template_name}\n"
+                        f"• Shell: mcpt shell {template_name}",
                         title="🎉 Deployment Complete",
                         border_style="green",
                     )

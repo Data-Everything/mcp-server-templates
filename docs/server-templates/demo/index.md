@@ -9,7 +9,7 @@ A simple demonstration MCP server that provides greeting tools
 Deploy this template:
 
 ```bash
-mcp-template deploy demo
+mcpt deploy demo
 ```
 
 ## Configuration Options
@@ -23,16 +23,16 @@ mcp-template deploy demo
 
 ```bash
 # Deploy with configuration
-mcp-template deploy demo --show-config
+mcpt deploy demo --show-config
 
 # Using environment variables
-mcp-template deploy demo --env MCP_HELLO_FROM=value
+mcpt deploy demo --env MCP_HELLO_FROM=value
 
 # Using CLI configuration
-mcp-template deploy {template_id} --config {first_prop}=value
+mcpt deploy {template_id} --config {first_prop}=value
 
 # Using nested configuration
-mcp-template deploy {template_id} --config category__property=value
+mcpt deploy {template_id} --config category__property=value
 ```## Development
 
 ### Local Testing

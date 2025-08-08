@@ -50,28 +50,28 @@ The Filesystem MCP Server provides comprehensive file system operations while ma
 #### 1. Interactive CLI (Recommended)
 ```bash
 # Start interactive mode
-mcp-template interactive
+mcpt interactive
 
 # Configure and call tools
-mcp> config filesystem allowed_dirs="/home/user/documents /tmp/workspace"
-mcp> tools filesystem
-mcp> call filesystem list_directory '{"path": "/tmp"}'
+mcpt> config filesystem allowed_dirs="/home/user/documents /tmp/workspace"
+mcpt> tools filesystem
+mcpt> call filesystem list_directory '{"path": "/tmp"}'
 ```
 
 #### 2. Command Line with Configuration
 ```bash
 # Using --config flag
-mcp-template run-tool filesystem list_directory \
+mcpt run-tool filesystem list_directory \
   --config allowed_dirs="/home/user/documents /tmp" \
   '{"path": "/home/user/documents"}'
 
 # Using environment variables
 export ALLOWED_DIRS="/home/user/documents /tmp"
-mcp-template run-tool filesystem list_directory '{"path": "/tmp"}'
+mcpt run-tool filesystem list_directory '{"path": "/tmp"}'
 
 # Using config file
 echo '{"allowed_dirs": "/home/user/documents /tmp"}' > config.json
-mcp-template run-tool filesystem list_directory \
+mcpt run-tool filesystem list_directory \
   --config-file config.json \
   '{"path": "/tmp"}'
 ```
@@ -91,46 +91,46 @@ docker run -i --rm \
 ### Basic File Operations
 ```bash
 # List directory contents
-mcp> call filesystem list_directory '{"path": "/tmp"}'
+mcpt> call filesystem list_directory '{"path": "/tmp"}'
 
 # Read a file
-mcp> call filesystem read_file '{"path": "/tmp/example.txt"}'
+mcpt> call filesystem read_file '{"path": "/tmp/example.txt"}'
 
 # Write content to a file
-mcp> call filesystem write_file '{"path": "/tmp/output.txt", "content": "Hello World!"}'
+mcpt> call filesystem write_file '{"path": "/tmp/output.txt", "content": "Hello World!"}'
 
 # Get file information
-mcp> call filesystem get_file_info '{"path": "/tmp/example.txt"}'
+mcpt> call filesystem get_file_info '{"path": "/tmp/example.txt"}'
 ```
 
 ### Advanced Operations
 ```bash
 # Search for files by pattern
-mcp> call filesystem search_files '{"path": "/tmp", "pattern": "*.txt"}'
+mcpt> call filesystem search_files '{"path": "/tmp", "pattern": "*.txt"}'
 
 # Search within file contents
-mcp> call filesystem search_within_files '{"path": "/tmp", "pattern": "error", "file_pattern": "*.log"}'
+mcpt> call filesystem search_within_files '{"path": "/tmp", "pattern": "error", "file_pattern": "*.log"}'
 
 # Display directory tree
-mcp> call filesystem tree '{"path": "/tmp", "max_depth": 3}'
+mcpt> call filesystem tree '{"path": "/tmp", "max_depth": 3}'
 
 # Read multiple files at once
-mcp> call filesystem read_multiple_files '{"paths": ["/tmp/file1.txt", "/tmp/file2.txt"]}'
+mcpt> call filesystem read_multiple_files '{"paths": ["/tmp/file1.txt", "/tmp/file2.txt"]}'
 ```
 
 ### File Management
 ```bash
 # Copy files
-mcp> call filesystem copy_file '{"source": "/tmp/source.txt", "destination": "/tmp/backup.txt"}'
+mcpt> call filesystem copy_file '{"source": "/tmp/source.txt", "destination": "/tmp/backup.txt"}'
 
 # Move/rename files
-mcp> call filesystem move_file '{"source": "/tmp/old.txt", "destination": "/tmp/new.txt"}'
+mcpt> call filesystem move_file '{"source": "/tmp/old.txt", "destination": "/tmp/new.txt"}'
 
 # Create directories
-mcp> call filesystem create_directory '{"path": "/tmp/new-folder"}'
+mcpt> call filesystem create_directory '{"path": "/tmp/new-folder"}'
 
 # Delete files/directories
-mcp> call filesystem delete_file '{"path": "/tmp/unwanted.txt"}'
+mcpt> call filesystem delete_file '{"path": "/tmp/unwanted.txt"}'
 ```
 
 ## Security & Best Practices
@@ -247,7 +247,7 @@ ls -laZ /path/to/directory
 **Directory Not Found**
 ```bash
 # Verify allowed_dirs configuration
-mcp> call filesystem list_allowed_directories '{}'
+mcpt> call filesystem list_allowed_directories '{}'
 
 # Check actual mount points in container
 docker run --rm -v "/host/path:/container/path" \
@@ -257,17 +257,17 @@ docker run --rm -v "/host/path:/container/path" \
 **Tools Not Available**
 ```bash
 # Verify configuration is properly set
-mcp> show_config filesystem
+mcpt> show_config filesystem
 
 # Test tool discovery
-mcp> tools filesystem --force-server
+mcpt> tools filesystem --force-server
 ```
 
 ### Debug Mode
 ```bash
 # Enable debug logging
 export LOG_LEVEL="DEBUG"
-mcp-template run filesystem --config log_level=DEBUG
+mcpt run filesystem --config log_level=DEBUG
 ```
 
 ## License

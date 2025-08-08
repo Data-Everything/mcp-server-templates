@@ -54,19 +54,19 @@ docker run --network mcp-platform --name demo \
 
 ```bash
 # Deploy using the CLI
-mcp-template deploy demo
+mcpt deploy demo
 
 # Deploy with custom configuration
-mcp-template deploy demo --config hello_from="CLI Server"
+mcpt deploy demo --config hello_from="CLI Server"
 
 # Show configuration options
-mcp-template config demo
+mcpt config demo
 
 # List available tools
-mcp-template tools demo
+mcpt> tools demo
 
 # Get integration examples
-mcp-template connect demo --llm claude
+mcpt connect demo --llm claude
 ```
 
 ## Configuration
@@ -100,28 +100,28 @@ The demo template supports **template data overrides** using the `--override` ar
 
 ```bash
 # Modify template metadata
-mcp-template deploy demo \
+mcpt deploy demo \
   --override "metadata__version=2.0.0" \
   --override "metadata__author=Your Name"
 
 # Modify tool configurations
-mcp-template deploy demo \
+mcpt deploy demo \
   --override "tools__0__enabled=false" \
   --override "tools__1__description=Custom echo tool"
 
 # Add custom fields to template
-mcp-template deploy demo \
+mcpt deploy demo \
   --override "custom_field=custom_value" \
   --override "config__debug_mode=true"
 
 # Complex nested structures with automatic type conversion
-mcp-template deploy demo \
+mcpt deploy demo \
   --override "config__features__advanced=true" \
   --override "config__features__timeout=30.5" \
   --override "servers__0__config__host=localhost"
 
 # Combined config and overrides
-mcp-template deploy demo \
+mcpt deploy demo \
   --config hello_from="Custom Server" \
   --override "metadata__version=1.5.0" \
   --override "tools__0__custom_property=value"
@@ -370,7 +370,7 @@ python server.py --log-level debug
 docker run -e MCP_LOG_LEVEL=debug dataeverything/mcp-demo:latest
 
 # CLI deployment
-mcp-template deploy demo --config log_level=debug
+mcpt deploy demo --config log_level=debug
 ```
 
 ## Contributing

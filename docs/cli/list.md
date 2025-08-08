@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-mcp-template list [OPTIONS]
+mcpt list [OPTIONS]
 ```
 
 ## Description
@@ -41,10 +41,10 @@ The `list` command provides an overview of available MCP server templates and ac
 ```bash
 
 # List all available templates
-mcp-template list
+mcpt list
 
 # List only currently deployed (active) servers
-mcp-template list --deployed
+mcpt list --deployed
 
 # Example output:
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
@@ -57,28 +57,28 @@ mcp-template list --deployed
 └──────────────────────┴───────────────────────────────────────┴───────────────────────────────────────┴─────────────┘
 
 📊 Summary: 4 templates (2 active, 1 stopped, 1 error)
-💡 Use 'mcp-template deploy <template>' to deploy
-    Use 'mcp-template logs <template>' to view logs
+💡 Use 'mcpt deploy <template>' to deploy
+    Use 'mcpt logs <template>' to view logs
 ```
 
 ### Filtering Options
 
 ```bash
 # Filter by template name
-mcp-template list --filter file
+mcpt list --filter file
 
 # Filter by category
-mcp-template list --filter database
+mcpt list --filter database
 
 # Filter by status
-mcp-template list --filter active
+mcpt list --filter active
 ```
 
 ### Output Formats
 
 ```bash
 # JSON format for programmatic use
-mcp-template list --format json
+mcpt list --format json
 
 # Example JSON output:
 {
@@ -104,20 +104,20 @@ mcp-template list --format json
 }
 
 # YAML format
-mcp-template list --format yaml
+mcpt list --format yaml
 ```
 
 ### Backend-Specific Listing
 
 ```bash
 # List Docker deployments (default)
-mcp-template list --backend docker
+mcpt list --backend docker
 
 # List Kubernetes deployments
-mcp-template list --backend k8s
+mcpt list --backend k8s
 
 # List mock deployments (testing)
-mcp-template list --backend mock
+mcpt list --backend mock
 ```
 
 ## Template Categories
@@ -197,30 +197,30 @@ For each template, the list command shows:
 
 ```bash
 # Watch list in real-time (requires watch command)
-watch -n 5 'mcp-template list'
+watch -n 5 'mcpt list'
 
 
 # Show all information including stopped containers
-mcp-template list --all
+mcpt list --all
 
 # Show only currently deployed (active) servers
-mcp-template list --deployed
+mcpt list --deployed
 
 # Compact format for scripts
-mcp-template list --format json | jq -r '.templates[].name'
+mcpt list --format json | jq -r '.templates[].name'
 ```
 
 ### Health Monitoring
 
 ```bash
 # Show only error status deployments
-mcp-template list --filter error
+mcpt list --filter error
 
 # Show recently active deployments
-mcp-template list --filter active
+mcpt list --filter active
 
 # Export deployment list for monitoring
-mcp-template list --format json > deployments.json
+mcpt list --format json > deployments.json
 ```
 
 ## Troubleshooting
@@ -259,10 +259,10 @@ mcp-template list --format json > deployments.json
 ```bash
 #!/bin/bash
 # Simple monitoring script
-ERRORS=$(mcp-template list --format json | jq '.summary.error')
+ERRORS=$(mcpt list --format json | jq '.summary.error')
 if [ "$ERRORS" -gt 0 ]; then
     echo "⚠️  $ERRORS deployments have errors"
-    mcp-template list --filter error
+    mcpt list --filter error
 fi
 ```
 

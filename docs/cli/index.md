@@ -11,16 +11,16 @@ The MCP Template CLI provides a comprehensive set of commands for deploying, man
 pip install mcp-templates
 
 # List available templates
-mcp-template list
+mcpt list
 
 # Deploy a template with defaults
-mcp-template deploy demo
+mcpt deploy demo
 
 # View template configuration options
-mcp-template config demo
+mcpt config demo
 
 # Discover tools from template
-mcp-template tools demo
+mcpt> tools demo
 ```
 
 ## Global Options
@@ -56,13 +56,13 @@ The CLI supports comprehensive template creation alongside deployment and config
 
 ```bash
 # Interactive template creation
-mcp-template create
+mcpt create
 
 # Create from existing image
-mcp-template create --from-image mcp/filesystem my-filesystem
+mcpt create --from-image mcp/filesystem my-filesystem
 
 # Non-interactive creation
-mcp-template create --config-file template-config.json --non-interactive
+mcpt create --config-file template-config.json --non-interactive
 ```
 
 ### Configuration Precedence
@@ -86,13 +86,13 @@ Use double underscores for nested configuration:
 
 ```bash
 # Standard format
-mcp-template deploy filesystem --config read_only_mode=true
+mcpt deploy filesystem --config read_only_mode=true
 
 # Nested format (equivalent)
-mcp-template deploy filesystem --config security__read_only=true
+mcpt deploy filesystem --config security__read_only=true
 
 # Template-prefixed format
-mcp-template deploy filesystem --config filesystem__security__read_only=true
+mcpt deploy filesystem --config filesystem__security__read_only=true
 ```
 
 ## Common Usage Patterns
@@ -101,38 +101,38 @@ mcp-template deploy filesystem --config filesystem__security__read_only=true
 
 ```bash
 # Create and test new template
-mcp-template create my-server
-mcp-template deploy my-server --config debug=true
-mcp-template logs my-server --follow
+mcpt create my-server
+mcpt deploy my-server --config debug=true
+mcpt logs my-server --follow
 
 # Test tools
-mcp-template tools my-server
-mcp-template connect my-server --llm claude
+mcpt> tools my-server
+mcpt connect my-server --llm claude
 ```
 
 ### Production Deployment
 
 ```bash
 # Deploy with production config
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config-file production.json \
   --name prod-filesystem \
   --no-pull
 
 # Monitor deployment
-mcp-template status prod-filesystem
-mcp-template logs prod-filesystem --tail 100
+mcpt status prod-filesystem
+mcpt logs prod-filesystem --tail 100
 ```
 
 ### Tool Discovery
 
 ```bash
 # Unified tool discovery command
-mcp-template tools demo                              # From templates
-mcp-template tools --image mcp/filesystem /tmp       # From Docker images
+mcpt> tools demo                              # From templates
+mcpt> tools --image mcp/filesystem /tmp       # From Docker images
 
 # Get integration examples
-mcp-template connect demo --llm vscode
+mcpt connect demo --llm vscode
 ```
 
 ## Environment Variables

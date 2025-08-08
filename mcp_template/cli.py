@@ -392,8 +392,8 @@ class EnhancedCLI:
                 if tool_name:
                     console.print(f'  result = client.call_tool("{tool_name}", {{}})')
 
-        console.print(f"\n  # Deploy template: mcp-template deploy {template_name}")
-        console.print(f"  # View logs: mcp-template logs {template_name}")
+        console.print(f"\n  # Deploy template: mcpt deploy {template_name}")
+        console.print(f"  # View logs: mcpt logs {template_name}")
 
     def discover_tools_from_image(
         self,
@@ -671,8 +671,8 @@ else:
                     )
                     + "\n\n"
                     f"[green]To use this template, run tools directly:[/green]\n"
-                    f"  mcp-template tools {template_name}                    # List available tools\n"
-                    f"  mcp-template run-tool {template_name} <tool_name>     # Run a specific tool\n"
+                    f"  mcpt> tools {template_name}                    # List available tools\n"
+                    f"  mcpt> call {template_name} <tool_name>     # Run a specific tool\n"
                     f"  echo '{json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'})}' | \\\n"
                     f"    docker run -i --rm {template.get('docker_image', f'mcp-{template_name}:latest')}",
                     title="Stdio Transport Detected",
@@ -1134,14 +1134,14 @@ def handle_enhanced_cli_commands(args) -> bool:
 
     elif args.command == "tools":
         console.print(
-            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcpt interactive`[/magenta][/red]"
         )
         return True
 
     elif args.command == "discover-tools":
         # Legacy command - redirect to unified tools command
         console.print(
-            "[red]🚫  The 'discover-tools' command is deprecated. Use 'tools' command with -image parameter in interactive CLI instead [magenta]`mcp-template interactive`[/magenta][/red]"
+            "[red]🚫  The 'discover-tools' command is deprecated. Use 'tools' command with -image parameter in interactive CLI instead [magenta]`mcpt interactive`[/magenta][/red]"
         )
         # enhanced_cli.discover_tools_from_image(args.image, args.server_args)
         return True
@@ -1181,7 +1181,7 @@ def handle_enhanced_cli_commands(args) -> bool:
     elif args.command == "run-tool":
         # Parse config values if provided
         console.print(
-            "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
+            "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcpt interactive`[/magenta][/red]"
         )
         return True
 

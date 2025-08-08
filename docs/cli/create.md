@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-mcp-template create [TEMPLATE_ID] [OPTIONS]
+mcpt create [TEMPLATE_ID] [OPTIONS]
 ```
 
 ## Description
@@ -33,7 +33,7 @@ The `create` command provides a comprehensive template creation workflow that gu
 
 ```bash
 # Start interactive template creation
-mcp-template create
+mcpt create
 
 # Example interactive session:
 ╭─────────────────────────────────────────────────────────────╮
@@ -99,15 +99,15 @@ Add another option? [y/N]: n
 
 🚀 Next steps:
   1. Implement your tools in src/tools.py
-  2. Test: mcp-template deploy custom-server
-  3. Verify: mcp-template tools custom-server
+  2. Test: mcpt deploy custom-server
+  3. Verify: mcpt> tools custom-server
 ```
 
 ### Specify Template ID
 
 ```bash
 # Create with specific template ID
-mcp-template create my-database-server
+mcpt create my-database-server
 
 # Skips the template ID prompt and uses 'my-database-server'
 ```
@@ -118,7 +118,7 @@ mcp-template create my-database-server
 
 ```bash
 # Create from configuration file
-mcp-template create --config-file template-config.json --non-interactive
+mcpt create --config-file template-config.json --non-interactive
 
 # Example template-config.json:
 {
@@ -194,7 +194,7 @@ mcp-template create --config-file template-config.json --non-interactive
 
 ```bash
 # Create template from existing MCP-compatible image
-mcp-template create --from-image mcp/filesystem my-filesystem
+mcpt create --from-image mcp/filesystem my-filesystem
 
 # Automatically discovers tools and generates template
 # Example output:
@@ -221,10 +221,10 @@ mcp-template create --from-image mcp/filesystem my-filesystem
 
 ```bash
 # First, discover tools from an image
-mcp-template tools --image custom/mcp-server:latest > discovery.json
+mcpt> tools --image custom/mcp-server:latest > discovery.json
 
 # Then create template from discovery
-mcp-template create --from-discovery discovery.json custom-template
+mcpt create --from-discovery discovery.json custom-template
 
 # Uses discovered tool information to generate template
 ```
@@ -443,16 +443,16 @@ class ExampleTools:
 
 ```bash
 # Test template creation
-mcp-template create test-template
+mcpt create test-template
 
 # Deploy for testing
-mcp-template deploy test-template
+mcpt deploy test-template
 
 # Verify tools are discovered
-mcp-template tools test-template
+mcpt> tools test-template
 
 # Test with configuration
-mcp-template deploy test-template --config debug=true
+mcpt deploy test-template --config debug=true
 ```
 
 ### Development Workflow
@@ -462,10 +462,10 @@ mcp-template deploy test-template --config debug=true
 vim templates/test-template/src/tools.py
 
 # Redeploy with changes
-mcp-template deploy test-template --no-pull
+mcpt deploy test-template --no-pull
 
 # Test specific tool
-mcp-template connect test-template --llm python
+mcpt connect test-template --llm python
 ```
 
 ## Best Practices
@@ -482,7 +482,7 @@ mcp-template connect test-template --llm python
 
 ```bash
 # Create template with security focus
-mcp-template create secure-api \
+mcpt create secure-api \
   --config-file secure-template-config.json
 
 # Include security-focused configuration:

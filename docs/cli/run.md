@@ -5,7 +5,7 @@ The `run` command starts MCP server templates with specific transport and config
 ## Usage
 
 ```bash
-mcp-template run [options]
+mcpt run [options]
 ```
 
 ## Options
@@ -27,8 +27,8 @@ mcp-template run [options]
 The default transport method using standard input/output:
 
 ```bash
-mcp-template run
-mcp-template run --transport stdio
+mcpt run
+mcpt run --transport stdio
 ```
 
 **Use cases:**
@@ -40,7 +40,7 @@ mcp-template run --transport stdio
 HTTP-based transport for web integration:
 
 ```bash
-mcp-template run --transport http --port 8080
+mcpt run --transport http --port 8080
 ```
 
 **Use cases:**
@@ -54,36 +54,36 @@ mcp-template run --transport http --port 8080
 Specify where template data is stored:
 
 ```bash
-mcp-template run --data-dir /path/to/data
+mcpt run --data-dir /path/to/data
 ```
 
 ### Config Directory
 Set configuration file location:
 
 ```bash
-mcp-template run --config-dir /path/to/config
+mcpt run --config-dir /path/to/config
 ```
 
 ## Examples
 
 Run with default settings (STDIO):
 ```bash
-mcp-template run
+mcpt run
 ```
 
 Run HTTP server on port 8080:
 ```bash
-mcp-template run --transport http --port 8080
+mcpt run --transport http --port 8080
 ```
 
 Run with custom directories:
 ```bash
-mcp-template run --data-dir ./data --config-dir ./config
+mcpt run --data-dir ./data --config-dir ./config
 ```
 
 Full configuration example:
 ```bash
-mcp-template run \
+mcpt run \
   --transport http \
   --port 9000 \
   --data-dir /opt/mcp/data \

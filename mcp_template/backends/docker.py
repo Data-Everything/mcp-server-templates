@@ -166,8 +166,9 @@ class DockerDeploymentService(BaseDeploymentBackend):
                     )
                     + "\n\n"
                     f"[green]To use this template, run tools directly:[/green]\n"
-                    f"  mcp-template tools {template_id}                    # List available tools\n"
-                    f"  mcp-template run-tool {template_id} <tool_name>     # Run a specific tool\n"
+                    f"  mcpt interactive\n"
+                    f"  mcpt> tools {template_id}                    # List available tools\n"
+                    f"  mcpt> call {template_id} <tool_name>     # Run a specific tool\n"
                     f"  echo '{json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'})}' | \\\n"
                     f"    docker run -i --rm {template_data.get('image', template_data.get('docker_image', f'mcp-{template_id}:latest'))}",
                     title="Stdio Transport Detected",

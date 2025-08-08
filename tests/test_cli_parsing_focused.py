@@ -5,9 +5,7 @@ These tests focus specifically on testing the argument parsing logic
 without running the full CLI execution flow.
 """
 
-import argparse
 import shlex
-from unittest.mock import MagicMock, patch
 
 import pytest
 

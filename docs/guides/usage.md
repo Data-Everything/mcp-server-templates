@@ -13,7 +13,7 @@ Once you've deployed an MCP server template, you can integrate it with:
 ## 📋 Prerequisites
 
 Before integrating, ensure you have:
-1. **Deployed server**: `mcp-template deploy <template-name>`
+1. **Deployed server**: `mcpt deploy <template-name>`
 2. **Container name**: Note the container name from deployment output
 3. **Configuration**: Know your server's configuration options
 
@@ -285,7 +285,7 @@ All templates support environment variable configuration:
 
 ```bash
 # Deploy with custom configuration
-mcp-template deploy template-name \
+mcpt deploy template-name \
   --config key1=value1 \
   --config key2=value2 \
   --env CUSTOM_VAR=custom_value
@@ -295,7 +295,7 @@ mcp-template deploy template-name \
 
 ```bash
 # Using configuration file
-mcp-template deploy template-name \
+mcpt deploy template-name \
   --config-file my-config.json
 ```
 
@@ -313,10 +313,10 @@ mcp-template deploy template-name \
 
 ```bash
 # Show available configuration options
-mcp-template deploy template-name --show-config
+mcpt deploy template-name --show-config
 
 # Deploy with double underscore notation for nested config
-mcp-template deploy template-name \
+mcpt deploy template-name \
   --config security__read_only=true \
   --config logging__level=debug
 ```
@@ -331,7 +331,7 @@ mcp-template deploy template-name \
 docker ps --filter "label=mcp.template-id"
 
 # If no containers, redeploy
-mcp-template deploy template-name
+mcpt deploy template-name
 ```
 
 #### 2. Connection Refused
@@ -358,7 +358,7 @@ from src.server import *
 
 ```bash
 # Deploy with debug logging
-mcp-template deploy template-name \
+mcpt deploy template-name \
   --config log_level=debug
 
 # View debug logs
@@ -374,13 +374,13 @@ docker logs -f CONTAINER_NAME
 docker ps --filter "label=mcp.template-id" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 
 # Stop specific template
-mcp-template stop template-name
+mcpt stop template-name
 
 # View logs
-mcp-template logs template-name
+mcpt logs template-name
 
 # Access shell
-mcp-template shell template-name
+mcpt shell template-name
 ```
 
 ### Health Monitoring

@@ -967,7 +967,7 @@ class InteractiveCLI(cmd2.Cmd):
 
     intro = None  # Set to None to prevent automatic intro display
 
-    prompt = "mcp> "
+    prompt = "mcpt> "
 
     def __init__(self):
         super().__init__()
@@ -1500,8 +1500,6 @@ class InteractiveCLI(cmd2.Cmd):
         if '"' in line and " " in line:
             # Use shlex for proper quote parsing when quotes are present
             try:
-                import shlex
-
                 argv = shlex.split(line)
 
                 # Special handling for JSON arguments - if the last argument looks like

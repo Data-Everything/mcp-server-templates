@@ -65,13 +65,13 @@ MCP Server Templates are pre-configured, production-ready implementations of the
 
 ```bash
 # List available templates
-mcp-template list
+mcpt list
 
 # Deploy demo template
-mcp-template deploy demo
+mcpt deploy demo
 
 # Deploy with custom configuration
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config security__allowed_dirs='["/data", "/workspace"]' \
   --config security__read_only=false
 ```
@@ -80,13 +80,13 @@ mcp-template deploy filesystem \
 
 ```bash
 # Discover available tools
-mcp-template tools demo
+mcpt> tools demo
 
 # Get detailed tool information
-mcp-template tools filesystem --detailed
+mcpt> tools filesystem --detailed
 
 # Generate integration examples
-mcp-template connect demo --llm claude
+mcpt connect demo --llm claude
 ```
 
 ## Template Categories
@@ -135,28 +135,28 @@ All templates support:
 ### Testing Templates
 ```bash
 # Deploy for testing
-mcp-template deploy template-name --config debug=true
+mcpt deploy template-name --config debug=true
 
 # Monitor logs
-mcp-template logs template-name --follow
+mcpt logs template-name --follow
 
 # Check status
-mcp-template status template-name --detailed
+mcpt status template-name --detailed
 
 # Test tools
-mcp-template connect template-name --test
+mcpt connect template-name --test
 ```
 
 ### Template Validation
 ```bash
 # Validate template structure
-mcp-template validate template-name
+mcpt validate template-name
 
 # Check configuration schema
-mcp-template config template-name --show-schema
+mcpt config template-name --show-schema
 
 # Test tool discovery
-mcp-template tools --image template:latest
+mcpt> tools --image template:latest
 ```
 
 ## Creating Custom Templates
@@ -171,13 +171,13 @@ For detailed information on creating your own templates, see:
 
 ```bash
 # Interactive template creation
-mcp-template create
+mcpt create
 
 # Create from existing image
-mcp-template create --from-image mcp/custom my-template
+mcpt create --from-image mcp/custom my-template
 
 # Create with configuration
-mcp-template create --config-file template-config.json --non-interactive
+mcpt create --config-file template-config.json --non-interactive
 ```
 
 ## Template Architecture

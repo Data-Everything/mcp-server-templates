@@ -63,13 +63,13 @@ Extracts capabilities from existing `template.json` definitions for compatibilit
 
 ```bash
 # Basic tool discovery for deployed template
-mcp-template tools demo
+mcpt> tools demo
 
 # Force refresh cached results
-mcp-template tools demo --refresh
+mcpt> tools demo --refresh
 
 # Ignore cache entirely
-mcp-template tools demo --no-cache
+mcpt> tools demo --no-cache
 ```
 
 ### Template-Based Tool Discovery
@@ -78,13 +78,13 @@ The CLI now supports discovering tools directly from templates, with automatic D
 
 ```bash
 # Discover tools from a template directory
-mcp-template tools my-template
+mcpt> tools my-template
 
 # With configuration values for Docker fallback
-mcp-template tools my-template --config "PORT=8080,HOST=localhost"
+mcpt> tools my-template --config "PORT=8080,HOST=localhost"
 
 # Force refresh template tool discovery
-mcp-template tools my-template --refresh --config "DEBUG=true"
+mcpt> tools my-template --refresh --config "DEBUG=true"
 ```
 
 When a template has `tool_discovery: "dynamic"` in its configuration and standard discovery methods fail, the system automatically:
@@ -112,10 +112,10 @@ Example template configuration supporting dynamic discovery:
 
 ```bash
 # Discover from MCP filesystem server
-mcp-template tools --image mcp/filesystem /tmp
+mcpt> tools --image mcp/filesystem /tmp
 
 # Discover from custom server with arguments
-mcp-template tools --image myregistry/mcp-server:latest config.json --port 8080
+mcpt> tools --image myregistry/mcp-server:latest config.json --port 8080
 
 # Example output for filesystem server
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -430,5 +430,5 @@ logging.basicConfig(level=logging.DEBUG)
 Or set environment variable:
 ```bash
 export LOG_LEVEL=DEBUG
-mcp-template tools my-template
+mcpt> tools my-template
 ```

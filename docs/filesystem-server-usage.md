@@ -10,10 +10,10 @@ The Filesystem MCP Server provides secure file system access through the Model C
 
 ```bash
 # Using the MCP deployment tool
-mcp-template deploy filesystem --name my-filesystem
+mcpt deploy filesystem --name my-filesystem
 
 # Or with custom configuration
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --name my-filesystem \
   --config '{"allowed_directories": ["/home/user/documents", "/tmp"], "max_file_size": "10MB"}'
 ```
@@ -245,7 +245,7 @@ The container shuts down automatically because:
 **Option 1: Long-running Mode (Recommended)**
 ```bash
 # Deploy with keep-alive configuration
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --name my-filesystem \
   --config '{"keep_alive": true, "idle_timeout": 3600}'
 

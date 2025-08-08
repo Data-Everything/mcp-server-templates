@@ -31,7 +31,7 @@ The fastest way to create a new template:
 
 ```bash
 # Start interactive template creation wizard
-mcp-template create
+mcpt create
 
 # Example interactive session:
 ╭─────────────────────────────────────────────────────────────╮
@@ -87,7 +87,7 @@ Environment variable: API_BASE_URL
 
 ```bash
 # Create template with specific ID
-mcp-template create my-database-server
+mcpt create my-database-server
 
 # Skips the template ID prompt
 ```
@@ -96,7 +96,7 @@ mcp-template create my-database-server
 
 ```bash
 # Create from configuration file
-mcp-template create --config-file template-config.json --non-interactive
+mcpt create --config-file template-config.json --non-interactive
 
 # Example template-config.json:
 {
@@ -137,7 +137,7 @@ mcp-template create --config-file template-config.json --non-interactive
 
 ```bash
 # Create template from MCP-compatible Docker image
-mcp-template create --from-image mcp/filesystem my-filesystem
+mcpt create --from-image mcp/filesystem my-filesystem
 
 # Automatically discovers tools and generates template structure
 ```
@@ -559,42 +559,42 @@ def _load_from_env() -> Dict[str, Any]:
 
 ```bash
 # Validate template structure and configuration
-mcp-template validate my-template
+mcpt validate my-template
 
 # Check configuration schema
-mcp-template config my-template --show-schema
+mcpt config my-template --show-schema
 
 # Test configuration parsing
-mcp-template config my-template --test-config config.json
+mcpt config my-template --test-config config.json
 ```
 
 ### Deployment Testing
 
 ```bash
 # Deploy for testing
-mcp-template deploy my-template --config debug=true
+mcpt deploy my-template --config debug=true
 
 # Check deployment status
-mcp-template status my-template
+mcpt status my-template
 
 # Test tool discovery
-mcp-template tools my-template
+mcpt> tools my-template
 
 # Test tools interactively
-mcp-template connect my-template --test
+mcpt connect my-template --test
 ```
 
 ### Integration Testing
 
 ```bash
 # Generate Claude Desktop integration
-mcp-template connect my-template --llm claude
+mcpt connect my-template --llm claude
 
 # Test with VS Code
-mcp-template connect my-template --llm vscode
+mcpt connect my-template --llm vscode
 
 # Generate Python client code
-mcp-template connect my-template --llm python
+mcpt connect my-template --llm python
 ```
 
 ## MCP Template Configuration
@@ -1033,13 +1033,13 @@ The MCP Template Platform extends standard configuration with powerful propertie
 
 ```bash
 # Package template for distribution
-mcp-template package my-template
+mcpt package my-template
 
 # Validate package
-mcp-template validate-package my-template.tar.gz
+mcpt validate-package my-template.tar.gz
 
 # Submit to template registry
-mcp-template submit my-template.tar.gz
+mcpt submit my-template.tar.gz
 ```
 
 ### Docker Registry
@@ -1131,7 +1131,7 @@ CMD ["node", "platform-wrapper.js"]
    python -m json.tool templates/my-template/template.json
 
    # Check for required fields
-   mcp-template validate my-template --verbose
+   mcpt validate my-template --verbose
    ```
 
 2. **Docker Build Issues**
@@ -1147,11 +1147,11 @@ CMD ["node", "platform-wrapper.js"]
 3. **Configuration Problems**
    ```bash
    # Test configuration parsing
-   mcp-template config my-template --test-env
+   mcpt config my-template --test-env
 
    # Check environment variable mapping
    export MCP_DEBUG=true
-   mcp-template deploy my-template --config debug=true
+   mcpt deploy my-template --config debug=true
    ```
 
 ### Debug Mode
@@ -1162,7 +1162,7 @@ export MCP_LOG_LEVEL=DEBUG
 export MCP_DEBUG_TEMPLATE=true
 
 # Deploy with debug options
-mcp-template deploy my-template \
+mcpt deploy my-template \
   --config debug=true \
   --config log_level=DEBUG \
   --verbose

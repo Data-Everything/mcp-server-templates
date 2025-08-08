@@ -27,13 +27,13 @@ Override template defaults at deployment time:
 
 ```bash
 # Set environment variables
-mcp-template deploy demo --env DEMO_MESSAGE="Custom message"
+mcpt deploy demo --env DEMO_MESSAGE="Custom message"
 
 # Change port
-mcp-template deploy demo --port 9090
+mcpt deploy demo --port 9090
 
 # Set multiple options
-mcp-template deploy demo --port 8080 --env DEBUG=true --env LOG_LEVEL=info
+mcpt deploy demo --port 8080 --env DEBUG=true --env LOG_LEVEL=info
 ```
 
 ## Configuration Files

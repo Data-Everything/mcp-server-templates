@@ -12,13 +12,13 @@ The filesystem template uses **stdio transport** and runs interactively rather t
 
 ```bash
 # Interactive mode (recommended)
-mcp-template interactive
-mcp> config filesystem allowed_dirs="/tmp /home/user/documents"
-mcp> tools filesystem
-mcp> call filesystem list_directory '{"path": "/tmp"}'
+mcpt interactive
+mcpt> config filesystem allowed_dirs="/tmp /home/user/documents"
+mcpt> tools filesystem
+mcpt> call filesystem list_directory '{"path": "/tmp"}'
 
 # Direct tool execution
-mcp-template run-tool filesystem list_directory \
+mcpt run-tool filesystem list_directory \
   --config allowed_dirs="/tmp /home/user/documents" \
   '{"path": "/tmp"}'
 ```
@@ -45,10 +45,10 @@ export LOG_LEVEL="DEBUG"
 
 # JSON config file
 echo '{"allowed_dirs": "/tmp /home/user/documents", "log_level": "INFO"}' > config.json
-mcp-template run-tool filesystem list_directory --config-file config.json '{"path": "/tmp"}'
+mcpt run-tool filesystem list_directory --config-file config.json '{"path": "/tmp"}'
 
 # CLI configuration
-mcp-template run-tool filesystem list_directory \
+mcpt run-tool filesystem list_directory \
   --config allowed_dirs="/tmp /home/user/documents" \
   --config log_level="DEBUG" \
   '{"path": "/tmp"}'
@@ -68,7 +68,7 @@ List all configured allowed directories.
 
 **Example**:
 ```bash
-mcp> call filesystem list_allowed_directories '{}'
+mcpt> call filesystem list_allowed_directories '{}'
 ```
 
 ##### `list_directory`
@@ -81,7 +81,7 @@ List contents of a directory.
 
 **Example**:
 ```bash
-mcp> call filesystem list_directory '{"path": "/tmp"}'
+mcpt> call filesystem list_directory '{"path": "/tmp"}'
 ```
 
 ##### `tree`
@@ -95,7 +95,7 @@ Display directory structure as a tree.
 
 **Example**:
 ```bash
-mcp> call filesystem tree '{"path": "/tmp", "max_depth": 3}'
+mcpt> call filesystem tree '{"path": "/tmp", "max_depth": 3}'
 ```
 
 ##### `create_directory`
@@ -108,7 +108,7 @@ Create a new directory.
 
 **Example**:
 ```bash
-mcp> call filesystem create_directory '{"path": "/tmp/new-folder"}'
+mcpt> call filesystem create_directory '{"path": "/tmp/new-folder"}'
 ```
 
 #### File Operations
@@ -123,7 +123,7 @@ Read contents of a file.
 
 **Example**:
 ```bash
-mcp> call filesystem read_file '{"path": "/tmp/example.txt"}'
+mcpt> call filesystem read_file '{"path": "/tmp/example.txt"}'
 ```
 
 ##### `read_multiple_files`
@@ -136,7 +136,7 @@ Read multiple files efficiently in a single operation.
 
 **Example**:
 ```bash
-mcp> call filesystem read_multiple_files '{"paths": ["/tmp/file1.txt", "/tmp/file2.txt"]}'
+mcpt> call filesystem read_multiple_files '{"paths": ["/tmp/file1.txt", "/tmp/file2.txt"]}'
 ```
 
 ##### `write_file`
@@ -150,7 +150,7 @@ Create or overwrite a file with content.
 
 **Example**:
 ```bash
-mcp> call filesystem write_file '{"path": "/tmp/output.txt", "content": "Hello World!"}'
+mcpt> call filesystem write_file '{"path": "/tmp/output.txt", "content": "Hello World!"}'
 ```
 
 ##### `modify_file`
@@ -164,7 +164,7 @@ Update specific parts of an existing file.
 
 **Example**:
 ```bash
-mcp> call filesystem modify_file '{"path": "/tmp/existing.txt", "content": "Updated content"}'
+mcpt> call filesystem modify_file '{"path": "/tmp/existing.txt", "content": "Updated content"}'
 ```
 
 ##### `copy_file`
@@ -178,7 +178,7 @@ Copy a file to a new location.
 
 **Example**:
 ```bash
-mcp> call filesystem copy_file '{"source": "/tmp/source.txt", "destination": "/tmp/backup.txt"}'
+mcpt> call filesystem copy_file '{"source": "/tmp/source.txt", "destination": "/tmp/backup.txt"}'
 ```
 
 ##### `move_file`
@@ -192,7 +192,7 @@ Move or rename a file.
 
 **Example**:
 ```bash
-mcp> call filesystem move_file '{"source": "/tmp/old.txt", "destination": "/tmp/new.txt"}'
+mcpt> call filesystem move_file '{"source": "/tmp/old.txt", "destination": "/tmp/new.txt"}'
 ```
 
 ##### `delete_file`
@@ -205,7 +205,7 @@ Delete a file or directory.
 
 **Example**:
 ```bash
-mcp> call filesystem delete_file '{"path": "/tmp/unwanted.txt"}'
+mcpt> call filesystem delete_file '{"path": "/tmp/unwanted.txt"}'
 ```
 
 ##### `get_file_info`
@@ -218,7 +218,7 @@ Get detailed metadata about a file or directory.
 
 **Example**:
 ```bash
-mcp> call filesystem get_file_info '{"path": "/tmp/example.txt"}'
+mcpt> call filesystem get_file_info '{"path": "/tmp/example.txt"}'
 ```
 
 #### Search Operations
@@ -234,7 +234,7 @@ Search for files by name patterns.
 
 **Example**:
 ```bash
-mcp> call filesystem search_files '{"path": "/tmp", "pattern": "*.txt"}'
+mcpt> call filesystem search_files '{"path": "/tmp", "pattern": "*.txt"}'
 ```
 
 ##### `search_within_files`
@@ -249,7 +249,7 @@ Search for content within files.
 
 **Example**:
 ```bash
-mcp> call filesystem search_within_files '{"path": "/tmp", "pattern": "error", "file_pattern": "*.log"}'
+mcpt> call filesystem search_within_files '{"path": "/tmp", "pattern": "error", "file_pattern": "*.log"}'
 ```
 
 ## Advanced Usage
@@ -257,12 +257,12 @@ mcp> call filesystem search_within_files '{"path": "/tmp", "pattern": "error", "
 ### Batch Operations
 ```bash
 # Read multiple configuration files at once
-mcp> call filesystem read_multiple_files '{
+mcpt> call filesystem read_multiple_files '{
   "paths": ["/etc/nginx/nginx.conf", "/etc/hosts", "/tmp/config.json"]
 }'
 
 # Search across multiple file types
-mcp> call filesystem search_within_files '{
+mcpt> call filesystem search_within_files '{
   "path": "/var/log",
   "pattern": "ERROR|FATAL",
   "file_pattern": "*.log"
@@ -272,10 +272,10 @@ mcp> call filesystem search_within_files '{
 ### Working with Large Directories
 ```bash
 # Use tree with depth limit for large directories
-mcp> call filesystem tree '{"path": "/usr", "max_depth": 2}'
+mcpt> call filesystem tree '{"path": "/usr", "max_depth": 2}'
 
 # Search specific file patterns to narrow results
-mcp> call filesystem search_files '{"path": "/home", "pattern": "*.py"}'
+mcpt> call filesystem search_files '{"path": "/home", "pattern": "*.py"}'
 ```
 
 ### Security Best Practices
@@ -378,7 +378,7 @@ pytest tests/test_cli_parsing_focused.py -v
 ### Custom Template Development
 ```bash
 # Create new template based on filesystem
-mcp-template create my-custom-fs --base filesystem
+mcpt create my-custom-fs --base filesystem
 
 # Modify template.json for custom configuration
 # Extend Dockerfile for additional tools
@@ -407,28 +407,28 @@ mcp-template create my-custom-fs --base filesystem
 ### Debug Commands
 ```bash
 # Check configuration
-mcp> show_config filesystem
+mcpt> show_config filesystem
 
 # List available tools
-mcp> tools filesystem
+mcpt> tools filesystem
 
 # Enable debug logging
-mcp> config filesystem log_level=DEBUG
+mcpt> config filesystem log_level=DEBUG
 
 # Test basic connectivity
-mcp> call filesystem list_allowed_directories '{}'
+mcpt> call filesystem list_allowed_directories '{}'
 ```
 
 ### Performance Optimization
 ```bash
 # For large directories, use specific patterns
-mcp> call filesystem search_files '{"path": "/large-dir", "pattern": "specific-*.txt"}'
+mcpt> call filesystem search_files '{"path": "/large-dir", "pattern": "specific-*.txt"}'
 
 # Batch operations when possible
-mcp> call filesystem read_multiple_files '{"paths": ["file1", "file2", "file3"]}'
+mcpt> call filesystem read_multiple_files '{"paths": ["file1", "file2", "file3"]}'
 
 # Use tree with depth limits
-mcp> call filesystem tree '{"path": "/large-dir", "max_depth": 2}'
+mcpt> call filesystem tree '{"path": "/large-dir", "max_depth": 2}'
 ```
 
 ## Support

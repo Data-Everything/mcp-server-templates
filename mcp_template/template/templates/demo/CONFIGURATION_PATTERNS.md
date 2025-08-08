@@ -13,11 +13,11 @@ Standard configuration uses the `config_schema` in `template.json` and provides:
 ### Usage Examples:
 ```bash
 # Via CLI config argument
-mcp-template deploy demo --config hello_from="My Server"
-mcp-template deploy demo --config log_level=debug
+mcpt deploy demo --config hello_from="My Server"
+mcpt deploy demo --config log_level=debug
 
 # Via environment variables
-MCP_HELLO_FROM="My Server" mcp-template deploy demo
+MCP_HELLO_FROM="My Server" mcpt deploy demo
 ```
 
 ### In Server Code:
@@ -38,15 +38,15 @@ Double underscore notation allows overriding ANY part of the template.json struc
 ### Usage Examples:
 ```bash
 # Override template-level properties
-mcp-template deploy demo --name="Custom Server Name"
-mcp-template deploy demo --description="Modified description"
+mcpt deploy demo --name="Custom Server Name"
+mcpt deploy demo --description="Modified description"
 
 # Override nested tool properties
-mcp-template deploy demo --tools__0__greeting_style=formal
-mcp-template deploy demo --tools__0__custom_prefix="Hey there!"
+mcpt deploy demo --tools__0__greeting_style=formal
+mcpt deploy demo --tools__0__custom_prefix="Hey there!"
 
 # Add custom fields
-mcp-template deploy demo --custom_field="any value"
+mcpt deploy demo --custom_field="any value"
 ```
 
 ### In Server Code:
@@ -78,7 +78,7 @@ The demo server includes a `demonstrate_overrides` tool that shows both patterns
 
 ```bash
 # Deploy demo and call the demonstration tool
-mcp-template deploy demo
+mcpt deploy demo
 curl -X POST http://localhost:7071/call -H 'Content-Type: application/json' \
   -d '{"method": "demonstrate_overrides", "params": {}}'
 ```

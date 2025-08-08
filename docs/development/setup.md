@@ -343,17 +343,17 @@ async def process_file(file_path: str) -> dict:
 
 ```bash
 # Validate template.json syntax and schema
-mcp-template validate templates/my-template/template.json
+mcpt validate templates/my-template/template.json
 
 # Test configuration processing
-mcp-template config my-template --show-mappings
+mcpt config my-template --show-mappings
 ```
 
 #### 2. Test Volume Mount Behavior
 
 ```bash
 # Deploy with volume mount configuration
-mcp-template deploy my-template --config data_directory="/tmp/test"
+mcpt deploy my-template --config data_directory="/tmp/test"
 
 # Verify volume mounts
 docker inspect mcp-my-template | grep -A 10 "Mounts"
@@ -363,7 +363,7 @@ docker inspect mcp-my-template | grep -A 10 "Mounts"
 
 ```bash
 # Check environment variables in container
-mcp-template shell my-template
+mcpt shell my-template
 env | grep -E "(DATA_DIR|API_KEY|ENABLED_FEATURES)"
 ```
 
@@ -427,8 +427,8 @@ env | grep -E "(DATA_DIR|API_KEY|ENABLED_FEATURES)"
 
 ```bash
 # Check CLI works
-mcp-template --version
-mcp-template list
+mcpt --version
+mcpt list
 
 # Run quick tests
 make test-quick
@@ -566,7 +566,7 @@ make type-check
 make deploy-test
 
 # Check logs
-mcp-template logs test-deployment
+mcpt logs test-deployment
 
 # Clean up
 make cleanup-test
@@ -597,7 +597,7 @@ git push origin feature/your-feature-name
 python -c "from mcp_template import TemplateDiscovery; d = TemplateDiscovery(); t = d.discover_templates(); print('your-template' in t)"
 
 # Test template deployment
-mcp-template deploy your-template --show-config
+mcpt deploy your-template --show-config
 ```
 
 ### Testing Issues

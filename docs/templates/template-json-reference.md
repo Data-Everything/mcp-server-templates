@@ -549,13 +549,13 @@ The platform automatically validates:
 
 ```bash
 # Validate template.json
-mcp-template validate templates/my-template/template.json
+mcpt validate templates/my-template/template.json
 
 # Test configuration processing
-mcp-template config my-template
+mcpt config my-template
 
 # Test deployment
-mcp-template deploy my-template --config-file test-config.json
+mcpt deploy my-template --config-file test-config.json
 ```
 
 ## Migration Guide

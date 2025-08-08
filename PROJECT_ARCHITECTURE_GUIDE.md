@@ -715,13 +715,13 @@ def test_end_to_end_volume_processing(self, temp_config_file):
 ### 1. Verbose Logging
 ```bash
 # Enable debug logging
-mcp-template deploy demo --verbose
+mcpt deploy demo --verbose
 ```
 
 ### 2. Configuration Inspection
 ```bash
 # Show configuration options
-mcp-template deploy demo --show-config
+mcpt deploy demo --show-config
 ```
 
 ### 3. Tool Discovery Debugging

@@ -7,15 +7,15 @@ and stdio tool execution for MCP server templates. The API is designed to mirror
 for drop-in replacement and compatibility.
 """
 
-from datetime import datetime
 import json
 import logging
 import os
 import socket
 import subprocess
 import time
-from typing import Any, Dict, List
 import uuid
+from datetime import datetime
+from typing import Any, Dict, List
 
 from rich.console import Console
 from rich.panel import Panel
@@ -405,8 +405,8 @@ class PodmanDeploymentService(BaseDeploymentBackend):
                     )
                     + "\n\n"
                     f"[green]To use this template, run tools directly:[/green]\n"
-                    f"  mcp-template tools {template_id}                    # List available tools\n"
-                    f"  mcp-template run-tool {template_id} <tool_name>     # Run a specific tool\n"
+                    f"  mcpt> tools {template_id}                    # List available tools\n"
+                    f"  mcpt run-tool {template_id} <tool_name>     # Run a specific tool\n"
                     f"  echo '{json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'})}' | \\\n"
                     f"    podman run -i --rm {template_data.get('image', template_data.get('podman_image', f'mcp-{template_id}:latest'))}",
                     title="Stdio Transport Detected",
@@ -738,6 +738,7 @@ class PodmanDeploymentService(BaseDeploymentBackend):
         """
         import os
         from pathlib import Path
+
         from mcp_template.template.utils.discovery import TemplateDiscovery
 
         discovery = TemplateDiscovery()

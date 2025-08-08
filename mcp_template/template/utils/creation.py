@@ -823,7 +823,7 @@ Set `DEBUG=1` environment variable for verbose logging.
 Deploy this template using the MCP platform:
 
 ```bash
-mcp-template deploy {self.template_data["id"]}
+mcpt deploy {self.template_data["id"]}
 ```
 
 ### Configuration

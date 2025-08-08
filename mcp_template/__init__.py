@@ -83,12 +83,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  mcp-template list                    # List available templates
-  mcp-template file-server             # Deploy file server with defaults
-  mcp-template file-server --name fs   # Deploy with custom name
-  mcp-template logs file-server        # View logs
-  mcp-template stop file-server        # Stop deployment
-  mcp-template shell file-server       # Open shell in container
+  mcpt list                    # List available templates
+  mcpt logs file-server        # View logs
+  mcpt stop file-server        # Stop deployment
+  mcpt shell file-server       # Open shell in container
+  mcpt interactive            # Start interactive CLI
+  mcpt> file-server             # Deploy file server with defaults
+  mcpt> file-server --name fs   # Deploy with custom name
         """,
     )
 

@@ -3,10 +3,10 @@ Integration tests for stdio MCP functionality.
 """
 
 import json
-import pytest
-from unittest.mock import MagicMock, Mock, patch
 from argparse import Namespace
+from unittest.mock import MagicMock, Mock, patch
 
+import pytest
 from rich.panel import Panel
 
 from mcp_template import main
@@ -40,7 +40,7 @@ def test_full_run_tool_flow(mock_cli_class, mock_console):
 
     # Should show deprecation warning
     mock_console.print.assert_called_with(
-        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
+        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcpt interactive`[/magenta][/red]"
     )
 
 
