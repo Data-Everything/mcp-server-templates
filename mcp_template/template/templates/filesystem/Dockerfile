@@ -1,4 +1,4 @@
-FROM ghcr.io/mark3labs/mcp-filesystem-server
+FROM ghcr.io/mark3labs/mcp-filesystem-server:latest
 
 LABEL maintainer="Data Everything <tooling@dataeverything.com>"
 LABEL description="Demo MCP filesystem Server"

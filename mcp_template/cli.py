@@ -14,7 +14,7 @@ import datetime
 import json
 import logging
 import subprocess
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 from rich.panel import Panel
@@ -663,7 +663,7 @@ else:
                     f"Stdio MCP servers run interactively and cannot be deployed as persistent containers.\n\n"
                     f"[yellow]Available tools in this template:[/yellow]\n"
                     + (
-                        f"  • {chr(10).join(f'  • {tool}' for tool in tool_names)}"
+                        f"{chr(10).join(f'  • {tool}' for tool in tool_names)}"
                         if tool_names
                         else "  • No tools discovered"
                     )

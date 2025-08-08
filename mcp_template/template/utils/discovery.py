@@ -185,7 +185,10 @@ class TemplateDiscovery:
 
     def _extract_volumes(self, template_data: Dict[str, Any]) -> Dict[str, str]:
         """Extract volume mounts from template configuration."""
-        volumes = {}
+        volumes = {
+            "~/mcp-data": DEFAULT_DATA_PATH,
+            "~/.mcp/logs": DEFAULT_LOGS_PATH,
+        }
 
         # Default volumes
         config_schema = template_data.get("config_schema", {})
@@ -206,13 +209,6 @@ class TemplateDiscovery:
                         else "~/mcp-data"
                     )
                     volumes[host_path] = directory
-
-        # Fallback default volumes
-        if not volumes:
-            volumes = {
-                "~/mcp-data": DEFAULT_DATA_PATH,
-                "~/.mcp/logs": DEFAULT_LOGS_PATH,
-            }
 
         return volumes
 

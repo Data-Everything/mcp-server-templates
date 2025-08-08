@@ -28,11 +28,14 @@
       "allowed_dirs": {
         "type": "string",
         "description": "Allowed directories to scan, create or read from. Defaults to anything that gets mounted to /data directory in container",
-        "default": "/app",
-        "env_mapping": "ALLOWED_DIRS"
+        "env_mapping": "ALLOWED_DIRS",
+        "volume_mount": true,
+        "command_arg": true
       }
     },
-    "required": []
+    "required": [
+      "allowed_dirs"
+    ]
   },
   "tool_discovery": "dynamic",
   "tool_endpoint": "/tools",
