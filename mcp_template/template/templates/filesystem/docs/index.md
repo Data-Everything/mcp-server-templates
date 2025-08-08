@@ -442,13 +442,6 @@ For issues, questions, or contributions:
 
 This template incorporates the `mcp-filesystem-server` from Mark3 Labs. Please review the original project's license terms for complete usage rights and restrictions.
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the server
-python -m server
-```
-
 ### Testing
 
 ```bash
