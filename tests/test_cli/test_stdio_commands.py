@@ -3,9 +3,10 @@ Tests for the stdio MCP commands (run-tool and tools).
 """
 
 import json
-import pytest
-from unittest.mock import MagicMock, Mock, patch
 from argparse import Namespace
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 from mcp_template.cli import EnhancedCLI, handle_enhanced_cli_commands
 
@@ -157,7 +158,7 @@ def test_handle_enhanced_cli_commands_run_tool(mock_console, mock_cli):
     assert result is True
     # Should show deprecation warning
     mock_console.print.assert_called_with(
-        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
+        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcpt interactive`[/magenta][/red]"
     )
 
 
@@ -175,7 +176,7 @@ def test_handle_enhanced_cli_commands_tools(mock_console, mock_cli):
     assert result is True
     # Should show deprecation warning
     mock_console.print.assert_called_with(
-        "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+        "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcpt interactive`[/magenta][/red]"
     )
 
 
@@ -197,7 +198,7 @@ def test_handle_enhanced_cli_commands_tools_with_image(mock_console, mock_cli):
     assert result is True
     # Should show deprecation warning
     mock_console.print.assert_called_with(
-        "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+        "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcpt interactive`[/magenta][/red]"
     )
 
 
@@ -213,7 +214,7 @@ def test_handle_enhanced_cli_commands_tools_no_args(mock_console, enhanced_cli):
     assert result is True
     # Should show deprecation warning
     mock_console.print.assert_called_with(
-        "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+        "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcpt interactive`[/magenta][/red]"
     )
 
 
@@ -343,7 +344,7 @@ def test_handle_enhanced_cli_commands_run_tool_with_env_vars(mock_console):
     assert result is True
     # Should show deprecation warning
     mock_console.print.assert_called_with(
-        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
+        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcpt interactive`[/magenta][/red]"
     )
 
 
@@ -366,5 +367,5 @@ def test_handle_enhanced_cli_commands_run_tool_no_args(mock_console):
     assert result is True
     # Should show deprecation warning
     mock_console.print.assert_called_with(
-        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
+        "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcpt interactive`[/magenta][/red]"
     )

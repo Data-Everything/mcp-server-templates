@@ -8,7 +8,10 @@ and can be used to test different configuration scenarios.
 
 import json
 
+import pytest
 
+
+@pytest.mark.unit
 # Mock the config mapper functionality for testing
 class MockTemplateConfigMapper:
     """Mock version of TemplateConfigMapper for testing."""

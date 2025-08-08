@@ -5,7 +5,7 @@ The `shell` command opens an interactive shell inside a deployed template's cont
 ## Usage
 
 ```bash
-mcp-template shell [template_name]
+mcpt shell [template_name]
 ```
 
 ## Arguments
@@ -25,17 +25,17 @@ This command provides direct access to the container environment where your MCP 
 
 Open shell in default template container:
 ```bash
-mcp-template shell
+mcpt shell
 ```
 
 Open shell in specific template deployment:
 ```bash
-mcp-template shell my-github-server
+mcpt shell my-github-server
 ```
 
 ## Prerequisites
 
-- Template must be deployed first using `mcp-template deploy`
+- Template must be deployed first using `mcpt deploy`
 - Docker must be running
 - Template container must be active
 

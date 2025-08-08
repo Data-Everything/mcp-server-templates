@@ -44,7 +44,7 @@ The `template.json` file defines your template:
 Use the built-in template creator:
 
 ```bash
-mcp-template create my-template
+mcpt create my-template
 ```
 
 This will prompt you for template details and generate the structure.

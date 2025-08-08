@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-mcp-template logs TEMPLATE [OPTIONS]
+mcpt logs TEMPLATE [OPTIONS]
 ```
 
 ## Description
@@ -37,7 +37,7 @@ The `logs` command provides comprehensive log viewing and monitoring for deploye
 
 ```bash
 # View all logs for demo template
-mcp-template logs demo
+mcpt logs demo
 
 # Example output:
 2024-01-15 10:30:45 [INFO] MCP Server starting on stdio transport
@@ -54,51 +54,51 @@ mcp-template logs demo
 
 ```bash
 # Follow logs in real-time
-mcp-template logs demo --follow
+mcpt logs demo --follow
 
 # Follow with tail (last 50 lines + new ones)
-mcp-template logs demo --follow --tail 50
+mcpt logs demo --follow --tail 50
 
 # Monitor specific log level
-mcp-template logs demo --follow --level error
+mcpt logs demo --follow --level error
 ```
 
 ### Time-based Filtering
 
 ```bash
 # Show logs from last hour
-mcp-template logs demo --since 1h
+mcpt logs demo --since 1h
 
 # Show logs from last 30 minutes
-mcp-template logs demo --since 30m
+mcpt logs demo --since 30m
 
 # Show logs from specific time range
-mcp-template logs demo --since 2024-01-15T10:00:00 --until 2024-01-15T11:00:00
+mcpt logs demo --since 2024-01-15T10:00:00 --until 2024-01-15T11:00:00
 
 # Show recent activity
-mcp-template logs demo --since 5m --follow
+mcpt logs demo --since 5m --follow
 ```
 
 ### Content Filtering
 
 ```bash
 # Filter by log level
-mcp-template logs demo --level error
-mcp-template logs demo --level warn
+mcpt logs demo --level error
+mcpt logs demo --level warn
 
 # Search for specific patterns
-mcp-template logs demo --grep "tool called"
-mcp-template logs demo --grep "error\|exception" --level error
+mcpt logs demo --grep "tool called"
+mcpt logs demo --grep "error\|exception" --level error
 
 # Combine filters
-mcp-template logs demo --since 1h --level info --grep "client"
+mcpt logs demo --since 1h --level info --grep "client"
 ```
 
 ### Output Formats
 
 ```bash
 # JSON format for parsing
-mcp-template logs demo --format json --tail 10
+mcpt logs demo --format json --tail 10
 
 # Example JSON output:
 [
@@ -123,7 +123,7 @@ mcp-template logs demo --format json --tail 10
 ]
 
 # Plain text format (no formatting)
-mcp-template logs demo --format plain --no-color
+mcpt logs demo --format plain --no-color
 ```
 
 ## Log Levels and Filtering
@@ -142,13 +142,13 @@ mcp-template logs demo --format plain --no-color
 
 ```bash
 # Show only errors and warnings
-mcp-template logs demo --level warn
+mcpt logs demo --level warn
 
 # Debug-level logging (very verbose)
-mcp-template logs demo --level debug --tail 100
+mcpt logs demo --level debug --tail 100
 
 # Production monitoring (errors only)
-mcp-template logs demo --level error --follow
+mcpt logs demo --level error --follow
 ```
 
 ## Advanced Filtering
@@ -157,29 +157,29 @@ mcp-template logs demo --level error --follow
 
 ```bash
 # Case-insensitive search
-mcp-template logs demo --grep "(?i)error"
+mcpt logs demo --grep "(?i)error"
 
 # Multiple patterns (OR logic)
-mcp-template logs demo --grep "error\|exception\|fail"
+mcpt logs demo --grep "error\|exception\|fail"
 
 # Tool-specific logs
-mcp-template logs demo --grep "Tool called: say_hello"
+mcpt logs demo --grep "Tool called: say_hello"
 
 # Client connection logs
-mcp-template logs demo --grep "client (connected|disconnected)"
+mcpt logs demo --grep "client (connected|disconnected)"
 ```
 
 ### Complex Queries
 
 ```bash
 # Errors in last hour
-mcp-template logs demo --since 1h --level error
+mcpt logs demo --since 1h --level error
 
 # Recent tool calls with debug info
-mcp-template logs demo --since 30m --grep "Tool" --level debug
+mcpt logs demo --since 30m --grep "Tool" --level debug
 
 # Monitor specific functionality
-mcp-template logs demo --follow --grep "file_server\|directory"
+mcpt logs demo --follow --grep "file_server\|directory"
 ```
 
 ## Performance and Troubleshooting
@@ -188,13 +188,13 @@ mcp-template logs demo --follow --grep "file_server\|directory"
 
 ```bash
 # Check startup logs
-mcp-template logs demo --since 10m --level info
+mcpt logs demo --since 10m --level info
 
 # Look for errors during initialization
-mcp-template logs demo --grep "starting\|initializ" --level error
+mcpt logs demo --grep "starting\|initializ" --level error
 
 # Monitor resource usage logs
-mcp-template logs demo --grep "memory\|cpu\|disk" --follow
+mcpt logs demo --grep "memory\|cpu\|disk" --follow
 ```
 
 ### Common Log Patterns
@@ -235,13 +235,13 @@ mcp-template logs demo --grep "memory\|cpu\|disk" --follow
 
 ```bash
 # Monitor tool performance
-mcp-template logs demo --grep "execution.*[0-9]+\.[0-9]+s" --follow
+mcpt logs demo --grep "execution.*[0-9]+\.[0-9]+s" --follow
 
 # Track client connections
-mcp-template logs demo --grep "client.*connected\|disconnected" --since 1h
+mcpt logs demo --grep "client.*connected\|disconnected" --since 1h
 
 # Monitor error rates
-mcp-template logs demo --level error --since 1h | wc -l
+mcpt logs demo --level error --since 1h | wc -l
 ```
 
 ## Integration with Monitoring
@@ -251,10 +251,10 @@ mcp-template logs demo --level error --since 1h | wc -l
 ```bash
 #!/bin/bash
 # Simple error monitoring script
-ERROR_COUNT=$(mcp-template logs demo --since 1h --level error --format plain | wc -l)
+ERROR_COUNT=$(mcpt logs demo --since 1h --level error --format plain | wc -l)
 if [ "$ERROR_COUNT" -gt 10 ]; then
     echo "⚠️  High error rate: $ERROR_COUNT errors in last hour"
-    mcp-template logs demo --since 1h --level error --tail 5
+    mcpt logs demo --since 1h --level error --tail 5
 fi
 ```
 
@@ -262,13 +262,13 @@ fi
 
 ```bash
 # Export logs to file
-mcp-template logs demo --since 1d --format json > demo_logs_$(date +%Y%m%d).json
+mcpt logs demo --since 1d --format json > demo_logs_$(date +%Y%m%d).json
 
 # Import to log analysis tools
-mcp-template logs demo --format json --since 1h | jq '.[] | select(.level == "ERROR")'
+mcpt logs demo --format json --since 1h | jq '.[] | select(.level == "ERROR")'
 
 # Create CSV for spreadsheet analysis
-mcp-template logs demo --since 1d --format json | \
+mcpt logs demo --since 1d --format json | \
   jq -r '.[] | [.timestamp, .level, .message] | @csv' > logs.csv
 ```
 
@@ -331,8 +331,8 @@ logging:
 
 ```bash
 # Monitor multiple templates simultaneously
-mcp-template logs demo --follow &
-mcp-template logs filesystem --follow &
+mcpt logs demo --follow &
+mcpt logs filesystem --follow &
 wait
 ```
 
@@ -343,8 +343,8 @@ wait
 ❌ No logs available for template 'demo'
 ```
 **Solutions**:
-- Verify template is deployed: `mcp-template status demo`
-- Check if container is running: `mcp-template list`
+- Verify template is deployed: `mcpt status demo`
+- Check if container is running: `mcpt list`
 - Container may have just started: try `--since 1m`
 
 ### Permission Errors

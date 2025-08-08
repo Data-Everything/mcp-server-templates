@@ -1,17 +1,38 @@
 # MCP Server Templates
 
-**Comprehensive guide to available MCP server templates, their usage, and creation of custom templates.**
+**Comprehensive guide to available MCP server templates, their usage, and creation of custom templates with advanced configuration properties.**
 
 ## Overview
 
 MCP Server Templates are pre-configured, production-ready implementations of the Model Context Protocol specification. Each template is designed for specific use cases and provides a complete deployment package including:
 
-- 🔧 **Complete configuration schemas** with environment variable mapping
+- 🔧 **Advanced configuration schemas** with MCP-specific properties (volume_mount, command_arg, sensitive)
 - 📖 **Comprehensive documentation** and usage examples
 - 🧪 **Built-in testing frameworks** and validation
-- 🐳 **Docker containerization** with optimized images
+- 🐳 **Docker containerization** with automatic volume mounting
 - ⚙️ **CLI integration** for seamless deployment
 - 🔗 **Client integration examples** for popular LLM platforms
+- 🚀 **Multiple transport protocols** (stdio, HTTP, SSE)
+
+## Template Configuration Features
+
+### MCP-Specific Properties
+
+| Property | Purpose | Example Use Case |
+|----------|---------|------------------|
+| `volume_mount: true` | Auto-create Docker volumes from config | Filesystem access, data processing |
+| `command_arg: true` | Inject config as command arguments | Configuration files, debug flags |
+| `sensitive: true` | Secure handling of secrets | API keys, passwords, tokens |
+| `env_mapping` | Map config to environment variables | Application configuration |
+| `transport` | Communication protocol options | stdio, HTTP, SSE, streamable-http |
+
+### Configuration Documentation
+
+| Resource | Description | Target Audience |
+|----------|-------------|-----------------|
+| **[📖 Template.json Reference](template-json-reference.md)** | Complete configuration property guide | All developers |
+| **[🚀 Creating Templates](creating.md)** | Step-by-step template creation | Template creators |
+| **[🔧 Development Setup](../development/setup.md)** | Advanced development patterns | Core developers |
 
 ## Available Templates
 
@@ -44,13 +65,13 @@ MCP Server Templates are pre-configured, production-ready implementations of the
 
 ```bash
 # List available templates
-mcp-template list
+mcpt list
 
 # Deploy demo template
-mcp-template deploy demo
+mcpt deploy demo
 
 # Deploy with custom configuration
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config security__allowed_dirs='["/data", "/workspace"]' \
   --config security__read_only=false
 ```
@@ -59,13 +80,13 @@ mcp-template deploy filesystem \
 
 ```bash
 # Discover available tools
-mcp-template tools demo
+mcpt> tools demo
 
 # Get detailed tool information
-mcp-template tools filesystem --detailed
+mcpt> tools filesystem --detailed
 
 # Generate integration examples
-mcp-template connect demo --llm claude
+mcpt connect demo --llm claude
 ```
 
 ## Template Categories
@@ -114,28 +135,28 @@ All templates support:
 ### Testing Templates
 ```bash
 # Deploy for testing
-mcp-template deploy template-name --config debug=true
+mcpt deploy template-name --config debug=true
 
 # Monitor logs
-mcp-template logs template-name --follow
+mcpt logs template-name --follow
 
 # Check status
-mcp-template status template-name --detailed
+mcpt status template-name --detailed
 
 # Test tools
-mcp-template connect template-name --test
+mcpt connect template-name --test
 ```
 
 ### Template Validation
 ```bash
 # Validate template structure
-mcp-template validate template-name
+mcpt validate template-name
 
 # Check configuration schema
-mcp-template config template-name --show-schema
+mcpt config template-name --show-schema
 
 # Test tool discovery
-mcp-template tools --image template:latest
+mcpt> tools --image template:latest
 ```
 
 ## Creating Custom Templates
@@ -150,13 +171,13 @@ For detailed information on creating your own templates, see:
 
 ```bash
 # Interactive template creation
-mcp-template create
+mcpt create
 
 # Create from existing image
-mcp-template create --from-image mcp/custom my-template
+mcpt create --from-image mcp/custom my-template
 
 # Create with configuration
-mcp-template create --config-file template-config.json --non-interactive
+mcpt create --config-file template-config.json --non-interactive
 ```
 
 ## Template Architecture

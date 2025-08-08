@@ -18,7 +18,7 @@ Complete reference for the `mcp-template` command-line interface.
 List available templates.
 
 ```bash
-mcp-template list [OPTIONS]
+mcpt list [OPTIONS]
 ```
 
 **Options:**
@@ -27,9 +27,9 @@ mcp-template list [OPTIONS]
 
 **Examples:**
 ```bash
-mcp-template list
-mcp-template list --format json
-mcp-template list --filter database
+mcpt list
+mcpt list --format json
+mcpt list --filter database
 ```
 
 ### `deploy`
@@ -37,7 +37,7 @@ mcp-template list --filter database
 Deploy a template (HTTP transport only).
 
 ```bash
-mcp-template deploy TEMPLATE [OPTIONS]
+mcpt deploy TEMPLATE [OPTIONS]
 ```
 
 **Arguments:**
@@ -52,9 +52,9 @@ mcp-template deploy TEMPLATE [OPTIONS]
 
 **Examples:**
 ```bash
-mcp-template deploy demo
-mcp-template deploy demo --port 8080
-mcp-template deploy demo --env DEBUG=true --env LOG_LEVEL=debug
+mcpt deploy demo
+mcpt deploy demo --port 8080
+mcpt deploy demo --env DEBUG=true --env LOG_LEVEL=debug
 ```
 
 **Note:** Only HTTP transport templates can be deployed. Stdio transport templates will show an error with guidance to use `run-tool` instead.
@@ -64,7 +64,7 @@ mcp-template deploy demo --env DEBUG=true --env LOG_LEVEL=debug
 Run a specific tool from a stdio MCP template.
 
 ```bash
-mcp-template run-tool TEMPLATE TOOL_NAME [OPTIONS]
+mcpt run-tool TEMPLATE TOOL_NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -79,15 +79,15 @@ mcp-template run-tool TEMPLATE TOOL_NAME [OPTIONS]
 **Examples:**
 ```bash
 # Basic tool execution
-mcp-template run-tool github search_repositories --args '{"query": "mcp"}'
+mcpt run-tool github search_repositories --args '{"query": "mcp"}'
 
 # With authentication
-mcp-template run-tool github create_issue \
+mcpt run-tool github create_issue \
   --args '{"owner": "user", "repo": "test", "title": "Bug"}' \
   --env GITHUB_PERSONAL_ACCESS_TOKEN=token
 
 # With configuration
-mcp-template run-tool filesystem read_file \
+mcpt run-tool filesystem read_file \
   --args '{"path": "/data/file.txt"}' \
   --config allowed_directories='["/data"]' \
   --config read_only=true
@@ -98,7 +98,7 @@ mcp-template run-tool filesystem read_file \
 List available tools for a template or discover tools from a Docker image.
 
 ```bash
-mcp-template tools [TEMPLATE] [OPTIONS]
+mcpt> tools [TEMPLATE] [OPTIONS]
 ```
 
 **Arguments:**
@@ -113,17 +113,17 @@ mcp-template tools [TEMPLATE] [OPTIONS]
 **Examples:**
 ```bash
 # List tools for a template
-mcp-template tools github
-mcp-template tools filesystem
+mcpt> tools github
+mcpt> tools filesystem
 
 # Discover tools from Docker image
-mcp-template tools --image mcp/github:latest
+mcpt> tools --image mcp/github:latest
 
 # List tools with configuration
-mcp-template tools github --config github_token=your_token
+mcpt> tools github --config github_token=your_token
 
 # Force refresh tool discovery
-mcp-template tools github --refresh
+mcpt> tools github --refresh
 ```
 
 ### `stop`
@@ -131,7 +131,7 @@ mcp-template tools github --refresh
 Stop a running deployment.
 
 ```bash
-mcp-template stop NAME [OPTIONS]
+mcpt stop NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -145,7 +145,7 @@ mcp-template stop NAME [OPTIONS]
 Remove a deployment.
 
 ```bash
-mcp-template remove NAME [OPTIONS]
+mcpt remove NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -159,7 +159,7 @@ mcp-template remove NAME [OPTIONS]
 View deployment logs.
 
 ```bash
-mcp-template logs NAME [OPTIONS]
+mcpt logs NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -175,7 +175,7 @@ mcp-template logs NAME [OPTIONS]
 Check deployment status.
 
 ```bash
-mcp-template status [NAME] [OPTIONS]
+mcpt status [NAME] [OPTIONS]
 ```
 
 **Arguments:**
@@ -186,7 +186,7 @@ mcp-template status [NAME] [OPTIONS]
 Create a new template.
 
 ```bash
-mcp-template create NAME [OPTIONS]
+mcpt create NAME [OPTIONS]
 ```
 
 **Arguments:**

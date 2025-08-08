@@ -30,8 +30,8 @@ from mcp_template.backends.docker import DockerDeploymentService
 
 # Import enhanced CLI modules
 from mcp_template.cli import (
-    add_enhanced_cli_args,
     EnhancedCLI,
+    add_enhanced_cli_args,
     handle_enhanced_cli_commands,
 )
 from mcp_template.deployer import MCPDeployer
@@ -59,6 +59,20 @@ logger = logging.getLogger(__name__)
 enhanced_cli = EnhancedCLI()
 
 
+def split_command_args(args):
+    """
+    Split command line arguments into a list, handling quoted strings.
+    This is useful for parsing command line arguments that may contain spaces.
+    """
+
+    out_vars = {}
+    for var in args:
+        key, value = var.split("=", 1)
+        out_vars[key] = value
+
+    return out_vars
+
+
 def main():
     """
     Main entry point for the MCP deployer CLI.
@@ -69,12 +83,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  mcp-template list                    # List available templates
-  mcp-template file-server             # Deploy file server with defaults
-  mcp-template file-server --name fs   # Deploy with custom name
-  mcp-template logs file-server        # View logs
-  mcp-template stop file-server        # Stop deployment
-  mcp-template shell file-server       # Open shell in container
+  mcpt list                    # List available templates
+  mcpt logs file-server        # View logs
+  mcpt stop file-server        # Stop deployment
+  mcpt shell file-server       # Open shell in container
+  mcpt interactive            # Start interactive CLI
+  mcpt> file-server             # Deploy file server with defaults
+  mcpt> file-server --name fs   # Deploy with custom name
         """,
     )
 
@@ -227,23 +242,21 @@ Examples:
                 deployer._show_config_options(template)
                 return
 
-            env_vars = {}
-            if hasattr(args, "env") and args.env:
-                for env_var in args.env:
-                    key, value = env_var.split("=", 1)
-                    env_vars[key] = value
-
-            config_values = {}
-            if hasattr(args, "config") and args.config:
-                for config_var in args.config:
-                    key, value = config_var.split("=", 1)
-                    config_values[key] = value
-
-            override_values = {}
-            if hasattr(args, "override") and args.override:
-                for override_var in args.override:
-                    key, value = override_var.split("=", 1)
-                    override_values[key] = value
+            env_vars = (
+                split_command_args(args.env)
+                if hasattr(args, "env") and args.env
+                else {}
+            )
+            config_values = (
+                split_command_args(args.config)
+                if hasattr(args, "config") and args.config
+                else {}
+            )
+            override_values = (
+                split_command_args(args.override)
+                if hasattr(args, "override") and args.override
+                else {}
+            )
 
             # Deploy using enhanced CLI with transport support
             success = enhanced_cli.deploy_with_transport(

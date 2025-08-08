@@ -36,5 +36,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 ENV MCP_LOG_LEVEL=info
 ENV MCP_HELLO_FROM="MCP Platform"
 
+RUN chmod +x script.sh
+
 # Default command
-CMD ["python", "server.py"]
+ENTRYPOINT ["/app/script.sh"]

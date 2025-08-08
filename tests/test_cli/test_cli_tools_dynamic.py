@@ -6,8 +6,9 @@ Tests the new functionality where the tools command can fallback to Docker image
 discovery for templates with tool_discovery="dynamic" when standard discovery fails.
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 from mcp_template.cli import EnhancedCLI, handle_enhanced_cli_commands
 
@@ -201,7 +202,7 @@ class TestEnhancedCLIToolsDynamic:
         assert result is True
         # Should show deprecation warning
         mock_console.print.assert_called_with(
-            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcpt interactive`[/magenta][/red]"
         )
 
     @patch("mcp_template.cli.console")
@@ -223,7 +224,7 @@ class TestEnhancedCLIToolsDynamic:
         assert result is True
         # Should show deprecation warning, not config error
         mock_console.print.assert_called_with(
-            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcpt interactive`[/magenta][/red]"
         )
 
     @patch("mcp_template.cli.console")
@@ -241,7 +242,7 @@ class TestEnhancedCLIToolsDynamic:
         assert result is True
         # Should show deprecation warning
         mock_console.print.assert_called_with(
-            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcpt interactive`[/magenta][/red]"
         )
 
 

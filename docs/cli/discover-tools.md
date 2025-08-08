@@ -2,16 +2,16 @@
 
 **[DEPRECATED] Use `tools --image` instead under the interactive CLI. This command will be removed in a future version.**
 
-⚠️ **This command is deprecated**. The functionality has been merged into the unified `tools` command. 
+⚠️ **This command is deprecated**. The functionality has been merged into the unified `tools` command.
 
 **Migration**: Replace `discover-tools --image` with `tools --image`:
 
 ```bash
 # Old (deprecated)
-mcp-template discover-tools --image mcp/filesystem /tmp
+mcpt discover-tools --image mcp/filesystem /tmp
 
-# New (recommended) 
-mcp-template tools --image mcp/filesystem /tmp
+# New (recommended)
+mcpt> tools --image mcp/filesystem /tmp
 ```
 
 ---
@@ -19,7 +19,7 @@ mcp-template tools --image mcp/filesystem /tmp
 ## Synopsis
 
 ```bash
-mcp-template discover-tools --image IMAGE [SERVER_ARGS...]
+mcpt discover-tools --image IMAGE [SERVER_ARGS...]
 ```
 
 ## Description
@@ -60,7 +60,7 @@ If MCP stdio fails, the system automatically falls back to:
 
 ```bash
 # Discover tools from filesystem server
-mcp-template discover-tools --image mcp/filesystem /tmp
+mcpt discover-tools --image mcp/filesystem /tmp
 
 # Example output:
 ╭──────────────────────────────────────────────────────────────╮
@@ -95,17 +95,17 @@ mcp-template discover-tools --image mcp/filesystem /tmp
 
 ```bash
 # Database server with connection parameters
-mcp-template discover-tools \
+mcpt discover-tools \
   --image myregistry/postgres-mcp:latest \
   --host localhost --port 5432 --database mydb
 
 # API server with authentication
-mcp-template discover-tools \
+mcpt discover-tools \
   --image company/api-mcp:v1.0 \
   --api-key $API_TOKEN --base-url https://api.example.com
 
 # File server with multiple directories
-mcp-template discover-tools \
+mcpt discover-tools \
   --image mcp/filesystem \
   /data /workspace /tmp
 ```
@@ -114,7 +114,7 @@ mcp-template discover-tools \
 
 ```bash
 # Custom image with complex configuration
-mcp-template discover-tools \
+mcpt discover-tools \
   --image custom/research-mcp:latest \
   --config config.json \
   --model gpt-4 \
@@ -122,7 +122,7 @@ mcp-template discover-tools \
   --output-format json
 
 # Development server with debug mode
-mcp-template discover-tools \
+mcpt discover-tools \
   --image local/dev-mcp:latest \
   --debug \
   --log-level trace \
@@ -156,15 +156,15 @@ For programmatic usage, pipe to `jq` or similar tools:
 
 ```bash
 # Get raw JSON data
-mcp-template discover-tools --image mcp/filesystem /tmp | \
+mcpt discover-tools --image mcp/filesystem /tmp | \
   grep -A 1000 "Raw result:" | tail -n +2
 
 # Extract just tool names
-mcp-template discover-tools --image mcp/filesystem /tmp 2>/dev/null | \
+mcpt discover-tools --image mcp/filesystem /tmp 2>/dev/null | \
   jq -r '.tools[].name'
 
 # Get tools with descriptions
-mcp-template discover-tools --image mcp/filesystem /tmp 2>/dev/null | \
+mcpt discover-tools --image mcp/filesystem /tmp 2>/dev/null | \
   jq -r '.tools[] | "\(.name): \(.description)"'
 ```
 
@@ -217,7 +217,7 @@ For detailed troubleshooting information:
 
 ```bash
 # Enable debug logging
-MCP_DEBUG=1 mcp-template discover-tools --image mcp/filesystem /tmp
+MCP_DEBUG=1 mcpt discover-tools --image mcp/filesystem /tmp
 
 # Check container logs manually
 docker run -it --rm mcp/filesystem /tmp
@@ -230,13 +230,13 @@ Use discovered tools to inform template creation:
 
 ```bash
 # Discover tools
-mcp-template discover-tools --image custom/mcp-server:latest > tools.json
+mcpt discover-tools --image custom/mcp-server:latest > tools.json
 
 # Create template with discovered capabilities
-mcp-template create my-template --from-discovery tools.json
+mcpt create my-template --from-discovery tools.json
 
 # Deploy template
-mcp-template deploy my-template
+mcpt deploy my-template
 ```
 
 ## Performance Considerations

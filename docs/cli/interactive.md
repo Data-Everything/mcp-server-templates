@@ -5,7 +5,7 @@ The `interactive` command launches a comprehensive CLI session for deployment ma
 ## Usage
 
 ```bash
-mcp-template interactive
+mcpt interactive
 ```
 
 ## Description
@@ -13,7 +13,7 @@ mcp-template interactive
 The interactive mode provides a unified interface for managing MCP server deployments and executing tools directly from the command line. This is the primary way to:
 
 - **Manage Deployments**: List, monitor, and control running MCP server deployments
-- **Discover Tools**: Automatically discover available tools from deployed servers  
+- **Discover Tools**: Automatically discover available tools from deployed servers
 - **Execute Tools**: Run MCP server tools directly without writing integration code
 - **Interactive Debugging**: Test and debug MCP server functionality in real-time
 
@@ -41,25 +41,22 @@ The interactive mode provides a unified interface for managing MCP server deploy
 
 ```bash
 # Start interactive session
-mcp-template interactive
+mcpt interactive
 
 Welcome to MCP Template Interactive CLI
 Type 'help' for available commands, 'exit' to quit
 
 # List available deployments
-mcp> deployments
-
-# Discover tools from a deployment
-mcp> discover github-server
+mcpt> list_servers
 
 # Execute a tool
-mcp> call github-server search_repositories --query "mcp"
-
-# View deployment logs
-mcp> logs github-server
+mcpt> call github-server search_repositories --query "mcp"
 
 # Exit session
-mcp> exit
+mcpt> exit
+
+# View deployment logs
+mcpt logs github-server
 ```
 
 ## Benefits

@@ -20,7 +20,7 @@ pip install mcp-template
 Create a new MCP server template.
 
 ```bash
-mcp-template create [TEMPLATE_ID] [OPTIONS]
+mcpt create [TEMPLATE_ID] [OPTIONS]
 ```
 
 **Arguments:**
@@ -33,16 +33,16 @@ mcp-template create [TEMPLATE_ID] [OPTIONS]
 **Examples:**
 ```bash
 # Interactive template creation
-mcp-template create
+mcpt create
 
 # Create with specific template ID
-mcp-template create my-new-template
+mcpt create my-new-template
 
 # Create from configuration file
-mcp-template create --config-file template-config.json
+mcpt create --config-file template-config.json
 
 # Non-interactive mode
-mcp-template create my-template --config-file config.json --non-interactive
+mcpt create my-template --config-file config.json --non-interactive
 ```
 
 ### deploy
@@ -50,7 +50,7 @@ mcp-template create my-template --config-file config.json --non-interactive
 Deploy a template using the specified deployment backend.
 
 ```bash
-mcp-template deploy TEMPLATE_ID [OPTIONS]
+mcpt deploy TEMPLATE_ID [OPTIONS]
 ```
 
 **Arguments:**
@@ -65,16 +65,16 @@ mcp-template deploy TEMPLATE_ID [OPTIONS]
 **Examples:**
 ```bash
 # Deploy with Docker backend
-mcp-template deploy demo
+mcpt deploy demo
 
 # Deploy with custom name and skip image pull
-mcp-template deploy demo --name my-demo --no-pull
+mcpt deploy demo --name my-demo --no-pull
 
 # Deploy with configuration file
-mcp-template deploy demo --config-file config.json
+mcpt deploy demo --config-file config.json
 
 # Deploy using Kubernetes backend
-mcp-template deploy demo --backend k8s
+mcpt deploy demo --backend k8s
 ```
 
 ### list
@@ -82,7 +82,7 @@ mcp-template deploy demo --backend k8s
 List all active deployments.
 
 ```bash
-mcp-template list [OPTIONS]
+mcpt list [OPTIONS]
 ```
 
 **Options:**
@@ -91,10 +91,10 @@ mcp-template list [OPTIONS]
 **Examples:**
 ```bash
 # List Docker deployments
-mcp-template list
+mcpt list
 
 # List Kubernetes deployments
-mcp-template list --backend k8s
+mcpt list --backend k8s
 ```
 
 ### delete
@@ -102,7 +102,7 @@ mcp-template list --backend k8s
 Delete a deployment.
 
 ```bash
-mcp-template delete DEPLOYMENT_NAME [OPTIONS]
+mcpt delete DEPLOYMENT_NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -114,10 +114,10 @@ mcp-template delete DEPLOYMENT_NAME [OPTIONS]
 **Examples:**
 ```bash
 # Delete Docker deployment
-mcp-template delete demo-deployment
+mcpt delete demo-deployment
 
 # Delete Kubernetes deployment
-mcp-template delete demo-deployment --backend k8s
+mcpt delete demo-deployment --backend k8s
 ```
 
 ### status
@@ -125,7 +125,7 @@ mcp-template delete demo-deployment --backend k8s
 Get status information for a deployment.
 
 ```bash
-mcp-template status DEPLOYMENT_NAME [OPTIONS]
+mcpt status DEPLOYMENT_NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -137,10 +137,10 @@ mcp-template status DEPLOYMENT_NAME [OPTIONS]
 **Examples:**
 ```bash
 # Get Docker deployment status
-mcp-template status demo-deployment
+mcpt status demo-deployment
 
 # Get Kubernetes deployment status
-mcp-template status demo-deployment --backend k8s
+mcpt status demo-deployment --backend k8s
 ```
 
 ### tools
@@ -148,8 +148,8 @@ mcp-template status demo-deployment --backend k8s
 List available tools for a template or discover tools from a Docker image.
 
 ```bash
-mcp-template tools TEMPLATE_NAME [OPTIONS]
-mcp-template tools --image IMAGE_NAME [SERVER_ARGS...]
+mcpt> tools TEMPLATE_NAME [OPTIONS]
+mcpt> tools --image IMAGE_NAME [SERVER_ARGS...]
 ```
 
 **Arguments:**
@@ -166,19 +166,19 @@ mcp-template tools --image IMAGE_NAME [SERVER_ARGS...]
 **Examples:**
 ```bash
 # List tools for a template
-mcp-template tools demo
+mcpt> tools demo
 
 # List tools with cache refresh
-mcp-template tools demo --refresh
+mcpt> tools demo --refresh
 
 # List tools for dynamic template with config
-mcp-template tools github --config github_token=your_token
+mcpt> tools github --config github_token=your_token
 
 # Discover tools from Docker image
-mcp-template tools --image mcp/filesystem /tmp
+mcpt> tools --image mcp/filesystem /tmp
 
 # Discover tools with multiple config values
-mcp-template tools github --config github_token=token --config log_level=DEBUG
+mcpt> tools github --config github_token=token --config log_level=DEBUG
 ```
 
 **Note:** For templates with `tool_discovery: "dynamic"`, if standard discovery methods fail, the command will automatically attempt to spin up the Docker image specified in the template configuration to discover tools dynamically.
@@ -188,7 +188,7 @@ mcp-template tools github --config github_token=token --config log_level=DEBUG
 Show configuration options for a template.
 
 ```bash
-mcp-template config TEMPLATE_NAME
+mcpt config TEMPLATE_NAME
 ```
 
 **Arguments:**
@@ -197,7 +197,7 @@ mcp-template config TEMPLATE_NAME
 **Examples:**
 ```bash
 # Show configuration options for demo template
-mcp-template config demo
+mcpt config demo
 ```
 
 ### connect
@@ -205,7 +205,7 @@ mcp-template config demo
 Show integration examples for LLMs and frameworks.
 
 ```bash
-mcp-template connect TEMPLATE_NAME [OPTIONS]
+mcpt connect TEMPLATE_NAME [OPTIONS]
 ```
 
 **Arguments:**
@@ -217,10 +217,10 @@ mcp-template connect TEMPLATE_NAME [OPTIONS]
 **Examples:**
 ```bash
 # Show all integration examples
-mcp-template connect demo
+mcpt connect demo
 
 # Show specific integration
-mcp-template connect demo --llm claude
+mcpt connect demo --llm claude
 ```
 
 ## Configuration File Format

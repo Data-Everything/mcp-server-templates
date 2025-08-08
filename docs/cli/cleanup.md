@@ -5,8 +5,8 @@ The `cleanup` command removes deployed template containers and associated resour
 ## Usage
 
 ```bash
-mcp-template cleanup [template_name]
-mcp-template cleanup --all
+mcpt cleanup [template_name]
+mcpt cleanup --all
 ```
 
 ## Options
@@ -37,12 +37,12 @@ Use this command to:
 
 Clean up specific template:
 ```bash
-mcp-template cleanup my-github-server
+mcpt cleanup my-github-server
 ```
 
 Clean up all templates:
 ```bash
-mcp-template cleanup --all
+mcpt cleanup --all
 ```
 
 ## Behavior

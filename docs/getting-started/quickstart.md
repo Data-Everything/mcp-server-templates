@@ -5,17 +5,17 @@ Get started with MCP Templates in minutes.
 ## 1. List Available Templates
 
 ```bash
-mcp-template list
+mcpt list
 ```
 
 ## 2. Deploy a Template
 
 ```bash
 # Deploy the demo template
-mcp-template deploy demo
+mcpt deploy demo
 
 # Deploy with custom configuration
-mcp-template deploy filesystem --port 8080
+mcpt deploy filesystem --port 8080
 ```
 
 ## 3. Test Your Deployment
@@ -25,17 +25,17 @@ mcp-template deploy filesystem --port 8080
 curl http://localhost:8080/health
 
 # View server logs
-mcp-template logs demo
+mcpt logs demo
 ```
 
 ## 4. Clean Up
 
 ```bash
 # Stop the server
-mcp-template stop demo
+mcpt stop demo
 
 # Remove the deployment
-mcp-template remove demo
+mcpt remove demo
 ```
 
 ## Next Steps

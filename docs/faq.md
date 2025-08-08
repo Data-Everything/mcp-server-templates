@@ -56,10 +56,10 @@ No, this is an independent open-source project that implements the MCP specifica
 pip install mcp-templates
 
 # Verify installation
-mcp-template --version
+mcpt --version
 
 # Test with demo template
-mcp-template deploy demo
+mcpt deploy demo
 ```
 
 See the [Installation Guide](getting-started/installation.md) for detailed instructions.
@@ -74,7 +74,7 @@ See the [Installation Guide](getting-started/installation.md) for detailed instr
 
 **Full List:**
 ```bash
-mcp-template list
+mcpt list
 ```
 
 View detailed information in the [Template Library](server-templates/index.md).
@@ -85,13 +85,13 @@ View detailed information in the [Template Library](server-templates/index.md).
 
 ```bash
 # Basic deployment
-mcp-template deploy template-name
+mcpt deploy template-name
 
 # With configuration
-mcp-template deploy filesystem --config base_path=/home/user/documents
+mcpt deploy filesystem --config base_path=/home/user/documents
 
 # With config file
-mcp-template deploy database --config-file db-config.json
+mcpt deploy database --config-file db-config.json
 ```
 
 ### How do I configure templates?
@@ -100,18 +100,18 @@ mcp-template deploy database --config-file db-config.json
 
 1. **Command-line options:**
    ```bash
-   mcp-template deploy template --config key=value
+   mcpt deploy template --config key=value
    ```
 
 2. **Configuration file:**
    ```bash
-   mcp-template deploy template --config-file config.json
+   mcpt deploy template --config-file config.json
    ```
 
 3. **Environment variables:**
    ```bash
    export MCP_API_KEY="your-key"
-   mcp-template deploy template
+   mcpt deploy template
    ```
 
 **Configuration precedence:** Environment Variables > CLI Options > Config File > Template Defaults
@@ -121,7 +121,7 @@ mcp-template deploy database --config-file db-config.json
 **Claude Desktop:**
 ```bash
 # Generate configuration
-mcp-template connect template-name --llm claude
+mcpt connect template-name --llm claude
 
 # Add to Claude Desktop config
 # (~/.config/claude-desktop/claude_desktop_config.json)
@@ -130,26 +130,27 @@ mcp-template connect template-name --llm claude
 **VS Code:**
 ```bash
 # Generate VS Code configuration
-mcp-template connect template-name --llm vscode
+mcpt connect template-name --llm vscode
 ```
 
 **Custom Integration:**
 ```bash
 # Get JSON configuration
-mcp-template tools template-name --format json
+mcpt i
+mcpt> tools template-name --format json
 ```
 
 ### How do I see what tools are available?
 
 ```bash
 # List tools in a template
-mcp-template tools template-name
+mcpt> tools template-name
 
 # Discover tools from any MCP server
-mcp-template tools --image custom/mcp-server
+mcpt> tools --image custom/mcp-server
 
 # Get detailed tool information
-mcp-template tools template-name --detailed
+mcpt> tools template-name --detailed
 ```
 
 ## Template Development
@@ -158,13 +159,13 @@ mcp-template tools template-name --detailed
 
 **Interactive Creation:**
 ```bash
-mcp-template create my-custom-template
+mcpt create my-custom-template
 # Follow the prompts for configuration
 ```
 
 **From Existing Image:**
 ```bash
-mcp-template create --from-image existing/mcp-server my-template
+mcpt create --from-image existing/mcp-server my-template
 ```
 
 **Manual Creation:**
@@ -198,13 +199,13 @@ templates/my-template/
 
 ```bash
 # Validate template structure
-mcp-template validate my-template
+mcpt validate my-template
 
 # Deploy for testing
-mcp-template deploy my-template
+mcpt deploy my-template
 
 # Test tool discovery
-mcp-template tools my-template
+mcpt> tools my-template
 
 # Run template tests
 cd templates/my-template
@@ -232,48 +233,48 @@ The key requirements:
 
 ```bash
 # List all deployments
-mcp-template list
+mcpt list
 
 # Check deployment status
-mcp-template status
+mcpt status
 
 # View specific deployment
-mcp-template status deployment-name
+mcpt status deployment-name
 
 # Stop deployment
-mcp-template stop deployment-name
+mcpt stop deployment-name
 
 # Remove deployment
-mcp-template delete deployment-name
+mcpt delete deployment-name
 ```
 
 ### How do I monitor deployments?
 
 ```bash
 # View logs
-mcp-template logs deployment-name
+mcpt logs deployment-name
 
 # Follow logs in real-time
-mcp-template logs deployment-name --follow
+mcpt logs deployment-name --follow
 
 # Monitor status continuously
-mcp-template status --watch
+mcpt status --watch
 
 # Health check only
-mcp-template status --health-only
+mcpt status --health-only
 ```
 
 ### How do I update deployments?
 
 ```bash
 # Update to latest image
-mcp-template deploy template-name --force-pull
+mcpt deploy template-name --force-pull
 
 # Force recreate container
-mcp-template deploy template-name --force-recreate
+mcpt deploy template-name --force-recreate
 
 # Update with new configuration
-mcp-template deploy template-name --config new_setting=value
+mcpt deploy template-name --config new_setting=value
 ```
 
 ### Where are deployment data and logs stored?
@@ -286,10 +287,10 @@ mcp-template deploy template-name --config new_setting=value
 **Custom Locations:**
 ```bash
 # Use custom data directory
-mcp-template deploy template --volume /custom/path:/data
+mcpt deploy template --volume /custom/path:/data
 
 # Multiple volumes
-mcp-template deploy template \
+mcpt deploy template \
   --volume /data1:/app/data1 \
   --volume /data2:/app/data2
 ```
@@ -300,7 +301,7 @@ mcp-template deploy template \
 
 1. **Check logs:**
    ```bash
-   mcp-template logs deployment-name
+   mcpt logs deployment-name
    ```
 
 2. **Verify Docker:**
@@ -311,7 +312,7 @@ mcp-template deploy template \
 
 3. **Check configuration:**
    ```bash
-   mcp-template config template-name
+   mcpt config template-name
    ```
 
 4. **Test image directly:**
@@ -332,13 +333,13 @@ See the [Troubleshooting Guide](guides/troubleshooting.md) for comprehensive sol
 **Debugging Steps:**
 ```bash
 # Test tool discovery directly
-mcp-template tools --image template:latest
+mcpt> tools --image template:latest
 
 # Check MCP protocol response
-mcp-template connect deployment --test-connection
+mcpt connect deployment --test-connection
 
 # Monitor container startup
-mcp-template logs deployment --follow
+mcpt logs deployment --follow
 ```
 
 ### How do I get help with specific issues?
@@ -376,7 +377,7 @@ mcp-template logs deployment --follow
 **Template Level:**
 ```bash
 # Set resource limits
-mcp-template deploy template --memory 512m --cpu 0.5
+mcpt deploy template --memory 512m --cpu 0.5
 
 # Use efficient base images
 # In Dockerfile: FROM python:3.11-slim instead of python:3.11
@@ -438,7 +439,7 @@ The platform follows security best practices:
 ```bash
 # Use environment variables for secrets
 export MCP_API_KEY="secret-key"
-mcp-template deploy template
+mcpt deploy template
 ```
 
 **Config Files with Restricted Permissions:**
@@ -446,14 +447,14 @@ mcp-template deploy template
 # Create secure config file
 echo '{"api_key": "secret"}' > config.json
 chmod 600 config.json
-mcp-template deploy template --config-file config.json
+mcpt deploy template --config-file config.json
 ```
 
 **External Secret Management:**
 ```bash
 # Use external secret managers
 export MCP_API_KEY=$(vault kv get -field=key secret/mcp/api)
-mcp-template deploy template
+mcpt deploy template
 ```
 
 ## Integration & Compatibility
@@ -485,7 +486,7 @@ tools = manager.discover_tools(deployment)
 **CLI Integration:**
 ```bash
 # Scriptable CLI interface
-mcp-template deploy template --format json
+mcpt deploy template --format json
 ```
 
 **Docker Integration:**
@@ -563,13 +564,14 @@ See the [Contributing Guide](guides/contributing.md) for detailed guidelines.
 
 1. **Create the template:**
    ```bash
-   mcp-template create my-new-template
+   mcpt create my-new-template
    ```
 
 2. **Test thoroughly:**
    ```bash
-   mcp-template deploy my-new-template
-   mcp-template tools my-new-template
+   mcpt deploy my-new-template
+   mcpt i
+   mcpt> tools my-new-template
    ```
 
 3. **Add documentation:**

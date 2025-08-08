@@ -20,10 +20,7 @@ import yaml
 # Import the TemplateDiscovery utility
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from mcp_template.template.utils.discovery import TemplateDiscovery
-from mcp_template.utils import (
-    TEMPLATES_DIR,
-    ROOT_DIR,
-)
+from mcp_template.utils import ROOT_DIR, TEMPLATES_DIR
 
 
 def cleanup_old_docs(docs_dir: Path):
@@ -92,23 +89,19 @@ def copy_template_docs(template_docs: Dict[str, Dict], docs_dir: Path):
 
         # Fix CLI commands - add 'python -m' prefix and 'deploy' command
         content = content.replace(
-            f"mcp-template deploy {template_id}",
+            f"mcpt deploy {template_id}",
             f"python -m mcp_template deploy {template_id}",
         )
         content = content.replace(
-            f"mcp-template {template_id}",
+            f"mcpt {template_id}",
             f"python -m mcp_template deploy {template_id}",
         )
-        content = content.replace(
-            "mcp-template create", "python -m mcp_template create"
-        )
-        content = content.replace("mcp-template list", "python -m mcp_template list")
-        content = content.replace("mcp-template stop", "python -m mcp_template stop")
-        content = content.replace("mcp-template logs", "python -m mcp_template logs")
-        content = content.replace("mcp-template shell", "python -m mcp_template shell")
-        content = content.replace(
-            "mcp-template cleanup", "python -m mcp_template cleanup"
-        )
+        content = content.replace("mcpt create", "python -m mcp_template create")
+        content = content.replace("mcpt list", "python -m mcp_template list")
+        content = content.replace("mcpt stop", "python -m mcp_template stop")
+        content = content.replace("mcpt logs", "python -m mcp_template logs")
+        content = content.replace("mcpt shell", "python -m mcp_template shell")
+        content = content.replace("mcpt cleanup", "python -m mcp_template cleanup")
 
         # Add configuration information from template schema if not present
         config_schema = template_info["config"].get("config_schema", {})

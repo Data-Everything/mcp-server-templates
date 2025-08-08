@@ -8,10 +8,10 @@
 
 ```bash
 # For deployed templates
-mcp-template tools TEMPLATE [OPTIONS]
+mcpt> tools TEMPLATE [OPTIONS]
 
 # For Docker images
-mcp-template tools --image IMAGE [SERVER_ARGS...] [OPTIONS]
+mcpt> tools --image IMAGE [SERVER_ARGS...] [OPTIONS]
 ```
 
 ## Description
@@ -65,18 +65,18 @@ The tools command features intelligent credential detection and auto-provisionin
 ### Auto-Credential Injection
 ```bash
 # Automatically provides dummy credentials for discovery
-mcp-template tools github
+mcpt> tools github
 # No need to provide real GitHub token - uses placeholder for tool discovery
 
 # Manual credential provision for functional tools
-mcp-template run-tool github search_repositories \
+mcpt run-tool github search_repositories \
   --env GITHUB_PERSONAL_ACCESS_TOKEN=your_real_token \
   --args '{"query": "mcp"}'
 ```
 
 ### Credential Fallback Strategy
 1. **User-provided credentials**: Real credentials from config/environment
-2. **Schema-based dummy credentials**: Generated based on template requirements  
+2. **Schema-based dummy credentials**: Generated based on template requirements
 3. **Generic credential detection**: Fallback for templates without schemas
 4. **Discovery-only mode**: Uses minimal credentials just for tool enumeration
 
@@ -92,7 +92,7 @@ mcp-template run-tool github search_repositories \
 
 ```bash
 # List tools from demo template
-mcp-template tools demo
+mcpt> tools demo
 
 # Example output:
 ╭─────────────────────────────────────────────────────────────╮
@@ -110,16 +110,16 @@ mcp-template tools demo
 └──────────────────────┴───────────────────────────────────────┘
 
 💡 Usage Examples:
-  # Deploy template: mcp-template deploy demo
-  # Connect to Claude: mcp-template connect demo --llm claude
-  # View logs: mcp-template logs demo
+  # Deploy template: mcpt deploy demo
+  # Connect to Claude: mcpt connect demo --llm claude
+  # View logs: mcpt logs demo
 ```
 
 ### Docker Discovery Mode
 
 ```bash
 # Discover tools from filesystem server
-mcp-template tools --image mcp/filesystem /tmp
+mcpt> tools --image mcp/filesystem /tmp
 
 # Example output:
 ╭──────────────────────────────────────────────────────────────╮
@@ -154,15 +154,15 @@ mcp-template tools --image mcp/filesystem /tmp
 
 ```bash
 # Database server with connection parameters
-mcp-template tools --image myregistry/postgres-mcp:latest \
+mcpt> tools --image myregistry/postgres-mcp:latest \
   --host localhost --port 5432 --database mydb
 
 # API server with authentication
-mcp-template tools --image company/api-mcp:v1.0 \
+mcpt> tools --image company/api-mcp:v1.0 \
   --api-key $API_TOKEN --base-url https://api.example.com
 
 # File server with multiple directories
-mcp-template tools --image mcp/filesystem \
+mcpt> tools --image mcp/filesystem \
   /data /workspace /tmp
 ```
 
@@ -170,7 +170,7 @@ mcp-template tools --image mcp/filesystem \
 
 ```bash
 # List file server tools
-mcp-template tools filesystem
+mcpt> tools filesystem
 
 # Example output shows comprehensive file operations:
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -192,13 +192,13 @@ mcp-template tools filesystem
 
 ```bash
 # Force refresh of cached tool information
-mcp-template tools demo --refresh
+mcpt> tools demo --refresh
 
 # Ignore cache and perform fresh discovery
-mcp-template tools demo --no-cache
+mcpt> tools demo --no-cache
 
 # Use cached results (default behavior)
-mcp-template tools demo
+mcpt> tools demo
 ```
 
 ## Detailed Tool Information
@@ -299,14 +299,14 @@ Rich table with formatted columns showing tool names, descriptions, and metadata
 For programmatic usage:
 ```bash
 # Pipe to jq for JSON processing
-mcp-template tools demo 2>/dev/null | \
+mcpt> tools demo 2>/dev/null | \
   grep -A 1000 "Tools data:" | tail -n +2 | jq '.'
 ```
 
 ### Compact Format
 ```bash
 # Get just tool names
-mcp-template tools demo 2>/dev/null | \
+mcpt> tools demo 2>/dev/null | \
   grep "│" | grep -E "^\│\s+\w+" | awk '{print $2}'
 ```
 
@@ -317,13 +317,13 @@ mcp-template tools demo 2>/dev/null | \
 ❌ Template 'nonexistent' not found
 Available templates: demo, filesystem, postgres-server
 ```
-**Solution**: Use `mcp-template list` to see available templates.
+**Solution**: Use `mcpt list` to see available templates.
 
 ### Template Not Deployed
 ```bash
 ❌ Template 'demo' is not currently deployed
 ```
-**Solution**: Deploy the template first with `mcp-template deploy demo`.
+**Solution**: Deploy the template first with `mcpt deploy demo`.
 
 ### Discovery Failed
 ```bash
@@ -342,8 +342,8 @@ This may indicate:
 ```
 **Solutions**:
 - Check template configuration
-- Verify server is running: `mcp-template status template-name`
-- Check server logs: `mcp-template logs template-name`
+- Verify server is running: `mcpt status template-name`
+- Check server logs: `mcpt logs template-name`
 
 ## Performance and Caching
 
@@ -369,10 +369,10 @@ rm -rf ~/.mcp-template/cache/tools/
 ### Discovery Strategy Override
 ```bash
 # Force specific discovery method (advanced)
-MCP_DISCOVERY_METHOD=static mcp-template tools demo
+MCP_DISCOVERY_METHOD=static mcpt> tools demo
 
 # Enable debug logging
-MCP_DEBUG=1 mcp-template tools demo --refresh
+MCP_DEBUG=1 mcpt> tools demo --refresh
 ```
 
 ### Custom Tool Definitions
@@ -382,7 +382,7 @@ Add custom tool definitions to template directory:
 echo '{"tools": [...]}' > templates/demo/tools.json
 
 # Refresh to pick up changes
-mcp-template tools demo --refresh
+mcpt> tools demo --refresh
 ```
 
 ## See Also
@@ -398,10 +398,10 @@ The `discover-tools` command has been merged into the unified `tools` command. U
 
 ```bash
 # Old (deprecated)
-mcp-template discover-tools --image mcp/filesystem /tmp
+mcpt discover-tools --image mcp/filesystem /tmp
 
 # New (recommended)
-mcp-template tools --image mcp/filesystem /tmp
+mcpt> tools --image mcp/filesystem /tmp
 ```
 
 The old command will continue to work but will show a deprecation warning.

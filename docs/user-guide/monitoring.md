@@ -20,23 +20,23 @@ Effective monitoring is crucial for production MCP deployments. This guide cover
 
 ```bash
 # Real-time status monitoring
-mcp-template status --watch --refresh 5
+mcpt status --watch --refresh 5
 
 # Health-only monitoring
-mcp-template status --health-only
+mcpt status --health-only
 
 # Deployment overview
-mcp-template list --status
+mcpt list --status
 
 # Resource monitoring
-mcp-template status deployment-name --detailed
+mcpt status deployment-name --detailed
 ```
 
 ### Status Monitoring Dashboard
 
 ```bash
 # Interactive status dashboard
-mcp-template dashboard
+mcpt dashboard
 
 # Example output:
 ╭─────────────────── MCP Platform Dashboard ───────────────────╮
@@ -64,7 +64,7 @@ mcp-template dashboard
 
 ```bash
 # Set up automated health monitoring
-mcp-template monitor --config health-check.json
+mcpt monitor --config health-check.json
 
 # Example health-check.json:
 {
@@ -88,20 +88,20 @@ mcp-template monitor --config health-check.json
 
 ```bash
 # Stream logs from all deployments
-mcp-template logs --all --follow
+mcpt logs --all --follow
 
 # Filter logs by severity
-mcp-template logs --all --filter "ERROR|WARN"
+mcpt logs --all --filter "ERROR|WARN"
 
 # Export logs for analysis
-mcp-template logs deployment --since 24h --format json > logs.json
+mcpt logs deployment --since 24h --format json > logs.json
 ```
 
 ### Log Aggregation Setup
 
 ```bash
 # Forward logs to external systems
-mcp-template logs deployment --format json --follow | \
+mcpt logs deployment --format json --follow | \
   curl -X POST -H "Content-Type: application/json" \
   --data-binary @- \
   https://logs.company.com/mcp-platform
@@ -195,7 +195,7 @@ if __name__ == "__main__":
 
 ```bash
 # Collect system metrics
-mcp-template metrics --output prometheus
+mcpt metrics --output prometheus
 
 # Example Prometheus metrics:
 # mcp_deployment_status{deployment="filesystem"} 1
@@ -528,13 +528,13 @@ if __name__ == '__main__':
 
 ```bash
 # Monitor resource usage trends
-mcp-template metrics --format csv --duration 24h > usage-trends.csv
+mcpt metrics --format csv --duration 24h > usage-trends.csv
 
 # Analyze performance bottlenecks
-mcp-template analyze-performance deployment-name
+mcpt analyze-performance deployment-name
 
 # Optimize resource allocation
-mcp-template deploy template --memory 512m --cpu 0.5 --optimize
+mcpt deploy template --memory 512m --cpu 0.5 --optimize
 ```
 
 ### Performance Benchmarking
@@ -661,30 +661,30 @@ if __name__ == "__main__":
 
 ```bash
 # Blue-green deployment
-mcp-template deploy template --name template-blue
-mcp-template deploy template --name template-green
+mcpt deploy template --name template-blue
+mcpt deploy template --name template-green
 
 # Rolling updates
-mcp-template deploy template --strategy rolling --instances 3
+mcpt deploy template --strategy rolling --instances 3
 
 # Canary deployment
-mcp-template deploy template --canary 10%
+mcpt deploy template --canary 10%
 ```
 
 ### Backup & Recovery
 
 ```bash
 # Backup deployment configurations
-mcp-template backup --output backup-$(date +%Y%m%d).tar.gz
+mcpt backup --output backup-$(date +%Y%m%d).tar.gz
 
 # Backup specific deployment
-mcp-template backup deployment-name --include-data
+mcpt backup deployment-name --include-data
 
 # Restore from backup
-mcp-template restore backup-20250127.tar.gz
+mcpt restore backup-20250127.tar.gz
 
 # Disaster recovery
-mcp-template restore --disaster-recovery --cluster-config
+mcpt restore --disaster-recovery --cluster-config
 ```
 
 ### High Availability Setup
@@ -710,7 +710,7 @@ high_availability:
 
 ```bash
 # Deploy with high availability
-mcp-template deploy template --ha-config ha-config.yaml
+mcpt deploy template --ha-config ha-config.yaml
 ```
 
 ## Integration with External Systems

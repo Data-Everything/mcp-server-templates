@@ -1,0 +1,44 @@
+{
+  "name": "Filesystem",
+  "description": "Local filesystem access with configurable allowed paths.",
+  "version": "1.0.0",
+  "author": "Sam Arora",
+  "category": "General",
+  "tags": [],
+  "docker_image": "dataeverything/mcp-filesystem",
+  "docker_tag": "latest",
+  "ports": {},
+  "command": [],
+  "transport": {
+    "default": "stdio",
+    "supported": [
+      "stdio"
+    ]
+  },
+  "capabilities": [],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "log_level": {
+        "type": "string",
+        "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
+        "default": "INFO",
+        "env_mapping": "LOG_LEVEL"
+      },
+      "allowed_dirs": {
+        "type": "string",
+        "description": "Allowed directories to scan, create or read from. Defaults to anything that gets mounted to /data directory in container",
+        "env_mapping": "ALLOWED_DIRS",
+        "volume_mount": true,
+        "command_arg": true
+      }
+    },
+    "required": [
+      "allowed_dirs"
+    ]
+  },
+  "tool_discovery": "dynamic",
+  "tool_endpoint": "/tools",
+  "has_image": true,
+  "origin": "internal"
+}

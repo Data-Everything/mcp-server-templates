@@ -16,6 +16,7 @@ from rich.table import Table
 
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
+from mcp_template.utils.config_processor import ConfigProcessor
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -39,6 +40,9 @@ class MCPDeployer:
         # Initialize template discovery
         self.template_discovery = TemplateDiscovery()
         self.templates = self.template_discovery.discover_templates()
+
+        # Initialize configuration processor
+        self.config_processor = ConfigProcessor()
 
     def list_templates(self, deployed_only: bool = False):
         """List available templates."""
@@ -106,8 +110,11 @@ class MCPDeployer:
             task = progress.add_task(f"Deploying {template_name}...", total=None)
             try:
                 # Prepare configuration from multiple sources
-                config = self._prepare_configuration(
-                    template, env_vars, config_file, config_values
+                config = self.config_processor.prepare_configuration(
+                    template=template,
+                    env_vars=env_vars,
+                    config_file=config_file,
+                    config_values=config_values,
                 )
 
                 required_properties = template.get("config_schema", {}).get(
@@ -157,6 +164,13 @@ class MCPDeployer:
                     )
                     config.update(override_env_vars)
 
+                template_config_dict = (
+                    self.config_processor.handle_volume_and_args_config_properties(
+                        template, config
+                    )
+                )
+                config = template_config_dict.get("config", config)
+                template_copy = template_config_dict.get("template", template_copy)
                 # Deploy using unified manager
                 result = self.deployment_manager.deploy_template(
                     template_id=template_name,
@@ -183,9 +197,9 @@ class MCPDeployer:
                         f"[cyan]🔧 MCP Configuration:[/cyan]\n"
                         f"Config saved to: ~/.mcp/{template_name}.json\n\n"
                         f"[cyan]💡 Management:[/cyan]\n"
-                        f"• View logs: mcp-template logs {template_name}\n"
-                        f"• Stop: mcp-template stop {template_name}\n"
-                        f"• Shell: mcp-template shell {template_name}",
+                        f"• View logs: mcpt logs {template_name}\n"
+                        f"• Stop: mcpt stop {template_name}\n"
+                        f"• Shell: mcpt shell {template_name}",
                         title="🎉 Deployment Complete",
                         border_style="green",
                     )
@@ -417,7 +431,6 @@ class MCPDeployer:
     ) -> Dict[str, Any]:
         """Prepare configuration from multiple sources with proper type conversion."""
         config = {}
-
         # Start with template defaults
         template_env = template.get("env_vars", {})
         for key, value in template_env.items():
@@ -686,6 +699,90 @@ class MCPDeployer:
                 converted_config[env_key] = value
 
         return converted_config
+
+    def _handle_volume_and_args_config_properties(
+        self,
+        template: Dict[str, Any],
+        config: Dict[str, Any],
+        default_mount_path: str = "/mnt",
+    ) -> Dict[str, Any]:
+        """
+        Some properties can have volume_mount set as True, or command_arg set as True,
+        they should not be treated as environment variables.
+        If first check if something is volume_mount, then check if it is command_arg.
+
+        They can be both, so the check is not mutually exclusive.
+
+        At this point, we assume that the config has already been converted
+        to environment variables, so we need to handle these properties
+        """
+
+        config_properties = template.get("config_schema", {}).get("properties", {})
+        command = []
+        volumes = {}
+
+        for prop_key, prop_value in config_properties.items():
+            delete_key = False
+            env_var_name = prop_value.get("env_mapping", prop_key.upper())
+            container_mount_path = None
+            host_path = None
+            # Check if this property is a volume mount
+            if env_var_name in config and prop_value.get("volume_mount", False) is True:
+                config_value = config[env_var_name]
+                mount_value = config_value.split(":")
+                # in most cases, it would be only the host path
+                if len(mount_value) == 1:
+                    container_mount_path = None
+                    host_path = mount_value[0]
+                elif len(mount_value) == 2:
+                    # Assume format is host_path:container_path
+                    container_mount_path = mount_value[1]
+                    host_path = mount_value[0]
+                else:
+                    logger.warning("Invalid volume mount format: %s", config_value)
+
+                if host_path:
+                    if len(host_path.split(" ")) > 1:
+                        for part in host_path.split(" "):
+                            if container_mount_path:
+                                volumes[part] = container_mount_path
+                            else:
+                                volumes[part] = (
+                                    f"{default_mount_path}/{part.lstrip('/')}"
+                                )
+                    else:
+                        if container_mount_path:
+                            volumes[host_path] = container_mount_path
+                        else:
+                            volumes[host_path] = (
+                                f"{default_mount_path}/{host_path.lstrip('/')}"
+                            )
+                # Do not delete the key yet, as args may still reference it
+                delete_key = True
+
+            # Check if this property is a command argument
+            if env_var_name in config and prop_value.get("command_arg", False) is True:
+                # If this is a command argument, add to args
+                command.append(config[env_var_name])
+                # Remove from config to avoid duplication
+                delete_key = True
+
+            if delete_key:
+                # Remove the key from config to avoid duplication
+                config.pop(env_var_name, None)
+
+        if "volumes" not in template or template["volumes"] is None:
+            template["volumes"] = {}
+        template["volumes"].update(volumes)
+
+        if "command" not in template or template["command"] is None:
+            template["command"] = []
+        template["command"].extend(command)
+
+        return {
+            "template": template,
+            "config": config,
+        }
 
     def _convert_overrides_to_env_vars(
         self, override_values: Dict[str, str]

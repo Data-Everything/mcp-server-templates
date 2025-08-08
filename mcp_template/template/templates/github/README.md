@@ -124,16 +124,16 @@ Deploy the GitHub MCP server using our platform:
 
 ```bash
 # Deploy with automatic configuration
-mcp-template deploy github
+mcpt deploy github
 
 # Deploy with custom configuration
-mcp-template deploy github --config GITHUB_PERSONAL_ACCESS_TOKEN="your_token"
+mcpt deploy github --config GITHUB_PERSONAL_ACCESS_TOKEN="your_token"
 
 # Check deployment status
-mcp-template status github
+mcpt status github
 
 # View real-time logs
-mcp-template logs github
+mcpt logs github
 ```
 
 ### Configuration
@@ -209,13 +209,13 @@ Our platform provides dynamic tool discovery to automatically catalog all availa
 
 ```bash
 # Discover all available tools
-mcp-template tools github --config GITHUB_PERSONAL_ACCESS_TOKEN="your_token"
+mcpt> tools github --config GITHUB_PERSONAL_ACCESS_TOKEN="your_token"
 
 # Refresh tool cache
-mcp-template tools github --refresh
+mcpt> tools github --refresh
 
 # Get detailed tool information
-mcp-template tools github --verbose
+mcpt> tools github --verbose
 ```
 
 ## Platform Benefits
@@ -281,7 +281,7 @@ docker build -t github-mcp-local .
 docker run -e GITHUB_PERSONAL_ACCESS_TOKEN="your_token" github-mcp-local
 
 # Run with our platform
-mcp-template deploy github --local
+mcpt deploy github --local
 ```
 
 ## Monitoring & Troubleshooting
@@ -290,13 +290,13 @@ mcp-template deploy github --local
 
 ```bash
 # Check service status
-mcp-template status github
+mcpt status github
 
 # Get detailed health information
-mcp-template status github --detailed
+mcpt status github --detailed
 
 # View real-time logs
-mcp-template logs github --follow
+mcpt logs github --follow
 ```
 
 ### Common Issues
@@ -327,13 +327,13 @@ Enable comprehensive debugging:
 
 ```bash
 # Deploy with debug logging
-mcp-template deploy github --config LOG_LEVEL="DEBUG"
+mcpt deploy github --config LOG_LEVEL="DEBUG"
 
 # View debug logs
-mcp-template logs github --level debug
+mcpt logs github --level debug
 
 # Enable trace logging for API calls
-mcp-template logs github --trace
+mcpt logs github --trace
 ```
 
 ## Security
@@ -370,7 +370,7 @@ All 77 GitHub tools are available through the MCP interface. Each tool includes:
 
 For detailed API documentation of each tool, use:
 ```bash
-mcp-template tools github --tool-name <tool_name> --detailed
+mcpt> tools github --tool-name <tool_name> --detailed
 ```
 
 ## Contributing

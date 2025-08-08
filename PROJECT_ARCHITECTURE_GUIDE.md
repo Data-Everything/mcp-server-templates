@@ -24,11 +24,15 @@
 │ ┌─────────────┐ │    │ ┌─────────────────┐ │    │ ┌─────────────────────┐ │
 │ │ __init__.py │─┼────┼▶│ DeploymentMgr   │─┼────┼▶│ DockerBackend       │ │
 │ │ CLI Parser  │ │    │ │ (manager.py)    │ │    │ │ KubernetesBackend   │ │
-│ └─────────────┘ │    │ └─────────────────┘ │    │ │ MockBackend         │ │
-│ ┌─────────────┐ │    │ ┌─────────────────┐ │    │ └─────────────────────┘ │
-│ │ MCPDeployer │─┼────┼▶│ TemplateDiscov  │ │    │                         │
-│ │(deployer.py)│ │    │ │ ConfigMapping   │ │    │                         │
-│ └─────────────┘ │    │ └─────────────────┘ │    │                         │
+│ │ Interactive │ │    │ └─────────────────┘ │    │ │ MockBackend         │ │
+│ │ CLI Mode    │ │    │ ┌─────────────────┐ │    │ └─────────────────────┘ │
+│ └─────────────┘ │    │ │ TemplateDiscov  │ │    │                         │
+│ ┌─────────────┐ │    │ │ ConfigMapping   │ │    │                         │
+│ │ MCPDeployer │─┼────┼▶│ ConfigProcessor │ │    │                         │
+│ │(deployer.py)│ │    │ └─────────────────┘ │    │                         │
+│ │ Enhanced    │ │    │                     │    │                         │
+│ │ CLI         │ │    │                     │    │                         │
+│ └─────────────┘ │    │                     │    │                         │
 └─────────────────┘    └─────────────────────┘    └──────────────────────────┘
 
 ┌─────────────────┐    ┌─────────────────────┐    ┌──────────────────────────┐
@@ -37,9 +41,27 @@
 │ ┌─────────────┐ │    │ ┌─────────────────┐ │    │ ┌─────────────────────┐ │
 │ │Tool Discovery│ │    │ │ Template JSON   │ │    │ │ Dynamic Discovery   │ │
 │ │Docker Probe │ │    │ │ Config Schema   │ │    │ │ Cache Management    │ │
-│ │MCP Client   │ │    │ │ Override Logic  │ │    │ │ HTTP Probe          │ │
+│ │MCP Client   │ │    │ │ Override Logic  │ │    │ │ HTTP Tool Caller    │ │
+│ │Interactive  │ │    │ │ Volume Mounts   │ │    │ │ Stdio Execution     │ │
+│ │CLI Support  │ │    │ │ Command Args    │ │    │ │ Enhanced Parsing    │ │
 │ └─────────────┘ │    │ └─────────────────┘ │    │ └─────────────────────┘ │
 └─────────────────┘    └─────────────────────┘    └──────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        Configuration Flow                                   │
+│                                                                            │
+│ Session Config → File Config → CLI Config → Env Variables → Defaults      │
+│      ↓              ↓             ↓            ↓              ↓           │
+│ Interactive    JSON/YAML     --config      Environment    template.json   │
+│ CLI Storage    Files         Flags         Variables      Properties       │
+│                                                                            │
+│                      Enhanced Features:                                    │
+│ • Volume Mount Auto-configuration (volume_mount: true)                    │
+│ • Command Argument Processing (command_arg: true)                         │
+│ • Space-separated Path Handling with Quote Support                        │
+│ • Hybrid Argument Parsing (shlex + cmd2)                                  │
+│ • Container Path Translation for Docker                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -54,9 +76,41 @@
   - Graceful fallback for enhanced CLI features
   - Template deployment orchestration
   - Configuration processing (`--config`, `--override`, `--env`)
+  - Interactive CLI mode support
 - **Exports**: `MCPDeployer`, `TemplateDiscovery`, `DeploymentManager`
 
-### 2. Deployment Orchestrator (`mcp_template/deployer.py`)
+### 2. Enhanced Interactive CLI (`mcp_template/interactive_cli.py`)
+**Purpose**: Advanced interactive interface with enhanced argument parsing
+- **Class**: `InteractiveCLI`
+- **Key Methods**:
+  - `do_call()`: Enhanced tool execution with hybrid argument parsing
+  - `do_config()`: Session-based configuration management
+  - `do_tools()`: Dynamic tool discovery with caching
+  - `_validate_and_get_tool_parameters()`: Parameter validation and prompting
+- **Features**:
+  - **Hybrid Argument Parsing**: Combines shlex and cmd2 for quote handling
+  - **Session Configuration**: Persistent config across interactive session
+  - **Parameter Validation**: Auto-prompting for missing required parameters
+  - **Enhanced JSON Handling**: Smart reconstruction of split JSON arguments
+  - **Multiple Config Sources**: File, CLI, environment, session configuration
+  - **Beautiful Output**: Rich console formatting with tables and panels
+
+### 3. Enhanced Configuration Processor (`mcp_template/utils/config_processor.py`)
+**Purpose**: Advanced configuration processing with Docker integration
+- **Class**: `ConfigProcessor`
+- **Key Methods**:
+  - `prepare_configuration()`: Multi-source configuration merging
+  - `handle_volume_and_args_config_properties()`: Volume mount and command arg processing
+  - `_parse_space_separated_args()`: Space-separated argument parsing
+  - `_create_container_path()`: Host-to-container path mapping
+- **Features**:
+  - **Volume Mount Auto-configuration**: Automatic Docker volume creation from config
+  - **Command Argument Processing**: Container path injection for Docker commands
+  - **Space-separated Path Handling**: Proper parsing of paths with spaces
+  - **Docker Artifact Removal**: Clean removal of Docker-specific path prefixes
+  - **Type Conversion**: Intelligent type conversion for configuration values
+
+### 4. Deployment Orchestrator (`mcp_template/deployer.py`)
 **Purpose**: High-level deployment interface and configuration management
 - **Class**: `MCPDeployer`
 - **Key Methods**:
@@ -69,6 +123,7 @@
   - Configuration precedence handling
   - Rich console output with progress indicators
   - MCP config generation
+  - Enhanced CLI integration
 
 ### 3. Backend Management (`mcp_template/manager.py`)
 **Purpose**: Backend abstraction and deployment coordination
@@ -105,6 +160,37 @@
   - Validates `template.json` structure
   - Processes configuration schemas
   - Handles volume and port mappings
+  - Enhanced config schema processing with volume_mount and command_arg support
+
+#### Enhanced Template Configuration Schema
+Templates now support advanced configuration features for Docker integration:
+
+```json
+{
+  "config_schema": {
+    "properties": {
+      "allowed_dirs": {
+        "type": "string",
+        "description": "Space-separated allowed directories",
+        "env_mapping": "ALLOWED_DIRS",
+        "volume_mount": true,     // ← New: Auto-create Docker volumes
+        "command_arg": true       // ← New: Inject into container commands
+      },
+      "log_level": {
+        "type": "string",
+        "env_mapping": "LOG_LEVEL",
+        "default": "INFO"
+      }
+    }
+  }
+}
+```
+
+**New Template Features:**
+- **`volume_mount: true`**: Automatically creates Docker volume mounts from configuration paths
+- **`command_arg: true`**: Injects configuration values as command line arguments to containers
+- **Space-separated Values**: Proper parsing and handling of multiple paths in single configuration
+- **Container Path Translation**: Automatic host→container path mapping for Docker environments
 
 #### Template Creation (`creation.py`)
 - **Class**: `TemplateCreator`
@@ -134,7 +220,41 @@
 - **Purpose**: Tool discovery result caching
 - **Features**: TTL-based expiration, JSON serialization
 
-### 7. Enhanced CLI (`mcp_template/cli.py`)
+### 7. Template Examples & Implementation
+
+#### Filesystem Template (`templates/filesystem/`)
+**Purpose**: Secure local filesystem access for AI assistants
+- **Transport**: stdio (interactive execution, no persistent deployment)
+- **Docker Image**: `dataeverything/mcp-filesystem` (based on `ghcr.io/mark3labs/mcp-filesystem-server`)
+- **Tools**: 14 comprehensive file and directory operations
+- **Security**: Configurable allowed directories with strict path validation
+
+**Configuration Example:**
+```json
+{
+  "allowed_dirs": {
+    "type": "string",
+    "volume_mount": true,
+    "command_arg": true,
+    "description": "Space-separated allowed directories",
+    "env_mapping": "ALLOWED_DIRS"
+  }
+}
+```
+
+**Enhanced Processing Example:**
+- User Input: `allowed_dirs="/home/user/docs /tmp/workspace"`
+- Volume Creation: `-v "/home/user/docs:/data/docs:rw" -v "/tmp/workspace:/data/workspace:rw"`
+- Command Args: Container receives `ALLOWED_DIRS="/data/docs /data/workspace"`
+- Security: Only these container paths are accessible to the MCP server
+
+**Available Tools:**
+- **Directory Operations**: `list_directory`, `create_directory`, `tree`, `list_allowed_directories`
+- **File Management**: `read_file`, `write_file`, `copy_file`, `move_file`, `delete_file`, `modify_file`
+- **Search & Discovery**: `search_files`, `search_within_files`, `get_file_info`
+- **Batch Operations**: `read_multiple_files`
+
+### 8. Enhanced CLI (`mcp_template/cli.py`)
 **Purpose**: Advanced CLI features and tool management
 - **Class**: `EnhancedCLI`
 - **Features**:
@@ -429,6 +549,128 @@ discovery_methods.append(CustomProbe())
 
 ---
 
+## Enhanced Testing Framework
+
+### New Test Suites
+
+#### CLI Parsing Tests (`tests/test_cli_parsing_focused.py`)
+**Purpose**: Comprehensive testing of enhanced argument parsing
+- **Coverage**: 17 test cases covering all parsing scenarios
+- **Features**:
+  - Hybrid argument parsing (shlex + cmd2)
+  - Quote handling for space-separated values
+  - JSON reconstruction logic
+  - Error case validation
+- **Key Test Areas**:
+  - Basic argument parsing with argparse
+  - Complex quoted path handling
+  - JSON argument reconstruction
+  - Error recovery and user-friendly messages
+
+#### Configuration Processor Tests (`tests/test_utils/test_config_processor.py`)
+**Purpose**: Testing enhanced configuration processing
+- **Coverage**: 32 test cases for all config scenarios
+- **Features**:
+  - Volume mount auto-configuration testing
+  - Command argument processing validation
+  - Multiple configuration source precedence testing
+  - Type conversion and validation testing
+- **Key Test Areas**:
+  - Multi-source configuration merging
+  - Volume mount property processing
+  - Command argument injection
+  - Space-separated path parsing
+
+#### Volume Mount Integration Tests (`tests/test_deployer_volume_command_integration.py`)
+**Purpose**: Testing Docker volume mount integration
+- **Coverage**: Integration testing for volume mount workflows
+- **Features**:
+  - Real Docker volume creation testing
+  - Container path mapping validation
+  - Configuration precedence testing
+- **Key Test Areas**:
+  - End-to-end volume mount workflows
+  - Container vs host path handling
+  - Configuration merging in deployment context
+
+### Test Architecture Patterns
+
+#### Focused Unit Testing
+```python
+# Example from test_cli_parsing_focused.py
+def test_user_problematic_case_parsing(self):
+    """Test the exact user case that was problematic."""
+    line = 'call -C allowed_dirs="/path1 /path2" filesystem list_directory {"path": "/tmp"}'
+
+    # Test hybrid parsing approach
+    if '"' in line and " " in line:
+        argv = shlex.split(line)
+        # JSON reconstruction logic
+        json_start_idx = self._find_json_start(argv)
+        if json_start_idx:
+            argv = self._reconstruct_json(argv, json_start_idx)
+
+    args = call_parser.parse_args(argv)
+    assert args.config == ["allowed_dirs=/path1 /path2"]
+    assert args.json_args == '{"path": "/tmp"}'
+```
+
+#### Configuration Testing Patterns
+```python
+# Example from test_config_processor.py
+def test_handle_combined_volume_and_command_property(self):
+    """Test properties that are both volume_mount and command_arg."""
+    config_values = {"allowed_dirs": "/home/user/docs /tmp"}
+    template = {
+        "config_schema": {
+            "properties": {
+                "allowed_dirs": {
+                    "volume_mount": True,
+                    "command_arg": True,
+                    "env_mapping": "ALLOWED_DIRS"
+                }
+            }
+        }
+    }
+
+    result = self.processor.handle_volume_and_args_config_properties(
+        config_values, template, {}
+    )
+
+    # Validate volume creation
+    assert len(result["volumes"]) == 2
+    assert "/home/user/docs:/data/home_user_docs:rw" in result["volumes"]
+
+    # Validate command argument injection (using container paths)
+    assert result["command_args"] == ["/data/home_user_docs", "/data/tmp"]
+```
+
+#### Integration Testing with Real Components
+```python
+# Example integration test pattern
+@pytest.fixture
+def temp_config_file(self, tmp_path):
+    """Create temporary config file for testing."""
+    config = {"allowed_dirs": "/tmp /home/user"}
+    config_file = tmp_path / "test_config.json"
+    config_file.write_text(json.dumps(config))
+    return str(config_file)
+
+def test_end_to_end_volume_processing(self, temp_config_file):
+    """Test complete workflow from config file to Docker volumes."""
+    # Test realistic deployment scenario
+    result = self.deployer.deploy(
+        template_name="filesystem",
+        config_file=temp_config_file
+    )
+
+    # Validate Docker command includes proper volumes
+    assert "--volume" in result.docker_command
+    assert "/tmp:/data/tmp:rw" in result.docker_command
+```
+
+---
+
 ## Performance Considerations
 
 ### 1. Template Discovery Caching
@@ -473,13 +715,13 @@ discovery_methods.append(CustomProbe())
 ### 1. Verbose Logging
 ```bash
 # Enable debug logging
-mcp-template deploy demo --verbose
+mcpt deploy demo --verbose
 ```
 
 ### 2. Configuration Inspection
 ```bash
 # Show configuration options
-mcp-template deploy demo --show-config
+mcpt deploy demo --show-config
 ```
 
 ### 3. Tool Discovery Debugging

@@ -5,7 +5,7 @@
 ## Synopsis
 
 ```bash
-mcp-template deploy TEMPLATE [OPTIONS]
+mcpt deploy TEMPLATE [OPTIONS]
 ```
 
 ## Description
@@ -62,41 +62,41 @@ Configuration values are resolved in the following order (highest to lowest prio
 
 ```bash
 # Deploy with defaults
-mcp-template deploy demo
+mcpt deploy demo
 
 # Deploy with custom name
-mcp-template deploy demo --name my-demo-server
+mcpt deploy demo --name my-demo-server
 ```
 
 ### Configuration Examples
 
 ```bash
 # Using CLI configuration (config_schema properties)
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config read_only_mode=true \
   --config max_file_size=100 \
   --config log_level=debug
 
 # Using double-underscore notation for nested config
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config security__read_only=true \
   --config security__max_file_size=100 \
   --config logging__level=debug
 
 # Using template-prefixed configuration
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config filesystem__security__read_only=true \
   --config filesystem__logging__level=debug
 
 # Using template data overrides (modifies template.json structure)
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --override "metadata__version=2.0.0" \
   --override "metadata__author=Your Name" \
   --override "tools__0__enabled=false" \
   --override "config__custom_setting=value"
 
 # Advanced: Array and nested overrides with type conversion
-mcp-template deploy demo \
+mcpt deploy demo \
   --override "tools__0__enabled=false" \
   --override "tools__1__timeout=30.5" \
   --override "metadata__tags=[\"custom\",\"modified\"]" \
@@ -109,10 +109,10 @@ mcp-template deploy demo \
 
 ```bash
 # Using JSON configuration file
-mcp-template deploy filesystem --config-file config.json
+mcpt deploy filesystem --config-file config.json
 
 # Using YAML configuration file
-mcp-template deploy filesystem --config-file config.yml
+mcpt deploy filesystem --config-file config.yml
 ```
 
 **config.json example:**
@@ -138,13 +138,13 @@ mcp-template deploy filesystem --config-file config.yml
 
 ```bash
 # Using environment variables
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50 \
   --env MCP_LOG_LEVEL=debug
 
 # Mixed configuration (env variables override CLI)
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config-file base-config.json \
   --config log_level=warning \
   --env MCP_READ_ONLY=true
@@ -154,14 +154,14 @@ mcp-template deploy filesystem \
 
 ```bash
 # Deploy with custom backend and transport
-mcp-template deploy demo \
+mcpt deploy demo \
   --backend docker \
   --transport http \
   --port 8080 \
   --name prod-demo
 
 # Deploy without pulling image (development)
-mcp-template deploy demo \
+mcpt deploy demo \
   --no-pull \
   --config debug=true \
   --data-dir ./local-data
@@ -172,7 +172,7 @@ mcp-template deploy demo \
 Use the `--show-config` flag to see all available configuration options:
 
 ```bash
-mcp-template deploy filesystem --show-config
+mcpt deploy filesystem --show-config
 ```
 
 This displays a comprehensive table showing:
@@ -190,7 +190,7 @@ Each template has its own configuration schema. Common patterns include:
 ### File Server Template
 
 ```bash
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config security__allowed_dirs='["/data", "/workspace"]' \
   --config security__read_only=false \
   --config security__max_file_size=100 \
@@ -201,7 +201,7 @@ mcp-template deploy filesystem \
 ### Demo Template
 
 ```bash
-mcp-template deploy demo \
+mcpt deploy demo \
   --config hello_from="Custom Server" \
   --config debug=true \
   --config port=8080
@@ -210,7 +210,7 @@ mcp-template deploy demo \
 ### PostgreSQL Server Template
 
 ```bash
-mcp-template deploy postgres-server \
+mcpt deploy postgres-server \
   --config database__host=localhost \
   --config database__port=5432 \
   --config database__name=mydb \
@@ -235,13 +235,13 @@ After deployment, monitor your server:
 
 ```bash
 # Check deployment status
-mcp-template status demo
+mcpt status demo
 
 # View logs
-mcp-template logs demo --follow
+mcpt logs demo --follow
 
 # Access container shell
-mcp-template shell demo
+mcpt shell demo
 ```
 
 ## Error Handling
@@ -253,7 +253,7 @@ Common deployment errors and solutions:
 ❌ Template 'mytemplate' not found
 Available templates: demo, filesystem, postgres-server
 ```
-**Solution**: Use `mcp-template list` to see available templates.
+**Solution**: Use `mcpt list` to see available templates.
 
 ### Configuration Error
 ```

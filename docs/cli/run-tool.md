@@ -8,14 +8,14 @@ The `run-tool` command is no longer available. Please use the `call` command in 
 
 ### Old Usage (No Longer Works)
 ```bash
-mcp-template run-tool  # ❌ Deprecated
+mcpt run-tool  # ❌ Deprecated
 ```
 
 ### New Usage (Recommended)
 ```bash
-mcp-template interactive
+mcpt interactive
 # Then in interactive mode:
-mcp> call [tool-name] [arguments]
+mcpt> call [tool-name] [arguments]
 ```
 
 ## Why the Change?
@@ -32,18 +32,18 @@ The `run-tool` command was replaced with the more powerful interactive CLI that 
 
 1. **Start interactive mode**:
    ```bash
-   mcp-template interactive
+   mcpt interactive
    ```
 
 2. **Use the call command**:
    ```bash
-   mcp> call list_repositories
-   mcp> call create_issue --title "Bug fix" --body "Description"
+   mcpt> call list_repositories
+   mcpt> call create_issue --title "Bug fix" --body "Description"
    ```
 
 3. **Exit when done**:
    ```bash
-   mcp> exit
+   mcpt> exit
    ```
 
 ## Related Documentation

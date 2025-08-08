@@ -16,7 +16,7 @@
   "ports": {
     "7071": 7071
   },
-  "command": ["python", "server.py"],
+  "command": [],
   "transport": {
     "default": "stdio",
     "supported": ["http", "stdio"],
@@ -44,6 +44,15 @@
         ],
         "default": "info",
         "env_mapping": "MCP_LOG_LEVEL"
+      },
+      "allowed_dirs": {
+        "type": "string",
+        "title": "Allowed Directories",
+        "description": "Directories that the server can access for file operations. Only for demonstration purposes.",
+        "default": "/tmp",
+        "env_mapping": "MCP_ALLOWED_DIRS",
+        "volume_mount": true,
+        "command_arg": true
       }
     }
   },

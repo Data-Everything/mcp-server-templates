@@ -13,8 +13,9 @@ This module extends the existing CLI with new commands for:
 import datetime
 import json
 import logging
+import os
 import subprocess
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 from rich.panel import Panel
@@ -25,6 +26,7 @@ from mcp_template.deployer import MCPDeployer
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.tools import DockerProbe, ToolDiscovery
 from mcp_template.utils import TEMPLATES_DIR
+from mcp_template.utils.config_processor import ConfigProcessor
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -43,6 +45,7 @@ class EnhancedCLI:
         self.tool_discovery = ToolDiscovery()
         self.docker_probe = DockerProbe()
         self.docker_service = DockerDeploymentService()
+        self.config_processor = ConfigProcessor()
 
         # Initialize response beautifier
         try:
@@ -50,7 +53,6 @@ class EnhancedCLI:
 
             self.beautifier = ResponseBeautifier()
         except ImportError:
-            # Fallback if interactive CLI not available
             self.beautifier = None
 
     def _is_actual_error(self, stderr_text: str) -> bool:
@@ -390,8 +392,8 @@ class EnhancedCLI:
                 if tool_name:
                     console.print(f'  result = client.call_tool("{tool_name}", {{}})')
 
-        console.print(f"\n  # Deploy template: mcp-template deploy {template_name}")
-        console.print(f"  # View logs: mcp-template logs {template_name}")
+        console.print(f"\n  # Deploy template: mcpt deploy {template_name}")
+        console.print(f"  # View logs: mcpt logs {template_name}")
 
     def discover_tools_from_image(
         self,
@@ -663,14 +665,14 @@ else:
                     f"Stdio MCP servers run interactively and cannot be deployed as persistent containers.\n\n"
                     f"[yellow]Available tools in this template:[/yellow]\n"
                     + (
-                        f"  • {chr(10).join(f'  • {tool}' for tool in tool_names)}"
+                        f"{chr(10).join(f'  • {tool}' for tool in tool_names)}"
                         if tool_names
                         else "  • No tools discovered"
                     )
                     + "\n\n"
                     f"[green]To use this template, run tools directly:[/green]\n"
-                    f"  mcp-template tools {template_name}                    # List available tools\n"
-                    f"  mcp-template run-tool {template_name} <tool_name>     # Run a specific tool\n"
+                    f"  mcpt> tools {template_name}                    # List available tools\n"
+                    f"  mcpt> call {template_name} <tool_name>     # Run a specific tool\n"
                     f"  echo '{json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'})}' | \\\n"
                     f"    docker run -i --rm {template.get('docker_image', f'mcp-{template_name}:latest')}",
                     title="Stdio Transport Detected",
@@ -714,6 +716,7 @@ else:
         tool_args: Optional[str] = None,
         config_values: Optional[Dict[str, str]] = None,
         env_vars: Optional[Dict[str, str]] = None,
+        pull_image: bool = True,
     ) -> bool:
         """Run a specific tool from a stdio MCP template."""
         if template_name not in self.templates:
@@ -721,7 +724,6 @@ else:
             return False
 
         template = self.templates[template_name]
-
         # Check if template supports stdio
         transport = template.get("transport", {})
         default_transport = transport.get("default", "http")
@@ -742,12 +744,21 @@ else:
             )
         )
 
-        # Prepare configuration
-        config = {}
-        if config_values:
-            config.update(config_values)
-        if env_vars:
-            config.update(env_vars)
+        # Prepare configuration using the unified config processor
+        config = self.config_processor.prepare_configuration(
+            template=template,
+            config_values=config_values,
+            env_vars=env_vars,
+        )
+
+        # Handle volume mounts and command arguments
+        template_config_dict = (
+            self.config_processor.handle_volume_and_args_config_properties(
+                template, config
+            )
+        )
+        config = template_config_dict.get("config", config)
+        template = template_config_dict.get("template", template)
 
         # Parse tool arguments if provided
         tool_arguments = {}
@@ -777,7 +788,7 @@ else:
                 config,
                 template,
                 json_input,
-                pull_image=True,
+                pull_image=pull_image,
             )
 
             if result["status"] == "completed":
@@ -884,15 +895,53 @@ else:
                                     )
                                 )
                         elif "error" in tool_response:
-                            # JSON-RPC error
+                            # JSON-RPC error - provide user-friendly messages
                             error_info = tool_response["error"]
-                            console.print(
-                                Panel(
-                                    f"Error {error_info.get('code', 'unknown')}: {error_info.get('message', 'Unknown error')}",
-                                    title="Tool Error",
-                                    border_style="red",
-                                )
+                            error_code = error_info.get("code", "unknown")
+                            error_message = error_info.get("message", "Unknown error")
+
+                            # Check if MCP_CLI_DEBUG is enabled for detailed error info
+                            debug_mode = (
+                                os.environ.get("MCP_CLI_DEBUG", "false").lower()
+                                == "true"
                             )
+
+                            if (
+                                error_code == -32603
+                                and "required argument" in error_message
+                            ):
+                                # Handle missing required arguments more gracefully
+                                console.print(
+                                    Panel(
+                                        f"❌ Missing required parameter: {error_message}",
+                                        title="Tool Parameter Error",
+                                        border_style="red",
+                                    )
+                                )
+                                console.print(
+                                    "[dim]💡 Tip: Use the 'tools' command to see required parameters for this tool[/dim]"
+                                )
+                            else:
+                                # General error handling
+                                if debug_mode:
+                                    console.print(
+                                        Panel(
+                                            f"Error {error_code}: {error_message}",
+                                            title="Tool Error (Debug Mode)",
+                                            border_style="red",
+                                        )
+                                    )
+                                else:
+                                    console.print(
+                                        Panel(
+                                            f"❌ Tool execution failed: {error_message}",
+                                            title="Tool Error",
+                                            border_style="red",
+                                        )
+                                    )
+                                    console.print(
+                                        "[dim]💡 Set MCP_CLI_DEBUG=true for detailed error information[/dim]"
+                                    )
                         else:
                             # Raw JSON response
                             console.print(
@@ -1085,14 +1134,14 @@ def handle_enhanced_cli_commands(args) -> bool:
 
     elif args.command == "tools":
         console.print(
-            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcp-template interactive`[/magenta][/red]"
+            "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcpt interactive`[/magenta][/red]"
         )
         return True
 
     elif args.command == "discover-tools":
         # Legacy command - redirect to unified tools command
         console.print(
-            "[red]🚫  The 'discover-tools' command is deprecated. Use 'tools' command with -image parameter in interactive CLI instead [magenta]`mcp-template interactive`[/magenta][/red]"
+            "[red]🚫  The 'discover-tools' command is deprecated. Use 'tools' command with -image parameter in interactive CLI instead [magenta]`mcpt interactive`[/magenta][/red]"
         )
         # enhanced_cli.discover_tools_from_image(args.image, args.server_args)
         return True
@@ -1132,7 +1181,7 @@ def handle_enhanced_cli_commands(args) -> bool:
     elif args.command == "run-tool":
         # Parse config values if provided
         console.print(
-            "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcp-template interactive`[/magenta][/red]"
+            "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcpt interactive`[/magenta][/red]"
         )
         return True
 

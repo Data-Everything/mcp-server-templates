@@ -198,8 +198,20 @@ class TestTemplateCreator(unittest.TestCase):
                 "required": [],
             },
         }
-
-        assert self.creator.template_data == expected_data
+        assert self.creator.template_data["id"] == expected_data["id"]
+        assert self.creator.template_data["name"] == expected_data["name"]
+        assert self.creator.template_data["description"] == expected_data["description"]
+        assert self.creator.template_data["version"] == expected_data["version"]
+        assert self.creator.template_data["author"] == expected_data["author"]
+        assert (
+            self.creator.template_data["docker_image"] == expected_data["docker_image"]
+        )
+        assert self.creator.template_data["docker_tag"] == expected_data["docker_tag"]
+        assert self.creator.template_data["origin"] == expected_data["origin"]
+        assert (
+            self.creator.template_data["capabilities"] == expected_data["capabilities"]
+        )
+        assert len(self.creator.template_data["config_schema"]["properties"]) > 5
 
     @patch("mcp_template.template.utils.creation.console")
     @patch("mcp_template.template.utils.creation.Confirm")

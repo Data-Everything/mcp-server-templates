@@ -31,9 +31,17 @@ Join our [Discord Community](https://discord.gg/55Cfxe9gnr) for support, discuss
 
     Complete command reference for the `mcp-template` CLI tool
 
--   📦 **[Server Templates](server-templates/index.md)**
+-   📦 **[Server Templates](templates/index.md)**
 
-    Browse available templates: GitHub, Zendesk, GitLab, Demo, and more to get started quickly
+    Browse available templates with advanced configuration properties and deployment options
+
+-   📖 **[Template.json Reference](templates/template-json-reference.md)**
+
+    Complete guide to template configuration including volume_mount, command_arg, and transport options
+
+-   🛠️ **[Creating Templates](templates/creating.md)**
+
+    Step-by-step guide to creating custom MCP templates with best practices
 
 -   📖 **[User Guide](user-guide/)**
 
@@ -43,7 +51,7 @@ Join our [Discord Community](https://discord.gg/55Cfxe9gnr) for support, discuss
 
 ## ⚡ What is MCP Templates?
 
-MCP Server Templates is a **self-hosted deployment system** that enables rapid deployment, management, and scaling of Model Context Protocol servers on your own infrastructure. 
+MCP Server Templates is a **self-hosted deployment system** that enables rapid deployment, management, and scaling of Model Context Protocol servers on your own infrastructure.
 
 ### Key Benefits
 
@@ -144,33 +152,33 @@ This repository provides comprehensive tools for self-managing MCP server deploy
 pip install mcp-templates
 
 # Verify installation
-mcp-template --version
+mcpt --version
 ```
 
 #### Deploy Your First Template
 
 ```bash
 # List available templates
-mcp-template list
+mcpt list
 
 # Deploy demo server
-mcp-template deploy demo
+mcpt deploy demo
 
 # Discover available tools
-mcp-template tools demo
+mcpt> tools demo
 
 # Get integration examples
-mcp-template connect demo --llm claude
+mcpt connect demo --llm claude
 ```
 
 #### Integration with Claude Desktop
 
 ```bash
 # Get container name
-mcp-template list
+mcpt list
 
 # Update Claude Desktop config
-mcp-template connect demo --llm claude
+mcpt connect demo --llm claude
 ```
 
 **Claude Desktop Configuration:**
@@ -227,35 +235,35 @@ mcp-template connect demo --llm claude
 #### File Operations
 ```bash
 # Deploy secure file server
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config security__allowed_dirs='["/data", "/workspace"]' \
   --config security__read_only=false
 
 # Connect to Claude Desktop for file operations
-mcp-template connect filesystem --llm claude
+mcpt connect filesystem --llm claude
 ```
 
 #### Database Integration
 ```bash
 # Deploy PostgreSQL MCP server
-mcp-template deploy postgres-server \
+mcpt deploy postgres-server \
   --config database__host=localhost \
   --config database__name=mydb \
   --env POSTGRES_PASSWORD=secret
 
 # Generate Python integration code
-mcp-template connect postgres-server --llm python
+mcpt connect postgres-server --llm python
 ```
 
 #### API Integration
 ```bash
 # Deploy REST API integration server
-mcp-template deploy api-server \
+mcpt deploy api-server \
   --config api__base_url=https://api.example.com \
   --config api__auth_token=$API_TOKEN
 
 # Test with cURL
-mcp-template connect api-server --llm curl
+mcpt connect api-server --llm curl
 ```
 
 ### 🔍 Tool Discovery
@@ -263,7 +271,7 @@ mcp-template connect api-server --llm curl
 **Automatic MCP Protocol Discovery:**
 ```bash
 # Discover tools from any MCP-compliant Docker image
-mcp-template tools --image mcp/filesystem /tmp
+mcpt> tools--image mcp/filesystem /tmp
 
 # Rich formatted output shows all capabilities:
 ✅ Discovered 11 tools via docker_mcp_stdio
@@ -277,8 +285,10 @@ mcp-template tools --image mcp/filesystem /tmp
 **Integration Ready:**
 ```bash
 # Get ready-to-use integration code
-mcp-template tools demo --format json
-mcp-template connect demo --llm vscode
+mcpt i
+mcpt> tools demo --format json
+exit
+mcpt> connect demo --llm vscode
 ```
 
 ### 📊 Available Templates
@@ -305,7 +315,7 @@ mcp-template connect demo --llm vscode
 #### Security Considerations
 ```bash
 # Deploy with security hardening
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config security__read_only=true \
   --config security__max_file_size=10 \
   --config logging__enable_audit=true \
@@ -315,20 +325,20 @@ mcp-template deploy filesystem \
 #### Monitoring Setup
 ```bash
 # Health check monitoring
-mcp-template list --format json | jq '.summary'
+mcpt list --format json | jq '.summary'
 
 # Log monitoring
-mcp-template logs filesystem --follow --since 1h
+mcpt logs filesystem --follow --since 1h
 ```
 
 #### Backup and Recovery
 ```bash
 # Export deployment configuration
-mcp-template status filesystem --format json > backup.json
+mcpt status filesystem --format json > backup.json
 
 # Cleanup and redeploy
-mcp-template cleanup filesystem
-mcp-template deploy filesystem --config-file backup.json
+mcpt cleanup filesystem
+mcpt deploy filesystem --config-file backup.json
 ```
 
 ### 🤝 Community & Support
@@ -364,13 +374,13 @@ pip install -e .
 
 ```bash
 # List available templates
-mcp-template list
+mcpt list
 
 # Deploy a template
-mcp-template deploy filesystem
+mcpt deploy filesystem
 
 # View logs
-mcp-template logs filesystem
+mcpt logs filesystem
 
 ```
 
@@ -378,20 +388,20 @@ mcp-template logs filesystem
 
 ```bash
 # View configuration options for any template
-mcp-template deploy filesystem --show-config
+mcpt deploy filesystem --show-config
 
 # Deploy with custom configuration
-mcp-template deploy filesystem --config read_only_mode=true
+mcpt deploy filesystem --config read_only_mode=true
 
 # Deploy with config file
-mcp-template deploy filesystem --config-file config.json
+mcpt deploy filesystem --config-file config.json
 ```
 
 ## Available Templates
 
 Our templates are automatically discovered and validated using the `TemplateDiscovery` utility to ensure only working implementations are listed. This keeps the documentation up-to-date as new templates are added.
 
-*Use `mcp-template list` to see all currently available templates, or visit the [Templates](server-templates/index.md) section for detailed documentation.*
+*Use `mcpt list` to see all currently available templates, or visit the [Templates](server-templates/index.md) section for detailed documentation.*
 
 **Popular Templates:**
 - **filesystem** - Secure filesystem access for AI assistants
@@ -432,18 +442,18 @@ Templates support flexible configuration from multiple sources:
 **Example configuration:**
 ```bash
 # Using CLI options
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --config read_only_mode=true \
   --config max_file_size=50 \
   --config log_level=debug
 
 # Using environment variables
-mcp-template deploy filesystem \
+mcpt deploy filesystem \
   --env MCP_READ_ONLY=true \
   --env MCP_MAX_FILE_SIZE=50
 
 # Using config file
-mcp-template deploy filesystem --config-file production.json
+mcpt deploy filesystem --config-file production.json
 ```
 
 ## Template Development
@@ -452,7 +462,7 @@ Create custom MCP server templates:
 
 ```bash
 # Interactive template creation
-mcp-template create my-custom-server
+mcpt create my-custom-server
 
 # Follow prompts to configure:
 # - Template metadata
