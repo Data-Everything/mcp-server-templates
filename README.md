@@ -16,8 +16,10 @@
 Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options. Built for developers who want to focus on AI integration, not infrastructure setup.
 
 ## 📢 Announcements
-- **🚀 Version 0.3.0 Released!**: New features, bug fixes, and performance improvements.
+- **🚀 Version 0.4.0 Released!**: Enhanced CLI parsing, filesystem template, volume mount auto-configuration, and comprehensive test coverage.
 - **🔧 CLI Shorthand Alias**: Introducing new `mcpt` alias for faster access to all CLI commands with full backward compatibility.
+- **🗂️ New Filesystem Template**: Secure local filesystem access with 14 comprehensive tools and Docker volume auto-configuration.
+- **🎯 Enhanced Interactive CLI**: Advanced argument parsing with quote support, session configuration, and parameter validation.
 
 ## 🌟 Why MCP Server Templates?
 
@@ -263,11 +265,34 @@ mcp-template logs github --follow
 ```bash
 # List all available templates
 mcp-template list
-# Outputs: demo, github, gitlab, zendesk
+# Outputs: demo, github, gitlab, zendesk, filesystem
 
 # Create new template using generator
 mcp-template create my-custom-server
 ```
+
+**Featured Template - Filesystem:**
+The filesystem template provides secure local file system access with 14 comprehensive tools:
+
+```bash
+# Interactive usage (recommended for stdio templates)
+mcp-template interactive
+mcp> config filesystem allowed_dirs="/tmp /home/user/documents"
+mcp> tools filesystem
+mcp> call filesystem list_directory '{"path": "/tmp"}'
+mcp> call filesystem read_file '{"path": "/tmp/example.txt"}'
+mcp> call filesystem search_files '{"path": "/tmp", "pattern": "*.txt"}'
+
+# Direct usage with complex path configurations
+mcp> call -C allowed_dirs="/path with spaces /another/path" filesystem tree '{"path": "/tmp"}'
+```
+
+**Filesystem Tools Available:**
+- File Operations: `read_file`, `write_file`, `copy_file`, `move_file`, `delete_file`, `modify_file`
+- Directory Operations: `list_directory`, `create_directory`, `tree`, `list_allowed_directories`
+- Search & Discovery: `search_files`, `search_within_files`, `get_file_info`
+- Batch Operations: `read_multiple_files`
+
 - **Fallback strategies**: Docker → Static JSON → Template capabilities
 - **Caching**: Caches discovery results for performance
 
@@ -286,15 +311,22 @@ mcp-template config demo
 # JSON config file
 mcp-template deploy demo --config-file ./config.json
 
-# YAML config file  
+# YAML config file
 mcp-template deploy demo --config-file ./config.yml
+
+# Advanced filesystem template with volume mounts
+# (paths automatically mounted as Docker volumes)
+echo '{"allowed_dirs": "/home/user/documents /tmp/workspace"}' > filesystem-config.json
+mcp-template run-tool filesystem list_directory \
+  --config-file filesystem-config.json \
+  '{"path": "/tmp"}'
 ```
 
 **3. Deploy with CLI Configuration Options:**
 
 There are **two types** of CLI configuration:
 
-- **`--config`**: For `config_schema` properties (becomes environment variables)
+- **`--config`**: For `config_schema` properties (becomes environment variables and Docker volume mounts)
 - **`--override`**: For template data modifications (modifies template structure directly)
 
 ```bash
@@ -304,15 +336,40 @@ mcp-template deploy demo \
   --config max_file_size=50 \
   --config log_level=debug
 
+# Advanced volume mount configuration (automatic Docker volume handling)
+mcp-template run-tool filesystem list_directory \
+  --config allowed_dirs="/home/user/docs /tmp/workspace" \
+  '{"path": "/tmp"}'
+# This automatically creates: -v "/home/user/docs:/data/docs" -v "/tmp/workspace:/data/workspace"
+
 # Template overrides (modifies template structure)
 mcp-template deploy demo \
   --override name="Custom File Server" \
   --override description="My custom file server"
 ```
 
+**4. Enhanced Configuration Processing:**
+
+New features include automatic volume mount handling and command argument processing:
+
+```bash
+# Space-separated paths in configuration (quoted for safety)
+mcp-template run-tool filesystem tree \
+  --config allowed_dirs="/path with spaces /another/path" \
+  '{"path": "/tmp"}'
+
+# Multiple configuration sources with precedence
+mcp-template run-tool filesystem list_directory \
+  --config-file base-config.json \
+  --config allowed_dirs="/override/path" \
+  --env LOG_LEVEL=DEBUG \
+  '{"path": "/tmp"}'
+# Precedence: CLI --config > --config-file > environment > template defaults
+```
+
 ### Interactive CLI Mode
 
-The interactive CLI provides comprehensive deployment management and MCP server interaction:
+The interactive CLI provides comprehensive deployment management and MCP server interaction with **enhanced argument parsing** for complex configurations:
 
 ```bash
 # Start interactive CLI
@@ -322,54 +379,115 @@ mcp-template interactive
 **Key Features:**
 - **Deployment Management**: List, monitor, and manage running deployments
 - **Tool Discovery**: Discover available tools from deployed MCP servers
-- **Tool Execution**: Execute tools directly from the command line
+- **Advanced Tool Execution**: Execute tools with complex argument parsing
+- **Configuration Management**: Configure templates with multiple methods
+- **Enhanced Argument Parsing**: Support for quoted space-separated values and complex JSON
 - **Real-time Interaction**: Interactive session with deployed servers
-- **Configuration Management**: Configure templates and servers dynamically
+
+**Enhanced Configuration Support:**
+```bash
+# In interactive mode - multiple configuration methods
+mcp> config filesystem allowed_dirs="/home/user/docs /tmp/workspace"
+mcp> call --config-file config.json filesystem list_directory '{"path": "/tmp"}'
+mcp> call --env API_KEY=xyz --config timeout=30 github search_repositories '{"query": "python"}'
+
+# Advanced argument parsing with quotes for space-separated values
+mcp> call -C allowed_dirs="/path1 /path2" filesystem list_directory '{"path": "/tmp"}'
+
+# Complex JSON arguments with proper parsing
+mcp> call filesystem search_within_files '{"path": "/tmp", "pattern": "error log", "file_pattern": "*.log"}'
+```
+
+**Configuration Methods in Interactive Mode:**
+```bash
+# 1. Session configuration (persistent during session)
+mcp> config template_name key=value key2=value2
+
+# 2. Inline configuration flags
+mcp> call --config key=value --env VAR=value template tool '{"args": "here"}'
+
+# 3. Configuration files
+mcp> call --config-file /path/to/config.json template tool '{"args": "here"}'
+
+# 4. Environment variables
+mcp> call --env API_KEY=token --env DEBUG=true template tool '{"args": "here"}'
+
+# 5. No-pull option for faster execution
+mcp> call --no-pull template tool '{"args": "here"}'
+```
 
 **Use Cases:**
 - Manage multiple deployments from a single interface
-- Discover what tools are available in your MCP servers
-- Execute MCP server tools without writing integration code
-- Debug and test MCP server functionality
-- Interactive exploration of server capabilities
+- Test complex file path configurations with spaces
+- Execute MCP server tools with advanced parameter validation
+- Debug and test MCP server functionality interactively
+- Work with stdio-based templates like filesystem efficiently
 
 **Benefits:**
-- **Streamlined workflow**: No need to retype `mcp-template` for each command
-- **Server discovery**: Automatically find and interact with deployed servers
-- **Tool execution**: Direct command-line access to MCP server tools
-- **Session persistence**: Maintain context across multiple operations
+- **Enhanced Parsing**: Handles quoted arguments with spaces correctly
+- **Parameter Validation**: Automatic validation and prompting for required parameters
+- **Multiple Config Sources**: File, CLI, environment, and session configuration support
+- **Session Persistence**: Maintain configuration context across multiple operations
+- **Tool Discovery**: Automatic tool discovery with fallback mechanisms
 
 ### Advanced Usage & Examples
 
-**1. Tool Discovery Workflows:**
+**1. Tool Discovery Workflows (Updated Commands):**
 ```bash
-# Discover tools without credentials (uses dummy credentials automatically)
-mcp-template tools github
+# Interactive mode (recommended approach)
+mcp-template interactive
+mcp> tools github
+mcp> call github search_repositories '{"query": "python"}'
 
-# Discover tools with custom Docker image
-mcp-template discover-tools custom/mcp-server:latest --timeout 30
+# Legacy commands (still available but deprecated)
+# Use interactive mode for better experience
+mcp-template tools github  # ⚠️  Consider using interactive mode
+mcp-template discover-tools  # ⚠️  Use interactive mode instead
+mcp-template run-tool filesystem list_directory '{"path": "/tmp"}'  # ⚠️  Use interactive mode
 
-# Force server discovery (skip static fallback)
-mcp-template tools github --force-server
-
-# Show integration examples for discovered tools
-mcp-template integration-examples github
+# Stdio templates (filesystem) - interactive mode recommended
+mcp-template interactive
+mcp> config filesystem allowed_dirs="/tmp /home/user/docs"
+mcp> tools filesystem
+mcp> call filesystem list_directory '{"path": "/tmp"}'
 ```
 
 **2. Complex Configuration Scenarios:**
 ```bash
-# Deploy with multiple config sources (priority: CLI > file > defaults)
-mcp-template deploy zendesk \
-  --config-file ./zendesk-config.yaml \
-  --config subdomain=mycompany \
-  --config email=admin@company.com \
-  --env ZENDESK_API_TOKEN=xyz123
+# Interactive mode with complex configurations
+mcp-template interactive
+mcp> call --config-file ./zendesk-config.yaml \
+     --config subdomain=mycompany \
+     --config email=admin@company.com \
+     --env ZENDESK_API_TOKEN=xyz123 \
+     zendesk search_tickets '{"query": "urgent"}'
 
-# Use double underscore notation for nested config
-mcp-template deploy demo \
-  --config server__port=8080 \
-  --config server__host=0.0.0.0 \
-  --config limits__max_file_size=100MB
+# Direct usage with space-separated paths (enhanced parsing)
+mcp> call -C allowed_dirs="/path with spaces /another path" \
+     filesystem search_files '{"path": "/tmp", "pattern": "*.log"}'
+
+# Multiple configuration sources with enhanced precedence handling
+mcp> call --config-file base-config.json \
+     --config allowed_dirs="/override/path" \
+     --env LOG_LEVEL=DEBUG \
+     filesystem tree '{"path": "/tmp", "max_depth": 3}'
+```
+
+**3. Enhanced Features in Latest Version:**
+```bash
+# Volume mount auto-configuration (filesystem template)
+mcp> call -C allowed_dirs="/home/user/documents /tmp/workspace" \
+     filesystem list_directory '{"path": "/tmp"}'
+# Automatically creates Docker volume mounts:
+# -v "/home/user/documents:/data/documents" -v "/tmp/workspace:/data/workspace"
+
+# Hybrid argument parsing for complex quoted values
+mcp> call -C config_path="/path with spaces/config.json" \
+     -C debug_mode="true" \
+     custom_template process_data '{"input": "complex data"}'
+
+# No-pull option for faster development cycles
+mcp> call --no-pull filesystem read_file '{"path": "/tmp/test.txt"}'
 ```
 
 ---
@@ -456,7 +574,7 @@ mcp-template run-tool filesystem read_file \
 mcp-template run-tool github create_pull_request \
   --args '{
     "owner": "user",
-    "repo": "project", 
+    "repo": "project",
     "title": "Feature: Add new functionality",
     "head": "feature-branch",
     "base": "main",
@@ -478,7 +596,7 @@ mcp-template run-tool database query \
 mcp-template run-tool github search_users --args '{"q": "mcp"}'
 mcp-template run-tool github get_file_contents --args '{"owner": "user", "repo": "project", "path": "README.md"}'
 
-# Filesystem tools  
+# Filesystem tools
 mcp-template run-tool filesystem list_directory --args '{"path": "/data"}'
 mcp-template run-tool filesystem create_file --args '{"path": "/data/test.txt", "content": "Hello World"}'
 
@@ -698,6 +816,42 @@ You may use, deploy, and modify it freely in your organization or personal proje
 You **may not** resell, rehost, or offer it as a commercial SaaS product without a commercial license.
 
 See [LICENSE](./LICENSE) and [ATTRIBUTION](./ATTRIBUTION.md) for details.
+
+---
+## 📋 Changelog
+
+### Version 0.4.0 (Latest - August 2025)
+**Major Features:**
+- **🗂️ Filesystem Template**: Complete filesystem access with 14 tools (read, write, search, etc.)
+- **🎯 Enhanced Interactive CLI**: Advanced argument parsing with quote support for space-separated values
+- **📦 Volume Mount Auto-configuration**: Automatic Docker volume creation from configuration paths
+- **🔧 Enhanced Configuration Processor**: Space-separated path handling with Docker integration
+- **🧪 Comprehensive Testing**: 58 tests covering all new functionality with focused test suites
+
+**Enhancements:**
+- Hybrid argument parsing (shlex + cmd2) for complex quoted arguments
+- Session-based configuration in interactive mode
+- Parameter validation with automatic prompting for missing required parameters
+- Container path translation for Docker volume mounts
+- Command argument injection for containerized execution
+- Enhanced error handling and user-friendly messages
+
+**Templates:**
+- **New**: Filesystem template with secure directory access controls
+- **Updated**: Demo template with enhanced configuration examples
+- **Enhanced**: All templates now support volume mount auto-configuration
+
+**Developer Experience:**
+- Interactive CLI with persistent session configuration
+- Rich console output with tables, panels, and progress indicators
+- Comprehensive test coverage for CLI parsing and configuration processing
+- Enhanced documentation with real-world examples
+
+### Version 0.3.0
+- Initial MCP server template system
+- Docker and Kubernetes deployment support
+- Basic CLI interface and template discovery
+- GitHub, GitLab, and Zendesk templates
 
 ---
 ## 🤝 Contributing
