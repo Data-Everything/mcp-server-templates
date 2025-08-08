@@ -1,17 +1,38 @@
 # MCP Server Templates
 
-**Comprehensive guide to available MCP server templates, their usage, and creation of custom templates.**
+**Comprehensive guide to available MCP server templates, their usage, and creation of custom templates with advanced configuration properties.**
 
 ## Overview
 
 MCP Server Templates are pre-configured, production-ready implementations of the Model Context Protocol specification. Each template is designed for specific use cases and provides a complete deployment package including:
 
-- 🔧 **Complete configuration schemas** with environment variable mapping
+- 🔧 **Advanced configuration schemas** with MCP-specific properties (volume_mount, command_arg, sensitive)
 - 📖 **Comprehensive documentation** and usage examples
 - 🧪 **Built-in testing frameworks** and validation
-- 🐳 **Docker containerization** with optimized images
+- 🐳 **Docker containerization** with automatic volume mounting
 - ⚙️ **CLI integration** for seamless deployment
 - 🔗 **Client integration examples** for popular LLM platforms
+- 🚀 **Multiple transport protocols** (stdio, HTTP, SSE)
+
+## Template Configuration Features
+
+### MCP-Specific Properties
+
+| Property | Purpose | Example Use Case |
+|----------|---------|------------------|
+| `volume_mount: true` | Auto-create Docker volumes from config | Filesystem access, data processing |
+| `command_arg: true` | Inject config as command arguments | Configuration files, debug flags |
+| `sensitive: true` | Secure handling of secrets | API keys, passwords, tokens |
+| `env_mapping` | Map config to environment variables | Application configuration |
+| `transport` | Communication protocol options | stdio, HTTP, SSE, streamable-http |
+
+### Configuration Documentation
+
+| Resource | Description | Target Audience |
+|----------|-------------|-----------------|
+| **[📖 Template.json Reference](template-json-reference.md)** | Complete configuration property guide | All developers |
+| **[🚀 Creating Templates](creating.md)** | Step-by-step template creation | Template creators |
+| **[🔧 Development Setup](../development/setup.md)** | Advanced development patterns | Core developers |
 
 ## Available Templates
 

@@ -9,10 +9,19 @@ Creating custom MCP server templates allows you to package your specific busines
 ### What You'll Learn
 - Template structure and requirements
 - Interactive template creation process
-- Configuration schema design
+- Configuration schema design with MCP-specific properties
+- Volume mount and command argument patterns
+- Transport configuration (stdio, HTTP, SSE)
 - Tool implementation patterns
 - Testing and validation strategies
 - Deployment and distribution
+
+### Quick Reference
+
+- **📖 [Template.json Reference](template-json-reference.md)** - Complete configuration property guide
+- **🔧 Configuration Properties** - volume_mount, command_arg, sensitive, env_mapping
+- **🚀 Transport Options** - stdio, http, sse, streamable-http
+- **🛠️ Tool Discovery** - static, dynamic, hybrid approaches
 
 ## Quick Start
 
@@ -586,6 +595,390 @@ mcp-template connect my-template --llm vscode
 
 # Generate Python client code
 mcp-template connect my-template --llm python
+```
+
+## MCP Template Configuration
+
+### Understanding MCP-Specific Properties
+
+The MCP Template Platform extends standard configuration with powerful properties for Docker integration, environment management, and transport handling. Understanding these properties is essential for creating robust templates.
+
+#### Volume Mount Configuration (`volume_mount`)
+
+**Purpose**: Automatically create Docker volume mounts from configuration values, enabling secure host filesystem access.
+
+**Basic Example**:
+```json
+{
+  "data_directory": {
+    "type": "string",
+    "title": "Data Directory",
+    "description": "Local directory for data storage",
+    "env_mapping": "DATA_DIR",
+    "volume_mount": true
+  }
+}
+```
+
+**How it works**:
+- User input: `"/home/user/documents"`
+- Creates volume: `-v "/home/user/documents:/data/documents:rw"`
+- Environment: `DATA_DIR="/data/documents"`
+
+**Multiple Paths Example**:
+```json
+{
+  "allowed_paths": {
+    "type": "string",
+    "title": "Allowed File Paths",
+    "description": "Space-separated list of allowed paths",
+    "env_mapping": "ALLOWED_PATHS",
+    "volume_mount": true,
+    "command_arg": true
+  }
+}
+```
+
+**Advanced Usage**:
+- Input: `"/home/user/docs /tmp/workspace /opt/data"`
+- Creates volumes:
+  ```
+  -v "/home/user/docs:/data/docs:rw"
+  -v "/tmp/workspace:/data/workspace:rw"
+  -v "/opt/data:/data/data:rw"
+  ```
+- Environment: `ALLOWED_PATHS="/data/docs /data/workspace /data/data"`
+
+#### Command Argument Injection (`command_arg`)
+
+**Purpose**: Inject configuration values as command-line arguments to your container.
+
+**Basic Example**:
+```json
+{
+  "config_file": {
+    "type": "string",
+    "title": "Config File Path",
+    "description": "Path to application configuration file",
+    "env_mapping": "CONFIG_FILE",
+    "command_arg": true
+  }
+}
+```
+
+**How it works**:
+- User input: `"/etc/app/config.json"`
+- Adds to command: `--config-file=/etc/app/config.json`
+
+**Combined with Volume Mount**:
+```json
+{
+  "ssl_cert_dir": {
+    "type": "string",
+    "title": "SSL Certificate Directory",
+    "description": "Directory containing SSL certificates",
+    "env_mapping": "SSL_CERT_DIR",
+    "volume_mount": true,
+    "command_arg": true
+  }
+}
+```
+
+**Result**:
+- Volume: `-v "/etc/ssl/certs:/data/ssl:rw"`
+- Environment: `SSL_CERT_DIR="/data/ssl"`
+- Command arg: `--ssl-cert-dir=/data/ssl`
+
+#### Sensitive Configuration (`sensitive`)
+
+**Purpose**: Mark sensitive data for proper handling in logs, UI, and storage.
+
+```json
+{
+  "api_key": {
+    "type": "string",
+    "title": "API Key",
+    "description": "Authentication key for external service",
+    "env_mapping": "API_KEY",
+    "sensitive": true
+  },
+  "database_password": {
+    "type": "string",
+    "title": "Database Password",
+    "description": "Password for database connection",
+    "env_mapping": "DB_PASSWORD",
+    "sensitive": true
+  }
+}
+```
+
+**Benefits**:
+- Values masked in platform logs: `API_KEY=***`
+- UI hides values with password fields
+- Configuration files exclude sensitive values from plain text
+
+#### Environment Variable Mapping (`env_mapping`)
+
+**Purpose**: Map configuration properties to environment variables in your container.
+
+**Standard Mapping**:
+```json
+{
+  "log_level": {
+    "type": "string",
+    "title": "Log Level",
+    "description": "Application logging level",
+    "enum": ["DEBUG", "INFO", "WARNING", "ERROR"],
+    "default": "INFO",
+    "env_mapping": "LOG_LEVEL"
+  }
+}
+```
+
+**Array Handling with Separators**:
+```json
+{
+  "allowed_domains": {
+    "type": "array",
+    "title": "Allowed Domains",
+    "description": "List of allowed domains",
+    "items": {"type": "string"},
+    "env_mapping": "ALLOWED_DOMAINS",
+    "env_separator": ","
+  }
+}
+```
+
+**Result**: `ALLOWED_DOMAINS="domain1.com,domain2.com,domain3.com"`
+
+### Transport Configuration
+
+#### stdio Transport (Default)
+
+**Best for**: Command-line tools, local development, direct integration
+
+```json
+{
+  "transport": {
+    "default": "stdio",
+    "supported": ["stdio"]
+  }
+}
+```
+
+**Container Command**: Direct execution with stdin/stdout communication
+
+#### HTTP Transport
+
+**Best for**: Web integration, REST APIs, remote access
+
+```json
+{
+  "transport": {
+    "default": "http",
+    "supported": ["http", "stdio"],
+    "port": 8080
+  },
+  "ports": {
+    "8080": 8080
+  }
+}
+```
+
+**Features**:
+- RESTful API endpoints
+- Tool discovery at `/tools`
+- Health checks at `/health`
+- OpenAPI documentation
+
+#### Server-Sent Events (SSE)
+
+**Best for**: Real-time streaming, event-driven applications
+
+```json
+{
+  "transport": {
+    "default": "sse",
+    "supported": ["sse", "http"],
+    "port": 8080
+  }
+}
+```
+
+**Features**:
+- Streaming responses
+- Real-time updates
+- Event-based communication
+
+#### Multi-Transport Support
+
+```json
+{
+  "transport": {
+    "default": "stdio",
+    "supported": ["stdio", "http", "sse"],
+    "port": 8080
+  }
+}
+```
+
+**Benefits**:
+- Flexibility for different use cases
+- Platform can choose optimal transport
+- Migration path between transports
+
+### Tool Discovery Configuration
+
+#### Dynamic Discovery (Recommended)
+
+```json
+{
+  "tool_discovery": "dynamic",
+  "tool_endpoint": "/tools"
+}
+```
+
+**How it works**:
+- Platform starts container
+- Queries `/tools` endpoint
+- Discovers available tools at runtime
+- Supports tool changes without template updates
+
+#### Static Discovery
+
+```json
+{
+  "tool_discovery": "static",
+  "tools": [
+    {
+      "name": "process_file",
+      "description": "Process a file with custom logic",
+      "parameters": {
+        "file_path": {"type": "string", "required": true},
+        "mode": {"type": "string", "default": "standard"}
+      }
+    }
+  ]
+}
+```
+
+**Use when**:
+- Tools are fixed and won't change
+- Performance-critical environments
+- Offline or restricted environments
+
+#### Hybrid Discovery
+
+```json
+{
+  "tool_discovery": "hybrid",
+  "tool_endpoint": "/tools",
+  "tools": [
+    {
+      "name": "core_function",
+      "description": "Core functionality always available"
+    }
+  ]
+}
+```
+
+**Benefits**:
+- Guaranteed core tools from static definition
+- Additional tools from dynamic discovery
+- Fallback if dynamic discovery fails
+
+### Real-World Configuration Examples
+
+#### Filesystem Template with Security
+
+```json
+{
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "allowed_directories": {
+        "type": "string",
+        "title": "Allowed Directories",
+        "description": "Space-separated allowed directories for file access",
+        "env_mapping": "ALLOWED_DIRS",
+        "volume_mount": true,
+        "command_arg": true
+      },
+      "max_file_size": {
+        "type": "integer",
+        "title": "Max File Size (MB)",
+        "description": "Maximum file size for operations in megabytes",
+        "default": 100,
+        "env_mapping": "MAX_FILE_SIZE"
+      },
+      "read_only": {
+        "type": "boolean",
+        "title": "Read Only Mode",
+        "description": "Enable read-only mode for security",
+        "default": false,
+        "env_mapping": "READ_ONLY_MODE"
+      }
+    },
+    "required": ["allowed_directories"]
+  }
+}
+```
+
+#### API Integration Template
+
+```json
+{
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "api_base_url": {
+        "type": "string",
+        "title": "API Base URL",
+        "description": "Base URL for the external API",
+        "default": "https://api.example.com",
+        "env_mapping": "API_BASE_URL"
+      },
+      "api_key": {
+        "type": "string",
+        "title": "API Key",
+        "description": "Authentication key for API access",
+        "env_mapping": "API_KEY",
+        "sensitive": true
+      },
+      "rate_limit_requests": {
+        "type": "integer",
+        "title": "Rate Limit (requests/minute)",
+        "description": "Maximum requests per minute",
+        "default": 60,
+        "env_mapping": "RATE_LIMIT"
+      },
+      "timeout_seconds": {
+        "type": "integer",
+        "title": "Request Timeout",
+        "description": "HTTP request timeout in seconds",
+        "default": 30,
+        "env_mapping": "TIMEOUT_SECONDS"
+      },
+      "enable_caching": {
+        "type": "boolean",
+        "title": "Enable Response Caching",
+        "description": "Cache API responses for performance",
+        "default": true,
+        "env_mapping": "ENABLE_CACHING"
+      },
+      "allowed_endpoints": {
+        "type": "array",
+        "title": "Allowed API Endpoints",
+        "description": "List of allowed API endpoints",
+        "items": {"type": "string"},
+        "default": ["/users", "/data", "/status"],
+        "env_mapping": "ALLOWED_ENDPOINTS",
+        "env_separator": ","
+      }
+    },
+    "required": ["api_key"]
+  }
+}
 ```
 
 ## Best Practices

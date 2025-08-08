@@ -114,61 +114,137 @@ pip install -r requirements.txt
 ```
 
 ---
-## 📦 Template Structure
+## 📦 Template Structure & Configuration
 
 Each template must include:
 
-- `template.json` — Metadata and config schema with environment mappings
+- `template.json` — **Template metadata and configuration schema** with MCP-specific properties
 - `Dockerfile` — Container build instructions
 - `README.md` — Usage and description
 - (Optional) `USAGE.md`, `requirements.txt`, `src/`, `tests/`, `config/`
 
-**Example `template.json`:**
+### Template.json Configuration
+
+The `template.json` file is the heart of every MCP template, defining how it behaves, deploys, and integrates with the platform. It includes powerful MCP-specific properties for Docker volume mounting, command argument injection, and transport configuration.
+
+**📖 [Complete Template.json Reference](https://data-everything.github.io/mcp-server-templates/templates/template-json-reference/)** - Comprehensive guide to all properties and patterns
+
+#### Essential Properties
+
+| Property | Purpose | Example |
+|----------|---------|---------|
+| `volume_mount: true` | Auto-create Docker volumes from paths | User input → Docker volumes |
+| `command_arg: true` | Inject config as command arguments | `--config-file=/path` |
+| `sensitive: true` | Mark sensitive data (API keys, passwords) | Masked in logs/UI |
+| `env_mapping` | Map config to environment variables | `"API_KEY"` |
+| `transport` | Communication protocol configuration | `stdio`, `http`, `sse` |
+
+#### Quick Example
+
+**Basic filesystem template:**
 ```json
 {
-  "name": "File Server MCP",
-  "description": "Secure file system access for AI assistants...",
+  "name": "Filesystem MCP Server",
+  "description": "Secure local filesystem access with configurable allowed paths",
   "version": "1.0.0",
   "author": "Data Everything",
   "category": "File System",
   "tags": ["filesystem", "files", "security"],
-  "docker_image": "dataeverything/mcp-demo",
+  "docker_image": "dataeverything/mcp-filesystem",
   "docker_tag": "latest",
-  "ports": {
-    "8080": 8080
-  },
-  "command": ["python", "server.py"],
   "transport": {
     "default": "stdio",
-    "supported": ["stdio", "http"],
-    "port": 8080
+    "supported": ["stdio", "http"]
   },
   "config_schema": {
     "type": "object",
     "properties": {
-      "allowed_directories": {
-        "type": "array",
-        "env_mapping": "MCP_ALLOWED_DIRS",
-        "env_separator": ":",
-        "default": ["/data"],
-        "description": "Allowed directories for file access"
+      "allowed_dirs": {
+        "type": "string",
+        "title": "Allowed Directories",
+        "description": "Space-separated allowed directories for file access",
+        "env_mapping": "ALLOWED_DIRS",
+        "volume_mount": true,
+        "command_arg": true
       },
-      "read_only_mode": {
-        "type": "boolean",
-        "env_mapping": "MCP_READ_ONLY",
-        "default": false,
-        "description": "Enable read-only mode"
+      "api_key": {
+        "type": "string",
+        "title": "API Key",
+        "description": "Authentication key for external service",
+        "env_mapping": "API_KEY",
+        "sensitive": true
       },
       "log_level": {
         "type": "string",
-        "env_mapping": "MCP_LOG_LEVEL",
-        "default": "info",
-        "description": "Logging level (debug, info, warning, error)"
+        "title": "Log Level",
+        "description": "Logging verbosity level",
+        "enum": ["DEBUG", "INFO", "WARNING", "ERROR"],
+        "default": "INFO",
+        "env_mapping": "LOG_LEVEL"
       }
     },
-    "required": ["allowed_directories"]
+    "required": ["allowed_dirs"]
+  },
+  "tool_discovery": "dynamic",
+  "has_image": true,
+  "origin": "internal"
+}
+```
+
+#### How MCP Properties Work
+
+**Volume Mount Example:**
+```json
+{
+  "data_directory": {
+    "type": "string",
+    "env_mapping": "DATA_DIR",
+    "volume_mount": true
   }
 }
+```
+- **User input:** `"/home/user/documents"`
+- **Creates volume:** `-v "/home/user/documents:/data/documents:rw"`
+- **Environment:** `DATA_DIR="/data/documents"`
+
+**Command Argument Example:**
+```json
+{
+  "config_file": {
+    "type": "string",
+    "env_mapping": "CONFIG_FILE",
+    "command_arg": true
+  }
+}
+```
+- **User input:** `"/etc/app/config.json"`
+- **Adds to command:** `--config-file=/etc/app/config.json`
+
+**Transport Configuration:**
+```json
+{
+  "transport": {
+    "default": "stdio",        // Default: direct CLI communication
+    "supported": ["stdio", "http"],  // Also supports HTTP API
+    "port": 8080              // HTTP port if supported
+  }
+}
+```
+
+### Creating Custom Templates
+
+Generate new templates with comprehensive configuration examples:
+
+```bash
+# Interactive template creation with MCP-specific properties
+mcp-template create my-custom-template
+
+# The generator includes examples for:
+# - volume_mount: Auto Docker volume configuration
+# - command_arg: Command-line argument injection
+# - sensitive: Secure handling of API keys/passwords
+# - env_mapping: Environment variable mapping
+# - transport: stdio/HTTP/SSE communication options
 ```
 
 ---

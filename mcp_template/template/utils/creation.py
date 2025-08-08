@@ -246,14 +246,60 @@ class TemplateCreator:
         self.template_data["config_schema"] = {
             "type": "object",
             "properties": {
+                "api_key": {
+                    "type": "string",
+                    "title": "API Key",
+                    "description": "Required API key for authentication. Get from your service provider dashboard.",
+                    "env_mapping": "API_KEY",
+                    "sensitive": True,
+                },
+                "base_url": {
+                    "type": "string",
+                    "title": "Base URL",
+                    "description": "Service base URL endpoint",
+                    "default": "https://api.example.com",
+                    "env_mapping": "BASE_URL",
+                },
+                "data_directory": {
+                    "type": "string",
+                    "title": "Data Directory",
+                    "description": "Local directory for data storage and caching. Will be mounted as Docker volume.",
+                    "default": "/tmp/data",
+                    "env_mapping": "DATA_DIRECTORY",
+                    "volume_mount": True,
+                },
+                "allowed_paths": {
+                    "type": "string",
+                    "title": "Allowed File Paths",
+                    "description": "Space-separated list of allowed file paths for operations. Passed as command arguments.",
+                    "env_mapping": "ALLOWED_PATHS",
+                    "volume_mount": True,
+                    "command_arg": True,
+                },
                 "log_level": {
                     "type": "string",
-                    "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
+                    "title": "Log Level",
+                    "description": "Logging verbosity level",
+                    "enum": ["DEBUG", "INFO", "WARNING", "ERROR"],
                     "default": "INFO",
                     "env_mapping": "LOG_LEVEL",
-                }
+                },
+                "enable_cache": {
+                    "type": "boolean",
+                    "title": "Enable Caching",
+                    "description": "Enable response caching for better performance",
+                    "default": True,
+                    "env_mapping": "ENABLE_CACHE",
+                },
+                "timeout": {
+                    "type": "integer",
+                    "title": "Request Timeout",
+                    "description": "HTTP request timeout in seconds",
+                    "default": 30,
+                    "env_mapping": "REQUEST_TIMEOUT",
+                },
             },
-            "required": [],
+            "required": ["api_key", "allowed_paths"],
         }
 
     def _confirm_creation(self) -> bool:
@@ -582,7 +628,7 @@ class {class_name}:
         """
         Example tool
         """
-        
+
         return "Example tool executed successfully"
 
     def run(self):

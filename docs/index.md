@@ -31,9 +31,17 @@ Join our [Discord Community](https://discord.gg/55Cfxe9gnr) for support, discuss
 
     Complete command reference for the `mcp-template` CLI tool
 
--   📦 **[Server Templates](server-templates/index.md)**
+-   📦 **[Server Templates](templates/index.md)**
 
-    Browse available templates: GitHub, Zendesk, GitLab, Demo, and more to get started quickly
+    Browse available templates with advanced configuration properties and deployment options
+
+-   📖 **[Template.json Reference](templates/template-json-reference.md)**
+
+    Complete guide to template configuration including volume_mount, command_arg, and transport options
+
+-   🛠️ **[Creating Templates](templates/creating.md)**
+
+    Step-by-step guide to creating custom MCP templates with best practices
 
 -   📖 **[User Guide](user-guide/)**
 
@@ -43,7 +51,7 @@ Join our [Discord Community](https://discord.gg/55Cfxe9gnr) for support, discuss
 
 ## ⚡ What is MCP Templates?
 
-MCP Server Templates is a **self-hosted deployment system** that enables rapid deployment, management, and scaling of Model Context Protocol servers on your own infrastructure. 
+MCP Server Templates is a **self-hosted deployment system** that enables rapid deployment, management, and scaling of Model Context Protocol servers on your own infrastructure.
 
 ### Key Benefits
 

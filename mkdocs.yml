@@ -55,10 +55,13 @@ nav:
   - Quick Start: getting-started/quickstart.md
   - Configuration: getting-started/configuration.md
 - Templates:
-  - Overview: server-templates/index.md
+  - Overview: templates/index.md
   - Available Templates: server-templates/available.md
+  - Creating Templates: templates/creating.md
+  - Template.json Reference: templates/template-json-reference.md
   - Demo Hello MCP Server: server-templates/demo/index.md
-  - File Server MCP: server-templates/file-server/index.md
+  - File Server MCP: server-templates/fileserver/index.md
+  - Github MCP: server-templates/github/index.md
 - Guides:
   - Usage Guide: guides/usage.md
   - Creating Templates: guides/creating-templates.md
