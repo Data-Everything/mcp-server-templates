@@ -14,6 +14,7 @@ import pytest
 from mcp_template.interactive_cli import call_parser
 
 
+@pytest.mark.unit
 class TestCallParserArgumentHandling:
     """Test the call_parser argparse configuration and the parsing logic."""
 

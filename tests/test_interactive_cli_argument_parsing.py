@@ -7,7 +7,7 @@ These tests verify that the interactive CLI correctly handles:
 3. Complex command lines with both features
 """
 
-import argparse
+import unittest
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +15,8 @@ import pytest
 from mcp_template.interactive_cli import InteractiveCLI, call_parser
 
 
-class TestInteractiveCLIArgumentParsing:
+@pytest.mark.unit
+class TestInteractiveCLIArgumentParsing(unittest.TestCase):
     """Test the interactive CLI argument parsing functionality."""
 
     @pytest.fixture

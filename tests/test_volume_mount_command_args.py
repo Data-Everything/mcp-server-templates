@@ -6,15 +6,14 @@ marked with volume_mount=true or command_arg=true to become Docker
 volume mounts or command line arguments instead of environment variables.
 """
 
-import json
-import tempfile
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
 from mcp_template.deployer import MCPDeployer
 from mcp_template.template.utils.discovery import TemplateDiscovery
+
+pytestmark = pytest.mark.unit
 
 
 class TestVolumeMountFunctionality:
