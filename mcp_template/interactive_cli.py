@@ -9,6 +9,7 @@ import argparse
 import json
 import logging
 import os
+import shlex
 import sys
 from typing import Any, Dict, List, Union
 
@@ -1339,8 +1340,155 @@ class InteractiveCLI(cmd2.Cmd):
 
         console.print(table)
 
-    @with_argparser(call_parser)
-    def do_call(self, args):
+    def _validate_and_get_tool_parameters(
+        self,
+        template_name: str,
+        tool_name: str,
+        tool_args: str,
+        config_values: Dict[str, Any],
+    ) -> Union[str, None]:
+        """Validate tool parameters and prompt for missing required ones.
+
+        Args:
+            template_name: Name of the template
+            tool_name: Name of the tool
+            tool_args: JSON string arguments provided by user
+            config_values: Current configuration values
+
+        Returns:
+            Updated JSON arguments string, or None if validation failed
+        """
+        try:
+            # Parse existing arguments
+            current_args = {}
+            if tool_args and tool_args.strip() != "{}":
+                try:
+                    current_args = json.loads(tool_args)
+                except json.JSONDecodeError:
+                    console.print(
+                        f"[red]❌ Invalid JSON in tool arguments: {tool_args}[/red]"
+                    )
+                    return None
+
+            # Get tool information using tool discovery
+            try:
+                tools = self.enhanced_cli.tool_discovery.discover_tools(
+                    template_name,
+                    self.enhanced_cli.templates[template_name],
+                    config_values or {},
+                )
+            except Exception as e:
+                console.print(
+                    f"[yellow]⚠️  Could not discover tools for validation: {e}[/yellow]"
+                )
+                # Continue with original args if tool discovery fails
+                return tool_args
+
+            # Validate that tools is a list and contains dictionaries
+            if not isinstance(tools, list):
+                console.print(
+                    "[yellow]⚠️  Tool discovery returned unexpected format[/yellow]"
+                )
+                return tool_args
+
+            # Find the specific tool
+            target_tool = None
+            for tool in tools:
+                if not isinstance(tool, dict):
+                    continue  # Skip non-dictionary entries
+                if tool.get("name") == tool_name:
+                    target_tool = tool
+                    break
+
+            if not target_tool:
+                console.print(
+                    f"[yellow]⚠️  Tool '{tool_name}' not found for validation[/yellow]"
+                )
+                return tool_args
+
+            # Check tool parameters
+            parameters = target_tool.get("parameters", {})
+            input_schema = target_tool.get("inputSchema", {})
+
+            # Use the appropriate schema format
+            schema_to_use = None
+            if isinstance(parameters, dict) and "properties" in parameters:
+                schema_to_use = parameters
+            elif isinstance(input_schema, dict) and "properties" in input_schema:
+                schema_to_use = input_schema
+
+            if not schema_to_use:
+                # No schema to validate against
+                return tool_args
+
+            properties = schema_to_use.get("properties", {})
+            required_params = schema_to_use.get("required", [])
+
+            # Check for missing required parameters
+            missing_required = []
+            for param_name in required_params:
+                if param_name not in current_args:
+                    missing_required.append(param_name)
+
+            if missing_required:
+                console.print(
+                    f"[yellow]⚠️  Missing required parameters for tool '{tool_name}': {', '.join(missing_required)}[/yellow]"
+                )
+
+                if Confirm.ask("Would you like to provide the missing parameters?"):
+                    console.print(
+                        f"[cyan]Providing parameters for tool '{tool_name}'...[/cyan]"
+                    )
+
+                    for param_name in missing_required:
+                        param_config = properties.get(param_name, {})
+                        param_type = param_config.get("type", "string")
+                        param_desc = param_config.get(
+                            "description", f"Value for {param_name}"
+                        )
+
+                        value = Prompt.ask(
+                            f"Enter {param_name} ({param_type}) - {param_desc}"
+                        )
+                        if value:
+                            # Convert value based on type
+                            if param_type == "integer":
+                                try:
+                                    current_args[param_name] = int(value)
+                                except ValueError:
+                                    current_args[param_name] = value
+                            elif param_type == "number":
+                                try:
+                                    current_args[param_name] = float(value)
+                                except ValueError:
+                                    current_args[param_name] = value
+                            elif param_type == "boolean":
+                                current_args[param_name] = value.lower() in (
+                                    "true",
+                                    "1",
+                                    "yes",
+                                    "on",
+                                )
+                            else:
+                                current_args[param_name] = value
+
+                    # Return updated JSON arguments
+                    return json.dumps(current_args)
+                else:
+                    console.print(
+                        "[yellow]⚠️  Cannot proceed without required parameters[/yellow]"
+                    )
+                    return None
+
+            # All required parameters are present
+            return tool_args
+
+        except Exception as e:
+            console.print(f"[yellow]⚠️  Parameter validation error: {e}[/yellow]")
+            # Continue with original args if validation fails
+            return tool_args
+
+    def do_call(self, line):
         """Call a tool from a template using argparse flags.
 
         Usage:
@@ -1348,6 +1496,59 @@ class InteractiveCLI(cmd2.Cmd):
           call --config-file config.json <template_name> <tool_name> [json_args]
           call --env API_KEY=value --config timeout=30 <template_name> <tool_name> [json_args]
         """
+        # Check if we have quoted space-separated values that cmd2 can't handle
+        if '"' in line and " " in line:
+            # Use shlex for proper quote parsing when quotes are present
+            try:
+                import shlex
+
+                argv = shlex.split(line)
+
+                # Special handling for JSON arguments - if the last argument looks like
+                # it might be a split JSON object, try to rejoin it
+                if len(argv) > 2:
+                    # Check if we have a potential split JSON (last few args contain { and })
+                    json_start_idx = None
+                    for i, arg in enumerate(argv):
+                        if "{" in arg:
+                            json_start_idx = i
+                            break
+
+                    if json_start_idx is not None and json_start_idx < len(argv) - 1:
+                        # Found a JSON start that's not the last argument - rejoin
+                        json_parts = argv[json_start_idx:]
+                        rejoined_json = " ".join(json_parts)
+                        # Check if this creates valid JSON-like string
+                        if rejoined_json.count("{") == rejoined_json.count(
+                            "}"
+                        ) and rejoined_json.count("[") == rejoined_json.count("]"):
+                            argv = argv[:json_start_idx] + [rejoined_json]
+
+                args = call_parser.parse_args(argv)
+            except (ValueError, SystemExit) as e:
+                console.print(f"[red]❌ Error parsing command line: {e}[/red]")
+                console.print(
+                    '[dim]For JSON with spaces, use quotes: \'{"key": "value"}\'[/dim]'
+                )
+                console.print(
+                    "[dim]For paths with spaces, use quotes: 'path=\"/dir1 /dir2\"'[/dim]"
+                )
+                return
+        else:
+            # Use standard cmd2 parsing for simple cases
+            try:
+                # Temporarily replace the method to use with_argparser
+                @with_argparser(call_parser)
+                def temp_call(self, args):
+                    return args
+
+                # Parse using cmd2's mechanism
+                statement = self.statement_parser.parse(line)
+                args = call_parser.parse_args(statement.arg_list)
+            except (ValueError, SystemExit) as e:
+                console.print(f"[red]❌ Error parsing command line: {e}[/red]")
+                console.print("[dim]Use: call <template> <tool> [json_args][/dim]")
+                return
         # Merge configuration from all sources
         template_name = args.template_name
 
@@ -1447,11 +1648,20 @@ class InteractiveCLI(cmd2.Cmd):
             # Use stdio approach
             console.print("[dim]Using stdio transport...[/dim]")
 
+            # Validate tool parameters and prompt for missing ones
+            validated_tool_args = self._validate_and_get_tool_parameters(
+                template_name, tool_name, tool_args, config_values
+            )
+
+            if validated_tool_args is None:
+                # Parameter validation failed
+                return
+
             try:
                 result = self.enhanced_cli.run_stdio_tool(
                     template_name,
                     tool_name,
-                    tool_args,
+                    validated_tool_args,
                     config_values,
                     pull_image=not no_pull,
                 )

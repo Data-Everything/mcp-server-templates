@@ -13,6 +13,7 @@ This module extends the existing CLI with new commands for:
 import datetime
 import json
 import logging
+import os
 import subprocess
 from typing import Any, Dict, List, Optional
 
@@ -723,7 +724,6 @@ else:
             return False
 
         template = self.templates[template_name]
-
         # Check if template supports stdio
         transport = template.get("transport", {})
         default_transport = transport.get("default", "http")
@@ -895,15 +895,53 @@ else:
                                     )
                                 )
                         elif "error" in tool_response:
-                            # JSON-RPC error
+                            # JSON-RPC error - provide user-friendly messages
                             error_info = tool_response["error"]
-                            console.print(
-                                Panel(
-                                    f"Error {error_info.get('code', 'unknown')}: {error_info.get('message', 'Unknown error')}",
-                                    title="Tool Error",
-                                    border_style="red",
-                                )
+                            error_code = error_info.get("code", "unknown")
+                            error_message = error_info.get("message", "Unknown error")
+
+                            # Check if MCP_CLI_DEBUG is enabled for detailed error info
+                            debug_mode = (
+                                os.environ.get("MCP_CLI_DEBUG", "false").lower()
+                                == "true"
                             )
+
+                            if (
+                                error_code == -32603
+                                and "required argument" in error_message
+                            ):
+                                # Handle missing required arguments more gracefully
+                                console.print(
+                                    Panel(
+                                        f"❌ Missing required parameter: {error_message}",
+                                        title="Tool Parameter Error",
+                                        border_style="red",
+                                    )
+                                )
+                                console.print(
+                                    "[dim]💡 Tip: Use the 'tools' command to see required parameters for this tool[/dim]"
+                                )
+                            else:
+                                # General error handling
+                                if debug_mode:
+                                    console.print(
+                                        Panel(
+                                            f"Error {error_code}: {error_message}",
+                                            title="Tool Error (Debug Mode)",
+                                            border_style="red",
+                                        )
+                                    )
+                                else:
+                                    console.print(
+                                        Panel(
+                                            f"❌ Tool execution failed: {error_message}",
+                                            title="Tool Error",
+                                            border_style="red",
+                                        )
+                                    )
+                                    console.print(
+                                        "[dim]💡 Set MCP_CLI_DEBUG=true for detailed error information[/dim]"
+                                    )
                         else:
                             # Raw JSON response
                             console.print(

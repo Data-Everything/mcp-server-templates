@@ -162,9 +162,11 @@ class TestDeployerVolumeAndCommandIntegration:
             mock_deployment_manager.deploy_template.assert_called_once()
             call_args = mock_deployment_manager.deploy_template.call_args
 
-            # Check template_data contains command arguments
+            # Check template_data contains command arguments (should be split into individual args)
             template_data = call_args[1]["template_data"]
-            assert "--debug --port 8080" in template_data["command"]
+            assert "--debug" in template_data["command"]
+            assert "--port" in template_data["command"]
+            assert "8080" in template_data["command"]
 
             # Check configuration excludes command arg properties
             configuration = call_args[1]["configuration"]
@@ -201,7 +203,8 @@ class TestDeployerVolumeAndCommandIntegration:
             template_data = call_args[1]["template_data"]
             assert "/shared/data" in template_data["volumes"]
             assert template_data["volumes"]["/shared/data"] == "/mnt/shared/data"
-            assert "/shared/data" in template_data["command"]
+            # Command should contain the container path since containers access mounted volumes via container paths
+            assert "/mnt/shared/data" in template_data["command"]
 
             # Check configuration excludes the combined property
             configuration = call_args[1]["configuration"]
@@ -346,8 +349,8 @@ class TestDeployerVolumeAndCommandIntegration:
 
         # Should have volume mount
         assert "/test/demo/data" in template_data["volumes"]
-        # Should have command argument
-        assert "/test/demo/data" in template_data["command"]
+        # Should have command argument with container path (containers access mounted volumes via container paths)
+        assert "/mnt/test/demo/data" in template_data["command"]
 
     def test_real_filesystem_template_volume_and_command_integration(
         self, mock_deployment_manager

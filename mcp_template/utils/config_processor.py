@@ -123,6 +123,7 @@ class ConfigProcessor:
             env_var_name = prop_value.get("env_mapping", prop_key.upper())
             container_mount_path = None
             host_path = None
+            final_container_paths = []
 
             # Check if this property is a volume mount
             if (
@@ -130,35 +131,59 @@ class ConfigProcessor:
                 and prop_value.get("volume_mount", False) is True
             ):
                 config_value = config_copy[env_var_name]
-                mount_value = config_value.split(":")
 
-                # In most cases, it would be only the host path
-                if len(mount_value) == 1:
+                # Clean up the value - remove Docker command artifacts and split by space
+                # Handle cases where users accidentally include Docker syntax
+                cleaned_value = config_value.strip()
+
+                # Remove common Docker command artifacts more carefully
+                docker_artifacts = ["--volume ", "-v ", "--env ", "-e "]
+                for artifact in docker_artifacts:
+                    cleaned_value = cleaned_value.replace(artifact, " ")
+
+                # Also handle cases where artifacts are at the end
+                end_artifacts = ["--volume", "-v", "--env", "-e"]
+                for artifact in end_artifacts:
+                    if cleaned_value.endswith(artifact):
+                        cleaned_value = cleaned_value[: -len(artifact)]
+
+                # Split by space to handle multiple paths, then filter out empty strings
+                path_parts = [
+                    part.strip() for part in cleaned_value.split() if part.strip()
+                ]
+
+                for path_part in path_parts:
+                    if not path_part:
+                        continue
+
+                    mount_value = path_part.split(":")
                     container_mount_path = None
-                    host_path = mount_value[0]
-                elif len(mount_value) == 2:
-                    # Assume format is host_path:container_path
-                    container_mount_path = mount_value[1]
-                    host_path = mount_value[0]
-                else:
-                    logger.warning("Invalid volume mount format: %s", config_value)
+                    host_path = None
 
-                if host_path:
-                    if len(host_path.split(" ")) > 1:
-                        for part in host_path.split(" "):
-                            if container_mount_path:
-                                volumes[part] = container_mount_path
-                            else:
-                                volumes[part] = (
-                                    f"{default_mount_path}/{part.lstrip('/')}"
-                                )
+                    # In most cases, it would be only the host path
+                    if len(mount_value) == 1:
+                        container_mount_path = None
+                        host_path = mount_value[0]
+                    elif len(mount_value) == 2:
+                        # Assume format is host_path:container_path
+                        container_mount_path = mount_value[1]
+                        host_path = mount_value[0]
                     else:
+                        logger.warning("Invalid volume mount format: %s", path_part)
+                        continue  # Skip this path and continue with others
+
+                    if host_path and host_path.startswith(
+                        "/"
+                    ):  # Only process absolute paths
                         if container_mount_path:
                             volumes[host_path] = container_mount_path
+                            final_container_paths.append(container_mount_path)
                         else:
-                            volumes[host_path] = (
+                            container_path = (
                                 f"{default_mount_path}/{host_path.lstrip('/')}"
                             )
+                            volumes[host_path] = container_path
+                            final_container_paths.append(container_path)
 
                 delete_key = True
 
@@ -167,8 +192,32 @@ class ConfigProcessor:
                 env_var_name in config_copy
                 and prop_value.get("command_arg", False) is True
             ):
-                # If this is a command argument, add to args
-                command.append(config_copy[env_var_name])
+                # If this property is both volume_mount and command_arg, use container paths
+                if final_container_paths:
+                    # Use the container paths for command arguments since the container
+                    # needs to access the mounted paths, not the original host paths
+                    command.extend(final_container_paths)
+                else:
+                    # If not a volume mount, use the original value as-is
+                    config_value = config_copy[env_var_name]
+
+                    # Clean up the value for command arguments (remove Docker artifacts if any)
+                    cleaned_value = config_value.strip()
+                    docker_artifacts = ["--volume ", "-v ", "--env ", "-e "]
+                    for artifact in docker_artifacts:
+                        cleaned_value = cleaned_value.replace(artifact, " ")
+
+                    end_artifacts = ["--volume", "-v", "--env", "-e"]
+                    for artifact in end_artifacts:
+                        if cleaned_value.endswith(artifact):
+                            cleaned_value = cleaned_value[: -len(artifact)]
+
+                    # For space-separated paths in command args, split and add each
+                    path_parts = [
+                        part.strip() for part in cleaned_value.split() if part.strip()
+                    ]
+                    command.extend(path_parts)
+
                 delete_key = True
 
             if delete_key:

@@ -300,8 +300,9 @@ class TestConfigProcessorVolumeAndCommandArgs:
             template, config
         )
 
-        # Should add to command
-        assert "--verbose --debug" in result["template"]["command"]
+        # Should add to command (split into individual arguments)
+        assert "--verbose" in result["template"]["command"]
+        assert "--debug" in result["template"]["command"]
 
         # Should remove from config
         assert "SERVER_ARGS" not in result["config"]
@@ -332,8 +333,8 @@ class TestConfigProcessorVolumeAndCommandArgs:
         assert "/shared/data" in result["template"]["volumes"]
         assert result["template"]["volumes"]["/shared/data"] == "/mnt/shared/data"
 
-        # Should add to command
-        assert "/shared/data" in result["template"]["command"]
+        # Should add container path to command (not host path)
+        assert "/mnt/shared/data" in result["template"]["command"]
 
         # Should remove from config
         assert "SHARED_PATH" not in result["config"]
@@ -371,6 +372,7 @@ class TestConfigProcessorVolumeAndCommandArgs:
                     "data_dirs": {
                         "env_mapping": "DATA_DIRS",
                         "volume_mount": True,
+                        "command_arg": True,
                     }
                 }
             },
@@ -392,6 +394,12 @@ class TestConfigProcessorVolumeAndCommandArgs:
         assert volumes["/path1"] == "/mnt/path1"
         assert volumes["/path2"] == "/mnt/path2"
         assert volumes["/path3"] == "/mnt/path3"
+
+        # Should add container paths to command
+        command = result["template"]["command"]
+        assert "/mnt/path1" in command
+        assert "/mnt/path2" in command
+        assert "/mnt/path3" in command
 
     def test_preserve_existing_volumes_and_commands(self, config_processor):
         """Test that existing volumes and commands are preserved."""
@@ -422,10 +430,10 @@ class TestConfigProcessorVolumeAndCommandArgs:
         assert "/new/path" in volumes
         assert volumes["/new/path"] == "/mnt/new/path"
 
-        # Should preserve existing commands and add new ones
+        # Should preserve existing commands and add container path for new one
         command = result["template"]["command"]
         assert "--existing-arg" in command
-        assert "/new/path" in command
+        assert "/mnt/new/path" in command
 
     def test_handle_none_volumes_and_commands(self, config_processor):
         """Test handling when template has None for volumes and command."""
@@ -449,9 +457,9 @@ class TestConfigProcessorVolumeAndCommandArgs:
             template, config
         )
 
-        # Should initialize volumes and command
+        # Should initialize volumes and command with container path
         assert result["template"]["volumes"] == {"/test/path": "/mnt/test/path"}
-        assert result["template"]["command"] == ["/test/path"]
+        assert result["template"]["command"] == ["/mnt/test/path"]
 
     def test_invalid_volume_mount_format_warning(self, config_processor):
         """Test warning for invalid volume mount format."""
@@ -481,6 +489,46 @@ class TestConfigProcessorVolumeAndCommandArgs:
 
             # Should not create volume mount for invalid format
             assert not result["template"]["volumes"]
+
+    def test_docker_artifact_removal(self, config_processor):
+        """Test removal of Docker command artifacts from volume mount paths."""
+        template = {
+            "config_schema": {
+                "properties": {
+                    "data_dirs": {
+                        "env_mapping": "DATA_DIRS",
+                        "volume_mount": True,
+                        "command_arg": True,
+                    }
+                }
+            },
+            "volumes": {},
+            "command": [],
+        }
+
+        # Input with Docker command artifacts (like what user might accidentally paste)
+        config = {
+            "DATA_DIRS": "/path1:/container1 --volume /path2:/container2 --volume /path3"
+        }
+
+        result = config_processor.handle_volume_and_args_config_properties(
+            template, config
+        )
+
+        # Should clean up artifacts and create proper volume mounts
+        volumes = result["template"]["volumes"]
+        assert "/path1" in volumes
+        assert volumes["/path1"] == "/container1"
+        assert "/path2" in volumes
+        assert volumes["/path2"] == "/container2"
+        assert "/path3" in volumes
+        assert volumes["/path3"] == "/mnt/path3"
+
+        # Should add container paths to command
+        command = result["template"]["command"]
+        assert "/container1" in command
+        assert "/container2" in command
+        assert "/mnt/path3" in command
 
 
 @pytest.mark.unit
