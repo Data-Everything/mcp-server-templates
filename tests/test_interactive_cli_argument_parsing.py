@@ -8,7 +8,6 @@ These tests verify that the interactive CLI correctly handles:
 """
 
 import shlex
-import unittest
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,7 +16,7 @@ from mcp_template.interactive_cli import InteractiveCLI, call_parser
 
 
 @pytest.mark.unit
-class TestInteractiveCLIArgumentParsing(unittest.TestCase):
+class TestInteractiveCLIArgumentParsing:
     """Test the interactive CLI argument parsing functionality."""
 
     @pytest.fixture
@@ -93,7 +92,7 @@ class TestInteractiveCLIArgumentParsing(unittest.TestCase):
             # Verify that the config was parsed correctly and stdio tool was called
             mock_merge.assert_called_once()
             call_args = mock_merge.call_args[1]
-            self.assertEqual(call_args["inline_config"], ["allowed_dirs=/path1 /path2"])
+            assert call_args["inline_config"] == ["allowed_dirs=/path1 /path2"]
             mock_run.assert_called_once()
 
     def test_json_with_spaces_parsing(self, mock_cli):
@@ -136,7 +135,7 @@ class TestInteractiveCLIArgumentParsing(unittest.TestCase):
             # Verify parsing was successful
             mock_merge.assert_called_once()
             call_args = mock_merge.call_args[1]
-            self.assertEqual(call_args["inline_config"], ["allowed_dirs=/path1 /path2"])
+            call_args["inline_config"] = ["allowed_dirs=/path1 /path2"]
             mock_run.assert_called_once()
 
     def test_error_handling_for_malformed_quotes(self, mock_cli):
