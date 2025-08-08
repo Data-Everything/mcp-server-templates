@@ -148,7 +148,9 @@ jobs:
         if: steps.check-tests.outputs.has-tests == 'true'
         run: |
           cd mcp_template/template/templates/${{ matrix.template }}
-          python -m pytest tests/ -v --tb=short -m "not integration" --cov-fail-under=5
+          python -m pytest tests/ -v --tb=short -m "not integration" \
+          --cov-fail-under=5 || if [ $? -eq 5 ]; then \
+          echo "✅ No tests collected - treating as pass"; exit 0; else exit $?; fi
         timeout-minutes: 10
 
       - name: Run template integration tests
