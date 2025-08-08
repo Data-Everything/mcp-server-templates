@@ -714,6 +714,7 @@ else:
         tool_args: Optional[str] = None,
         config_values: Optional[Dict[str, str]] = None,
         env_vars: Optional[Dict[str, str]] = None,
+        pull_image: bool = True,
     ) -> bool:
         """Run a specific tool from a stdio MCP template."""
         if template_name not in self.templates:
@@ -777,7 +778,7 @@ else:
                 config,
                 template,
                 json_input,
-                pull_image=True,
+                pull_image=pull_image,
             )
 
             if result["status"] == "completed":

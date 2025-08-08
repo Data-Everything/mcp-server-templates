@@ -7,25 +7,25 @@ tools, and configurations with persistent session state and beautified responses
 
 import argparse
 import json
+import logging
 import os
 import sys
-from typing import Dict, List, Any, Union
-import cmd2
-import logging
-from cmd2 import with_argparser
+from typing import Any, Dict, List, Union
 
+import cmd2
+from cmd2 import with_argparser
+from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
-from rich.prompt import Prompt, Confirm
+from rich.prompt import Confirm, Prompt
 from rich.syntax import Syntax
+from rich.table import Table
 from rich.tree import Tree
-from rich.columns import Columns
 
 from mcp_template.cli import EnhancedCLI
+from mcp_template.deployer import MCPDeployer
 from mcp_template.tools.cache import CacheManager
 from mcp_template.tools.http_tool_caller import HTTPToolCaller
-from mcp_template.deployer import MCPDeployer
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -44,6 +44,13 @@ call_parser.add_argument(
     dest="config",
     action="append",
     help="Temporary config KEY=VALUE pairs",
+)
+call_parser.add_argument(
+    "-NP",
+    "--no-pull",
+    dest="no_pull",
+    action="store_true",
+    help="Do not pull the Docker image",
 )
 call_parser.add_argument("template_name", help="Template name to call")
 call_parser.add_argument("tool_name", help="Tool name to execute")
@@ -1200,15 +1207,15 @@ class InteractiveCLI(cmd2.Cmd):
 
 [yellow]Configuration:[/yellow]
   config {template_name} param=value
-  
+
 [yellow]List Tools:[/yellow]
   tools {template_name}
   tools {template_name} --force-server
-  
+
 [yellow]Call Tools:[/yellow]
   call {template_name} tool_name
   call {template_name} tool_name {{"param": "value"}}
-  
+
 [yellow]Environment Variables:[/yellow]"""
 
         if config_schema and config_schema.get("properties"):
@@ -1310,6 +1317,7 @@ class InteractiveCLI(cmd2.Cmd):
 
         tool_name = args.tool_name
         tool_args = args.json_args
+        no_pull = args.no_pull
 
         console.print(
             f"\n[cyan]🚀 Calling tool '{tool_name}' from template '{template_name}'[/cyan]"
@@ -1387,7 +1395,11 @@ class InteractiveCLI(cmd2.Cmd):
 
             try:
                 result = self.enhanced_cli.run_stdio_tool(
-                    template_name, tool_name, tool_args, config_values
+                    template_name,
+                    tool_name,
+                    tool_args,
+                    config_values,
+                    pull_image=not no_pull,
                 )
 
                 # The enhanced CLI already beautifies stdio responses
