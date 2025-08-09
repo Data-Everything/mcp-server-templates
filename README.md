@@ -1,4 +1,4 @@
-# MCP Server Templates
+# MCP Server Templates - Zero-Config Deployment for Model Context Protocol Servers
 
 [![Version](https://img.shields.io/pypi/v/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
@@ -11,7 +11,7 @@
 
 </div>
 
-> **Production-ready Model Context Protocol (MCP) server templates with zero-configuration deployment**
+> **Production-ready **MCP (Model Context Protocol)** server templates with one-click Docker or Kubernetes deployment, robust tool discovery, and flexible configuration.**
 
 Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options. Built for developers who want to focus on AI integration, not infrastructure setup.
 
@@ -22,6 +22,7 @@ Deploy, manage, and scale MCP servers instantly with Docker containers, comprehe
 - **🎯 Enhanced Interactive CLI**: Advanced argument parsing with quote support, session configuration, and parameter validation.
 
 ## 🌟 Why MCP Server Templates?
+Integrating LLMs with external tools is often tedious—every service needs its own setup. MCP is the protocol that fixes this.
 
 | Traditional MCP Setup | With MCP Templates |
 |----------------------|-------------------|
