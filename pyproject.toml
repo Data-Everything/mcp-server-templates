@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mcp-templates"
 version = "0.0.0"
-description = "Deploy MCP server templates with zero configuration"
+description = "MCP-Server-Templates: Easy, zero-config deployment for Model Context Protocol servers"
 readme = "README.md"
 authors = [
     { name = "Sam Arora", email = "tooling@dataeverything.com" },
@@ -20,7 +20,7 @@ dependencies = [
     "aiohttp>=3.8.0",
     "setuptools_scm>=8.3.1",
 ]
-keywords = ["mcp", "model-context-protocol", "ai", "deployment", "docker", "templates"]
+keywords = ["MCP", "Model Context Protocol", "AI Tools", "Server Templates", "Docker", "Kubernetes"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -37,7 +37,8 @@ classifiers = [
 [project.urls]
 Bug-Reports = "https://github.com/Data-Everything/mcp-server-templates/issues"
 Source = "https://github.com/Data-Everything/mcp-server-templates"
-Documentation = "https://github.com/Data-Everything/mcp-server-templates#readme"
+Documentation = "https://data-everything.github.io/mcp-server-templates"
+Issue Tracker = "https://github.com/Data-Everything/mcp-server-templates/issues"
 
 [project.scripts]
 mcp-template = "mcp_template:main"
