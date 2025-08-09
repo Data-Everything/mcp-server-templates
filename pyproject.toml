@@ -38,7 +38,7 @@ classifiers = [
 Bug-Reports = "https://github.com/Data-Everything/mcp-server-templates/issues"
 Source = "https://github.com/Data-Everything/mcp-server-templates"
 Documentation = "https://data-everything.github.io/mcp-server-templates"
-Issue Tracker = "https://github.com/Data-Everything/mcp-server-templates/issues"
+Issue-Tracker = "https://github.com/Data-Everything/mcp-server-templates/issues"
 
 [project.scripts]
 mcp-template = "mcp_template:main"
