@@ -13,6 +13,15 @@ from typing import Any, Dict, List, Optional, Union
 logger = logging.getLogger(__name__)
 
 
+RESERVED_ENV_VARS = {
+    "transport": "MCP_TRANSPORT",
+    "log_level": "MCP_LOG_LEVEL",
+    "read_only_mode": "MCP_READ_ONLY_MODE",
+    "port": "MCP_PORT",
+    "host": "MCP_HOST",
+}
+
+
 class ConfigProcessor:
     """Unified configuration processor for MCP templates."""
 
@@ -54,6 +63,7 @@ class ConfigProcessor:
         Returns:
             Processed configuration dictionary
         """
+
         config = {}
 
         # Start with template defaults
@@ -90,6 +100,10 @@ class ConfigProcessor:
         # Apply environment variables dict (highest priority)
         if env_vars:
             config.update(env_vars)
+
+        for reserved_key, reserved_value in RESERVED_ENV_VARS.items():
+            if reserved_key in config:
+                config[reserved_value] = config.pop(reserved_key)
 
         return config
 

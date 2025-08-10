@@ -11,6 +11,7 @@ import logging
 from typing import Any, Dict, List, Literal, Optional
 
 from mcp_template.core.exceptions import StdIoTransportDeploymentError
+from mcp_template.deployer import MCPDeployer
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.tools.docker_probe import DockerProbe
@@ -87,6 +88,8 @@ class ServerManager:
         image: Optional[str] = None,
         transport: Optional[Literal["http", "stdio", "sse", "http-stream"]] = None,
         port: Optional[int] = None,
+        data_dir: Optional[str] = None,
+        config_dir: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Start a new MCP server instance.
@@ -102,6 +105,8 @@ class ServerManager:
             image: Optional custom image to use
             transport: Optional transport type (e.g., "http", "stdio")
             port: Optional port for HTTP transport
+            data_dir: Optional data directory for the server
+            config_dir: Optional configuration directory for the server
 
         Returns:
             Deployment information or None if failed
@@ -166,16 +171,40 @@ class ServerManager:
                 config_file=config_file,
                 config_values=config,
             )
+            missing_properties = MCPDeployer.list_missing_properties(
+                template_data, config
+            )
+            template_copy = MCPDeployer.append_volume_mounts_to_template(
+                template=template_data,
+                data_dir=data_dir,
+                config_dir=config_dir,
+            )
+            template_config_dict = (
+                self.config_processor.handle_volume_and_args_config_properties(
+                    template_copy, config
+                )
+            )
+            config = template_config_dict.get("config", config)
+            template_copy = template_config_dict.get("template", template_copy)
+
+            if missing_properties:
+                logger.error(
+                    "Missing required properties for %s: %s",
+                    template_id,
+                    missing_properties,
+                )
+                return None
+
             # Deploy the template
             result = self.deployment_manager.deploy_template(
                 template_id=template_id,
                 configuration=config,
-                template_data=template_data,
+                template_data=template_copy,
                 pull_image=pull_image,
                 backend=self.backend_type,
             )
 
-            if result.get("success"):
+            if result.get("status") == "deployed":
                 logger.info("Successfully started server %s", template_id)
                 return result
             else:

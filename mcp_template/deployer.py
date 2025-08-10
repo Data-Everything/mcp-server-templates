@@ -75,6 +75,47 @@ class MCPDeployer:
 
         console.print(table)
 
+    @staticmethod
+    def list_missing_properties(
+        template: Dict[str, Any], config: Dict[str, Any]
+    ) -> List[str]:
+        """Check for missing required properties in the configuration."""
+
+        missing_properties = []
+        required_properties = template.get("config_schema", {}).get("required", [])
+        for prop in required_properties:
+            if prop not in config:
+                missing_properties.append(prop)
+        return missing_properties
+
+    @staticmethod
+    def append_volume_mounts_to_template(
+        template: Dict[str, Any],
+        data_dir: Optional[str] = None,
+        config_dir: Optional[str] = None,
+    ) -> List[Dict[str, str]]:
+        """Get volume mounts from the template and configuration."""
+
+        template_copy = template.copy()
+        if data_dir or config_dir:
+            template_copy["volumes"] = template["volumes"].copy()
+
+            if data_dir:
+                for key in template_copy["volumes"]:
+                    if "/data" in template_copy["volumes"][key]:
+                        template_copy["volumes"][key] = template_copy["volumes"][
+                            key
+                        ].replace("/data", data_dir)
+
+            if config_dir:
+                for key in template_copy["volumes"]:
+                    if "/config" in template_copy["volumes"][key]:
+                        template_copy["volumes"][key] = template_copy["volumes"][
+                            key
+                        ].replace("/config", config_dir)
+
+        return template_copy
+
     def deploy(
         self,
         template_name: str,
@@ -117,21 +158,8 @@ class MCPDeployer:
                     config_values=config_values,
                 )
 
-                required_properties = template.get("config_schema", {}).get(
-                    "required", []
-                )
-                required_properties = {
-                    key: template["config_schema"]["properties"]
-                    .get(key, {})
-                    .get("env_mapping", key.upper())
-                    for key in required_properties
-                    if key in template["config_schema"]["properties"]
-                }
-                missing_properties = [
-                    prop
-                    for prop, env_var in required_properties.items()
-                    if prop not in config and env_var not in config
-                ]
+                missing_properties = self.list_missing_properties(template, config)
+
                 if missing_properties:
                     console.print(
                         f"[red]❌ Missing required properties: {', '.join(missing_properties)}[/red]"
@@ -139,23 +167,11 @@ class MCPDeployer:
                     return False
 
                 # Override directories if provided
-                template_copy = template.copy()
-                if data_dir or config_dir:
-                    template_copy["volumes"] = template["volumes"].copy()
-
-                    if data_dir:
-                        for key in template_copy["volumes"]:
-                            if "/data" in template_copy["volumes"][key]:
-                                template_copy["volumes"][key] = template_copy[
-                                    "volumes"
-                                ][key].replace("/data", data_dir)
-
-                    if config_dir:
-                        for key in template_copy["volumes"]:
-                            if "/config" in template_copy["volumes"][key]:
-                                template_copy["volumes"][key] = template_copy[
-                                    "volumes"
-                                ][key].replace("/config", config_dir)
+                template_copy = self.append_volume_mounts_to_template(
+                    template=template,
+                    data_dir=data_dir,
+                    config_dir=config_dir,
+                )
 
                 # Pass template overrides as environment variables to the template
                 if override_values:
@@ -166,7 +182,7 @@ class MCPDeployer:
 
                 template_config_dict = (
                     self.config_processor.handle_volume_and_args_config_properties(
-                        template, config
+                        template_copy, config
                     )
                 )
                 config = template_config_dict.get("config", config)
