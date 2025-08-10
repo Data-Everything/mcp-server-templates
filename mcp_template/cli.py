@@ -1151,28 +1151,40 @@ def handle_enhanced_cli_commands(args) -> bool:
         )
         return True
 
-    def handle_run():
-        env_vars = {}
-        if hasattr(args, "env") and args.env:
-            for env_var in args.env:
-                key, value = env_var.split("=", 1)
-                env_vars[key] = value
+    def handle_deploy():
+        template = args.template if hasattr(args, "template") else args.command
+        # Show configuration options if requested
+        if hasattr(args, "show_config") and args.show_config:
+            enhanced_cli._show_config_options(template)
+            return
 
-        config_values = {}
-        if hasattr(args, "config") and args.config:
-            for config_var in args.config:
-                key, value = config_var.split("=", 1)
-                config_values[key] = value
+        from . import split_command_args
+
+        env_vars = (
+            split_command_args(args.env) if hasattr(args, "env") and args.env else {}
+        )
+        config_values = (
+            split_command_args(args.config)
+            if hasattr(args, "config") and args.config
+            else {}
+        )
+        override_values = (
+            split_command_args(args.override)
+            if hasattr(args, "override") and args.override
+            else {}
+        )
 
         enhanced_cli.deploy_with_transport(
-            args.template,
-            transport=args.transport,
-            port=args.port,
+            template_name=template,
+            transport=getattr(args, "transport", None),
+            port=getattr(args, "port", 7071),
             data_dir=getattr(args, "data_dir", None),
             config_dir=getattr(args, "config_dir", None),
             env_vars=env_vars,
             config_file=getattr(args, "config_file", None),
             config_values=config_values,
+            override_values=override_values,
+            pull_image=not getattr(args, "no_pull", False),
         )
         return True
 
@@ -1189,7 +1201,7 @@ def handle_enhanced_cli_commands(args) -> bool:
         "tools": handle_tools,
         "discover-tools": handle_discover_tools,
         "connect": handle_connect,
-        "run": handle_run,
+        "deploy": handle_deploy,
         "run-tool": handle_run_tool,
     }
 

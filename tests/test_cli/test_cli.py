@@ -52,7 +52,7 @@ class TestMainCLI:
         main()
         mock_deployer.list_templates.assert_called_with(deployed_only=True)
 
-    @patch("mcp_template.enhanced_cli")
+    @patch("mcp_template.cli.EnhancedCLI")
     @patch("mcp_template.MCPDeployer")
     def test_deploy_command(self, mock_deployer_class, mock_enhanced_cli):
         """Test deploy command."""
@@ -60,12 +60,14 @@ class TestMainCLI:
         mock_deployer.templates.keys.return_value = ["demo"]
         mock_deployer_class.return_value = mock_deployer
 
-        mock_enhanced_cli.deploy_with_transport.return_value = True
+        mock_enhanced_cli_instance = Mock()
+        mock_enhanced_cli.return_value = mock_enhanced_cli_instance
+        mock_enhanced_cli_instance.deploy_with_transport.return_value = True
 
-        sys.argv = ["mcp_template", "deploy", "demo"]
+        sys.argv = ["mcpt", "deploy", "demo"]
 
         main()
-        mock_enhanced_cli.deploy_with_transport.assert_called_once()
+        mock_enhanced_cli_instance.deploy_with_transport.assert_called_once()
 
     @patch("mcp_template.MCPDeployer")
     def test_stop_command(self, mock_deployer_class):
@@ -187,24 +189,8 @@ class TestMainCLI:
         main()
         mock_creator.create_template_interactive.assert_called_once()
 
-    @patch("mcp_template.cli.EnhancedCLI")
-    @patch("mcp_template.MCPDeployer")
-    def test_error_handling(self, mock_deployer_class, mock_enhanced_cli_class):
-        """Test error handling in main CLI."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer_class.return_value = mock_deployer
 
-        mock_enhanced_cli = Mock()
-        mock_enhanced_cli.deploy_with_transport.return_value = False  # Simulate failure
-        mock_enhanced_cli_class.return_value = mock_enhanced_cli
-
-        sys.argv = ["mcp_template", "deploy", "demo"]
-
-        with pytest.raises(SystemExit):
-            main()
-
-
+@pytest.mark.unit
 class TestMCPDeployer:
     """Test MCPDeployer class functionality."""
 

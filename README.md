@@ -16,10 +16,10 @@
 Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options. Built for developers who want to focus on AI integration, not infrastructure setup.
 
 ## 📢 Announcements
-- **🚀 Version 0.4.0 Released!**: Enhanced CLI parsing, filesystem template, volume mount auto-configuration, and comprehensive test coverage.
 - **🔧 CLI Shorthand Alias**: Introducing new `mcpt` alias for faster access to all CLI commands with full backward compatibility.
 - **🗂️ New Filesystem Template**: Secure local filesystem access with 14 comprehensive tools and Docker volume auto-configuration.
 - **🎯 Enhanced Interactive CLI**: Advanced argument parsing with quote support, session configuration, and parameter validation.
+- **🆕 MCPClient**: New MCPClient introduced for seamless communication with MCP servers programmatically.
 
 ## 🌟 Why MCP Server Templates?
 Integrating LLMs with external tools is often tedious—every service needs its own setup. MCP is the protocol that fixes this.
