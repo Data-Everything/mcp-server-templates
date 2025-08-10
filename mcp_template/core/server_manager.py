@@ -8,10 +8,13 @@ This module provides server lifecycle management including:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
+from mcp_template.core.exceptions import StdIoTransportDeploymentError
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
+from mcp_template.tools.docker_probe import DockerProbe
+from mcp_template.utils.config_processor import ConfigProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +34,11 @@ class ServerManager:
         Args:
             backend_type: Deployment backend type (docker, kubernetes, mock)
         """
+
+        self.backend_type = backend_type
         self.deployment_manager = DeploymentManager(backend_type)
         self.template_discovery = TemplateDiscovery()
+        self.config_processor = ConfigProcessor()
         self._templates_cache = None
 
     def list_running_servers(self) -> List[Dict[str, Any]]:
@@ -72,7 +78,15 @@ class ServerManager:
             return None
 
     def start_server(
-        self, template_id: str, configuration: Optional[Dict[str, Any]] = None
+        self,
+        template_id: str,
+        configuration: Optional[Dict[str, Any]] = None,
+        config_file: Optional[str] = None,
+        env_vars: Optional[Dict[str, str]] = None,
+        pull_image: bool = True,
+        image: Optional[str] = None,
+        transport: Optional[Literal["http", "stdio", "sse", "http-stream"]] = None,
+        port: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Start a new MCP server instance.
@@ -80,11 +94,28 @@ class ServerManager:
         Args:
             template_id: Template to deploy
             configuration: Configuration for the server
+            config_file: Optional path to configuration file
+            env_vars: Environment variables to set for the server.
+                      This is primarily for exported templates
             deployment_name: Optional custom deployment name
+            pull_image: Whether to pull the latest image
+            image: Optional custom image to use
+            transport: Optional transport type (e.g., "http", "stdio")
+            port: Optional port for HTTP transport
 
         Returns:
             Deployment information or None if failed
         """
+
+        if image:
+            raise NotImplementedError(
+                "Image parameter is not supported yet. "
+                "Please use template_id to specify the server template."
+            )
+            # if len(image.split(":")) == 1:
+            #    # If no tag is provided, default to "latest"
+            #    image += ":latest"
+
         try:
             # Get template information
             templates = self._get_templates()
@@ -94,15 +125,54 @@ class ServerManager:
 
             template_data = templates[template_id]
 
+            supported_transports = template_data.get("transport", {}).get(
+                "supported", []
+            )
+            default_transport = template_data.get("transport", {}).get(
+                "default", "http"
+            )
+            if not transport:
+                # Default to HTTP transport if not specified
+                transport = default_transport
+            else:
+                if transport not in supported_transports:
+                    logger.error(
+                        "Transport %s not supported by template %s",
+                        transport,
+                        template_id,
+                    )
+                    return None
+
+            if transport == "stdio":
+                raise StdIoTransportDeploymentError()
+
+            if not port and transport == "http":
+                port = template_data.get("transport", {}).get(
+                    "port", DockerProbe._find_available_port()
+                )
+
             # Use provided configuration or empty dict
             config = configuration or {}
+            env_vars = env_vars or {}
 
+            config["transport"] = transport
+            if port:
+                # Ensure port is a string for JSON serialization
+                config["port"] = str(port)
+
+            config = self.config_processor.prepare_configuration(
+                template=template_data,
+                env_vars=env_vars,
+                config_file=config_file,
+                config_values=config,
+            )
             # Deploy the template
             result = self.deployment_manager.deploy_template(
                 template_id=template_id,
                 configuration=config,
                 template_data=template_data,
-                pull_image=True,
+                pull_image=pull_image,
+                backend=self.backend_type,
             )
 
             if result.get("success"):

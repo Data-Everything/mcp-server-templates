@@ -9,9 +9,8 @@ the MCP protocol negotiation and communication.
 import asyncio
 import json
 import logging
-import time
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+import os
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +60,6 @@ class MCPConnection:
             # Prepare environment
             env = None
             if env_vars:
-                import os
-
                 env = os.environ.copy()
                 env.update(env_vars)
 

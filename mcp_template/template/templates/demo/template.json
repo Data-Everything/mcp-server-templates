@@ -18,7 +18,7 @@
   },
   "command": [],
   "transport": {
-    "default": "stdio",
+    "default": "http",
     "supported": ["http", "stdio"],
     "port": 7071
   },

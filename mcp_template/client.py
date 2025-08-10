@@ -37,7 +37,7 @@ Example usage:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from mcp_template.core.mcp_connection import MCPConnection
 from mcp_template.core.server_manager import ServerManager
@@ -111,7 +111,12 @@ class MCPClient:
         return self.server_manager.list_running_servers()
 
     def start_server(
-        self, template_id: str, configuration: Optional[Dict[str, Any]] = None
+        self,
+        template_id: str,
+        configuration: Optional[Dict[str, Any]] = None,
+        pull_image: bool = True,
+        transport: Optional[Literal["http", "stdio", "sse", "http-stream"]] = None,
+        port: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Start a new MCP server instance.
@@ -119,11 +124,20 @@ class MCPClient:
         Args:
             template_id: Template to deploy
             configuration: Configuration for the server
+            pull_image: Whether to pull the latest image
+            transport: Optional transport type (e.g., "http", "stdio")
+            port: Optional port for HTTP transport
 
         Returns:
             Server deployment information or None if failed
         """
-        return self.server_manager.start_server(template_id, configuration)
+        return self.server_manager.start_server(
+            template_id=template_id,
+            configuration=configuration,
+            pull_image=pull_image,
+            transport=transport,
+            port=port,
+        )
 
     def stop_server(self, deployment_id: str) -> Dict[str, Any]:
         """Stop a running server.

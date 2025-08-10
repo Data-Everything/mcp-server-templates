@@ -146,7 +146,8 @@ class DockerProbe:
         random_suffix = random.randint(1000, 9999)
         return f"mcp-tool-discovery-{clean_name}-{timestamp}-{random_suffix}"
 
-    def _find_available_port(self) -> Optional[int]:
+    @staticmethod
+    def _find_available_port() -> Optional[int]:
         """Find an available port for the container."""
         for port in range(CONTAINER_PORT_RANGE[0], CONTAINER_PORT_RANGE[1]):
             try:

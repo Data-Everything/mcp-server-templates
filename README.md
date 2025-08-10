@@ -606,6 +606,10 @@ async with MCPClient(backend_type="docker") as client:
 
 **Template Management:**
 ```python
+from mcp_template.client import MCPClient
+
+client = MCPClient()
+
 # List all available templates
 templates = client.list_templates()
 
