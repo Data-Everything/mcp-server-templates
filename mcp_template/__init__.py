@@ -34,6 +34,9 @@ from mcp_template.cli import (
     add_enhanced_cli_args,
     handle_enhanced_cli_commands,
 )
+
+# Import the new MCP Client for programmatic access
+from mcp_template.client import MCPClient
 from mcp_template.deployer import MCPDeployer
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.creation import TemplateCreator
@@ -48,6 +51,7 @@ __all__ = [
     "DeploymentManager",
     "MCPDeployer",
     "TemplateCreator",
+    "MCPClient",  # New MCP Client API
 ]
 
 # Constants

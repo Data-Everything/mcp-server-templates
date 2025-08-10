@@ -567,6 +567,165 @@ mcpt> call -C config_path="/path with spaces/config.json" \
 mcpt> call --no-pull filesystem read_file '{"path": "/tmp/test.txt"}'
 ```
 
+## 🐍 Python MCP Client
+
+For programmatic access to MCP servers, use the built-in Python client that provides a clean API for all operations:
+
+### Quick Start
+
+```python
+from mcp_template.client import MCPClient
+
+# Initialize client
+async with MCPClient(backend_type="docker") as client:
+    # Discover available templates
+    templates = client.list_templates()
+    print("Available templates:", list(templates.keys()))
+
+    # Start a server
+    result = client.start_server("demo", {"greeting": "Hello World"})
+    print("Server started:", result["id"])
+
+    # Connect to server via stdio
+    connection_id = await client.connect_stdio("demo", result["id"])
+
+    # List available tools
+    tools = await client.list_tools_from_connection(connection_id)
+    print("Available tools:", [tool["name"] for tool in tools])
+
+    # Call a tool
+    result = await client.call_tool_from_connection(
+        connection_id,
+        "echo",
+        {"message": "Hello from Python!"}
+    )
+    print("Tool result:", result)
+```
+
+### Core Features
+
+**Template Management:**
+```python
+# List all available templates
+templates = client.list_templates()
+
+# Get template details
+template_info = client.get_template_info("github")
+print(f"Template: {template_info['name']}")
+print(f"Description: {template_info['description']}")
+```
+
+**Server Lifecycle:**
+```python
+# Start server with configuration
+server = client.start_server("github", {
+    "github_token": "your-token-here",
+    "default_repo": "owner/repo"
+})
+
+# List running servers
+servers = client.list_servers()
+
+# Stop server
+stopped = client.stop_server(server["id"])
+```
+
+**Tool Discovery and Execution:**
+```python
+# Discover tools from template (without running server)
+tools = client.list_tools("filesystem")
+
+# Connect to running server for direct tool calls
+connection_id = await client.connect_stdio("filesystem", server_id)
+
+# Execute tools via connection
+result = await client.call_tool_from_connection(
+    connection_id,
+    "list_directory",
+    {"path": "/tmp"}
+)
+```
+
+**Connection Management:**
+```python
+# Multiple connections
+conn1 = await client.connect_stdio("demo", server1_id)
+conn2 = await client.connect_stdio("github", server2_id)
+
+# Check connection status
+if client.is_connected(conn1):
+    tools = await client.list_tools_from_connection(conn1)
+
+# Cleanup
+await client.disconnect(conn1)
+await client.cleanup()  # Disconnect all
+```
+
+### Configuration Options
+
+```python
+# Custom backend and timeout
+client = MCPClient(backend_type="mock", timeout=60)
+
+# With different deployment backends
+client = MCPClient(backend_type="kubernetes")  # For k8s deployments
+client = MCPClient(backend_type="docker")      # For Docker (default)
+client = MCPClient(backend_type="mock")        # For testing
+```
+
+### Error Handling
+
+```python
+try:
+    # Start server
+    result = client.start_server("nonexistent-template")
+except ValueError as e:
+    print(f"Template error: {e}")
+
+try:
+    # Connect to server
+    conn_id = await client.connect_stdio("demo", "invalid-server-id")
+except ConnectionError as e:
+    print(f"Connection failed: {e}")
+```
+
+### Integration Example
+
+```python
+"""
+Example: GitHub repository analysis workflow
+"""
+async def analyze_repository(repo_url: str):
+    async with MCPClient() as client:
+        # Start GitHub server
+        server = client.start_server("github", {
+            "github_token": os.getenv("GITHUB_TOKEN"),
+            "default_repo": repo_url
+        })
+
+        # Connect and discover tools
+        conn = await client.connect_stdio("github", server["id"])
+        tools = await client.list_tools_from_connection(conn)
+
+        # Get repository info
+        repo_info = await client.call_tool_from_connection(
+            conn, "get_repository_info", {}
+        )
+
+        # Search for Python files
+        python_files = await client.call_tool_from_connection(
+            conn, "search_code", {"query": "*.py"}
+        )
+
+        return {
+            "repository": repo_info,
+            "python_files": python_files
+        }
+
+# Usage
+result = await analyze_repository("owner/repo")
+```
+
 ---
 ## 🔧 Development
 
