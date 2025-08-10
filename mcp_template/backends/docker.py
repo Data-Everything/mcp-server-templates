@@ -316,7 +316,10 @@ class DockerDeploymentService(BaseDeploymentBackend):
                         free_sock.bind(("", 0))
                         port_to_use = free_sock.getsockname()[1]
                     logger.warning(
-                        f"Port {host_port} is in use, remapping to free port {port_to_use} for container port {container_port}"
+                        "Port %s is in use, remapping to free port %s for container port %s",
+                        host_port,
+                        port_to_use,
+                        container_port,
                     )
             ports.extend(["-p", f"{port_to_use}:{container_port}"])
         return ports

@@ -7,6 +7,8 @@ import pytest
 
 from mcp_template.client import MCPClient
 
+pytestmark = pytest.mark.integration
+
 
 class TestMCPClientIntegration:
     """Integration test cases for the MCPClient."""
@@ -271,8 +273,20 @@ class TestMCPClientIntegration:
             mock_template_discovery.return_value = mock_template_disc
 
             # Mock responses with delays to test concurrency
-            def delayed_start_server(template_id, config=None):
-                return {"id": f"{template_id}-1", "success": True}
+            def delayed_start_server(
+                template_id,
+                configuration=None,
+                pull_image=True,
+                transport="http",
+                port=12345,
+            ):
+                return {
+                    "id": f"{template_id}-1",
+                    "success": True,
+                    "pull_image": pull_image,
+                    "transport": transport,
+                    "port": port,
+                }
 
             mock_server_mgr.start_server.side_effect = delayed_start_server
 

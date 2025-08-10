@@ -9,6 +9,7 @@ import pytest
 from mcp_template.core.mcp_connection import MCPConnection
 
 
+@pytest.mark.unit
 class TestMCPConnection:
     """Test cases for the MCPConnection class."""
 

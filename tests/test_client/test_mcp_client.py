@@ -8,6 +8,7 @@ import pytest
 from mcp_template.client import MCPClient
 
 
+@pytest.mark.unit
 class TestMCPClient:
     """Test cases for the MCPClient class."""
 
@@ -113,7 +114,11 @@ class TestMCPClient:
         """Test starting a new server."""
         client = MCPClient()
 
-        expected_result = {"id": "demo-1", "status": "running", "success": True}
+        expected_result = {
+            "id": "demo-1",
+            "status": "running",
+            "success": True,
+        }
         mock_managers["server_manager"].start_server.return_value = expected_result
 
         config = {"greeting": "Hello"}
@@ -121,7 +126,11 @@ class TestMCPClient:
 
         assert result == expected_result
         mock_managers["server_manager"].start_server.assert_called_once_with(
-            "demo", config
+            template_id="demo",
+            configuration=config,
+            pull_image=True,
+            transport=None,
+            port=None,
         )
 
     def test_start_server_without_config(self, mock_managers):
@@ -135,7 +144,11 @@ class TestMCPClient:
 
         assert result == expected_result
         mock_managers["server_manager"].start_server.assert_called_once_with(
-            "demo", None
+            template_id="demo",
+            configuration=None,
+            pull_image=True,
+            transport=None,
+            port=None,
         )
 
     def test_stop_server(self, mock_managers):

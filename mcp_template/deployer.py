@@ -83,8 +83,17 @@ class MCPDeployer:
 
         missing_properties = []
         required_properties = template.get("config_schema", {}).get("required", [])
+        required_properties_env_vars = {
+            prop: template["config_schema"]["properties"][prop].get("env_mapping")
+            for prop in required_properties
+            if prop in template.get("config_schema", {}).get("properties", {})
+            and template["config_schema"]["properties"][prop].get("env_mapping")
+        }
         for prop in required_properties:
-            if prop not in config:
+            if (
+                prop not in config
+                and required_properties_env_vars.get(prop) not in config
+            ):
                 missing_properties.append(prop)
         return missing_properties
 
@@ -157,7 +166,6 @@ class MCPDeployer:
                     config_file=config_file,
                     config_values=config_values,
                 )
-
                 missing_properties = self.list_missing_properties(template, config)
 
                 if missing_properties:

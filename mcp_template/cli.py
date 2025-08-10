@@ -46,6 +46,7 @@ class EnhancedCLI:
         self.docker_probe = DockerProbe()
         self.docker_service = DockerDeploymentService()
         self.config_processor = ConfigProcessor()
+        self.verbose = False
 
         # Initialize response beautifier
         try:
@@ -1121,39 +1122,36 @@ def add_enhanced_cli_args(subparsers) -> None:
 def handle_enhanced_cli_commands(args) -> bool:
     """Handle enhanced CLI commands."""
     enhanced_cli = EnhancedCLI()
-    if args.command in ["interactive", "i"]:
-        # Start interactive CLI session
+
+    def handle_interactive():
         from mcp_template.interactive_cli import start_interactive_cli
 
         start_interactive_cli()
         return True
 
-    elif args.command == "config":
+    def handle_config():
         enhanced_cli.show_config_options(args.template)
         return True
 
-    elif args.command == "tools":
+    def handle_tools():
         console.print(
             "[red]🚫  The 'tools' command is deprecated. Use interactive CLI instead with command [magenta]`mcpt interactive`[/magenta][/red]"
         )
         return True
 
-    elif args.command == "discover-tools":
-        # Legacy command - redirect to unified tools command
+    def handle_discover_tools():
         console.print(
             "[red]🚫  The 'discover-tools' command is deprecated. Use 'tools' command with -image parameter in interactive CLI instead [magenta]`mcpt interactive`[/magenta][/red]"
         )
-        # enhanced_cli.discover_tools_from_image(args.image, args.server_args)
         return True
 
-    elif args.command == "connect":
+    def handle_connect():
         enhanced_cli.show_integration_examples(
             args.template, llm=getattr(args, "llm", None)
         )
         return True
 
-    elif args.command == "run":
-        # Convert args to kwargs for deploy_with_transport
+    def handle_run():
         env_vars = {}
         if hasattr(args, "env") and args.env:
             for env_var in args.env:
@@ -1178,12 +1176,24 @@ def handle_enhanced_cli_commands(args) -> bool:
         )
         return True
 
-    elif args.command == "run-tool":
-        # Parse config values if provided
+    def handle_run_tool():
         console.print(
             "[red]🚫  The 'run-tool' command is deprecated. Use 'call' commmand in interactive CLI instead. [magenta]`mcpt interactive`[/magenta][/red]"
         )
         return True
 
-    # Handle invalid commands
+    command_handlers = {
+        "interactive": handle_interactive,
+        "i": handle_interactive,
+        "config": handle_config,
+        "tools": handle_tools,
+        "discover-tools": handle_discover_tools,
+        "connect": handle_connect,
+        "run": handle_run,
+        "run-tool": handle_run_tool,
+    }
+
+    handler = command_handlers.get(args.command)
+    if handler:
+        return handler()
     return False
