@@ -1155,7 +1155,7 @@ def handle_enhanced_cli_commands(args) -> bool:
         template = args.template if hasattr(args, "template") else args.command
         # Show configuration options if requested
         if hasattr(args, "show_config") and args.show_config:
-            enhanced_cli._show_config_options(template)
+            enhanced_cli.deployer._show_config_options(template)
             return
 
         from . import split_command_args

@@ -16,6 +16,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from mcp_template.backends import BaseDeploymentBackend
+from mcp_template.template.utils.discovery import TemplateDiscovery
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -801,22 +802,21 @@ EOF""",
         self, template_id: str, image_name: str, template_data: Dict[str, Any]
     ) -> None:
         """Build Docker image for internal templates."""
-        import os
-        from pathlib import Path
-
-        # Get template directory
-        from mcp_template.template.utils.discovery import TemplateDiscovery
 
         discovery = TemplateDiscovery()
-        template_dir = discovery.template_root / template_id
+        template_dir = discovery.templates_dir / template_id
 
         if not template_dir.exists() or not (template_dir / "Dockerfile").exists():
             logger.error(
-                f"Dockerfile not found for internal template {template_id} in {template_dir}"
+                "Dockerfile not found for internal template %s in %s",
+                template_id,
+                template_dir,
             )
             raise ValueError(f"Internal template {template_id} missing Dockerfile")
 
-        logger.info(f"Building image {image_name} for internal template {template_id}")
+        logger.info(
+            "Building image %s for internal template %s", image_name, template_id
+        )
 
         # Build the Docker image
         build_command = ["docker", "build", "-t", image_name, str(template_dir)]

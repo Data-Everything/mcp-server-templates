@@ -5,7 +5,6 @@ This module provides tool discovery and execution capabilities,
 reusing existing tool discovery and calling infrastructure.
 """
 
-import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 

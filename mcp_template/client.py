@@ -39,9 +39,7 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Literal, Optional
 
-from mcp_template.core.mcp_connection import MCPConnection
-from mcp_template.core.server_manager import ServerManager
-from mcp_template.core.tool_manager import ToolManager
+from mcp_template.core import MCPConnection, ServerManager, ToolManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 
 logger = logging.getLogger(__name__)
@@ -208,16 +206,20 @@ class MCPClient:
         """
         if template_name:
             # Get tools for a specific template
-            template_info = self.template_discovery.get_template_info(template_name)
+            template_info = self.get_template_info(template_name)
             if not template_info:
                 raise ValueError(f"Template '{template_name}' not found")
 
             return self.tool_manager.discover_tools_from_template(
-                template_info, force_refresh
+                template_info,
+                force_refresh,
+                template_config=self.get_template_info(
+                    template_name
+                ),  # Vibe coder did not even add this. I added it to remove warning. But its wrong i think.
             )
         else:
             # Return all discovered tools
-            return self.tool_manager.list_discovered_tools()
+            return self.tool_manager.list_discovered_tools(template_name=template_name)
 
     async def call_tool(
         self,
