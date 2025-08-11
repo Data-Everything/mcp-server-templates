@@ -277,7 +277,7 @@ class TestMCPClient:
         """Test listing tools for non-existent template."""
         client = MCPClient()
 
-        mock_managers["template_discovery"].get_template_info.return_value = None
+        mock_managers["server_manager"].get_template_info.return_value = None
 
         with pytest.raises(ValueError, match="Template 'nonexistent' not found"):
             client.list_tools("nonexistent")
