@@ -6,18 +6,21 @@ A unified deployment system that provides:
 - Backend abstraction for different deployment targets
 - Dynamic template discovery and configuration management
 - Zero-configuration deployment experience
+- Programmatic client interface for developers
 
 The system follows a layered architecture:
 1. CLI Layer: Rich interface for user interaction
 2. Management Layer: DeploymentManager orchestrates operations
 3. Backend Layer: Pluggable deployment services (Docker, Kubernetes, etc.)
 4. Discovery Layer: Dynamic template detection and configuration
+5. Client Layer: Programmatic interface for developers
 
 Key Features:
 - Template-driven configuration (no hardcoded template logic)
 - Configurable image pulling (supports local development)
 - Generic deployment utilities (reusable across templates)
 - Comprehensive error handling and logging
+- Programmatic API for integration with other applications
 """
 
 import argparse
@@ -34,6 +37,7 @@ from mcp_template.cli import (
     add_enhanced_cli_args,
     handle_enhanced_cli_commands,
 )
+from mcp_template.client import MCPClient
 from mcp_template.deployer import MCPDeployer
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.creation import TemplateCreator
@@ -41,10 +45,11 @@ from mcp_template.template.utils.creation import TemplateCreator
 # Import core classes that are used in CI and the CLI
 from mcp_template.template.utils.discovery import TemplateDiscovery
 
-# Export the classes for external use (CI compatibility)
+# Export the classes for external use (CI compatibility and programmatic access)
 __all__ = [
+    "MCPClient",  # Primary programmatic interface
     "TemplateDiscovery",
-    "DockerDeploymentService",
+    "DockerDeploymentService", 
     "DeploymentManager",
     "MCPDeployer",
     "TemplateCreator",
