@@ -12,10 +12,7 @@ These modules enable code reuse between the CLI interface and the programmatic C
 
 from .mcp_connection import MCPConnection
 from .server_manager import ServerManager
+from .tool_caller import ToolCaller
 from .tool_manager import ToolManager
 
-__all__ = [
-    "MCPConnection",
-    "ServerManager",
-    "ToolManager",
-]
+__all__ = ["MCPConnection", "ServerManager", "ToolCaller", "ToolManager"]

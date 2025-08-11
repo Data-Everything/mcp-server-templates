@@ -91,13 +91,16 @@ class DeploymentError(MCPException):
 class ToolCallError(MCPException):
     """Exception raised for errors during tool calls."""
 
-    def __init__(self, tool_name: str, message: str):
+    def __init__(self, message: str, tool_name: Optional[str] = None):
         """
         Args:
-            tool_name: Name of the tool that failed.
             message: Error message to display.
+            tool_name: Name of the tool that failed (optional).
         """
-
-        super().__init__(f"Error calling tool '{tool_name}': {message}")
-        self.tool_name = tool_name
+        if tool_name:
+            super().__init__(f"Error calling tool '{tool_name}': {message}")
+            self.tool_name = tool_name
+        else:
+            super().__init__(message)
+            self.tool_name = None
         self.message = message

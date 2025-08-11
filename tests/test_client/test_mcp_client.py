@@ -240,7 +240,10 @@ class TestMCPClient:
         mock_managers[
             "tool_manager"
         ].discover_tools_from_template.assert_called_once_with(
-            template_info, False, template_config=template_info
+            template_name="demo",
+            template_config=template_info,
+            force_refresh=False,
+            force_server_discovery=False,
         )
 
     def test_list_tools_force_refresh(self, mock_managers):
@@ -270,7 +273,10 @@ class TestMCPClient:
         mock_managers[
             "tool_manager"
         ].discover_tools_from_template.assert_called_once_with(
-            template_info, True, template_config=template_info
+            template_name="demo",
+            template_config=template_info,
+            force_refresh=True,
+            force_server_discovery=False,
         )
 
     def test_list_tools_template_not_found(self, mock_managers):

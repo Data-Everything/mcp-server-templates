@@ -22,6 +22,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from mcp_template.backends.docker import DockerDeploymentService
+from mcp_template.core.tool_caller import ToolCaller
 from mcp_template.deployer import MCPDeployer
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.tools import DockerProbe, ToolDiscovery
@@ -46,6 +47,7 @@ class EnhancedCLI:
         self.docker_probe = DockerProbe()
         self.docker_service = DockerDeploymentService()
         self.config_processor = ConfigProcessor()
+        self.tool_caller = ToolCaller(caller_type="cli")  # Shared tool caller
         self.verbose = False
 
         # Initialize response beautifier
@@ -717,18 +719,17 @@ else:
         env_vars: Optional[Dict[str, str]] = None,
         pull_image: bool = True,
     ) -> bool:
-        """Run a specific tool from a stdio MCP template."""
+        """Run a specific tool from a stdio MCP template using shared ToolCaller."""
         if template_name not in self.templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             return False
 
         template = self.templates[template_name]
-        # Check if template supports stdio
-        transport = template.get("transport", {})
-        default_transport = transport.get("default", "http")
-        supported_transports = transport.get("supported", ["http"])
 
-        if "stdio" not in supported_transports and default_transport != "stdio":
+        # Check if template supports stdio using shared ToolCaller
+        if not self.tool_caller.validate_template_stdio_support(template):
+            transport = template.get("transport", {})
+            supported_transports = transport.get("supported", ["http"])
             console.print(
                 f"[red]❌ Template '{template_name}' does not support stdio transport[/red]"
             )

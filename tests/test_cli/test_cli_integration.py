@@ -93,6 +93,10 @@ class TestCLIIntegration:
                     "demo": {
                         "name": "demo",
                         "image": "demo-image:latest",  # Add missing image field
+                        "transport": {
+                            "supported": ["http"],
+                            "default": "http",
+                        },  # Add transport
                         "config_schema": {
                             "properties": {
                                 "log_level": {

@@ -94,7 +94,11 @@ class ConfigProcessor:
                 else:
                     # Regular dictionary key access
                     if part not in current:
-                        current[part] = {}
+                        # Check if next part is a digit - if so, create array
+                        if i + 1 < len(key_parts) and key_parts[i + 1].isdigit():
+                            current[part] = []
+                        else:
+                            current[part] = {}
                     elif not isinstance(current[part], (dict, list)):
                         # Can't override non-dict/list with nested structure
                         logger.warning(

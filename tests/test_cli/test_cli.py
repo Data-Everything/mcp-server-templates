@@ -241,7 +241,11 @@ class TestMCPDeployer:
 
         mock_discovery = Mock()
         mock_discovery.discover_templates.return_value = {
-            "demo": {"name": "Demo Template", "image": "demo:latest"}
+            "demo": {
+                "name": "Demo Template",
+                "image": "demo:latest",
+                "transport": {"supported": ["http"], "default": "http"},
+            }
         }
         mock_discovery_class.return_value = mock_discovery
 
@@ -255,8 +259,10 @@ class TestMCPDeployer:
         deployer = MCPDeployer()
 
         with patch("mcp_template.console"):
-            deployer.deploy("demo")
+            result = deployer.deploy("demo")
 
+        # The test should succeed and return True
+        assert result is True
         mock_manager.deploy_template.assert_called_once()
 
     @patch("mcp_template.template.utils.discovery.TemplateDiscovery")

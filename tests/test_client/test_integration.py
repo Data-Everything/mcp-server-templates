@@ -231,7 +231,7 @@ class TestMCPClientIntegration:
             mock_template_discovery.return_value = mock_template_disc
 
             # Mock failures
-            mock_template_disc.get_template_info.return_value = None
+            mock_server_mgr.get_template_info.return_value = None
             mock_server_mgr.start_server.return_value = None
             mock_server_mgr.stop_server.return_value = False
             mock_tool_mgr.list_discovered_tools.return_value = None

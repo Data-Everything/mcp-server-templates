@@ -26,7 +26,10 @@ class TestTemplateDiscovery:
         """Test initialization with default templates path."""
         discovery = TemplateDiscovery()
         expected_path = (
-            Path(__file__).parent.parent / "mcp_template" / "template" / "templates"
+            Path(__file__).parent.parent.parent
+            / "mcp_template"
+            / "template"
+            / "templates"
         )
         assert discovery.templates_dir == expected_path
 
@@ -158,6 +161,7 @@ class TestMCPDeployer:
             "name": "Test Template",
             "description": "Test",
             "image": "test/image:latest",
+            "transport": {"supported": ["http"], "default": "http"},  # Add transport
             "env_vars": {},
             "volumes": {},
             "example_config": '{"servers": {}}',

@@ -90,12 +90,16 @@ class MockDeploymentService(BaseDeploymentBackend):
             for name, info in self.deployments.items()
         ]
 
-    def delete_deployment(self, deployment_name: str) -> bool:
+    def delete_deployment(
+        self, deployment_name: str, raise_on_failure: bool = False
+    ) -> bool:
         """Delete mock deployment."""
         if deployment_name in self.deployments:
             del self.deployments[deployment_name]
             logger.info("Mock deployment deleted: %s", deployment_name)
             return True
+        if raise_on_failure:
+            raise ValueError(f"Deployment {deployment_name} not found")
         return False
 
     def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:

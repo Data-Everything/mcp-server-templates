@@ -1090,3 +1090,11 @@ class MCPDeployer:
         if example_envs:
             env_str = " ".join([f"--env {env}" for env in example_envs])
             console.print(f"  python -m mcp_template deploy {template_name} {env_str}")
+
+    def _apply_template_overrides(
+        self, template_data: Dict[str, Any], override_values: Optional[Dict[str, str]]
+    ) -> Dict[str, Any]:
+        """Apply template data overrides using the config processor."""
+        return self.config_processor._apply_template_overrides(
+            template_data, override_values
+        )

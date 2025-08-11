@@ -32,6 +32,7 @@ class TestDeploymentIntegration:
             "image": "dataeverything/mcp-demo:latest",
             "docker_image": "test/demo",
             "docker_tag": "latest",
+            "transport": {"supported": ["http"], "default": "http"},  # Add transport
             "ports": {"7071": 7071},
             "config_schema": {
                 "properties": {
@@ -219,7 +220,6 @@ class TestDeploymentIntegration:
         mock_backend = Mock()
         manager.deployment_backend = mock_backend
         manager.deployment_backend._run_command = mock_run_command
-        # manager._get_deployment_backend = mock_backend
 
         # Test config with overrides
         config = {

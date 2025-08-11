@@ -16,10 +16,11 @@
 Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options. Built for developers who want to focus on AI integration, not infrastructure setup.
 
 ## 📢 Announcements
-- **🔧 CLI Shorthand Alias**: Introducing new `mcpt` alias for faster access to all CLI commands with full backward compatibility.
+- **� Enhanced Client Architecture**: New unified `MCPClient` with shared tool calling infrastructure between CLI and client components for consistent behavior and structured responses.
+- **�🔧 CLI Shorthand Alias**: Introducing new `mcpt` alias for faster access to all CLI commands with full backward compatibility.
 - **🗂️ New Filesystem Template**: Secure local filesystem access with 14 comprehensive tools and Docker volume auto-configuration.
 - **🎯 Enhanced Interactive CLI**: Advanced argument parsing with quote support, session configuration, and parameter validation.
-- **🆕 MCPClient**: New MCPClient introduced for seamless communication with MCP servers programmatically.
+- **⚡ Unified Tool Calling**: Shared ToolCaller infrastructure ensures consistent stdio and HTTP transport handling across all components.
 
 ## 🌟 Why MCP Server Templates?
 Integrating LLMs with external tools is often tedious—every service needs its own setup. MCP is the protocol that fixes this.
@@ -567,56 +568,94 @@ mcpt> call -C config_path="/path with spaces/config.json" \
 mcpt> call --no-pull filesystem read_file '{"path": "/tmp/test.txt"}'
 ```
 
-## 🐍 Python MCP Client
+## 🐍 Enhanced Python MCP Client
 
-For programmatic access to MCP servers, use the built-in Python client that provides a clean API for all operations:
+For programmatic access to MCP servers, use the enhanced Python client that provides a unified, high-level API with shared tool calling infrastructure:
 
 ### Quick Start
 
 ```python
-from mcp_template.client import MCPClient
+from mcp_template.client_enhanced import MCPClient
 
-# Initialize client
-async with MCPClient(backend_type="docker") as client:
-    # Discover available templates
-    templates = client.list_templates()
-    print("Available templates:", list(templates.keys()))
+# Initialize enhanced client
+client = MCPClient()
 
-    # Start a server
-    result = client.start_server("demo", {"greeting": "Hello World"})
-    print("Server started:", result["id"])
+# Discover available templates
+templates = client.list_templates()
+print("Available templates:", list(templates.keys()))
 
-    # Connect to server via stdio
-    connection_id = await client.connect_stdio("demo", result["id"])
+# Get template information
+demo_info = client.get_template_info("demo")
+print(f"Demo template transport: {demo_info['transport']}")
 
-    # List available tools
-    tools = await client.list_tools_from_connection(connection_id)
-    print("Available tools:", [tool["name"] for tool in tools])
+# List tools for a template
+tools = client.list_tools("demo")
+for tool in tools:
+    print(f"Tool: {tool['name']} - {tool.get('description', 'No description')}")
 
-    # Call a tool
-    result = await client.call_tool_from_connection(
-        connection_id,
-        "echo",
-        {"message": "Hello from Python!"}
-    )
-    print("Tool result:", result)
+# Call a tool directly (unified stdio/http interface)
+result = client.call_tool(
+    template_name="demo",
+    tool_name="say_hello",
+    arguments={"name": "World"}
+)
+
+if result["success"]:
+    print("Tool result:", result["result"])
+    # Access structured content
+    if "content" in result["result"]:
+        for item in result["result"]["content"]:
+            if item["type"] == "text":
+                print("Response:", item["text"])
+else:
+    print("Error:", result["error_message"])
 ```
 
-### Core Features
+### Server Management
+
+```python
+# Start a server deployment
+deployment = client.start_server(
+    template_name="demo",
+    config={"name": "my-demo-server"}
+)
+
+if deployment["success"]:
+    server_name = deployment["deployment_name"]
+    print(f"Server started: {server_name}")
+
+    # List running servers
+    servers = client.list_servers()
+    print("Running servers:", [s["name"] for s in servers])
+
+    # Stop the server when done
+    stop_result = client.stop_server(server_name)
+    print("Server stopped:", stop_result["success"])
+```
+
+### Key Features
+
+**Unified Tool Calling Interface:**
+- **Automatic Transport Detection**: Seamlessly works with stdio and HTTP transports
+- **Structured Responses**: Consistent response format with success/error handling
+- **Shared Infrastructure**: Uses the same tool calling backend as the CLI for consistency
 
 **Template Management:**
 ```python
-from mcp_template.client import MCPClient
+from mcp_template.client_enhanced import MCPClient
 
 client = MCPClient()
 
-# List all available templates
+# List all available templates with full configuration
 templates = client.list_templates()
+for name, config in templates.items():
+    print(f"Template: {name}")
+    print(f"  Description: {config.get('description', 'No description')}")
+    print(f"  Transport: {config.get('transport', {}).get('default', 'Unknown')}")
 
-# Get template details
-template_info = client.get_template_info("github")
-print(f"Template: {template_info['name']}")
-print(f"Description: {template_info['description']}")
+# Get detailed template information
+template_info = client.get_template_info("filesystem")
+print(f"Filesystem template tools: {len(client.list_tools('filesystem'))}")
 ```
 
 **Server Lifecycle:**
