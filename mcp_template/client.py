@@ -204,6 +204,7 @@ class MCPClient:
         Returns:
             Dictionary of tools with their descriptions
         """
+
         if template_name:
             # Get tools for a specific template
             template_info = self.get_template_info(template_name)
@@ -213,9 +214,7 @@ class MCPClient:
             return self.tool_manager.discover_tools_from_template(
                 template_info,
                 force_refresh,
-                template_config=self.get_template_info(
-                    template_name
-                ),  # Vibe coder did not even add this. I added it to remove warning. But its wrong i think.
+                template_config=template_info,  # Vibe coder did not even add this. I added it to remove warning. But its wrong i think.
             )
         else:
             # Return all discovered tools

@@ -1,7 +1,6 @@
 """Unit tests for MCP Client functionality."""
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -231,21 +230,18 @@ class TestMCPClient:
 
         # Setup template info mock
         template_info = {"template_dir": "/path/to/template"}
-        mock_managers["template_discovery"].get_template_info.return_value = (
-            template_info
-        )
         mock_managers["tool_manager"].discover_tools_from_template.return_value = (
             expected_tools
         )
+        mock_managers["server_manager"].get_template_info.return_value = template_info
 
         result = client.list_tools("demo")
         assert result == expected_tools
-        mock_managers["template_discovery"].get_template_info.assert_called_once_with(
-            "demo"
-        )
         mock_managers[
             "tool_manager"
-        ].discover_tools_from_template.assert_called_once_with(template_info, False)
+        ].discover_tools_from_template.assert_called_once_with(
+            template_info, False, template_config=template_info
+        )
 
     def test_list_tools_force_refresh(self, mock_managers):
         """Test listing tools with forced refresh."""
@@ -253,9 +249,7 @@ class TestMCPClient:
 
         # Setup mocks
         template_info = {"template_dir": "/path/to/template"}
-        mock_managers["template_discovery"].get_template_info.return_value = (
-            template_info
-        )
+        mock_managers["server_manager"].get_template_info.return_value = template_info
 
         discovery_result = {
             "tools": [
@@ -270,12 +264,14 @@ class TestMCPClient:
         result = client.list_tools("demo", force_refresh=True)
 
         assert result == discovery_result
-        mock_managers["template_discovery"].get_template_info.assert_called_once_with(
+        mock_managers["server_manager"].get_template_info.assert_called_once_with(
             "demo"
         )
         mock_managers[
             "tool_manager"
-        ].discover_tools_from_template.assert_called_once_with(template_info, True)
+        ].discover_tools_from_template.assert_called_once_with(
+            template_info, True, template_config=template_info
+        )
 
     def test_list_tools_template_not_found(self, mock_managers):
         """Test listing tools for non-existent template."""
