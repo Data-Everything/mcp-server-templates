@@ -1,8 +1,19 @@
 """
-MCP Client - Programmatic Python API for MCP Template system.
+MCP Client - Focused Python API for MCP Server Connections.
 
-This module provides a high-level Python API for programmatic access to MCP servers,
-reusing existing CLI infrastructure while providing a clean client interface.
+This module provides a clean Python API for programmatic access to MCP servers,
+focusing only on core MCP protocol operations without server lifecycle management.
+
+Supported operations:
+- Connect to existing MCP servers (stdio, websocket, HTTP)
+- List tools from connected servers
+- Invoke tools on connected servers
+- Manage server connections
+
+Excluded operations (handled by CLI):
+- Template management
+- Server deployment/lifecycle
+- Configuration management
 
 Example usage:
     ```python
@@ -12,24 +23,23 @@ Example usage:
     async def main():
         client = MCPClient()
 
-        # List available templates
-        templates = client.list_templates()
-        print(f"Available templates: {list(templates.keys())}")
+        # Connect to an existing MCP server
+        connection_id = await client.connect_stdio(["python", "demo_server.py"])
 
-        # Start a server
-        server = await client.start_server("demo", {"greeting": "Hello from API!"})
-
-        # List tools
-        tools = await client.list_tools("demo")
+        # List available tools
+        tools = await client.list_tools(connection_id)
         print(f"Available tools: {[t['name'] for t in tools]}")
 
         # Call a tool
-        result = await client.call_tool("demo", "echo", {"message": "Hello World"})
+        result = await client.call_tool(connection_id, "echo", {"message": "Hello World"})
         print(f"Tool result: {result}")
 
-        # List running servers
-        servers = client.list_servers()
-        print(f"Running servers: {len(servers)}")
+        # List connected servers
+        servers = client.list_connected_servers()
+        print(f"Connected servers: {len(servers)}")
+
+        # Clean up
+        await client.disconnect(connection_id)
 
     asyncio.run(main())
     ```
@@ -37,322 +47,93 @@ Example usage:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 
-from mcp_template.core import MCPConnection, ServerManager, ToolCaller, ToolManager
-from mcp_template.template.utils.discovery import TemplateDiscovery
+from mcp_template.core import MCPConnection
 
 logger = logging.getLogger(__name__)
 
 
 class MCPClient:
     """
-    High-level MCP Client for programmatic access to MCP servers.
+    Focused MCP Client for programmatic access to MCP server connections.
 
-    This client provides a simplified interface for common MCP operations:
-    - Connecting to MCP servers
-    - Listing and calling tools
-    - Managing server instances
-    - Template discovery
+    This client provides a simplified interface for core MCP operations:
+    - Connecting to existing MCP servers
+    - Listing and calling tools from connected servers
+    - Managing server connections
+
+    Note: This client does NOT handle server deployment, template management,
+    or other CLI-specific functionality. It focuses purely on MCP protocol operations.
     """
 
-    def __init__(self, backend_type: str = "docker", timeout: int = 30):
+    def __init__(self, timeout: int = 30):
         """
         Initialize MCP Client.
 
         Args:
-            backend_type: Deployment backend (docker, kubernetes, mock)
-            timeout: Default timeout for operations in seconds
+            timeout: Default timeout for MCP operations in seconds
         """
-        self.backend_type = backend_type
         self.timeout = timeout
 
-        # Initialize managers
-        self.server_manager = ServerManager(backend_type)
-        self.tool_manager = ToolManager(timeout)
-        self.tool_caller = ToolCaller(backend_type, timeout)
-        self.template_discovery = TemplateDiscovery()
-
-        # Track active connections for cleanup
+        # Track active connections
         self._active_connections: Dict[str, MCPConnection] = {}
-        self._background_tasks: set = set()  # Track background tasks
+        self._connection_counter = 0
 
-    # Template Management
-    def list_templates(self) -> Dict[str, Dict[str, Any]]:
+    # Connection Management
+    async def connect(self, connection_config: Dict[str, Any]) -> Optional[str]:
         """
-        List all available MCP server templates.
-
-        Returns:
-            Dictionary mapping template_id to template information
-        """
-        return self.server_manager.list_available_templates()
-
-    def get_template_info(self, template_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get detailed information about a specific template.
+        Connect to an MCP server using the specified configuration.
 
         Args:
-            template_id: ID of the template
+            connection_config: Connection configuration dict with type and parameters:
+                - {"type": "stdio", "command": ["python", "server.py"], "working_dir": "/path", "env_vars": {...}}
+                - {"type": "websocket", "url": "ws://localhost:8080/mcp", "headers": {...}}
+                - {"type": "http", "url": "http://localhost:8080/mcp", "headers": {...}}
 
         Returns:
-            Template information or None if not found
+            Connection ID if successful, None if failed
         """
-        return self.server_manager.get_template_info(template_id)
+        connection_type = connection_config.get("type")
 
-    # Server Management
-    def list_servers(self) -> List[Dict[str, Any]]:
-        """
-        List all currently running MCP servers.
-
-        Returns:
-            List of running server information
-        """
-        return self.server_manager.list_running_servers()
-
-    def list_servers_by_template(self, template: str) -> List[Dict[str, Any]]:
-        """
-        List all currently running MCP servers for a specific template.
-
-        Args:
-            template: Template name to filter servers by
-
-        Returns:
-            List of running server information for the specified template
-        """
-
-        return self.server_manager.list_running_servers(template=template)
-
-    def start_server(
-        self,
-        template_id: str,
-        configuration: Optional[Dict[str, Any]] = None,
-        pull_image: bool = True,
-        transport: Optional[Literal["http", "stdio", "sse", "http-stream"]] = None,
-        port: Optional[int] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Start a new MCP server instance.
-
-        Args:
-            template_id: Template to deploy
-            configuration: Configuration for the server
-            pull_image: Whether to pull the latest image
-            transport: Optional transport type (e.g., "http", "stdio")
-            port: Optional port for HTTP transport
-
-        Returns:
-            Server deployment information or None if failed
-        """
-        return self.server_manager.start_server(
-            template_id=template_id,
-            configuration=configuration,
-            pull_image=pull_image,
-            transport=transport,
-            port=port,
-        )
-
-    def stop_server(self, deployment_id: str) -> Dict[str, Any]:
-        """Stop a running server.
-
-        Args:
-            deployment_id: Unique identifier for the deployment
-
-        Returns:
-            Result of the stop operation
-        """
-
-        # Disconnect any active connections first
-        if deployment_id in self._active_connections:
-            # Don't create task if no event loop is running
-            try:
-                asyncio.get_running_loop()
-                # Store task to prevent garbage collection
-                task = asyncio.create_task(
-                    self._active_connections[deployment_id].disconnect()
-                )
-                # Store the task in a background set
-                self._background_tasks.add(task)
-                task.add_done_callback(self._background_tasks.discard)
-            except RuntimeError:
-                # No event loop running, just remove the connection
-                pass
-            del self._active_connections[deployment_id]
-
-        return self.server_manager.stop_server(deployment_id)
-
-    def stop_all_servers(self, template: str = None) -> bool:
-        """
-        Stop all servers for a specific template.
-
-        Args:
-            template: Template name to stop all servers. If None, stops all servers.
-
-        Returns:
-            True if all servers were stopped successfully, False otherwise
-        """
-
-        deployments = self.server_manager.list_running_servers(template=template)
-        results = []
-
-        for deployment in deployments:
-            if deployment.get("template") == template:
-                result = self.stop_server(deployment["id"])
-                results.append(result)
-
-        return all(results)
-
-    def get_server_info(self, deployment_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get information about a specific server deployment.
-
-        Args:
-            deployment_id: ID of the deployment
-
-        Returns:
-            Server information or None if not found
-        """
-
-        return self.server_manager.get_server_info(deployment_id)
-
-    def get_server_logs(self, deployment_id: str, lines: int = 100) -> Optional[str]:
-        """
-        Get logs from a running server.
-
-        Args:
-            deployment_id: ID of the deployment
-            lines: Number of log lines to retrieve
-
-        Returns:
-            Log content or None if failed
-        """
-
-        return self.server_manager.get_server_logs(deployment_id, lines)
-
-    # Tool Discovery and Management
-    def list_tools(
-        self,
-        template_name: Optional[str] = None,
-        force_refresh: bool = False,
-        force_server_discovery: bool = False,
-    ) -> Dict[str, Any]:
-        """
-        List available tools from a template or all discovered tools.
-
-        Args:
-            template_name: Specific template to get tools from
-            force_refresh: Force refresh of tool cache
-            force_server_discovery: Force discovery from server if available
-
-        Returns:
-            Dictionary of tools with their descriptions
-        """
-        if force_refresh:
-            self.tool_manager.clear_cache(template_name=template_name)
-
-        if template_name:
-            # Get tools for a specific template
-            template_info = self.get_template_info(template_name)
-            if not template_info:
-                raise ValueError(f"Template '{template_name}' not found")
-
-            return self.tool_manager.discover_tools_from_template(
-                template_name=template_name,
-                template_config=template_info,
-                force_refresh=force_refresh,
-                force_server_discovery=force_server_discovery,
+        if connection_type == "stdio":
+            return await self.connect_stdio(
+                command=connection_config.get("command", []),
+                working_dir=connection_config.get("working_dir"),
+                env_vars=connection_config.get("env_vars"),
+            )
+        elif connection_type == "websocket":
+            return await self.connect_websocket(
+                url=connection_config.get("url", ""),
+                headers=connection_config.get("headers"),
+            )
+        elif connection_type == "http":
+            return await self.connect_http_stream(
+                url=connection_config.get("url", ""),
+                headers=connection_config.get("headers"),
             )
         else:
-            # Return all discovered tools
-            return self.tool_manager.list_discovered_tools(template_name=template_name)
-
-    def call_tool(
-        self,
-        template_id: str,
-        tool_name: str,
-        arguments: Dict[str, Any],
-        deployment_id: Optional[str] = None,
-        server_config: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Call a tool on an MCP server.
-
-        This method supports both stdio and HTTP transports, automatically
-        determining the best approach based on deployment status and template configuration.
-
-        Args:
-            template_id: Template that provides the tool
-            tool_name: Name of the tool to call
-            arguments: Arguments to pass to the tool
-            deployment_id: Existing deployment to use (optional)
-            server_config: Configuration for server if starting new instance
-
-        Returns:
-            Tool response or None if failed
-        """
-        # Get template configuration
-        template_info = self.get_template_info(template_id)
-        if not template_info:
-            logger.error("Template %s not found", template_id)
+            logger.error("Unsupported connection type: %s", connection_type)
             return None
 
-        # If deployment_id is provided, try to use running server
-        if deployment_id:
-            server_info = self.get_server_info(deployment_id)
-            if server_info:
-                # Try HTTP call first if the server supports it
-                transport = server_info.get("transport", {})
-                if transport.get("default") == "http" or "http" in transport.get(
-                    "supported", []
-                ):
-                    server_url = f"http://localhost:{transport.get('port', 8080)}"
-                    try:
-                        return self.tool_caller.call_tool_http(
-                            server_url=server_url,
-                            tool_name=tool_name,
-                            arguments=arguments,
-                        )
-                    except Exception as e:
-                        logger.warning(
-                            "HTTP tool call failed, falling back to stdio: %s", e
-                        )
-
-        # Use stdio approach (default)
-        try:
-            return self.tool_caller.call_tool_stdio(
-                template_name=template_id,
-                tool_name=tool_name,
-                arguments=arguments,
-                template_config=template_info,
-                config_values=server_config or {},
-            )
-        except Exception as e:
-            logger.error(
-                "Failed to call tool %s on template %s: %s", tool_name, template_id, e
-            )
-            return None
-
-    # Direct Connection Methods
     async def connect_stdio(
         self,
         command: List[str],
         working_dir: Optional[str] = None,
         env_vars: Optional[Dict[str, str]] = None,
-        connection_id: Optional[str] = None,
     ) -> Optional[str]:
         """
-        Create a direct stdio connection to an MCP server.
+        Create a stdio connection to an MCP server.
 
         Args:
             command: Command to execute MCP server
             working_dir: Working directory for the process
             env_vars: Environment variables for the process
-            connection_id: Optional ID for the connection (auto-generated if None)
 
         Returns:
             Connection ID if successful, None if failed
         """
-        if connection_id is None:
-            connection_id = f"stdio_{len(self._active_connections)}"
+        connection_id = self._generate_connection_id("stdio")
 
         connection = MCPConnection(timeout=self.timeout)
         success = await connection.connect_stdio(
@@ -361,38 +142,126 @@ class MCPClient:
 
         if success:
             self._active_connections[connection_id] = connection
+            logger.info("Connected to MCP server via stdio: %s", connection_id)
             return connection_id
         else:
             await connection.disconnect()
+            logger.error("Failed to connect to MCP server via stdio")
             return None
 
-    async def list_tools_from_connection(
-        self, connection_id: str
-    ) -> Optional[List[Dict[str, Any]]]:
+    async def connect_websocket(
+        self,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> Optional[str]:
         """
-        List tools from an active connection.
+        Create a websocket connection to an MCP server.
 
         Args:
-            connection_id: ID of the connection
+            url: WebSocket URL (e.g., "ws://localhost:8080/mcp")
+            headers: Optional headers for WebSocket handshake
 
         Returns:
-            List of tool definitions or None if failed
+            Connection ID if successful, None if failed
         """
-        if connection_id not in self._active_connections:
-            logger.error("Connection %s not found", connection_id)
-            return None
+        connection_id = self._generate_connection_id("websocket")
 
-        connection = self._active_connections[connection_id]
-        return await connection.list_tools()
+        # TODO: Implement websocket connection in MCPConnection
+        logger.error("WebSocket connections not yet implemented")
+        return None
 
-    async def call_tool_from_connection(
-        self, connection_id: str, tool_name: str, arguments: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    async def connect_http_stream(
+        self,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> Optional[str]:
         """
-        Call a tool using an active connection.
+        Create an HTTP stream connection to an MCP server.
 
         Args:
-            connection_id: ID of the connection
+            url: HTTP URL (e.g., "http://localhost:8080/mcp")
+            headers: Optional HTTP headers
+
+        Returns:
+            Connection ID if successful, None if failed
+        """
+        connection_id = self._generate_connection_id("http")
+
+        # TODO: Implement HTTP stream connection in MCPConnection
+        logger.error("HTTP stream connections not yet implemented")
+        return None
+
+    # Server Discovery (Connected Only)
+    def list_connected_servers(self) -> List[Dict[str, Any]]:
+        """
+        List currently connected MCP servers.
+
+        Returns:
+            List of connected server information
+        """
+        servers = []
+        for connection_id, connection in self._active_connections.items():
+            server_info = {
+                "connection_id": connection_id,
+                "status": "connected" if connection.process else "disconnected",
+                "session_info": connection.session_info,
+                "server_info": connection.server_info,
+            }
+            servers.append(server_info)
+
+        return servers
+
+    # Tool Operations
+    async def list_tools(
+        self, connection_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        List available tools from connected server(s).
+
+        Args:
+            connection_id: Specific connection to get tools from (None for all connections)
+
+        Returns:
+            List of tool definitions
+        """
+        if connection_id:
+            # Get tools from specific connection
+            if connection_id not in self._active_connections:
+                logger.error("Connection %s not found", connection_id)
+                return []
+
+            connection = self._active_connections[connection_id]
+            tools = await connection.list_tools()
+            return tools or []
+        else:
+            # Get tools from all connections
+            all_tools = []
+            for conn_id, connection in self._active_connections.items():
+                try:
+                    tools = await connection.list_tools()
+                    if tools:
+                        # Add connection_id to each tool for identification
+                        for tool in tools:
+                            tool["connection_id"] = conn_id
+                        all_tools.extend(tools)
+                except Exception as e:
+                    logger.warning(
+                        "Failed to get tools from connection %s: %s", conn_id, e
+                    )
+
+            return all_tools
+
+    async def call_tool(
+        self,
+        connection_id: str,
+        tool_name: str,
+        arguments: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Call a tool on a specific MCP server connection.
+
+        Args:
+            connection_id: ID of the connection to use
             tool_name: Name of the tool to call
             arguments: Arguments to pass to the tool
 
@@ -404,11 +273,22 @@ class MCPClient:
             return None
 
         connection = self._active_connections[connection_id]
-        return await connection.call_tool(tool_name, arguments)
+        try:
+            result = await connection.call_tool(tool_name, arguments)
+            return result
+        except Exception as e:
+            logger.error(
+                "Failed to call tool %s on connection %s: %s",
+                tool_name,
+                connection_id,
+                e,
+            )
+            return None
 
+    # Connection Management
     async def disconnect(self, connection_id: str) -> bool:
         """
-        Disconnect from an active connection.
+        Disconnect from a specific MCP server.
 
         Args:
             connection_id: ID of the connection to disconnect
@@ -417,20 +297,415 @@ class MCPClient:
             True if disconnected successfully, False if connection not found
         """
         if connection_id not in self._active_connections:
+            logger.warning("Connection %s not found for disconnection", connection_id)
             return False
 
         connection = self._active_connections[connection_id]
-        await connection.disconnect()
-        del self._active_connections[connection_id]
-        return True
+        try:
+            await connection.disconnect()
+            del self._active_connections[connection_id]
+            logger.info("Disconnected from server: %s", connection_id)
+            return True
+        except Exception as e:
+            logger.error("Error disconnecting from %s: %s", connection_id, e)
+            return False
 
-    # Cleanup
-    async def cleanup(self) -> None:
-        """Clean up all active connections and resources."""
-        # Create a copy of keys to avoid modifying dict during iteration
+    async def disconnect_all(self) -> None:
+        """Disconnect from all MCP servers."""
         connection_ids = list(self._active_connections.keys())
         for connection_id in connection_ids:
             await self.disconnect(connection_id)
+
+    # Utility Methods
+    def get_connection_info(self, connection_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get information about a specific connection.
+
+        Args:
+            connection_id: ID of the connection
+
+        Returns:
+            Connection information or None if not found
+        """
+        if connection_id not in self._active_connections:
+            return None
+
+        connection = self._active_connections[connection_id]
+        return {
+            "connection_id": connection_id,
+            "status": "connected" if connection.process else "disconnected",
+            "session_info": connection.session_info,
+            "server_info": connection.server_info,
+        }
+
+    def _generate_connection_id(self, connection_type: str) -> str:
+        """Generate a unique connection ID."""
+        self._connection_counter += 1
+        return f"{connection_type}_{self._connection_counter}"
+
+    # Cleanup and Context Management
+    async def cleanup(self) -> None:
+        """Clean up all active connections and resources."""
+        await self.disconnect_all()
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.cleanup()
+
+
+"""
+MCP Client - Focused Python API for MCP Server Connections.
+
+This module provides a clean Python API for programmatic access to MCP servers,
+focusing only on core MCP protocol operations without server lifecycle management.
+
+Supported operations:
+- Connect to existing MCP servers (stdio, websocket, HTTP)
+- List tools from connected servers
+- Invoke tools on connected servers
+- Manage server connections
+
+Excluded operations (handled by CLI):
+- Template management
+- Server deployment/lifecycle
+- Configuration management
+
+Example usage:
+    ```python
+    import asyncio
+    from mcp_template.client import MCPClient
+
+    async def main():
+        client = MCPClient()
+
+        # Connect to an existing MCP server
+        connection_id = await client.connect_stdio(["python", "demo_server.py"])
+
+        # List available tools
+        tools = await client.list_tools(connection_id)
+        print(f"Available tools: {[t['name'] for t in tools]}")
+
+        # Call a tool
+        result = await client.call_tool(connection_id, "echo", {"message": "Hello World"})
+        print(f"Tool result: {result}")
+
+        # List connected servers
+        servers = client.list_connected_servers()
+        print(f"Connected servers: {len(servers)}")
+
+        # Clean up
+        await client.disconnect(connection_id)
+
+    asyncio.run(main())
+    ```
+"""
+
+import asyncio
+import logging
+from typing import Any, Dict, List, Optional
+
+from mcp_template.core import MCPConnection
+
+logger = logging.getLogger(__name__)
+
+
+class MCPClient:
+    """
+    Focused MCP Client for programmatic access to MCP server connections.
+
+    This client provides a simplified interface for core MCP operations:
+    - Connecting to existing MCP servers
+    - Listing and calling tools from connected servers
+    - Managing server connections
+
+    Note: This client does NOT handle server deployment, template management,
+    or other CLI-specific functionality. It focuses purely on MCP protocol operations.
+    """
+
+    def __init__(self, timeout: int = 30):
+        """
+        Initialize MCP Client.
+
+        Args:
+            timeout: Default timeout for MCP operations in seconds
+        """
+        self.timeout = timeout
+
+        # Track active connections
+        self._active_connections: Dict[str, MCPConnection] = {}
+        self._connection_counter = 0
+
+    # Connection Management
+    async def connect(self, connection_config: Dict[str, Any]) -> Optional[str]:
+        """
+        Connect to an MCP server using the specified configuration.
+
+        Args:
+            connection_config: Connection configuration dict with type and parameters:
+                - {"type": "stdio", "command": ["python", "server.py"], "working_dir": "/path", "env_vars": {...}}
+                - {"type": "websocket", "url": "ws://localhost:8080/mcp", "headers": {...}}
+                - {"type": "http", "url": "http://localhost:8080/mcp", "headers": {...}}
+
+        Returns:
+            Connection ID if successful, None if failed
+        """
+        connection_type = connection_config.get("type")
+
+        if connection_type == "stdio":
+            return await self.connect_stdio(
+                command=connection_config.get("command", []),
+                working_dir=connection_config.get("working_dir"),
+                env_vars=connection_config.get("env_vars"),
+            )
+        elif connection_type == "websocket":
+            return await self.connect_websocket(
+                url=connection_config.get("url", ""),
+                headers=connection_config.get("headers"),
+            )
+        elif connection_type == "http":
+            return await self.connect_http_stream(
+                url=connection_config.get("url", ""),
+                headers=connection_config.get("headers"),
+            )
+        else:
+            logger.error("Unsupported connection type: %s", connection_type)
+            return None
+
+    async def connect_stdio(
+        self,
+        command: List[str],
+        working_dir: Optional[str] = None,
+        env_vars: Optional[Dict[str, str]] = None,
+    ) -> Optional[str]:
+        """
+        Create a stdio connection to an MCP server.
+
+        Args:
+            command: Command to execute MCP server
+            working_dir: Working directory for the process
+            env_vars: Environment variables for the process
+
+        Returns:
+            Connection ID if successful, None if failed
+        """
+        connection_id = self._generate_connection_id("stdio")
+
+        connection = MCPConnection(timeout=self.timeout)
+        success = await connection.connect_stdio(
+            command=command, working_dir=working_dir, env_vars=env_vars
+        )
+
+        if success:
+            self._active_connections[connection_id] = connection
+            logger.info("Connected to MCP server via stdio: %s", connection_id)
+            return connection_id
+        else:
+            await connection.disconnect()
+            logger.error("Failed to connect to MCP server via stdio")
+            return None
+
+    async def connect_websocket(
+        self,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> Optional[str]:
+        """
+        Create a websocket connection to an MCP server.
+
+        Args:
+            url: WebSocket URL (e.g., "ws://localhost:8080/mcp")
+            headers: Optional headers for WebSocket handshake
+
+        Returns:
+            Connection ID if successful, None if failed
+        """
+        connection_id = self._generate_connection_id("websocket")
+
+        # TODO: Implement websocket connection in MCPConnection
+        logger.error("WebSocket connections not yet implemented")
+        return None
+
+    async def connect_http_stream(
+        self,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> Optional[str]:
+        """
+        Create an HTTP stream connection to an MCP server.
+
+        Args:
+            url: HTTP URL (e.g., "http://localhost:8080/mcp")
+            headers: Optional HTTP headers
+
+        Returns:
+            Connection ID if successful, None if failed
+        """
+        connection_id = self._generate_connection_id("http")
+
+        # TODO: Implement HTTP stream connection in MCPConnection
+        logger.error("HTTP stream connections not yet implemented")
+        return None
+
+    # Server Discovery (Connected Only)
+    def list_connected_servers(self) -> List[Dict[str, Any]]:
+        """
+        List currently connected MCP servers.
+
+        Returns:
+            List of connected server information
+        """
+        servers = []
+        for connection_id, connection in self._active_connections.items():
+            server_info = {
+                "connection_id": connection_id,
+                "status": "connected" if connection.process else "disconnected",
+                "session_info": connection.session_info,
+                "server_info": connection.server_info,
+            }
+            servers.append(server_info)
+
+        return servers
+
+    # Tool Operations
+    async def list_tools(
+        self, connection_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        List available tools from connected server(s).
+
+        Args:
+            connection_id: Specific connection to get tools from (None for all connections)
+
+        Returns:
+            List of tool definitions
+        """
+        if connection_id:
+            # Get tools from specific connection
+            if connection_id not in self._active_connections:
+                logger.error("Connection %s not found", connection_id)
+                return []
+
+            connection = self._active_connections[connection_id]
+            tools = await connection.list_tools()
+            return tools or []
+        else:
+            # Get tools from all connections
+            all_tools = []
+            for conn_id, connection in self._active_connections.items():
+                try:
+                    tools = await connection.list_tools()
+                    if tools:
+                        # Add connection_id to each tool for identification
+                        for tool in tools:
+                            tool["connection_id"] = conn_id
+                        all_tools.extend(tools)
+                except Exception as e:
+                    logger.warning(
+                        "Failed to get tools from connection %s: %s", conn_id, e
+                    )
+
+            return all_tools
+
+    async def call_tool(
+        self,
+        connection_id: str,
+        tool_name: str,
+        arguments: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Call a tool on a specific MCP server connection.
+
+        Args:
+            connection_id: ID of the connection to use
+            tool_name: Name of the tool to call
+            arguments: Arguments to pass to the tool
+
+        Returns:
+            Tool response or None if failed
+        """
+        if connection_id not in self._active_connections:
+            logger.error("Connection %s not found", connection_id)
+            return None
+
+        connection = self._active_connections[connection_id]
+        try:
+            result = await connection.call_tool(tool_name, arguments)
+            return result
+        except Exception as e:
+            logger.error(
+                "Failed to call tool %s on connection %s: %s",
+                tool_name,
+                connection_id,
+                e,
+            )
+            return None
+
+    # Connection Management
+    async def disconnect(self, connection_id: str) -> bool:
+        """
+        Disconnect from a specific MCP server.
+
+        Args:
+            connection_id: ID of the connection to disconnect
+
+        Returns:
+            True if disconnected successfully, False if connection not found
+        """
+        if connection_id not in self._active_connections:
+            logger.warning("Connection %s not found for disconnection", connection_id)
+            return False
+
+        connection = self._active_connections[connection_id]
+        try:
+            await connection.disconnect()
+            del self._active_connections[connection_id]
+            logger.info("Disconnected from server: %s", connection_id)
+            return True
+        except Exception as e:
+            logger.error("Error disconnecting from %s: %s", connection_id, e)
+            return False
+
+    async def disconnect_all(self) -> None:
+        """Disconnect from all MCP servers."""
+        connection_ids = list(self._active_connections.keys())
+        for connection_id in connection_ids:
+            await self.disconnect(connection_id)
+
+    # Utility Methods
+    def get_connection_info(self, connection_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get information about a specific connection.
+
+        Args:
+            connection_id: ID of the connection
+
+        Returns:
+            Connection information or None if not found
+        """
+        if connection_id not in self._active_connections:
+            return None
+
+        connection = self._active_connections[connection_id]
+        return {
+            "connection_id": connection_id,
+            "status": "connected" if connection.process else "disconnected",
+            "session_info": connection.session_info,
+            "server_info": connection.server_info,
+        }
+
+    def _generate_connection_id(self, connection_type: str) -> str:
+        """Generate a unique connection ID."""
+        self._connection_counter += 1
+        return f"{connection_type}_{self._connection_counter}"
+
+    # Cleanup and Context Management
+    async def cleanup(self) -> None:
+        """Clean up all active connections and resources."""
+        await self.disconnect_all()
 
     async def __aenter__(self):
         """Async context manager entry."""
