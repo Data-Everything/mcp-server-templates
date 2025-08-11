@@ -2,14 +2,15 @@
 Tests for the ResponseBeautifier class and its generic data structure handling.
 """
 
-import pytest
 import json
 from unittest.mock import Mock, patch
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.tree import Tree
+
+import pytest
 from rich.columns import Columns
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.tree import Tree
 
 from mcp_template.interactive_cli import ResponseBeautifier
 

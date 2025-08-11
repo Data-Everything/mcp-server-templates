@@ -5,14 +5,14 @@ Tests for Zendesk MCP Server Configuration
 Test suite for configuration management, validation, and environment variable handling.
 """
 
-import os
-import pytest
-import tempfile
 import json
-from pathlib import Path
-from unittest.mock import patch, mock_open
-
+import os
 import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import mock_open, patch
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 

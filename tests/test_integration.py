@@ -13,7 +13,8 @@ from unittest.mock import patch
 import pytest
 
 from conftest import assert_deployment_success
-from mcp_template.backends import DockerDeploymentService, MockDeploymentService
+from mcp_template.backends import (DockerDeploymentService,
+                                   MockDeploymentService)
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 

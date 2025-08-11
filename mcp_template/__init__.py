@@ -27,17 +27,12 @@ import sys
 from rich.console import Console
 
 from mcp_template.backends.docker import DockerDeploymentService
-
 # Import enhanced CLI modules
-from mcp_template.cli import (
-    EnhancedCLI,
-    add_enhanced_cli_args,
-    handle_enhanced_cli_commands,
-)
+from mcp_template.cli import (EnhancedCLI, add_enhanced_cli_args,
+                              handle_enhanced_cli_commands)
 from mcp_template.deployer import MCPDeployer
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.creation import TemplateCreator
-
 # Import core classes that are used in CI and the CLI
 from mcp_template.template.utils.discovery import TemplateDiscovery
 

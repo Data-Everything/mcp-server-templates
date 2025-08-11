@@ -2,11 +2,13 @@
 Simplified integration tests for Docker tool discovery functionality.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from mcp_template.tools.discovery import ToolDiscovery
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
 from mcp_template.cli import EnhancedCLI
+from mcp_template.tools.discovery import ToolDiscovery
 
 
 @pytest.mark.unit

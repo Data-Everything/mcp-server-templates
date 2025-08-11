@@ -2,13 +2,15 @@
 Integration tests for Docker tool discovery functionality.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
+from mcp_template.cli import EnhancedCLI
 from mcp_template.tools.discovery import ToolDiscovery
 from mcp_template.tools.docker_probe import DockerProbe
 from mcp_template.tools.mcp_client_probe import MCPClientProbe
-from mcp_template.cli import EnhancedCLI
 
 
 @pytest.mark.integration

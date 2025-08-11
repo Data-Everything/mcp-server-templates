@@ -10,9 +10,9 @@ double underscore notation from CLI arguments.
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-import re
 
 
 class ZendeskServerConfig:

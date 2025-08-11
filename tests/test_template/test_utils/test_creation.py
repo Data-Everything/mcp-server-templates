@@ -11,11 +11,8 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from mcp_template.template.utils.creation import (
-    TEMPLATES_DIR,
-    TESTS_DIR,
-    TemplateCreator,
-)
+from mcp_template.template.utils.creation import (TEMPLATES_DIR, TESTS_DIR,
+                                                  TemplateCreator)
 
 
 @pytest.mark.unit
