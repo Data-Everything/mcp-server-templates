@@ -12,6 +12,8 @@ body:
         - New Template
         - Template Enhancement
         - Platform Integration
+        - New Command
+        - Configuration Option
         - Documentation
         - Other
     validations:

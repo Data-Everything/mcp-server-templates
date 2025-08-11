@@ -269,7 +269,7 @@ class MCPClient:
         self,
         template_id: str,
         tool_name: str,
-        arguments: Dict[str, Any],
+        arguments: Dict[str, Any] = None,
         deployment_id: Optional[str] = None,
         server_config: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
