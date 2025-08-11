@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
+from mcp_template.utils import TEMPLATES_DIR
+
 logger = logging.getLogger(__name__)
 
 # Configuration constants
@@ -51,8 +53,8 @@ class ToolDiscovery:
     def discover_tools(
         self,
         template_name: str,
-        template_dir: str,
         template_config: Dict[str, Any],
+        template_dir: str = None,
         use_cache: bool = True,
         force_refresh: bool = False,
         force_server_discovery: bool = False,
@@ -62,8 +64,8 @@ class ToolDiscovery:
 
         Args:
             template_name: Name of the template
-            template_dir: Path to template directory
             template_config: Template configuration
+            template_dir: Path to template directory
             use_cache: Whether to use cached results
             force_refresh: Whether to force refresh cached results
             force_server_discovery: If True, only use MCP server probing (skip static fallback)
@@ -75,6 +77,10 @@ class ToolDiscovery:
         # Convert template_dir to Path object if it's a string
         if isinstance(template_dir, str):
             template_dir = Path(template_dir)
+
+        if not template_dir:
+            # Use default templates directory if not provided
+            template_dir = TEMPLATES_DIR / template_name
 
         # Check cache if not forcing refresh and not in force server discovery mode
         if use_cache and not force_refresh and not force_server_discovery:

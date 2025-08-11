@@ -2,13 +2,15 @@
 Integration tests for Docker tool discovery functionality.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
+from mcp_template.cli import EnhancedCLI
 from mcp_template.tools.discovery import ToolDiscovery
 from mcp_template.tools.docker_probe import DockerProbe
 from mcp_template.tools.mcp_client_probe import MCPClientProbe
-from mcp_template.cli import EnhancedCLI
 
 
 @pytest.mark.integration
@@ -54,8 +56,8 @@ class TestDockerDiscoveryIntegration:
 
         result = self.discovery.discover_tools(
             template_name="test_template",
-            template_dir=Path("/fake/path"),
             template_config=template_config,
+            template_dir=Path("/fake/path"),
             use_cache=False,
         )
 
@@ -111,8 +113,8 @@ class TestDockerDiscoveryIntegration:
 
         result = self.discovery.discover_tools(
             template_name="github",
-            template_dir=Path("/fake/path"),
             template_config=template_with_config,
+            template_dir=Path("/fake/path"),
             use_cache=False,
         )
 
@@ -163,8 +165,8 @@ class TestDockerDiscoveryIntegration:
 
         result = self.discovery.discover_tools(
             template_name="test_template",
-            template_dir=None,
             template_config=template_config,
+            template_dir=None,
             use_cache=False,
         )
 
@@ -205,8 +207,8 @@ class TestDockerDiscoveryIntegration:
         # First test: Docker discovery fails, should fall back to capabilities
         result1 = self.discovery.discover_tools(
             template_name="test_template",
-            template_dir=None,
             template_config=template_config,
+            template_dir=None,
             use_cache=False,
         )
 
@@ -217,8 +219,8 @@ class TestDockerDiscoveryIntegration:
         # Second test: Docker discovery succeeds
         result2 = self.discovery.discover_tools(
             template_name="test_template2",
-            template_dir=None,
             template_config=template_config,
+            template_dir=None,
             use_cache=False,
         )
 
@@ -317,16 +319,16 @@ class TestDockerDiscoveryIntegration:
         # First call - should use capabilities (Docker will fail)
         result1 = self.discovery.discover_tools(
             template_name="cache_test",
-            template_dir=None,
             template_config=template_config,
+            template_dir=None,
             use_cache=True,
         )
 
         # Second call - should use cache
         result2 = self.discovery.discover_tools(
             template_name="cache_test",
-            template_dir=None,
             template_config=template_config,
+            template_dir=None,
             use_cache=True,
         )
 
@@ -337,8 +339,8 @@ class TestDockerDiscoveryIntegration:
         # Third call with force refresh - should bypass cache
         result3 = self.discovery.discover_tools(
             template_name="cache_test",
-            template_dir=None,
             template_config=template_config,
+            template_dir=None,
             use_cache=True,
             force_refresh=True,
         )

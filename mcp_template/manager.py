@@ -133,9 +133,13 @@ class DeploymentManager:
         """List all active deployments."""
         return self.deployment_backend.list_deployments()
 
-    def delete_deployment(self, deployment_name: str) -> bool:
+    def delete_deployment(
+        self, deployment_name: str, raise_on_failure: bool = False
+    ) -> bool:
         """Delete a deployment."""
-        return self.deployment_backend.delete_deployment(deployment_name)
+        return self.deployment_backend.delete_deployment(
+            deployment_name, raise_on_failure=raise_on_failure
+        )
 
     def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:
         """Get the status of a deployment."""

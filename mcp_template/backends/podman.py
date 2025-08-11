@@ -381,7 +381,6 @@ class PodmanDeploymentService(BaseDeploymentBackend):
             try:
                 discovery_result = tool_discovery.discover_tools(
                     template_id,
-                    template_data.get("template_dir", ""),
                     template_data,
                     use_cache=True,
                     force_refresh=False,

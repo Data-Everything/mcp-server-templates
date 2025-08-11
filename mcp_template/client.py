@@ -108,6 +108,19 @@ class MCPClient:
         """
         return self.server_manager.list_running_servers()
 
+    def list_servers_by_template(self, template: str) -> List[Dict[str, Any]]:
+        """
+        List all currently running MCP servers for a specific template.
+
+        Args:
+            template: Template name to filter servers by
+
+        Returns:
+            List of running server information for the specified template
+        """
+
+        return self.server_manager.list_running_servers(template=template)
+
     def start_server(
         self,
         template_id: str,
@@ -146,6 +159,7 @@ class MCPClient:
         Returns:
             Result of the stop operation
         """
+
         # Disconnect any active connections first
         if deployment_id in self._active_connections:
             # Don't create task if no event loop is running
@@ -165,6 +179,27 @@ class MCPClient:
 
         return self.server_manager.stop_server(deployment_id)
 
+    def stop_all_servers(self, template: str = None) -> bool:
+        """
+        Stop all servers for a specific template.
+
+        Args:
+            template: Template name to stop all servers. If None, stops all servers.
+
+        Returns:
+            True if all servers were stopped successfully, False otherwise
+        """
+
+        deployments = self.server_manager.list_running_servers(template=template)
+        results = []
+
+        for deployment in deployments:
+            if deployment.get("template") == template:
+                result = self.stop_server(deployment["id"])
+                results.append(result)
+
+        return all(results)
+
     def get_server_info(self, deployment_id: str) -> Optional[Dict[str, Any]]:
         """
         Get information about a specific server deployment.
@@ -175,6 +210,7 @@ class MCPClient:
         Returns:
             Server information or None if not found
         """
+
         return self.server_manager.get_server_info(deployment_id)
 
     def get_server_logs(self, deployment_id: str, lines: int = 100) -> Optional[str]:
@@ -188,11 +224,15 @@ class MCPClient:
         Returns:
             Log content or None if failed
         """
+
         return self.server_manager.get_server_logs(deployment_id, lines)
 
     # Tool Discovery and Management
     def list_tools(
-        self, template_name: Optional[str] = None, force_refresh: bool = False
+        self,
+        template_name: Optional[str] = None,
+        force_refresh: bool = False,
+        force_server_discovery: bool = False,
     ) -> Dict[str, Any]:
         """
         List available tools from a template or all discovered tools.
@@ -200,10 +240,13 @@ class MCPClient:
         Args:
             template_name: Specific template to get tools from
             force_refresh: Force refresh of tool cache
+            force_server_discovery: Force discovery from server if available
 
         Returns:
             Dictionary of tools with their descriptions
         """
+        if force_refresh:
+            self.tool_manager.clear_cache(template_name=template_name)
 
         if template_name:
             # Get tools for a specific template
@@ -212,9 +255,10 @@ class MCPClient:
                 raise ValueError(f"Template '{template_name}' not found")
 
             return self.tool_manager.discover_tools_from_template(
-                template_info,
-                force_refresh,
-                template_config=template_info,  # Vibe coder did not even add this. I added it to remove warning. But its wrong i think.
+                template_name=template_name,
+                template_config=template_info,
+                force_refresh=force_refresh,
+                force_server_discovery=force_server_discovery,
             )
         else:
             # Return all discovered tools

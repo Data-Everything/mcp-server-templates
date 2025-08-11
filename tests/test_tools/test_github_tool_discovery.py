@@ -5,7 +5,7 @@ Comprehensive tests for GitHub tool discovery functionality.
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -71,7 +71,7 @@ class TestGitHubToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            "github", self.template_dir, config, use_cache=False
+            "github", config, self.template_dir, use_cache=False
         )
 
         assert result["discovery_method"] == "static"
@@ -186,7 +186,7 @@ class TestGitHubToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            "github", self.template_dir, config, use_cache=False
+            "github", config, self.template_dir, use_cache=False
         )
 
         # Should use dynamic discovery
@@ -235,7 +235,7 @@ class TestGitHubToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            "github", self.template_dir, config, use_cache=False
+            "github", config, self.template_dir, use_cache=False
         )
 
         # Should fallback to static discovery
@@ -271,7 +271,7 @@ class TestGitHubToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            "github", self.template_dir, config, use_cache=False
+            "github", config, self.template_dir, use_cache=False
         )
 
         # Should use static discovery
@@ -299,7 +299,7 @@ class TestGitHubToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            "github", github_template_dir, config, use_cache=False
+            "github", config, github_template_dir, use_cache=False
         )
 
         # Should find all GitHub tools
@@ -360,7 +360,7 @@ class TestGitHubToolDiscovery:
         config = {"name": "Github", "tool_discovery": "dynamic"}
 
         result = self.discovery.discover_tools(
-            "github", self.template_dir, config, use_cache=False
+            "github", config, self.template_dir, use_cache=False
         )
 
         tool = result["tools"][0]
@@ -385,12 +385,12 @@ class TestGitHubToolDiscovery:
 
         # First call should discover and cache
         result1 = self.discovery.discover_tools(
-            "github", self.template_dir, config, use_cache=True
+            "github", config, self.template_dir, use_cache=True
         )
 
         # Second call should use cache
         result2 = self.discovery.discover_tools(
-            "github", self.template_dir, config, use_cache=True
+            "github", config, self.template_dir, use_cache=True
         )
 
         assert result1 == result2
@@ -398,7 +398,7 @@ class TestGitHubToolDiscovery:
 
         # Force refresh should bypass cache
         result3 = self.discovery.discover_tools(
-            "github", self.template_dir, config, use_cache=True, force_refresh=True
+            "github", config, self.template_dir, use_cache=True, force_refresh=True
         )
 
         assert result3["discovery_method"] == "static"  # Same result but refreshed
@@ -440,7 +440,7 @@ class TestGitHubToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            "github", self.template_dir, config, use_cache=False
+            "github", config, self.template_dir, use_cache=False
         )
 
         mock_dynamic.assert_called_once_with("github", config)
@@ -460,7 +460,7 @@ class TestGitHubToolDiscovery:
         }
 
         result = self.discovery.discover_tools(
-            "github", self.template_dir, config, use_cache=False
+            "github", config, self.template_dir, use_cache=False
         )
 
         # Should return empty result with warnings
@@ -490,7 +490,7 @@ class TestGitHubToolDiscoveryIntegration:
             "user_config": {"github_token": "dummy"},
         }
 
-        result = self.discovery.discover_tools("github", None, config, use_cache=False)
+        result = self.discovery.discover_tools("github", config, None, use_cache=False)
 
         # Should successfully discover tools with real token
         if result["discovery_method"] != "none":

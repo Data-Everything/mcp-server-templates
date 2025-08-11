@@ -2,11 +2,13 @@
 Simplified integration tests for Docker tool discovery functionality.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from mcp_template.tools.discovery import ToolDiscovery
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
 from mcp_template.cli import EnhancedCLI
+from mcp_template.tools.discovery import ToolDiscovery
 
 
 @pytest.mark.unit
@@ -48,8 +50,8 @@ class TestDockerDiscoveryBasic:
 
         result = self.discovery.discover_tools(
             template_name="test_template",
-            template_dir=Path("/fake/path"),
             template_config=template_config,
+            template_dir=Path("/fake/path"),
             use_cache=False,
         )
 
@@ -75,8 +77,8 @@ class TestDockerDiscoveryBasic:
 
         result = self.discovery.discover_tools(
             template_name="test_template",
-            template_dir=None,
             template_config=template_config,
+            template_dir=None,
             use_cache=False,
         )
 
@@ -113,8 +115,8 @@ class TestDockerDiscoveryBasic:
 
         result = self.discovery.discover_tools(
             template_name="test_template",
-            template_dir=None,
             template_config=template_config,
+            template_dir=None,
             use_cache=False,
         )
 
@@ -258,8 +260,8 @@ class TestEndToEndBehavior:
 
             result = discovery.discover_tools(
                 template_name="github",
-                template_dir=None,
                 template_config=github_template_config,
+                template_dir=None,
                 use_cache=False,
             )
 
@@ -283,8 +285,8 @@ class TestEndToEndBehavior:
 
             result = discovery.discover_tools(
                 template_name="github",
-                template_dir=None,
                 template_config=github_template_config,
+                template_dir=None,
                 use_cache=False,
             )
 

@@ -6,7 +6,7 @@ import json
 import logging
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import yaml
 from rich.console import Console
@@ -14,6 +14,7 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
+from mcp_template.exceptions import StdIoTransportDeploymentError
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.utils.config_processor import ConfigProcessor
@@ -125,6 +126,99 @@ class MCPDeployer:
 
         return template_copy
 
+    def generate_run_config(
+        self,
+        template_data: Dict[str, Any],
+        transport: Optional[Literal["http", "stdio", "sse", "http-stream"]] = None,
+        port: Optional[int] = None,
+        configuration: Optional[Dict[str, Any]] = None,
+        config_file: Optional[str] = None,
+        env_vars: Optional[Dict[str, str]] = None,
+        data_dir: Optional[str] = None,
+        config_dir: Optional[str] = None,
+        override_values: Optional[Dict[str, str]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Generate configuration for running a server.
+
+        Args:
+            template_data: Template data to use
+            transport: Transport type (e.g., "http", "stdio")
+            port: Port for HTTP transport
+            configuration: Configuration values to apply
+            config_file: Optional configuration file to use
+            env_vars: Environment variables to set for the server
+            data_dir: Data directory for the server
+            config_dir: Configuration directory for the server
+            override_values: Optional values to override in the configuration
+
+        Returns:
+            Configuration dictionary or None if failed
+        """
+
+        template_id = template_data.get("id")
+        supported_transports = template_data.get("transport", {}).get("supported", [])
+        default_transport = template_data.get("transport", {}).get("default", "http")
+        if not transport:
+            # Default to HTTP transport if not specified
+            transport = default_transport
+        else:
+            if transport not in supported_transports:
+                logger.error(
+                    "Transport %s not supported by template %s",
+                    transport,
+                    template_id,
+                )
+                return None
+
+        if transport == "stdio":
+            raise StdIoTransportDeploymentError()
+
+        if not port and transport == "http":
+            from mcp_template.tools.docker_probe import DockerProbe
+
+            port = template_data.get("transport", {}).get(
+                "port", DockerProbe._find_available_port()
+            )
+
+        # Use provided configuration or empty dict
+        config = configuration or {}
+        env_vars = env_vars or {}
+
+        config["transport"] = transport
+        if port:
+            # Ensure port is a string for JSON serialization
+            config["port"] = str(port)
+
+        config = self.config_processor.prepare_configuration(
+            template=template_data,
+            env_vars=env_vars,
+            config_file=config_file,
+            config_values=config,
+            override_values=override_values,
+        )
+        missing_properties = MCPDeployer.list_missing_properties(template_data, config)
+        template_copy = MCPDeployer.append_volume_mounts_to_template(
+            template=template_data,
+            data_dir=data_dir,
+            config_dir=config_dir,
+        )
+        template_config_dict = (
+            self.config_processor.handle_volume_and_args_config_properties(
+                template_copy, config
+            )
+        )
+        config = template_config_dict.get("config", config)
+        template_copy = template_config_dict.get("template", template_copy)
+
+        return {
+            "template": template_copy,
+            "config": config,
+            "transport": transport,
+            "port": port,
+            "missing_properties": missing_properties,
+        }
+
     def deploy(
         self,
         template_name: str,
@@ -159,14 +253,21 @@ class MCPDeployer:
         ) as progress:
             task = progress.add_task(f"Deploying {template_name}...", total=None)
             try:
-                # Prepare configuration from multiple sources
-                config = self.config_processor.prepare_configuration(
-                    template=template,
-                    env_vars=env_vars,
+
+                config_dict = self.generate_run_config(
+                    template_data=template,
+                    transport=template.get("transport", {}).get("default", "http"),
+                    port=None,  # Port will be determined by the template
+                    configuration=config_values,
                     config_file=config_file,
-                    config_values=config_values,
+                    env_vars=env_vars,
+                    data_dir=data_dir,
+                    config_dir=config_dir,
+                    override_values=override_values,
                 )
-                missing_properties = self.list_missing_properties(template, config)
+                config = config_dict.get("config", {})
+                template_copy = config_dict.get("template", {})
+                missing_properties = config_dict.get("missing_properties", [])
 
                 if missing_properties:
                     console.print(
@@ -174,27 +275,6 @@ class MCPDeployer:
                     )
                     return False
 
-                # Override directories if provided
-                template_copy = self.append_volume_mounts_to_template(
-                    template=template,
-                    data_dir=data_dir,
-                    config_dir=config_dir,
-                )
-
-                # Pass template overrides as environment variables to the template
-                if override_values:
-                    override_env_vars = self._convert_overrides_to_env_vars(
-                        override_values
-                    )
-                    config.update(override_env_vars)
-
-                template_config_dict = (
-                    self.config_processor.handle_volume_and_args_config_properties(
-                        template_copy, config
-                    )
-                )
-                config = template_config_dict.get("config", config)
-                template_copy = template_config_dict.get("template", template_copy)
                 # Deploy using unified manager
                 result = self.deployment_manager.deploy_template(
                     template_id=template_name,
@@ -808,30 +888,6 @@ class MCPDeployer:
             "config": config,
         }
 
-    def _convert_overrides_to_env_vars(
-        self, override_values: Dict[str, str]
-    ) -> Dict[str, str]:
-        """
-        Convert override values to environment variables with OVERRIDE_ prefix.
-
-        This allows the template's config.py to handle the override processing
-        instead of the deployer trying to modify template.json directly.
-
-        Args:
-            override_values: Override values from CLI (e.g., {'capabilities__0__name': 'Hello Tool'})
-
-        Returns:
-            Dict with OVERRIDE_ prefixed environment variables
-        """
-        override_env_vars = {}
-
-        for key, value in override_values.items():
-            # Convert to environment variable with OVERRIDE_ prefix
-            env_var_name = f"OVERRIDE_{key}"
-            override_env_vars[env_var_name] = str(value)
-
-        return override_env_vars
-
     def _handle_nested_cli_config(
         self, nested_key: str, value: str, properties: Dict[str, Any]
     ) -> Optional[str]:
@@ -1034,142 +1090,3 @@ class MCPDeployer:
         if example_envs:
             env_str = " ".join([f"--env {env}" for env in example_envs])
             console.print(f"  python -m mcp_template deploy {template_name} {env_str}")
-
-    def _apply_template_overrides(
-        self, template_data: Dict[str, Any], override_values: Optional[Dict[str, str]]
-    ) -> Dict[str, Any]:
-        """Apply template data overrides using double underscore notation."""
-        import copy
-
-        if not override_values:
-            return copy.deepcopy(template_data)
-
-        template_copy = copy.deepcopy(template_data)
-
-        for key, value in override_values.items():
-            # Split on double underscores to create nested path
-            key_parts = key.split("__")
-
-            # Navigate/create the nested structure
-            current = template_copy
-            for i, part in enumerate(key_parts[:-1]):
-                # Check if this part is a numeric index for array access
-                if part.isdigit():
-                    index = int(part)
-                    if isinstance(current, list):
-                        # Extend list if needed
-                        while len(current) <= index:
-                            current.append({})
-                        if i == len(key_parts) - 2:  # This is the parent of final key
-                            if not isinstance(current[index], dict):
-                                current[index] = {}
-                        current = current[index]
-                    else:
-                        # DEBUG: Add more details about the failing field
-                        console.print(
-                            f"[yellow]⚠️ Warning: Cannot index non-list field with {part} (field type: {type(current)}, key_parts so far: {key_parts[:i+1]})[/yellow]"
-                        )
-                        break
-                else:
-                    # Regular dictionary key access
-                    if part not in current:
-                        current[part] = {}
-                    elif not isinstance(current[part], (dict, list)):
-                        # Can't override non-dict/list with nested structure
-                        console.print(
-                            f"[yellow]⚠️ Warning: Cannot override non-dict field {'.'.join(key_parts[:i+1])} with nested structure[/yellow]"
-                        )
-                        break
-                    current = current[part]
-            else:
-                # Set the final value, converting types appropriately
-                final_key = key_parts[-1]
-                converted_value = self._convert_override_value(value)
-
-                # Handle final array index
-                if final_key.isdigit() and isinstance(current, list):
-                    index = int(final_key)
-                    while len(current) <= index:
-                        current.append(None)
-                    current[index] = converted_value
-                else:
-                    current[final_key] = converted_value
-
-        return template_copy
-
-    def _extract_config_overrides(
-        self, override_values: Dict[str, str], template_data: Dict[str, Any]
-    ) -> Dict[str, str]:
-        """
-        Extract config-related overrides that should be converted to environment variables.
-
-        Args:
-            override_values: Raw override values from CLI
-            template_data: Template data with config_schema
-
-        Returns:
-            Dictionary of config overrides to be converted to env vars
-        """
-        config_overrides = {}
-        config_schema = template_data.get("config_schema", {})
-        properties = config_schema.get("properties", {})
-
-        for key, value in override_values.items():
-            # Check if this override key corresponds to a config schema property
-            parts = key.split("__")
-
-            # Direct property match
-            if key in properties:
-                config_overrides[key] = value
-                continue
-
-            # Check for nested property matches
-            for prop_name, prop_config in properties.items():
-                env_mapping = prop_config.get("env_mapping", "")
-
-                # Match by environment mapping
-                if env_mapping and (
-                    key == env_mapping
-                    or key.upper() == env_mapping.upper()
-                    or key.replace("__", "_").upper() == env_mapping.upper()
-                ):
-                    config_overrides[prop_name] = value
-                    break
-
-                # Match nested structure patterns
-                if len(parts) >= 2:
-                    potential_matches = [
-                        "_".join(parts),
-                        "_".join(parts[1:]),
-                        parts[-1],
-                    ]
-
-                    if prop_name in potential_matches:
-                        config_overrides[prop_name] = value
-                        break
-
-        return config_overrides
-
-    def _convert_override_value(self, value: str) -> Any:
-        """Convert string override value to appropriate type."""
-        # Handle boolean values
-        if value.lower() in ("true", "false"):
-            return value.lower() == "true"
-
-        # Handle numeric values
-        try:
-            if "." in value:
-                return float(value)
-            return int(value)
-        except ValueError:
-            pass
-
-        # Handle JSON structures
-        if value.startswith(("{", "[")):
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError:
-                pass
-
-        # Default to string
-        return value

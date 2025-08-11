@@ -10,8 +10,8 @@ This module provides server lifecycle management including:
 import logging
 from typing import Any, Dict, List, Literal, Optional
 
-from mcp_template.core.exceptions import StdIoTransportDeploymentError
 from mcp_template.deployer import MCPDeployer
+from mcp_template.exceptions import StdIoTransportDeploymentError
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.tools.docker_probe import DockerProbe
@@ -42,18 +42,28 @@ class ServerManager:
         self.config_processor = ConfigProcessor()
         self._templates_cache = None
 
-    def list_running_servers(self) -> List[Dict[str, Any]]:
+    def list_running_servers(self, template: str = None) -> List[Dict[str, Any]]:
         """
         List currently running MCP servers.
 
         Returns:
             List of running server information
         """
+
+        deployments = []
         try:
-            return self.deployment_manager.list_deployments()
+            deployments = self.deployment_manager.list_deployments()
         except Exception as e:
             logger.error("Failed to list running servers: %s", e)
-            return []
+        else:
+            if template:
+                deployments = [
+                    server
+                    for server in deployments
+                    if server.get("template") == template
+                ]
+
+        return deployments
 
     def get_server_info(self, deployment_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -77,6 +87,94 @@ class ServerManager:
         except Exception as e:
             logger.error("Failed to get server info for %s: %s", deployment_id, e)
             return None
+
+    def generate_run_config(
+        self,
+        template_data: Dict[str, Any],
+        transport: Optional[Literal["http", "stdio", "sse", "http-stream"]] = None,
+        port: Optional[int] = None,
+        configuration: Optional[Dict[str, Any]] = None,
+        config_file: Optional[str] = None,
+        env_vars: Optional[Dict[str, str]] = None,
+        data_dir: Optional[str] = None,
+        config_dir: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Generate configuration for running a server.
+
+        Args:
+            template_data: Template data to use
+            transport: Transport type (e.g., "http", "stdio")
+            port: Port for HTTP transport
+            configuration: Configuration values to apply
+            config_file: Optional configuration file to use
+            env_vars: Environment variables to set for the server
+            data_dir: Data directory for the server
+            config_dir: Configuration directory for the server
+
+        Returns:
+            Configuration dictionary or None if failed
+        """
+
+        template_id = template_data.get("id")
+        supported_transports = template_data.get("transport", {}).get("supported", [])
+        default_transport = template_data.get("transport", {}).get("default", "http")
+        if not transport:
+            # Default to HTTP transport if not specified
+            transport = default_transport
+        else:
+            if transport not in supported_transports:
+                logger.error(
+                    "Transport %s not supported by template %s",
+                    transport,
+                    template_id,
+                )
+                return None
+
+        if transport == "stdio":
+            raise StdIoTransportDeploymentError()
+
+        if not port and transport == "http":
+            port = template_data.get("transport", {}).get(
+                "port", DockerProbe._find_available_port()
+            )
+
+        # Use provided configuration or empty dict
+        config = configuration or {}
+        env_vars = env_vars or {}
+
+        config["transport"] = transport
+        if port:
+            # Ensure port is a string for JSON serialization
+            config["port"] = str(port)
+
+        config = self.config_processor.prepare_configuration(
+            template=template_data,
+            env_vars=env_vars,
+            config_file=config_file,
+            config_values=config,
+        )
+        missing_properties = MCPDeployer.list_missing_properties(template_data, config)
+        template_copy = MCPDeployer.append_volume_mounts_to_template(
+            template=template_data,
+            data_dir=data_dir,
+            config_dir=config_dir,
+        )
+        template_config_dict = (
+            self.config_processor.handle_volume_and_args_config_properties(
+                template_copy, config
+            )
+        )
+        config = template_config_dict.get("config", config)
+        template_copy = template_config_dict.get("template", template_copy)
+
+        return {
+            "template": template_copy,
+            "config": config,
+            "transport": transport,
+            "port": port,
+            "missing_properties": missing_properties,
+        }
 
     def start_server(
         self,
@@ -130,62 +228,25 @@ class ServerManager:
 
             template_data = templates[template_id]
 
-            supported_transports = template_data.get("transport", {}).get(
-                "supported", []
-            )
-            default_transport = template_data.get("transport", {}).get(
-                "default", "http"
-            )
-            if not transport:
-                # Default to HTTP transport if not specified
-                transport = default_transport
-            else:
-                if transport not in supported_transports:
-                    logger.error(
-                        "Transport %s not supported by template %s",
-                        transport,
-                        template_id,
-                    )
-                    return None
-
-            if transport == "stdio":
-                raise StdIoTransportDeploymentError()
-
-            if not port and transport == "http":
-                port = template_data.get("transport", {}).get(
-                    "port", DockerProbe._find_available_port()
-                )
-
-            # Use provided configuration or empty dict
-            config = configuration or {}
-            env_vars = env_vars or {}
-
-            config["transport"] = transport
-            if port:
-                # Ensure port is a string for JSON serialization
-                config["port"] = str(port)
-
-            config = self.config_processor.prepare_configuration(
-                template=template_data,
-                env_vars=env_vars,
+            config_dict = self.generate_run_config(
+                template_data=template_data,
+                transport=transport,
+                port=port,
+                configuration=configuration,
                 config_file=config_file,
-                config_values=config,
-            )
-            missing_properties = MCPDeployer.list_missing_properties(
-                template_data, config
-            )
-            template_copy = MCPDeployer.append_volume_mounts_to_template(
-                template=template_data,
+                env_vars=env_vars,
                 data_dir=data_dir,
                 config_dir=config_dir,
             )
-            template_config_dict = (
-                self.config_processor.handle_volume_and_args_config_properties(
-                    template_copy, config
-                )
-            )
-            config = template_config_dict.get("config", config)
-            template_copy = template_config_dict.get("template", template_copy)
+            if not config_dict:
+                logger.error("Failed to generate run configuration for %s", template_id)
+                return None
+
+            template_copy = config_dict["template"]
+            config = config_dict["config"]
+            transport = config_dict["transport"]
+            port = config_dict.get("port")
+            missing_properties = config_dict.get("missing_properties", [])
 
             if missing_properties:
                 logger.error(
@@ -227,8 +288,11 @@ class ServerManager:
         Returns:
             True if stopped successfully, False otherwise
         """
+
         try:
-            result = self.deployment_manager.delete_deployment(deployment_id)
+            result = self.deployment_manager.delete_deployment(
+                deployment_id, raise_on_failure=True
+            )
             if result:
                 logger.info("Successfully stopped server %s", deployment_id)
                 return True

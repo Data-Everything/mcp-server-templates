@@ -29,6 +29,173 @@ class ConfigProcessor:
         """Initialize the configuration processor."""
         pass
 
+    def _convert_overrides_to_env_vars(
+        self, override_values: Dict[str, str]
+    ) -> Dict[str, str]:
+        """
+        Convert override values to environment variables with OVERRIDE_ prefix.
+
+        This allows the template's config.py to handle the override processing
+        instead of the deployer trying to modify template.json directly.
+
+        Args:
+            override_values: Override values from CLI (e.g., {'capabilities__0__name': 'Hello Tool'})
+
+        Returns:
+            Dict with OVERRIDE_ prefixed environment variables
+        """
+        override_env_vars = {}
+
+        for key, value in override_values.items():
+            # Convert to environment variable with OVERRIDE_ prefix
+            env_var_name = f"OVERRIDE_{key}"
+            override_env_vars[env_var_name] = str(value)
+
+        return override_env_vars
+
+    def _apply_template_overrides(
+        self, template_data: Dict[str, Any], override_values: Optional[Dict[str, str]]
+    ) -> Dict[str, Any]:
+        """Apply template data overrides using double underscore notation."""
+        import copy
+
+        if not override_values:
+            return copy.deepcopy(template_data)
+
+        template_copy = copy.deepcopy(template_data)
+
+        for key, value in override_values.items():
+            # Split on double underscores to create nested path
+            key_parts = key.split("__")
+
+            # Navigate/create the nested structure
+            current = template_copy
+            for i, part in enumerate(key_parts[:-1]):
+                # Check if this part is a numeric index for array access
+                if part.isdigit():
+                    index = int(part)
+                    if isinstance(current, list):
+                        # Extend list if needed
+                        while len(current) <= index:
+                            current.append({})
+                        if i == len(key_parts) - 2:  # This is the parent of final key
+                            if not isinstance(current[index], dict):
+                                current[index] = {}
+                        current = current[index]
+                    else:
+                        # DEBUG: Add more details about the failing field
+                        logger.warning(
+                            "Cannot index non-list field with %s (field type: %s, key_parts so far: %s)",
+                            part,
+                            type(current),
+                            key_parts[: i + 1],
+                        )
+                        break
+                else:
+                    # Regular dictionary key access
+                    if part not in current:
+                        current[part] = {}
+                    elif not isinstance(current[part], (dict, list)):
+                        # Can't override non-dict/list with nested structure
+                        logger.warning(
+                            "Cannot override non-dict field %s with nested structure",
+                            ".".join(key_parts[: i + 1]),
+                        )
+                        break
+                    current = current[part]
+            else:
+                # Set the final value, converting types appropriately
+                final_key = key_parts[-1]
+                converted_value = self._convert_override_value(value)
+
+                # Handle final array index
+                if final_key.isdigit() and isinstance(current, list):
+                    index = int(final_key)
+                    while len(current) <= index:
+                        current.append(None)
+                    current[index] = converted_value
+                else:
+                    current[final_key] = converted_value
+
+        return template_copy
+
+    def _extract_config_overrides(
+        self, override_values: Dict[str, str], template_data: Dict[str, Any]
+    ) -> Dict[str, str]:
+        """
+        Extract config-related overrides that should be converted to environment variables.
+
+        Args:
+            override_values: Raw override values from CLI
+            template_data: Template data with config_schema
+
+        Returns:
+            Dictionary of config overrides to be converted to env vars
+        """
+        config_overrides = {}
+        config_schema = template_data.get("config_schema", {})
+        properties = config_schema.get("properties", {})
+
+        for key, value in override_values.items():
+            # Check if this override key corresponds to a config schema property
+            parts = key.split("__")
+
+            # Direct property match
+            if key in properties:
+                config_overrides[key] = value
+                continue
+
+            # Check for nested property matches
+            for prop_name, prop_config in properties.items():
+                env_mapping = prop_config.get("env_mapping", "")
+
+                # Match by environment mapping
+                if env_mapping and (
+                    key == env_mapping
+                    or key.upper() == env_mapping.upper()
+                    or key.replace("__", "_").upper() == env_mapping.upper()
+                ):
+                    config_overrides[prop_name] = value
+                    break
+
+                # Match nested structure patterns
+                if len(parts) >= 2:
+                    potential_matches = [
+                        "_".join(parts),
+                        "_".join(parts[1:]),
+                        parts[-1],
+                    ]
+
+                    if prop_name in potential_matches:
+                        config_overrides[prop_name] = value
+                        break
+
+        return config_overrides
+
+    def _convert_override_value(self, value: str) -> Any:
+        """Convert string override value to appropriate type."""
+        # Handle boolean values
+        if value.lower() in ("true", "false"):
+            return value.lower() == "true"
+
+        # Handle numeric values
+        try:
+            if "." in value:
+                return float(value)
+            return int(value)
+        except ValueError:
+            pass
+
+        # Handle JSON structures
+        if value.startswith(("{", "[")):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                pass
+
+        # Default to string
+        return value
+
     def prepare_configuration(
         self,
         template: Dict[str, Any],
@@ -38,6 +205,7 @@ class ConfigProcessor:
         session_config: Optional[Dict[str, Any]] = None,
         inline_config: Optional[List[str]] = None,
         env_var_list: Optional[List[str]] = None,
+        override_values: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Prepare configuration from multiple sources with proper type conversion.
@@ -104,6 +272,10 @@ class ConfigProcessor:
         for reserved_key, reserved_value in RESERVED_ENV_VARS.items():
             if reserved_key in config:
                 config[reserved_value] = config.pop(reserved_key)
+
+        if override_values:
+            override_env_vars = self._convert_overrides_to_env_vars(override_values)
+            config.update(override_env_vars)
 
         return config
 

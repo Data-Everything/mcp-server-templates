@@ -47,7 +47,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
 
     # Docker Infrastructure Methods
     def _run_command(
-        self, command: List[str], check: bool = True
+        self, command: List[str], check: bool = True, **kwargs: Any
     ) -> subprocess.CompletedProcess:
         """Execute a shell command and return the result.
 
@@ -62,10 +62,15 @@ class DockerDeploymentService(BaseDeploymentBackend):
             subprocess.CalledProcessError: If command fails and check=True
         """
 
+        if "stdout" in kwargs or "stderr" in kwargs:
+            capture_output = False
+        else:
+            capture_output = True
+
         try:
             logger.debug("Running command: %s", " ".join(command))
             result = subprocess.run(  # nosec B603
-                command, capture_output=True, text=True, check=check
+                command, capture_output=capture_output, text=True, check=check, **kwargs
             )
             logger.debug("Command output: %s", result.stdout)
             if result.stderr:
@@ -141,7 +146,6 @@ class DockerDeploymentService(BaseDeploymentBackend):
             try:
                 discovery_result = tool_discovery.discover_tools(
                     template_id,
-                    template_data.get("template_dir", ""),
                     template_data,
                     use_cache=True,
                     force_refresh=False,
@@ -737,7 +741,9 @@ EOF""",
             logger.error("Failed to list deployments: %s", e)
             return []
 
-    def delete_deployment(self, deployment_name: str) -> bool:
+    def delete_deployment(
+        self, deployment_name: str, raise_on_failure: bool = False
+    ) -> bool:
         """Delete a deployment by stopping and removing the container.
 
         Args:
@@ -748,19 +754,24 @@ EOF""",
         """
         try:
             # Stop and remove the container
-            self._run_command(["docker", "stop", deployment_name], check=False)
-            self._run_command(["docker", "rm", deployment_name], check=False)
+            self._run_command(
+                ["docker", "stop", deployment_name], check=raise_on_failure
+            )
+            self._run_command(["docker", "rm", deployment_name], check=raise_on_failure)
             logger.info("Deleted deployment %s", deployment_name)
             return True
         except subprocess.CalledProcessError as e:
             logger.error("Failed to delete deployment %s: %s", deployment_name, e)
             return False
 
-    def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:
+    def get_deployment_status(
+        self, deployment_name: str, lines: int = 10
+    ) -> Dict[str, Any]:
         """Get detailed status of a deployment including logs.
 
         Args:
             deployment_name: Name of the deployment
+            lines: Number of log lines to retrieve
 
         Returns:
             Dict containing deployment status, logs, and metadata
@@ -778,7 +789,10 @@ EOF""",
             # Get container logs (last 10 lines)
             try:
                 log_result = self._run_command(
-                    ["docker", "logs", "--tail", "10", deployment_name], check=False
+                    ["docker", "logs", "--tail", str(int(lines)), deployment_name],
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,  # Because docker logs are sent to stderr by default
                 )
                 logs = log_result.stdout
             except Exception:

@@ -252,7 +252,6 @@ class EnhancedCLI:
 
         discovery_result = self.tool_discovery.discover_tools(
             template_name=template_name,
-            template_dir=template_dir,
             template_config=template_with_config,
             use_cache=not no_cache,
             force_refresh=refresh,
@@ -646,7 +645,6 @@ else:
             try:
                 discovery_result = self.tool_discovery.discover_tools(
                     template_name,
-                    template.get("template_dir", ""),
                     template,
                     use_cache=True,
                     force_refresh=False,

@@ -11,6 +11,7 @@ import logging
 import os
 import shlex
 import sys
+import traceback
 from typing import Any, Dict, List, Union
 
 import cmd2
@@ -163,8 +164,15 @@ def merge_config_sources(
 class ResponseBeautifier:
     """Class for beautifying and formatting MCP responses."""
 
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
+        """
+        Initialize the response beautifier.
+
+        Args:
+            verbose: Whether to enable verbose output for debugging
+        """
         self.console = Console()
+        self.verbose = verbose
 
     def _is_actual_error(self, stderr_text: str) -> bool:
         """Check if stderr contains actual errors vs informational messages."""
@@ -818,7 +826,6 @@ class ResponseBeautifier:
 
             except Exception as e:
                 # Debug the exception and fallback to raw output
-                import traceback
 
                 self.console.print(f"[yellow]⚠️  Beautifier parsing error: {e}[/yellow]")
                 self.console.print(f"[dim]Traceback: {traceback.format_exc()}[/dim]")
@@ -1185,7 +1192,8 @@ class InteractiveCLI(cmd2.Cmd):
             tools = self.enhanced_cli.tool_discovery.discover_tools(
                 template_name,
                 config_values or {},
-                force_server=False,  # Allow both static and dynamic for help
+                force_refresh=False,  # Use cached tools if available
+                force_server_discovery=False,  # Allow both static and dynamic for help
             )
 
             if tools:
@@ -1374,7 +1382,6 @@ class InteractiveCLI(cmd2.Cmd):
             try:
                 tools = self.enhanced_cli.tool_discovery.discover_tools(
                     template_name,
-                    self.enhanced_cli.templates[template_name],
                     config_values or {},
                 )
             except Exception as e:
