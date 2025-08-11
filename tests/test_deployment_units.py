@@ -13,7 +13,8 @@ from unittest.mock import patch
 import pytest
 
 from mcp_template import MCPDeployer
-from mcp_template.backends import DockerDeploymentService, MockDeploymentService
+from mcp_template.backends import (DockerDeploymentService,
+                                   MockDeploymentService)
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 

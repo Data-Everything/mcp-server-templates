@@ -5,10 +5,11 @@ These tests verify the GitLab template structure and basic functionality
 without requiring full deployment infrastructure.
 """
 
-import pytest
 import json
 import os
 from pathlib import Path
+
+import pytest
 
 
 class TestGitLabTemplate:

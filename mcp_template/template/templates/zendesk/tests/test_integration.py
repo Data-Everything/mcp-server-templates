@@ -5,12 +5,12 @@ Integration tests for Zendesk MCP Server
 These tests verify the integration between the server and the MCP template system.
 """
 
-import os
-import pytest
 import asyncio
-from unittest.mock import patch, MagicMock
-
+import os
 import sys
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 

@@ -2,16 +2,16 @@
 Integration tests for Github template.
 """
 
+import asyncio
+# Import MCP testing utilities
+import sys
+from pathlib import Path
+
 import pytest
 import pytest_asyncio
-import asyncio
-from pathlib import Path
 
 # Import MCP testing utilities
 from mcp_template.utils import TEMPLATES_DIR, TESTS_DIR
-
-# Import MCP testing utilities
-import sys
 
 sys.path.insert(0, str(TESTS_DIR / "utils"))
 

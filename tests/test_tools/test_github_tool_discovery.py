@@ -5,7 +5,7 @@ Comprehensive tests for GitHub tool discovery functionality.
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 

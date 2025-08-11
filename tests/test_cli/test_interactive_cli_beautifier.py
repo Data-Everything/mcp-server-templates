@@ -2,14 +2,14 @@
 Unit tests for ResponseBeautifier class.
 """
 
-import pytest
-import unittest.mock as mock
-from unittest.mock import MagicMock, patch
 import json
-from typing import Dict, List, Any
-
-import sys
 import os
+import sys
+import unittest.mock as mock
+from typing import Any, Dict, List
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if project_path not in sys.path:

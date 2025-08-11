@@ -2,22 +2,24 @@
 Integration tests for InteractiveCLI.
 """
 
-import pytest
-import unittest.mock as mock
-from unittest.mock import MagicMock, patch, call
-import json
-import sys
 import io
+import json
 import os
-from contextlib import redirect_stdout, redirect_stderr
+import sys
+import unittest.mock as mock
+from contextlib import redirect_stderr, redirect_stdout
+from unittest.mock import MagicMock, call, patch
+
+import pytest
 
 # Add the project to path if not already there
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if project_path not in sys.path:
     sys.path.insert(0, project_path)
 
-from mcp_template.interactive_cli import InteractiveCLI, start_interactive_cli
 from rich.console import Console
+
+from mcp_template.interactive_cli import InteractiveCLI, start_interactive_cli
 
 
 @pytest.mark.integration

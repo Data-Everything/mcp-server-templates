@@ -2,30 +2,26 @@
 Unit tests for InteractiveCLI command methods.
 """
 
-import pytest
-import unittest.mock as mock
-from unittest.mock import MagicMock, patch, call
-import json
-import sys
 import io
-from contextlib import redirect_stdout, redirect_stderr
-
-import cmd2
-
+import json
+import os
 # Add the project to path if not already there
 import sys
-import os
+import unittest.mock as mock
+from contextlib import redirect_stderr, redirect_stdout
+from unittest.mock import MagicMock, call, patch
+
+import cmd2
+import pytest
 
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if project_path not in sys.path:
     sys.path.insert(0, project_path)
 
-from mcp_template.interactive_cli import (
-    InteractiveCLI,
-    ResponseBeautifier,
-    merge_config_sources,
-)
 from rich.console import Console
+
+from mcp_template.interactive_cli import (InteractiveCLI, ResponseBeautifier,
+                                          merge_config_sources)
 
 
 @pytest.mark.unit
