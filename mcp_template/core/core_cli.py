@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class CoreCLI:
     """
     Core CLI that uses common modules for shared functionality.
-    
+
     This CLI focuses on:
     - Argument parsing and validation
     - User interaction and feedback
@@ -51,26 +51,28 @@ class CoreCLI:
         try:
             templates = self.template_manager.list_templates(
                 include_deployed_status=True,
-                filter_deployed_only=getattr(args, 'deployed', False)
+                filter_deployed_only=getattr(args, "deployed", False),
             )
-            
+
             if not templates:
-                if getattr(args, 'deployed', False):
+                if getattr(args, "deployed", False):
                     self.formatter.print_info("No deployed templates found")
                 else:
                     self.formatter.print_info("No templates found")
                 return
-            
+
             # Format and display templates table
             table = self.formatter.format_templates_table(templates, show_deployed=True)
-            
+
             self.console.print("\n📋 Available Templates:\n")
             self.formatter.print_table(table)
-            
+
             # Show helpful tips
             self.console.print("\n💡 Use 'mcpt deploy <template>' to deploy a template")
-            self.console.print("💡 Use 'mcpt config <template>' to see configuration options")
-            
+            self.console.print(
+                "💡 Use 'mcpt config <template>' to see configuration options"
+            )
+
         except Exception as e:
             self.formatter.print_error(f"Error showing config: {e}")
             sys.exit(1)
@@ -78,16 +80,18 @@ class CoreCLI:
     def handle_shell_command(self, args) -> None:
         """Handle shell command to access running container."""
         try:
-            template_name = getattr(args, 'template', None)
-            custom_name = getattr(args, 'name', None)
-            
+            template_name = getattr(args, "template", None)
+            custom_name = getattr(args, "name", None)
+
             if not template_name and not custom_name:
                 self.formatter.print_error("Template name or custom name is required")
                 sys.exit(1)
-                
+
             # Use deployment manager to access shell (placeholder)
-            self.formatter.print_info(f"Shell access for {template_name or custom_name} - functionality pending")
-                
+            self.formatter.print_info(
+                f"Shell access for {template_name or custom_name} - functionality pending"
+            )
+
         except Exception as e:
             self.formatter.print_error(f"Error accessing shell: {e}")
             sys.exit(1)
@@ -95,12 +99,12 @@ class CoreCLI:
     def handle_cleanup_command(self, args) -> None:
         """Handle cleanup command to remove stopped containers."""
         try:
-            template_name = getattr(args, 'template', None)
-            all_containers = getattr(args, 'all', False)
-            
+            template_name = getattr(args, "template", None)
+            all_containers = getattr(args, "all", False)
+
             # Use deployment manager to clean up (placeholder)
             self.formatter.print_info("Cleanup functionality - pending implementation")
-                
+
         except Exception as e:
             self.formatter.print_error(f"Error during cleanup: {e}")
             sys.exit(1)
@@ -110,23 +114,27 @@ class CoreCLI:
         try:
             # Parse CLI arguments into structured config
             config_sources = {
-                'config_file': getattr(args, 'config_file', None),
-                'env_vars': self._parse_key_value_args(getattr(args, 'env', [])),
-                'config_values': self._parse_key_value_args(getattr(args, 'config', [])),
-                'override_values': self._parse_key_value_args(getattr(args, 'override', []))
+                "config_file": getattr(args, "config_file", None),
+                "env_vars": self._parse_key_value_args(getattr(args, "env", [])),
+                "config_values": self._parse_key_value_args(
+                    getattr(args, "config", [])
+                ),
+                "override_values": self._parse_key_value_args(
+                    getattr(args, "override", [])
+                ),
             }
 
             deployment_options = DeploymentOptions(
-                name=getattr(args, 'name', None),
-                transport=getattr(args, 'transport', None),
-                port=getattr(args, 'port', 7071),
-                data_dir=getattr(args, 'data_dir', None),
-                config_dir=getattr(args, 'config_dir', None),
-                pull_image=not getattr(args, 'no_pull', False)
+                name=getattr(args, "name", None),
+                transport=getattr(args, "transport", None),
+                port=getattr(args, "port", 7071),
+                data_dir=getattr(args, "data_dir", None),
+                config_dir=getattr(args, "config_dir", None),
+                pull_image=not getattr(args, "no_pull", False),
             )
 
             # Show config options if requested
-            if getattr(args, 'show_config', False):
+            if getattr(args, "show_config", False):
                 self._show_config_options(args.template)
                 return
 
@@ -135,21 +143,22 @@ class CoreCLI:
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
                 console=self.console,
-                transient=True
+                transient=True,
             ) as progress:
                 task = progress.add_task(f"Deploying {args.template}...", total=None)
-                
+
                 result = self.deployment_manager.deploy_template(
                     args.template, config_sources, deployment_options
                 )
-                
+
                 progress.stop()
 
             # Display deployment result
             panel = self.formatter.format_deployment_result(result.to_dict())
-            self.formatter.print_panel(panel.renderable, panel.title, 
-                                     "green" if result.success else "red")
-            
+            self.formatter.print_panel(
+                panel.renderable, panel.title, "green" if result.success else "red"
+            )
+
             if not result.success:
                 sys.exit(1)
 
@@ -162,16 +171,16 @@ class CoreCLI:
         try:
             # Find target deployments
             targets = []
-            
-            if getattr(args, 'all', False):
+
+            if getattr(args, "all", False):
                 targets = self.deployment_manager.find_deployments_by_criteria(
-                    template_name=getattr(args, 'template', None)
+                    template_name=getattr(args, "template", None)
                 )
-            elif getattr(args, 'name', None):
+            elif getattr(args, "name", None):
                 targets = self.deployment_manager.find_deployments_by_criteria(
                     custom_name=args.name
                 )
-            elif getattr(args, 'template', None):
+            elif getattr(args, "template", None):
                 targets = self.deployment_manager.find_deployments_by_criteria(
                     template_name=args.template
                 )
@@ -181,11 +190,13 @@ class CoreCLI:
                 return
 
             # Confirm bulk operations
-            if len(targets) > 1 and not getattr(args, 'all', False):
-                self.console.print(f"\n⚠️ Found {len(targets)} deployments matching criteria:")
+            if len(targets) > 1 and not getattr(args, "all", False):
+                self.console.print(
+                    f"\n⚠️ Found {len(targets)} deployments matching criteria:"
+                )
                 for target in targets:
                     self.console.print(f"  • {target.get('id', 'unknown')}")
-                
+
                 if not self._confirm_action("Stop all these deployments?"):
                     self.formatter.print_info("Operation cancelled")
                     return
@@ -211,8 +222,8 @@ class CoreCLI:
         try:
             # Find deployment
             deployment_id = self.deployment_manager.find_deployment_for_logs(
-                template_name=getattr(args, 'template', None),
-                custom_name=getattr(args, 'name', None)
+                template_name=getattr(args, "template", None),
+                custom_name=getattr(args, "name", None),
             )
 
             if not deployment_id:
@@ -220,21 +231,31 @@ class CoreCLI:
                 return
 
             # Get logs
-            if getattr(args, 'follow', False):
+            if getattr(args, "follow", False):
                 self._stream_logs_with_display(deployment_id)
             else:
-                lines = getattr(args, 'lines', 100)
-                result = self.deployment_manager.get_deployment_logs(deployment_id, lines=lines)
-                
+                lines = getattr(args, "lines", 100)
+                result = self.deployment_manager.get_deployment_logs(
+                    deployment_id, lines=lines
+                )
+
                 if result["success"]:
-                    self.console.print(f"\n📋 Logs for deployment: {deployment_id} (last {lines} lines)\n")
+                    self.console.print(
+                        f"\n📋 Logs for deployment: {deployment_id} (last {lines} lines)\n"
+                    )
                     formatted_logs = self.formatter.format_logs(result["logs"])
                     self.console.print(formatted_logs)
-                    
-                    self.console.print(f"\n💡 Use 'mcpt logs {args.template} --follow' to stream logs in real-time")
-                    self.console.print(f"💡 Use 'mcpt logs {args.template} --lines 500' to see more history")
+
+                    self.console.print(
+                        f"\n💡 Use 'mcpt logs {args.template} --follow' to stream logs in real-time"
+                    )
+                    self.console.print(
+                        f"💡 Use 'mcpt logs {args.template} --lines 500' to see more history"
+                    )
                 else:
-                    self.formatter.print_error(f"Failed to get logs: {result.get('error', 'Unknown error')}")
+                    self.formatter.print_error(
+                        f"Failed to get logs: {result.get('error', 'Unknown error')}"
+                    )
 
         except Exception as e:
             self.formatter.print_error(f"Logs operation failed: {e}")
@@ -243,13 +264,13 @@ class CoreCLI:
     def handle_tools_command(self, args) -> None:
         """Handle the tools/list_tools command."""
         try:
-            discovery_method = getattr(args, 'method', 'auto')
-            force_refresh = getattr(args, 'refresh', False)
-            
+            discovery_method = getattr(args, "method", "auto")
+            force_refresh = getattr(args, "refresh", False)
+
             tools = self.tool_manager.list_tools(
                 args.template,
                 discovery_method=discovery_method,
-                force_refresh=force_refresh
+                force_refresh=force_refresh,
             )
 
             if not tools:
@@ -258,13 +279,17 @@ class CoreCLI:
 
             # Format and display tools table
             table = self.formatter.format_tools_table(tools)
-            
+
             self.console.print(f"\n🔧 Available Tools for {args.template}:\n")
             self.formatter.print_table(table)
-            
+
             # Show helpful tips
-            self.console.print(f"\n💡 Use 'call say_hello name=\"World\"' to call a tool")
-            self.console.print(f"💡 Use 'call say_hello --help' for detailed parameter information")
+            self.console.print(
+                f"\n💡 Use 'call say_hello name=\"World\"' to call a tool"
+            )
+            self.console.print(
+                f"💡 Use 'call say_hello --help' for detailed parameter information"
+            )
 
         except Exception as e:
             self.formatter.print_error(f"Failed to list tools: {e}")
@@ -273,26 +298,36 @@ class CoreCLI:
     def handle_config_command(self, args) -> None:
         """Handle the config command."""
         try:
-            if getattr(args, 'validate', False):
-                result = self.config_manager.validate_template_configuration(args.template)
+            if getattr(args, "validate", False):
+                result = self.config_manager.validate_template_configuration(
+                    args.template
+                )
                 panel = self.formatter.format_validation_results(result)
                 self.console.print(panel)
-                
+
                 if not result["valid"]:
                     sys.exit(1)
             else:
-                configs = self.config_manager.load_configuration_for_template(args.template)
-                
+                configs = self.config_manager.load_configuration_for_template(
+                    args.template
+                )
+
                 if not configs:
-                    self.formatter.print_info(f"No configurations found for template {args.template}")
+                    self.formatter.print_info(
+                        f"No configurations found for template {args.template}"
+                    )
                     return
-                
-                self.console.print(f"\n🔧 Configuration Management for Template: {args.template}\n")
-                
+
+                self.console.print(
+                    f"\n🔧 Configuration Management for Template: {args.template}\n"
+                )
+
                 table = self.formatter.format_config_overview(configs)
                 self.formatter.print_table(table)
-                
-                self.console.print(f"\n💡 Use 'mcpt config {args.template} --validate' to check all configurations")
+
+                self.console.print(
+                    f"\n💡 Use 'mcpt config {args.template} --validate' to check all configurations"
+                )
 
         except Exception as e:
             self.formatter.print_error(f"Config operation failed: {e}")
@@ -302,10 +337,12 @@ class CoreCLI:
         """Parse key=value arguments into a dictionary."""
         result = {}
         for arg in args:
-            if '=' not in arg:
-                self.formatter.print_warning(f"Ignoring invalid argument: {arg} (expected key=value format)")
+            if "=" not in arg:
+                self.formatter.print_warning(
+                    f"Ignoring invalid argument: {arg} (expected key=value format)"
+                )
                 continue
-            key, value = arg.split('=', 1)
+            key, value = arg.split("=", 1)
             result[key] = value
         return result
 
@@ -313,20 +350,22 @@ class CoreCLI:
         """Show configuration options for a template."""
         try:
             schema = self.template_manager.get_template_config_schema(template_name)
-            
+
             if not schema:
-                self.formatter.print_info(f"No configuration schema found for {template_name}")
+                self.formatter.print_info(
+                    f"No configuration schema found for {template_name}"
+                )
                 return
-            
+
             self.console.print(f"\n🔧 Configuration Options for {template_name}:\n")
-            
+
             properties = schema.get("properties", {})
             if properties:
                 for prop_name, prop_def in properties.items():
                     prop_type = prop_def.get("type", "unknown")
                     description = prop_def.get("description", "No description")
                     default = prop_def.get("default", "No default")
-                    
+
                     self.console.print(f"• [cyan]{prop_name}[/cyan] ({prop_type})")
                     self.console.print(f"  {description}")
                     self.console.print(f"  Default: {default}\n")
@@ -340,7 +379,7 @@ class CoreCLI:
         """Ask user for confirmation."""
         try:
             response = input(f"{message} [y/N]: ").strip().lower()
-            return response in ['y', 'yes']
+            return response in ["y", "yes"]
         except (KeyboardInterrupt, EOFError):
             return False
 
@@ -349,13 +388,13 @@ class CoreCLI:
         try:
             self.console.print(f"\n📋 Streaming logs for deployment: {deployment_id}\n")
             self.console.print("Press Ctrl+C to stop streaming...\n")
-            
+
             def log_callback(log_line: str):
                 formatted_line = self.formatter.format_logs(log_line)
                 self.console.print(formatted_line, end="")
-            
+
             self.deployment_manager.stream_deployment_logs(deployment_id, log_callback)
-            
+
         except KeyboardInterrupt:
             self.console.print("\n\n⏹️  Log streaming stopped by user")
         except Exception as e:
@@ -452,19 +491,31 @@ Examples:
     logs_parser = subparsers.add_parser("logs", help="Show template logs")
     logs_parser.add_argument("template", help="Template name")
     logs_parser.add_argument("--name", help="Custom deployment name")
-    logs_parser.add_argument("--lines", type=int, default=100, help="Number of log lines to show")
+    logs_parser.add_argument(
+        "--lines", type=int, default=100, help="Number of log lines to show"
+    )
     logs_parser.add_argument("-f", "--follow", action="store_true", help="Follow logs")
 
     # Tools command
     tools_parser = subparsers.add_parser("tools", help="List available tools")
     tools_parser.add_argument("template", help="Template name")
-    tools_parser.add_argument("--method", choices=["static", "dynamic", "image", "auto"], 
-                             default="auto", help="Tool discovery method")
-    tools_parser.add_argument("--refresh", action="store_true", help="Force refresh cache")
+    tools_parser.add_argument(
+        "--method",
+        choices=["static", "dynamic", "image", "auto"],
+        default="auto",
+        help="Tool discovery method",
+    )
+    tools_parser.add_argument(
+        "--refresh", action="store_true", help="Force refresh cache"
+    )
 
     # Config command
-    config_parser = subparsers.add_parser("config", help="Manage template configurations")
+    config_parser = subparsers.add_parser(
+        "config", help="Manage template configurations"
+    )
     config_parser.add_argument("template", help="Template name")
-    config_parser.add_argument("--validate", action="store_true", help="Validate configurations")
+    config_parser.add_argument(
+        "--validate", action="store_true", help="Validate configurations"
+    )
 
     return parser

@@ -28,8 +28,9 @@ class EnhancedCLI:
         """Initialize the enhanced CLI with RefactoredCLI delegation."""
         # Use our core implementation for core functionality
         from mcp_template.core.core_cli import CoreCLI
+
         self._core_cli = CoreCLI()
-        
+
         # Keep some CLI-specific properties for compatibility
         self.verbose = False
         self.beautifier = None
@@ -40,10 +41,10 @@ class EnhancedCLI:
         if not template_info:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             return
-            
+
         # Use formatter to display config options
-        config_schema = template_info.get('config_schema', {})
-        if hasattr(self._core_cli.formatter, 'format_config_schema'):
+        config_schema = template_info.get("config_schema", {})
+        if hasattr(self._core_cli.formatter, "format_config_schema"):
             self._core_cli.formatter.format_config_schema(template_name, config_schema)
         else:
             # Fallback display
@@ -61,12 +62,16 @@ class EnhancedCLI:
         """List available tools from various sources."""
         try:
             if template_name:
-                tools = self._core_cli.tool_manager.list_tools_for_template(template_name)
+                tools = self._core_cli.tool_manager.list_tools_for_template(
+                    template_name
+                )
             elif image_name:
-                tools = self._core_cli.tool_manager.discover_tools_from_image(image_name)
+                tools = self._core_cli.tool_manager.discover_tools_from_image(
+                    image_name
+                )
             else:
                 tools = self._core_cli.tool_manager.list_all_tools()
-                
+
             # Use formatter to display tools
             if tools:
                 self._core_cli.formatter.format_tools_table(tools)
@@ -91,7 +96,7 @@ class EnhancedCLI:
         """Deploy a template with transport configuration."""
         try:
             from mcp_template.core.deployment_manager import DeploymentOptions
-            
+
             options = DeploymentOptions(
                 template_name=template_name,
                 transport=transport,
@@ -102,9 +107,9 @@ class EnhancedCLI:
                 config_file=config_file,
                 config_values=config_values or {},
                 override_values=override_values or {},
-                pull_image=pull_image
+                pull_image=pull_image,
             )
-            
+
             result = self._core_cli.deployment_manager.deploy_template(options)
             return result.success
         except Exception as e:
@@ -117,10 +122,12 @@ class EnhancedCLI:
         """Discover tools from a Docker image."""
         try:
             tools = self._core_cli.tool_manager.discover_tools_from_image(image_name)
-            
+
             if tools:
                 self._core_cli.formatter.format_tools_table(tools)
-                console.print(f"[green]✅ Found {len(tools)} tools in {image_name}[/green]")
+                console.print(
+                    f"[green]✅ Found {len(tools)} tools in {image_name}[/green]"
+                )
             else:
                 console.print(f"[yellow]No tools found in {image_name}[/yellow]")
         except Exception as e:
@@ -137,11 +144,13 @@ class EnhancedCLI:
     def show_integration_examples(self, template_name: str) -> None:
         """Show integration examples for a template."""
         try:
-            template_info = self._core_cli.template_manager.get_template_info(template_name)
+            template_info = self._core_cli.template_manager.get_template_info(
+                template_name
+            )
             if not template_info:
                 console.print(f"[red]❌ Template '{template_name}' not found[/red]")
                 return
-                
+
             # Basic integration examples
             console.print(f"[blue]Integration examples for {template_name}:[/blue]")
             console.print(f"• Connect to running server: mcpt connect {template_name}")
@@ -150,10 +159,14 @@ class EnhancedCLI:
         except Exception as e:
             console.print(f"[red]❌ Error showing integration examples: {e}[/red]")
 
-    def run_stdio_tool(self, template_name: str, tool_name: str, arguments: Dict[str, Any]) -> None:
+    def run_stdio_tool(
+        self, template_name: str, tool_name: str, arguments: Dict[str, Any]
+    ) -> None:
         """Run a tool via stdio transport."""
         try:
-            result = self._core_cli.tool_manager.call_tool(template_name, tool_name, arguments)
+            result = self._core_cli.tool_manager.call_tool(
+                template_name, tool_name, arguments
+            )
             if result:
                 console.print("[green]✅ Tool executed successfully[/green]")
                 console.print(json.dumps(result, indent=2))
@@ -175,7 +188,9 @@ def add_enhanced_cli_args(subparsers) -> None:
     tools_parser = subparsers.add_parser("tools", help="List available tools")
     tools_parser.add_argument("template", nargs="?", help="Template name (optional)")
     tools_parser.add_argument("--image", help="Docker image name")
-    tools_parser.add_argument("--static", action="store_true", help="Use static discovery")
+    tools_parser.add_argument(
+        "--static", action="store_true", help="Use static discovery"
+    )
     tools_parser.add_argument("--format", default="table", help="Output format")
 
     # Discover tools command
@@ -201,7 +216,7 @@ def add_enhanced_cli_args(subparsers) -> None:
 def handle_enhanced_cli_commands(args) -> bool:
     """Handle enhanced CLI commands."""
     cli = EnhancedCLI()
-    
+
     if args.command == "config":
         cli.show_config_options(args.template)
         return True
@@ -223,17 +238,18 @@ def handle_enhanced_cli_commands(args) -> bool:
         return True
     elif args.command == "run-tool":
         import json
+
         arguments = {}
         if hasattr(args, "args") and args.args:
             arguments = json.loads(args.args)
         cli.run_stdio_tool(args.template, args.tool, arguments)
         return True
-    
+
     return False
 
 
 def get_enhanced_cli() -> EnhancedCLI:
     """Get a shared EnhancedCLI instance."""
-    if not hasattr(get_enhanced_cli, '_instance'):
+    if not hasattr(get_enhanced_cli, "_instance"):
         get_enhanced_cli._instance = EnhancedCLI()
     return get_enhanced_cli._instance

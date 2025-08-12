@@ -28,19 +28,23 @@ class TestTemplateManager:
                 "name": "Demo Template",
                 "version": "1.0.0",
                 "description": "Demo MCP server",
-                "docker_image": "demo:latest"
+                "docker_image": "demo:latest",
             },
             "filesystem": {
                 "name": "Filesystem Template",
                 "version": "1.2.0",
                 "description": "File operations server",
-                "docker_image": "filesystem:latest"
-            }
+                "docker_image": "filesystem:latest",
+            },
         }
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             templates = self.template_manager.list_templates()
-            
+
         assert len(templates) == 2
         assert "demo" in templates
         assert "filesystem" in templates
@@ -53,18 +57,26 @@ class TestTemplateManager:
                 "name": "Demo Template",
                 "version": "1.0.0",
                 "description": "Demo MCP server",
-                "docker_image": "demo:latest"
+                "docker_image": "demo:latest",
             }
         }
-        
-        mock_deployments = [
-            {"id": "demo-123", "template": "demo", "status": "running"}
-        ]
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
-            with patch.object(self.template_manager.backend, 'list_deployments', return_value=mock_deployments):
-                templates = self.template_manager.list_templates(include_deployed_status=True)
-        
+
+        mock_deployments = [{"id": "demo-123", "template": "demo", "status": "running"}]
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
+            with patch.object(
+                self.template_manager.backend,
+                "list_deployments",
+                return_value=mock_deployments,
+            ):
+                templates = self.template_manager.list_templates(
+                    include_deployed_status=True
+                )
+
         assert templates["demo"]["deployed"] is True
         assert templates["demo"]["deployment_count"] == 1
         assert len(templates["demo"]["deployments"]) == 1
@@ -76,29 +88,36 @@ class TestTemplateManager:
                 "name": "Demo Template",
                 "version": "1.0.0",
                 "description": "Demo MCP server",
-                "docker_image": "demo:latest"
+                "docker_image": "demo:latest",
             },
             "filesystem": {
-                "name": "Filesystem Template", 
+                "name": "Filesystem Template",
                 "version": "1.2.0",
                 "description": "File operations server",
-                "docker_image": "filesystem:latest"
-            }
+                "docker_image": "filesystem:latest",
+            },
         }
-        
+
         # Mock backend to return deployments only for demo
         def mock_list_deployments(template_name):
             if template_name == "demo":
                 return [{"id": "demo-123", "template": "demo"}]
             return []
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
-            with patch.object(self.template_manager.backend, 'list_deployments', side_effect=mock_list_deployments):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
+            with patch.object(
+                self.template_manager.backend,
+                "list_deployments",
+                side_effect=mock_list_deployments,
+            ):
                 templates = self.template_manager.list_templates(
-                    include_deployed_status=True,
-                    filter_deployed_only=True
+                    include_deployed_status=True, filter_deployed_only=True
                 )
-        
+
         assert len(templates) == 1
         assert "demo" in templates
         assert "filesystem" not in templates
@@ -110,13 +129,17 @@ class TestTemplateManager:
                 "name": "Demo Template",
                 "version": "1.0.0",
                 "description": "Demo MCP server",
-                "docker_image": "demo:latest"
+                "docker_image": "demo:latest",
             }
         }
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             info = self.template_manager.get_template_info("demo")
-        
+
         assert info is not None
         assert info["name"] == "Demo Template"
         assert info["version"] == "1.0.0"
@@ -124,10 +147,14 @@ class TestTemplateManager:
     def test_get_template_info_nonexistent(self):
         """Test getting info for non-existent template."""
         mock_templates = {}
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             info = self.template_manager.get_template_info("nonexistent")
-        
+
         assert info is None
 
     def test_validate_template_valid(self):
@@ -137,13 +164,17 @@ class TestTemplateManager:
                 "name": "Demo Template",
                 "version": "1.0.0",
                 "description": "Demo MCP server",
-                "docker_image": "demo:latest"
+                "docker_image": "demo:latest",
             }
         }
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             is_valid = self.template_manager.validate_template("demo")
-        
+
         assert is_valid is True
 
     def test_validate_template_invalid(self):
@@ -154,19 +185,27 @@ class TestTemplateManager:
                 # Missing required docker_image field
             }
         }
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             is_valid = self.template_manager.validate_template("incomplete")
-        
+
         assert is_valid is False
 
     def test_validate_template_nonexistent(self):
         """Test validation of non-existent template."""
         mock_templates = {}
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             is_valid = self.template_manager.validate_template("nonexistent")
-        
+
         assert is_valid is False
 
     def test_search_templates(self):
@@ -175,31 +214,35 @@ class TestTemplateManager:
             "demo": {
                 "name": "Demo Template",
                 "description": "Demo MCP server for testing",
-                "tags": ["demo", "example"]
+                "tags": ["demo", "example"],
             },
             "filesystem": {
                 "name": "Filesystem Template",
                 "description": "File operations server",
-                "tags": ["filesystem", "files"]
+                "tags": ["filesystem", "files"],
             },
             "database": {
-                "name": "Database Template", 
+                "name": "Database Template",
                 "description": "Database access server",
-                "tags": ["database", "sql"]
-            }
+                "tags": ["database", "sql"],
+            },
         }
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             # Search by name
             results = self.template_manager.search_templates("demo")
             assert len(results) == 1
             assert "demo" in results
-            
+
             # Search by description
             results = self.template_manager.search_templates("file")
             assert len(results) == 1
             assert "filesystem" in results
-            
+
             # Search by tag
             results = self.template_manager.search_templates("sql")
             assert len(results) == 1
@@ -213,16 +256,18 @@ class TestTemplateManager:
                 "docker_image": "demo:latest",
                 "config_schema": {
                     "type": "object",
-                    "properties": {
-                        "greeting": {"type": "string", "default": "Hello"}
-                    }
-                }
+                    "properties": {"greeting": {"type": "string", "default": "Hello"}},
+                },
             }
         }
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             schema = self.template_manager.get_template_config_schema("demo")
-        
+
         assert schema is not None
         assert schema["type"] == "object"
         assert "greeting" in schema["properties"]
@@ -239,18 +284,20 @@ class TestTemplateManager:
                         "description": "Say hello",
                         "inputSchema": {
                             "type": "object",
-                            "properties": {
-                                "name": {"type": "string"}
-                            }
-                        }
+                            "properties": {"name": {"type": "string"}},
+                        },
                     }
-                ]
+                ],
             }
         }
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             tools = self.template_manager.get_template_tools("demo")
-        
+
         assert len(tools) == 1
         assert tools[0]["name"] == "say_hello"
 
@@ -258,33 +305,45 @@ class TestTemplateManager:
         """Test cache refresh functionality."""
         # Initial call should populate cache
         mock_templates = {"demo": {"name": "Demo Template"}}
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             templates1 = self.template_manager.list_templates()
-        
+
         # Second call should use cache
-        with patch.object(self.template_manager.template_discovery, 'discover_templates') as mock_discover:
+        with patch.object(
+            self.template_manager.template_discovery, "discover_templates"
+        ) as mock_discover:
             templates2 = self.template_manager.list_templates()
             # discover_templates should not be called again due to cache
             mock_discover.assert_not_called()
-        
+
         # After refresh, cache should be cleared
         self.template_manager.refresh_cache()
-        
-        with patch.object(self.template_manager.template_discovery, 'discover_templates', return_value=mock_templates):
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
             templates3 = self.template_manager.list_templates()
-        
+
         assert templates1 == templates2 == templates3
 
     def test_get_template_path(self):
         """Test getting template file system path."""
         mock_path = Path("/templates/demo")
-        
-        with patch.object(self.template_manager.template_discovery, 'templates_dir', "/templates"):
-            with patch.object(Path, 'exists', return_value=True):
-                with patch.object(Path, 'is_dir', return_value=True):
+
+        with patch.object(
+            self.template_manager.template_discovery, "templates_dir", "/templates"
+        ):
+            with patch.object(Path, "exists", return_value=True):
+                with patch.object(Path, "is_dir", return_value=True):
                     path = self.template_manager.get_template_path("demo")
-        
+
         assert path is not None
         assert str(path).endswith("demo")
 
@@ -293,20 +352,22 @@ class TestTemplateManager:
         mock_config = {
             "name": "Demo Template",
             "version": "1.0.0",
-            "docker_image": "demo:latest"
+            "docker_image": "demo:latest",
         }
-        
+
         mock_path = Path("/templates/demo")
-        
-        with patch.object(self.template_manager, 'get_template_path', return_value=mock_path):
-            with patch.object(Path, 'exists', return_value=True):
-                with patch('builtins.open', mock_open_read_json(mock_config)):
+
+        with patch.object(
+            self.template_manager, "get_template_path", return_value=mock_path
+        ):
+            with patch.object(Path, "exists", return_value=True):
+                with patch("builtins.open", mock_open_read_json(mock_config)):
                     config = self.template_manager.load_template_config("demo")
-        
+
         assert config == mock_config
 
 
-@pytest.mark.integration 
+@pytest.mark.integration
 class TestTemplateManagerIntegration:
     """Integration tests for TemplateManager."""
 
@@ -315,14 +376,14 @@ class TestTemplateManagerIntegration:
         # This would test with actual template files
         template_manager = TemplateManager(backend_type="mock")
         templates = template_manager.list_templates()
-        
+
         # Should discover real templates in the system
         assert isinstance(templates, dict)
 
     def test_template_manager_with_mock_backend(self):
         """Test template manager with mock backend."""
         template_manager = TemplateManager(backend_type="mock")
-        
+
         # Should be able to list templates without errors
         templates = template_manager.list_templates(include_deployed_status=True)
         assert isinstance(templates, dict)
@@ -332,4 +393,5 @@ def mock_open_read_json(json_data):
     """Helper to mock opening and reading JSON files."""
     import json
     from unittest.mock import mock_open
+
     return mock_open(read_data=json.dumps(json_data))

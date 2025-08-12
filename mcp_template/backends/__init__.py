@@ -19,13 +19,13 @@ __all__ = [
 def get_backend(backend_type: str = "docker") -> BaseDeploymentBackend:
     """
     Get a deployment backend instance based on type.
-    
+
     Args:
         backend_type: Type of backend ('docker', 'kubernetes', 'mock')
-        
+
     Returns:
         Backend instance
-        
+
     Raises:
         ValueError: If backend type is not supported
     """

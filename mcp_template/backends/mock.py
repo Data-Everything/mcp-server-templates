@@ -121,7 +121,13 @@ class MockDeploymentService(BaseDeploymentBackend):
             return self.deployments[deployment_name]
         return None
 
-    def deploy(self, template_id: str, config: Dict[str, Any], template_data: Dict[str, Any], pull_image: bool = True) -> Dict[str, Any]:
+    def deploy(
+        self,
+        template_id: str,
+        config: Dict[str, Any],
+        template_data: Dict[str, Any],
+        pull_image: bool = True,
+    ) -> Dict[str, Any]:
         """Alias for deploy_template for test compatibility."""
         return self.deploy_template(template_id, config, template_data, pull_image)
 
@@ -133,13 +139,15 @@ class MockDeploymentService(BaseDeploymentBackend):
             return True
         return False
 
-    def get_deployment_logs(self, deployment_name: str, tail: int = 100, follow: bool = False) -> List[str]:
+    def get_deployment_logs(
+        self, deployment_name: str, tail: int = 100, follow: bool = False
+    ) -> List[str]:
         """Get mock deployment logs."""
         if deployment_name in self.deployments:
             return [
                 f"Mock log line 1 for {deployment_name}",
                 f"Mock log line 2 for {deployment_name}",
-                f"Mock log line 3 for {deployment_name}"
+                f"Mock log line 3 for {deployment_name}",
             ]
         return []
 

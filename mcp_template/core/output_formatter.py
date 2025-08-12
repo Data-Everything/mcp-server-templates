@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class OutputFormatter:
     """
     Centralized output formatting utilities.
-    
+
     Provides utilities for consistent formatting across CLI commands.
     """
 
@@ -29,14 +29,16 @@ class OutputFormatter:
         """Initialize the output formatter."""
         self.console = console or Console()
 
-    def format_templates_table(self, templates: Dict[str, Dict], show_deployed: bool = False) -> Table:
+    def format_templates_table(
+        self, templates: Dict[str, Dict], show_deployed: bool = False
+    ) -> Table:
         """
         Format templates as a rich table.
-        
+
         Args:
             templates: Dictionary of template information
             show_deployed: Whether to show deployment status
-            
+
         Returns:
             Rich Table object
         """
@@ -45,39 +47,39 @@ class OutputFormatter:
         table.add_column("Version", style="magenta")
         table.add_column("Description", style="white")
         table.add_column("Docker Image", style="yellow")
-        
+
         if show_deployed:
             table.add_column("Status", style="green")
             table.add_column("Deployments", style="blue")
-        
+
         for name, info in templates.items():
             row = [
                 name,
                 info.get("version", "unknown"),
                 info.get("description", "No description"),
-                info.get("docker_image", "unknown")
+                info.get("docker_image", "unknown"),
             ]
-            
+
             if show_deployed:
                 deployed = info.get("deployed", False)
                 deployment_count = info.get("deployment_count", 0)
-                
+
                 status = "✅ Running" if deployed else "⏹️  Stopped"
                 deployments = str(deployment_count) if deployment_count > 0 else "-"
-                
+
                 row.extend([status, deployments])
-            
+
             table.add_row(*row)
-        
+
         return table
 
     def format_tools_table(self, tools: List[Dict]) -> Table:
         """
         Format tools as a rich table.
-        
+
         Args:
             tools: List of tool definitions
-            
+
         Returns:
             Rich Table object
         """
@@ -86,12 +88,12 @@ class OutputFormatter:
         table.add_column("Description", style="white")
         table.add_column("Parameters", style="yellow")
         table.add_column("Source", style="magenta")
-        
+
         for tool in tools:
             name = tool.get("name", "unknown")
             description = tool.get("description", "No description")
             source = tool.get("source", "unknown")
-            
+
             # Format parameters
             parameters = tool.get("parameters", [])
             if parameters:
@@ -104,29 +106,31 @@ class OutputFormatter:
                 param_text = ", ".join(param_strs)
             else:
                 param_text = "None"
-            
+
             table.add_row(name, description, param_text, source)
-        
+
         return table
 
     def format_deployment_result(self, result: Dict[str, Any]) -> Panel:
         """
         Format deployment result as a rich panel.
-        
+
         Args:
             result: Deployment result dictionary
-            
+
         Returns:
             Rich Panel object
         """
         if result.get("success", False):
             title = "🎉 Deployment Complete"
             content = []
-            
-            content.append(f"✅ Successfully deployed {result.get('template', 'template')}!")
+
+            content.append(
+                f"✅ Successfully deployed {result.get('template', 'template')}!"
+            )
             content.append("")
             content.append("📋 Details:")
-            
+
             if result.get("deployment_id"):
                 content.append(f"• Deployment: {result['deployment_id']}")
             if result.get("container_id"):
@@ -135,23 +139,23 @@ class OutputFormatter:
                 content.append(f"• Image: {result['image']}")
             if result.get("status"):
                 content.append(f"• Status: {result['status']}")
-            
+
             if result.get("endpoint"):
                 content.append("")
                 content.append("🔧 MCP Configuration:")
                 content.append(f"• Endpoint: {result['endpoint']}")
                 content.append(f"• Transport: {result.get('transport', 'http')}")
-            
+
             if result.get("mcp_config_path"):
                 content.append(f"• Config saved to: {result['mcp_config_path']}")
-            
+
             content.append("")
             content.append("💡 Management:")
             template = result.get("template", "template")
             content.append(f"• View logs: mcpt logs {template}")
             content.append(f"• Stop: mcpt stop {template}")
             content.append(f"• Shell: mcpt shell {template}")
-            
+
             panel_content = "\n".join(content)
             style = "green"
         else:
@@ -159,51 +163,51 @@ class OutputFormatter:
             error = result.get("error", "Unknown error occurred")
             panel_content = f"Error: {error}"
             style = "red"
-        
+
         return Panel(panel_content, title=title, border_style=style)
 
     def format_logs(self, logs: str, colorize: bool = True) -> str:
         """
         Format logs for display with optional colorization.
-        
+
         Args:
             logs: Raw log content
             colorize: Whether to apply color highlighting
-            
+
         Returns:
             Formatted log string
         """
         if not logs:
             return "No logs available"
-        
+
         if not colorize:
             return logs
-        
+
         # Simple log level colorization
-        lines = logs.split('\n')
+        lines = logs.split("\n")
         formatted_lines = []
-        
+
         for line in lines:
-            if '[ERROR]' in line or '[CRITICAL]' in line:
+            if "[ERROR]" in line or "[CRITICAL]" in line:
                 formatted_lines.append(f"[red]{line}[/red]")
-            elif '[WARNING]' in line or '[WARN]' in line:
+            elif "[WARNING]" in line or "[WARN]" in line:
                 formatted_lines.append(f"[yellow]{line}[/yellow]")
-            elif '[INFO]' in line:
+            elif "[INFO]" in line:
                 formatted_lines.append(f"[blue]{line}[/blue]")
-            elif '[DEBUG]' in line:
+            elif "[DEBUG]" in line:
                 formatted_lines.append(f"[dim]{line}[/dim]")
             else:
                 formatted_lines.append(line)
-        
-        return '\n'.join(formatted_lines)
+
+        return "\n".join(formatted_lines)
 
     def format_stop_result(self, result: Dict[str, Any]) -> str:
         """
         Format stop operation result.
-        
+
         Args:
             result: Stop operation result
-            
+
         Returns:
             Formatted message string
         """
@@ -212,7 +216,7 @@ class OutputFormatter:
             if len(stopped) == 1:
                 return f"✅ Deployment stopped successfully!\n• Stopped: {stopped[0]}\n• Duration: {result.get('duration', 0):.1f} seconds"
             elif len(stopped) > 1:
-                stops_list = '\n'.join(f"  • {dep}" for dep in stopped)
+                stops_list = "\n".join(f"  • {dep}" for dep in stopped)
                 return f"✅ {len(stopped)} deployments stopped successfully!\n{stops_list}\n• Duration: {result.get('duration', 0):.1f} seconds"
             else:
                 return "ℹ️ No deployments were stopped"
@@ -223,10 +227,10 @@ class OutputFormatter:
     def format_config_overview(self, configurations: Dict[str, Any]) -> Table:
         """
         Format configuration overview as a table.
-        
+
         Args:
             configurations: Dictionary of configuration data
-            
+
         Returns:
             Rich Table object
         """
@@ -235,71 +239,71 @@ class OutputFormatter:
         table.add_column("Type", style="magenta")
         table.add_column("Status", style="green")
         table.add_column("Size", style="yellow")
-        
+
         for config_name, config_data in configurations.items():
             config_type = self._guess_config_type(config_name, config_data)
             status = "✅ Valid" if isinstance(config_data, dict) else "❌ Invalid"
-            
+
             if isinstance(config_data, dict):
                 size = f"{len(config_data)} properties"
             elif isinstance(config_data, list):
                 size = f"{len(config_data)} items"
             else:
                 size = "unknown"
-            
+
             table.add_row(config_name, config_type, status, size)
-        
+
         return table
 
     def format_validation_results(self, validation: Dict[str, Any]) -> Panel:
         """
         Format configuration validation results.
-        
+
         Args:
             validation: Validation result dictionary
-            
+
         Returns:
             Rich Panel object
         """
         if validation.get("valid", False):
             title = "✅ Configuration Valid"
             content = "All configurations passed validation."
-            
+
             warnings = validation.get("warnings", [])
             if warnings:
                 content += "\n\n⚠️ Warnings:"
                 for warning in warnings:
                     content += f"\n• {warning}"
-            
+
             style = "green"
         else:
             title = "❌ Configuration Invalid"
             content = "Configuration validation failed."
-            
+
             errors = validation.get("errors", [])
             if errors:
                 content += "\n\nErrors:"
                 for error in errors:
                     content += f"\n• {error}"
-            
+
             warnings = validation.get("warnings", [])
             if warnings:
                 content += "\n\nWarnings:"
                 for warning in warnings:
                     content += f"\n• {warning}"
-            
+
             style = "red"
-        
+
         return Panel(content, title=title, border_style=style)
 
     def format_json(self, data: Any, indent: int = 2) -> str:
         """
         Format data as pretty JSON.
-        
+
         Args:
             data: Data to format
             indent: JSON indentation level
-            
+
         Returns:
             Pretty-formatted JSON string
         """
@@ -312,7 +316,7 @@ class OutputFormatter:
     def print_panel(self, content: str, title: str = "", style: str = "blue"):
         """
         Print content in a rich panel.
-        
+
         Args:
             content: Panel content
             title: Panel title
@@ -324,7 +328,7 @@ class OutputFormatter:
     def print_table(self, table: Table):
         """
         Print a rich table.
-        
+
         Args:
             table: Table to print
         """

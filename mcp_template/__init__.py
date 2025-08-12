@@ -85,6 +85,7 @@ def get_console():
     global console
     if console is None:
         from rich.console import Console
+
         console = Console()
     return console
 
@@ -265,7 +266,7 @@ Examples:
 
         # Use CoreCLI for centralized command handling using common modules
         cli = CoreCLI()
-        
+
         if args.command == "list":
             cli.handle_list_command(args)
         elif args.command == "create":

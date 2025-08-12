@@ -57,7 +57,7 @@ class MCPClient:
     - Listing and calling tools
     - Managing server instances
     - Template discovery
-    
+
     Uses RefactoredMCPClient internally for common module functionality.
     """
 
@@ -74,7 +74,7 @@ class MCPClient:
 
         # Use CoreMCPClient for all functionality
         self._core_client = CoreMCPClient(backend_type)
-        
+
         # Store configuration
         self.timeout = timeout
 
