@@ -115,6 +115,44 @@ class MockDeploymentService(BaseDeploymentBackend):
             }
         raise ValueError(f"Deployment {deployment_name} not found")
 
+    def get_deployment_info(self, deployment_name: str) -> Dict[str, Any]:
+        """Get detailed mock deployment info."""
+        if deployment_name in self.deployments:
+            return self.deployments[deployment_name]
+        return None
+
+    def deploy(self, template_id: str, config: Dict[str, Any], template_data: Dict[str, Any], pull_image: bool = True) -> Dict[str, Any]:
+        """Alias for deploy_template for test compatibility."""
+        return self.deploy_template(template_id, config, template_data, pull_image)
+
+    def stop_deployment(self, deployment_name: str, force: bool = False) -> bool:
+        """Stop mock deployment."""
+        if deployment_name in self.deployments:
+            self.deployments[deployment_name]["status"] = "stopped"
+            logger.info("Mock deployment stopped: %s", deployment_name)
+            return True
+        return False
+
+    def get_deployment_logs(self, deployment_name: str, tail: int = 100, follow: bool = False) -> List[str]:
+        """Get mock deployment logs."""
+        if deployment_name in self.deployments:
+            return [
+                f"Mock log line 1 for {deployment_name}",
+                f"Mock log line 2 for {deployment_name}",
+                f"Mock log line 3 for {deployment_name}"
+            ]
+        return []
+
+    def stream_deployment_logs(self, deployment_name: str, tail: int = 100):
+        """Stream mock deployment logs."""
+        logs = self.get_deployment_logs(deployment_name, tail)
+        for log in logs:
+            yield log
+
+    def list_all_deployments(self) -> List[Dict[str, Any]]:
+        """Alias for list_deployments for test compatibility."""
+        return self.list_deployments()
+
     def _deploy_container(
         self,
         container_name: str,

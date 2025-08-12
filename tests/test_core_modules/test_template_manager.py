@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 
-from mcp_template.common.template_manager import TemplateManager
+from mcp_template.core.template_manager import TemplateManager
 
 
 @pytest.mark.unit

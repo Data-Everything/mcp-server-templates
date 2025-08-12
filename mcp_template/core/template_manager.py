@@ -55,14 +55,28 @@ class TemplateManager:
             
             # Add deployment status if requested
             if include_deployed_status:
-                for template_name in templates:
-                    try:
-                        deployments = self.backend.list_deployments(template_name)
-                        templates[template_name]["deployed"] = len(deployments) > 0
-                        templates[template_name]["deployment_count"] = len(deployments)
-                        templates[template_name]["deployments"] = deployments
-                    except Exception as e:
-                        logger.warning(f"Failed to get deployment status for {template_name}: {e}")
+                try:
+                    # Get all deployments and filter by template
+                    all_deployments = self.backend.list_deployments()
+                    for template_name in templates:
+                        try:
+                            # Filter deployments for this specific template
+                            template_deployments = [
+                                d for d in all_deployments 
+                                if d.get('template') == template_name or d.get('Template') == template_name
+                            ]
+                            templates[template_name]["deployed"] = len(template_deployments) > 0
+                            templates[template_name]["deployment_count"] = len(template_deployments)
+                            templates[template_name]["deployments"] = template_deployments
+                        except Exception as e:
+                            logger.warning(f"Failed to process deployment status for {template_name}: {e}")
+                            templates[template_name]["deployed"] = False
+                            templates[template_name]["deployment_count"] = 0
+                            templates[template_name]["deployments"] = []
+                except Exception as e:
+                    logger.warning(f"Failed to get deployment status: {e}")
+                    # Set default values for all templates
+                    for template_name in templates:
                         templates[template_name]["deployed"] = False
                         templates[template_name]["deployment_count"] = 0
                         templates[template_name]["deployments"] = []

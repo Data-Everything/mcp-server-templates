@@ -9,9 +9,10 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from rich.console import Console
 from rich.table import Table
+from rich.panel import Panel
 from io import StringIO
 
-from mcp_template.common.output_formatter import OutputFormatter
+from mcp_template.core.output_formatter import OutputFormatter
 
 
 @pytest.mark.unit

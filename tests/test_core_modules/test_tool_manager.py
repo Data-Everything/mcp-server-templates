@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import json
 
-from mcp_template.common.tool_manager import ToolManager
+from mcp_template.core.tool_manager import ToolManager
 
 
 @pytest.mark.unit

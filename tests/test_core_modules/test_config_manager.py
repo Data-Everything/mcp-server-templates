@@ -11,7 +11,7 @@ import json
 import tempfile
 import os
 
-from mcp_template.common.config_manager import ConfigManager, ValidationResult
+from mcp_template.core.config_manager import ConfigManager, ValidationResult
 
 
 @pytest.mark.unit
@@ -191,7 +191,7 @@ class TestConfigManager:
         }
         
         # Mock the import that happens inside the method - patch the from import
-        with patch('mcp_template.common.template_manager.TemplateManager') as MockTemplateManager:
+        with patch('mcp_template.core.template_manager.TemplateManager') as MockTemplateManager:
             mock_tm = MockTemplateManager.return_value
             
             # Create a mock path 
@@ -206,11 +206,16 @@ class TestConfigManager:
             mock_config_dir = Mock()
             mock_config_dir.exists.return_value = False  # Simplified test
             
-            # Set up path operations
-            mock_template_path.__truediv__.side_effect = lambda name: {
-                "template.json": mock_template_file,
-                "config": mock_config_dir
-            }.get(name, Mock(exists=Mock(return_value=False)))
+            # Set up path operations using proper mock
+            def mock_path_div(name):
+                if name == "template.json":
+                    return mock_template_file
+                elif name == "config":
+                    return mock_config_dir
+                else:
+                    return Mock(exists=Mock(return_value=False))
+            
+            mock_template_path.__truediv__ = Mock(side_effect=mock_path_div)
             
             # Mock file loading
             with patch.object(self.config_manager, '_load_config_file', return_value=mock_template_config):

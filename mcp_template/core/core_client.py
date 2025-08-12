@@ -1,5 +1,5 @@
 """
-Refactored MCP Client using common modules.
+Core MCP Client using common modules.
 
 This module provides the MCPClient interface that uses the common modules for
 shared functionality, keeping client-specific logic focused on programmatic
@@ -10,20 +10,20 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
-from mcp_template.common import (
+from mcp_template.core import (
     TemplateManager,
     DeploymentManager,
     ConfigManager,
     ToolManager,
 )
-from mcp_template.common.deployment_manager import DeploymentOptions
+from mcp_template.core.deployment_manager import DeploymentOptions
 
 logger = logging.getLogger(__name__)
 
 
-class RefactoredMCPClient:
+class CoreMCPClient:
     """
-    Refactored MCP Client that uses common modules for shared functionality.
+    Core MCP Client that uses common modules for shared functionality.
     
     This client focuses on:
     - Programmatic interface design

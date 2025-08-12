@@ -39,14 +39,14 @@ from mcp_template.deployer import MCPDeployer
 from mcp_template.manager import DeploymentManager
 from mcp_template.template.utils.creation import TemplateCreator
 
-# Import RefactoredCLI for improved command handling
-from mcp_template.common.refactored_cli import RefactoredCLI
+# Import CoreCLI for improved command handling
+from mcp_template.core.core_cli import CoreCLI
 
 # Import core classes that are used in CI and the CLI
 from mcp_template.template.utils.discovery import TemplateDiscovery
 
 # Import common modules for shared functionality
-from mcp_template.common import (
+from mcp_template.core import (
     TemplateManager,
     DeploymentManager as CommonDeploymentManager,
     ConfigManager,
@@ -263,8 +263,8 @@ Examples:
         if handle_enhanced_cli_commands(args):
             return
 
-        # Use RefactoredCLI for centralized command handling using common modules
-        cli = RefactoredCLI()
+        # Use CoreCLI for centralized command handling using common modules
+        cli = CoreCLI()
         
         if args.command == "list":
             cli.handle_list_command(args)

@@ -1,18 +1,43 @@
 """
-Core shared modules for MCP Template system.
+Core business logic and infrastructure for MCP Template system.
 
-This module contains shared functionality used by both CLI and Client components:
-- MCP Server connection and protocol handling
-- Tool discovery and management
-- Server lifecycle management
-- Common data structures and utilities
+This package contains both shared business logic modules and infrastructure components
+that centralize common functionality between CLI and MCPClient interfaces.
 
-These modules enable code reuse between the CLI interface and the programmatic Client API.
+Business Logic Modules:
+- template_manager: Template discovery, validation, and metadata operations
+- deployment_manager: Deployment lifecycle management across backends
+- config_manager: Configuration processing, validation, and merging
+- tool_manager: Tool discovery, management, and operations
+- output_formatter: Output formatting utilities for CLI display
+
+Infrastructure Components:
+- mcp_connection: MCP server connection management
+- server_manager: Server lifecycle management
+- tool_caller: Tool execution infrastructure
 """
 
+# Business Logic Modules (new refactored components)
+from .config_manager import ConfigManager
+from .deployment_manager import DeploymentManager
+from .output_formatter import OutputFormatter
+from .template_manager import TemplateManager
+from .tool_manager import ToolManager
+
+# Infrastructure Components (legacy components, kept for compatibility)
 from .mcp_connection import MCPConnection
 from .server_manager import ServerManager
 from .tool_caller import ToolCaller
-from .tool_manager import ToolManager
 
-__all__ = ["MCPConnection", "ServerManager", "ToolCaller", "ToolManager"]
+__all__ = [
+    # Business Logic
+    "TemplateManager",
+    "DeploymentManager", 
+    "ConfigManager",
+    "ToolManager",
+    "OutputFormatter",
+    # Infrastructure
+    "MCPConnection",
+    "ServerManager", 
+    "ToolCaller",
+]

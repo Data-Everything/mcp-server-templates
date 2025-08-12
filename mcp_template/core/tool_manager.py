@@ -1,258 +1,407 @@
 """
-Tool management functionality for MCP Template system.
+Tool Manager - Centralized tool operations.
 
-This module provides tool discovery and execution capabilities,
-reusing existing tool discovery and calling infrastructure.
+This module provides a unified interface for tool discovery, management, and operations,
+consolidating functionality from CLI and MCPClient.
 """
 
-import asyncio
 import logging
+import json
 from typing import Any, Dict, List, Optional
 
-from mcp_template.core.mcp_connection import MCPConnection
-from mcp_template.core.server_manager import ServerManager
-from mcp_template.exceptions import ToolCallError
-from mcp_template.tools.discovery import ToolDiscovery
-from mcp_template.tools.http_tool_caller import HTTPToolCaller
-from mcp_template.utils.config_processor import ConfigProcessor
+from mcp_template.backends import get_backend
+from mcp_template.core.template_manager import TemplateManager
 
 logger = logging.getLogger(__name__)
 
 
 class ToolManager:
     """
-    Manages tool discovery and execution for MCP servers.
-
-    Provides a unified interface for tool operations,
-    reusing existing discovery and calling infrastructure.
+    Centralized tool management operations.
+    
+    Provides unified interface for tool discovery, management, and operations
+    that can be shared between CLI and MCPClient implementations.
     """
 
-    def __init__(self, timeout: int = 30, backend: Optional[str] = "docker"):
-        """
-        Initialize tool manager.
+    def __init__(self, backend_type: str = "docker"):
+        """Initialize the tool manager."""
+        self.backend = get_backend(backend_type)
+        self.template_manager = TemplateManager(backend_type)
+        self._cache = {}
 
+    def list_tools(self,
+                   template_or_id: str,
+                   discovery_method: str = "auto",
+                   force_refresh: bool = False,
+                   timeout: int = 30) -> List[Dict[str, Any]]:
+        """
+        List tools for a template or deployment.
+        
         Args:
-            timeout: Timeout for tool operations
-        """
-
-        self.timeout = timeout
-        self.backend = backend
-        self.tool_discovery = ToolDiscovery(timeout=timeout)
-        self.config_processor = ConfigProcessor()
-        self.server_manager = ServerManager(backend_type=self.backend)
-        self._tools_cache = {}
-
-    async def discover_tools_from_server(
-        self,
-        server_command: List[str],
-        working_dir: Optional[str] = None,
-        env_vars: Optional[Dict[str, str]] = None,
-    ) -> Optional[List[Dict[str, Any]]]:
-        """
-        Discover tools directly from a running MCP server.
-
-        Args:
-            server_command: Command to start the MCP server
-            working_dir: Working directory for the server
-            env_vars: Environment variables for the server
-
+            template_or_id: Template name or deployment ID
+            discovery_method: How to discover tools (static, dynamic, image, auto)
+            force_refresh: Whether to force refresh cache
+            timeout: Timeout for discovery operations
+            
         Returns:
-            List of tool definitions or None if failed
-
-        # Currently, this method is not used in the MCP Template system.
+            List of tool definitions
         """
-        connection = MCPConnection(timeout=self.timeout)
         try:
-            # Connect to the server
-            success = await connection.connect_stdio(
-                command=server_command, working_dir=working_dir, env_vars=env_vars
-            )
+            # Check cache first
+            cache_key = f"{template_or_id}:{discovery_method}"
+            if not force_refresh and cache_key in self._cache:
+                return self._cache[cache_key]
+            
+            tools = []
+            
+            if discovery_method == "auto":
+                # Try different methods in order of preference
+                tools = self._discover_tools_auto(template_or_id, timeout)
+            elif discovery_method == "static":
+                tools = self.discover_tools_static(template_or_id)
+            elif discovery_method == "dynamic":
+                tools = self.discover_tools_dynamic(template_or_id, timeout)
+            elif discovery_method == "image":
+                tools = self.discover_tools_from_image(template_or_id, timeout)
+            else:
+                logger.warning(f"Unknown discovery method: {discovery_method}")
+                tools = self.discover_tools_static(template_or_id)
+            
+            # Normalize tool schemas
+            normalized_tools = [
+                self.normalize_tool_schema(tool, discovery_method) 
+                for tool in tools
+            ]
+            
+            # Cache the results
+            self._cache[cache_key] = normalized_tools
+            
+            return normalized_tools
+            
+        except Exception as e:
+            logger.error(f"Failed to list tools for {template_or_id}: {e}")
+            return []
 
-            if not success:
-                logger.error("Failed to connect to MCP server")
-                return None
-
-            # List tools
-            tools = await connection.list_tools()
+    def discover_tools_static(self, template_id: str) -> List[Dict]:
+        """
+        Discover tools from template files.
+        
+        Args:
+            template_id: The template identifier
+            
+        Returns:
+            List of static tool definitions
+        """
+        try:
+            # Get tools from template manager
+            tools = self.template_manager.get_template_tools(template_id)
+            
+            # Also check for dedicated tools.json file
+            template_path = self.template_manager.get_template_path(template_id)
+            if template_path:
+                tools_file = template_path / "tools.json"
+                if tools_file.exists():
+                    with open(tools_file, 'r') as f:
+                        file_tools = json.load(f)
+                        if isinstance(file_tools, list):
+                            tools.extend(file_tools)
+                        elif isinstance(file_tools, dict) and "tools" in file_tools:
+                            tools.extend(file_tools["tools"])
+            
             return tools
+            
+        except Exception as e:
+            logger.error(f"Failed to discover static tools for {template_id}: {e}")
+            return []
 
-        finally:
-            await connection.disconnect()
-
-    def discover_tools_from_template(
-        self,
-        template_name: str,
-        template_config: Dict[str, Any],
-        force_refresh: bool = False,
-        force_server_discovery: bool = False,
-    ) -> Dict[str, Any]:
+    def discover_tools_dynamic(self, deployment_id: str, timeout: int) -> List[Dict]:
         """
-        Discover tools from a template using existing discovery infrastructure.
-
+        Discover tools from running server.
+        
         Args:
-            template_name: Name of the template
-            template_config: Template configuration
-            force_refresh: Whether to force discovery even if cached
-            force_server_discovery: Whether to force server-based discovery
-
+            deployment_id: The deployment identifier
+            timeout: Timeout for connection
+            
         Returns:
-            Dictionary containing discovered tools and metadata
+            List of dynamic tool definitions
         """
-
-        tools = self.tool_discovery.discover_tools(
-            template_name=template_name,
-            template_config=template_config,
-            force_refresh=force_refresh,
-            force_server_discovery=force_server_discovery,
-        )
-        if tools:
-            # Cache the discovery result
-            self.cache_tools(template_name, tools)
-
-        return tools
-
-    async def call_tool_stdio(
-        self,
-        template: str,
-        tool_name: str,
-        params: Dict[str, Any] = None,
-        env_vars: Optional[Dict[str, str]] = None,
-        config_values: Optional[Dict[str, Any]] = None,
-        config_file: Optional[str] = None,
-        pull_image: bool = True,
-        data_dir: Optional[str] = None,
-        config_dir: Optional[str] = None,
-        *kwargs: Any,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Call a tool on an MCP server via stdio.
-
-        Args:
-            template: Template name
-            tool_name: Name of the tool to call
-            arguments: Tool arguments
-            working_dir: Working directory for the server
-            env_vars: Environment variables for the server
-            config_values: Configuration values to apply
-            config_file: Optional configuration file to use
-            pull_image: Whether to pull the image if not found
-
-        Returns:
-            Tool response or None if failed
-        """
-
-        connection = MCPConnection(timeout=self.timeout)
-        template_config = self.server_manager.get_template_info(
-            template_id=template,
-        )
-        if not template_config:
-            logger.error("Template '%s' not found", template)
-            return None
-
-        config_dict = self.server_manager.generate_run_config(
-            template_data=template_config,
-            transport="stdio",
-            port=None,
-            configuration=config_values,
-            config_file=config_file,
-            env_vars=env_vars,
-            data_dir=data_dir,
-            config_dir=config_dir,
-        )
-
-        config = config_dict.get("config", {})
-        template_copy = config_dict.get("template", {})
-        missing_properties = config_dict.get("missing_properties", [])
-        if missing_properties:
-            logger.error(
-                "Missing required properties for %s: %s",
-                template,
-                missing_properties,
-            )
-            return None
-
         try:
-            server_command = None
-            working_dir = None
-            # Connect to the server
-            success = await connection.connect_stdio(
-                command=server_command, working_dir=working_dir, env_vars=env_vars
-            )
+            # Import here to avoid circular imports
+            from mcp_template.core.tool_caller import ToolCaller
+            
+            tool_caller = ToolCaller()
+            
+            # Get deployment info to find connection details
+            deployment_info = self.backend.get_deployment_info(deployment_id)
+            if not deployment_info:
+                logger.warning(f"Deployment {deployment_id} not found for dynamic tool discovery")
+                return []
+            
+            # Extract connection details
+            endpoint = deployment_info.get("endpoint")
+            transport = deployment_info.get("transport", "http")
+            
+            if not endpoint:
+                logger.warning(f"No endpoint found for deployment {deployment_id}")
+                return []
+            
+            # Connect and list tools
+            tools = tool_caller.list_tools_from_server(endpoint, transport, timeout)
+            return tools
+            
+        except Exception as e:
+            logger.error(f"Failed to discover dynamic tools for {deployment_id}: {e}")
+            return []
 
-            if not success:
-                logger.error("Failed to connect to MCP server")
-                return None
-
-            # Call the tool
-            result = await connection.call_tool(tool_name, arguments=params)
-            return result
-
-        finally:
-            await connection.disconnect()
-
-    async def call_tool_http(
-        self,
-        server_url: str,
-        tool_name: str,
-        arguments: Dict[str, Any],
-        session_id: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+    def discover_tools_from_image(self, image: str, timeout: int) -> List[Dict]:
         """
-        Call a tool on an HTTP MCP server.
-
+        Discover tools by probing Docker image.
+        
         Args:
-            server_url: Base URL of the MCP server
+            image: Docker image name
+            timeout: Timeout for probe operation
+            
+        Returns:
+            List of tool definitions from image
+        """
+        try:
+            # Import here to avoid circular imports
+            from mcp_template.tools import DockerProbe
+            
+            docker_probe = DockerProbe()
+            tools = docker_probe.discover_tools_from_image(image, timeout)
+            return tools
+            
+        except Exception as e:
+            logger.error(f"Failed to discover tools from image {image}: {e}")
+            return []
+
+    def normalize_tool_schema(self, tool_data: Dict, source: str) -> Dict:
+        """
+        Normalize tool schemas from different sources.
+        
+        Args:
+            tool_data: Raw tool data
+            source: Source of the tool data (static, dynamic, image)
+            
+        Returns:
+            Normalized tool definition
+        """
+        try:
+            normalized = {
+                "name": tool_data.get("name", "unknown"),
+                "description": tool_data.get("description", ""),
+                "source": source
+            }
+            
+            # Handle input schema
+            input_schema = tool_data.get("inputSchema") or tool_data.get("input_schema") or {}
+            if input_schema:
+                normalized["inputSchema"] = input_schema
+                
+                # Extract parameter summary for display
+                parameters = []
+                properties = input_schema.get("properties", {})
+                required = input_schema.get("required", [])
+                
+                for param_name, param_def in properties.items():
+                    param_type = param_def.get("type", "unknown")
+                    is_required = param_name in required
+                    param_desc = param_def.get("description", "")
+                    
+                    param_summary = f"{param_name}"
+                    if param_type != "unknown":
+                        param_summary += f" ({param_type})"
+                    if not is_required:
+                        param_summary += " (optional)"
+                    if param_desc:
+                        param_summary += f" - {param_desc}"
+                        
+                    parameters.append({
+                        "name": param_name,
+                        "type": param_type,
+                        "required": is_required,
+                        "description": param_desc,
+                        "summary": param_summary
+                    })
+                
+                normalized["parameters"] = parameters
+            else:
+                normalized["inputSchema"] = {}
+                normalized["parameters"] = []
+            
+            # Add any additional metadata
+            for key, value in tool_data.items():
+                if key not in ["name", "description", "inputSchema", "input_schema"]:
+                    normalized[key] = value
+            
+            return normalized
+            
+        except Exception as e:
+            logger.error(f"Failed to normalize tool schema: {e}")
+            return {
+                "name": tool_data.get("name", "unknown"),
+                "description": tool_data.get("description", ""),
+                "source": source,
+                "inputSchema": {},
+                "parameters": [],
+                "error": str(e)
+            }
+
+    def validate_tool_definition(self, tool: Dict) -> bool:
+        """
+        Validate tool definition structure.
+        
+        Args:
+            tool: Tool definition to validate
+            
+        Returns:
+            True if valid, False otherwise
+        """
+        try:
+            # Check required fields
+            if "name" not in tool:
+                return False
+                
+            # Validate input schema if present
+            input_schema = tool.get("inputSchema", {})
+            if input_schema:
+                # Basic schema validation
+                if not isinstance(input_schema, dict):
+                    return False
+                    
+                # Check properties structure
+                properties = input_schema.get("properties", {})
+                if properties and not isinstance(properties, dict):
+                    return False
+                    
+                # Check required array
+                required = input_schema.get("required", [])
+                if required and not isinstance(required, list):
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Tool validation failed: {e}")
+            return False
+
+    def call_tool(self,
+                  template_or_deployment: str,
+                  tool_name: str,
+                  parameters: Dict[str, Any],
+                  timeout: int = 30) -> Dict[str, Any]:
+        """
+        Call a tool on a running server.
+        
+        Args:
+            template_or_deployment: Template name or deployment ID
             tool_name: Name of the tool to call
-            arguments: Tool arguments
-            session_id: Optional session ID for stateful calls
-
+            parameters: Tool parameters
+            timeout: Timeout for the call
+            
         Returns:
-            Tool response or None if failed
+            Tool call result
         """
-        async with HTTPToolCaller(timeout=self.timeout) as http_caller:
-            return await http_caller.call_tool(
-                server_url=server_url,
-                tool_name=tool_name,
-                arguments=arguments,
-                session_id=session_id,
-            )
+        try:
+            # Import here to avoid circular imports
+            from mcp_template.core.tool_caller import ToolCaller
+            
+            tool_caller = ToolCaller()
+            
+            # Get deployment info
+            deployment_info = self.backend.get_deployment_info(template_or_deployment)
+            if not deployment_info:
+                # Try to find deployment by template name
+                from mcp_template.core.deployment_manager import DeploymentManager
+                deployment_manager = DeploymentManager(self.backend.backend_type)
+                deployments = deployment_manager.find_deployments_by_criteria(
+                    template_name=template_or_deployment
+                )
+                if not deployments:
+                    return {
+                        "success": False,
+                        "error": f"No deployment found for {template_or_deployment}"
+                    }
+                deployment_info = deployments[0]
+            
+            # Extract connection details
+            endpoint = deployment_info.get("endpoint")
+            transport = deployment_info.get("transport", "http")
+            
+            if not endpoint:
+                return {
+                    "success": False,
+                    "error": f"No endpoint found for {template_or_deployment}"
+                }
+            
+            # Call the tool
+            result = tool_caller.call_tool(endpoint, transport, tool_name, parameters, timeout)
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to call tool {tool_name}: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
-    def list_discovered_tools(
-        self, template_name: str
-    ) -> Optional[List[Dict[str, Any]]]:
+    def _discover_tools_auto(self, template_or_id: str, timeout: int) -> List[Dict]:
         """
-        Get previously discovered tools for a template.
-
+        Automatically discover tools using the best available method.
+        
         Args:
-            template_name: Name of the template
-
+            template_or_id: Template name or deployment ID
+            timeout: Timeout for discovery
+            
         Returns:
-            List of tools or None if not cached
+            List of discovered tools
         """
+        # Try dynamic discovery first (from running deployment)
+        try:
+            tools = self.discover_tools_dynamic(template_or_id, timeout)
+            if tools:
+                return tools
+        except Exception:
+            pass
+        
+        # Try static discovery (from template files)
+        try:
+            tools = self.discover_tools_static(template_or_id)
+            if tools:
+                return tools
+        except Exception:
+            pass
+        
+        # Try image-based discovery as last resort
+        try:
+            # Get template info to find image
+            template_info = self.template_manager.get_template_info(template_or_id)
+            if template_info and "docker_image" in template_info:
+                image = template_info["docker_image"]
+                tools = self.discover_tools_from_image(image, timeout)
+                if tools:
+                    return tools
+        except Exception:
+            pass
+        
+        # No tools found
+        return []
 
-        if template_name in self._tools_cache:
-            discovery_result = self._tools_cache[template_name]
-            return discovery_result.get("tools", [])
-        return None
+    def clear_cache(self):
+        """Clear the tool discovery cache."""
+        self._cache = {}
 
-    def cache_tools(self, template_name: str, discovery_result: Dict[str, Any]) -> None:
+    def get_cached_tools(self, template_or_id: str, discovery_method: str = "auto") -> Optional[List[Dict]]:
         """
-        Cache discovered tools for a template.
-
+        Get cached tools if available.
+        
         Args:
-            template_name: Name of the template
-            discovery_result: Discovery result to cache
+            template_or_id: Template name or deployment ID
+            discovery_method: Discovery method used
+            
+        Returns:
+            Cached tools or None if not cached
         """
-        self._tools_cache[template_name] = discovery_result
-
-    def clear_cache(self, template_name: Optional[str] = None) -> None:
-        """
-        Clear the tools cache.
-
-        Args:
-            template_name: Specific template to clear, or None to clear all
-        """
-        if template_name:
-            self._tools_cache.pop(template_name, None)
-        else:
-            self._tools_cache.clear()
+        cache_key = f"{template_or_id}:{discovery_method}"
+        return self._cache.get(cache_key)

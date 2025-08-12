@@ -568,16 +568,26 @@ mcpt> call -C config_path="/path with spaces/config.json" \
 mcpt> call --no-pull filesystem read_file '{"path": "/tmp/test.txt"}'
 ```
 
-## 🐍 Enhanced Python MCP Client
+## 🐍 Unified Python MCP Client
 
-For programmatic access to MCP servers, use the enhanced Python client that provides a unified, high-level API with shared tool calling infrastructure:
+For programmatic access to MCP servers, use the unified Python client built on the new core architecture with shared business logic between CLI and client components:
+
+### Architecture Overview
+
+The refactored architecture provides clean separation of concerns:
+- **Core Business Logic** (`mcp_template.core`): Shared modules for template management, deployments, configuration, and tools
+- **CLI Interface**: Command-line specific logic (argument parsing, output formatting)  
+- **Python Client**: Programmatic interface that delegates to the same core business logic
+- **Infrastructure**: MCP connections, server management, and tool execution
+
+This ensures both CLI and client provide identical functionality and behavior.
 
 ### Quick Start
 
 ```python
-from mcp_template.client_enhanced import MCPClient
+from mcp_template.client import MCPClient
 
-# Initialize enhanced client
+# Initialize client (uses core business logic)
 client = MCPClient()
 
 # Discover available templates
@@ -642,7 +652,7 @@ if deployment["success"]:
 
 **Template Management:**
 ```python
-from mcp_template.client_enhanced import MCPClient
+from mcp_template.client import MCPClient
 
 client = MCPClient()
 

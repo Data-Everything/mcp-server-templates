@@ -8,7 +8,7 @@ provided by the DeploymentManager common module.
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 
-from mcp_template.common.deployment_manager import DeploymentManager, DeploymentOptions, DeploymentResult
+from mcp_template.core.deployment_manager import DeploymentManager, DeploymentOptions, DeploymentResult
 
 
 @pytest.mark.unit
@@ -277,7 +277,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import time
 
-from mcp_template.common.deployment_manager import (
+from mcp_template.core.deployment_manager import (
     DeploymentManager,
     DeploymentOptions,
     DeploymentResult

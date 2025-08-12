@@ -1,5 +1,5 @@
 """
-Refactored CLI module using common modules.
+Core CLI module using common modules.
 
 This module provides the CLI interface that uses the common modules for
 shared functionality, keeping CLI-specific logic focused on user interaction
@@ -14,21 +14,21 @@ from typing import Dict, Any, List, Optional
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from mcp_template.common import (
+from mcp_template.core import (
     TemplateManager,
     DeploymentManager,
     ConfigManager,
     ToolManager,
     OutputFormatter,
 )
-from mcp_template.common.deployment_manager import DeploymentOptions
+from mcp_template.core.deployment_manager import DeploymentOptions
 
 logger = logging.getLogger(__name__)
 
 
-class RefactoredCLI:
+class CoreCLI:
     """
-    Refactored CLI that uses common modules for shared functionality.
+    Core CLI that uses common modules for shared functionality.
     
     This CLI focuses on:
     - Argument parsing and validation
@@ -72,7 +72,37 @@ class RefactoredCLI:
             self.console.print("💡 Use 'mcpt config <template>' to see configuration options")
             
         except Exception as e:
-            self.formatter.print_error(f"Failed to list templates: {e}")
+            self.formatter.print_error(f"Error showing config: {e}")
+            sys.exit(1)
+
+    def handle_shell_command(self, args) -> None:
+        """Handle shell command to access running container."""
+        try:
+            template_name = getattr(args, 'template', None)
+            custom_name = getattr(args, 'name', None)
+            
+            if not template_name and not custom_name:
+                self.formatter.print_error("Template name or custom name is required")
+                sys.exit(1)
+                
+            # Use deployment manager to access shell (placeholder)
+            self.formatter.print_info(f"Shell access for {template_name or custom_name} - functionality pending")
+                
+        except Exception as e:
+            self.formatter.print_error(f"Error accessing shell: {e}")
+            sys.exit(1)
+
+    def handle_cleanup_command(self, args) -> None:
+        """Handle cleanup command to remove stopped containers."""
+        try:
+            template_name = getattr(args, 'template', None)
+            all_containers = getattr(args, 'all', False)
+            
+            # Use deployment manager to clean up (placeholder)
+            self.formatter.print_info("Cleanup functionality - pending implementation")
+                
+        except Exception as e:
+            self.formatter.print_error(f"Error during cleanup: {e}")
             sys.exit(1)
 
     def handle_deploy_command(self, args) -> None:
@@ -327,7 +357,7 @@ class RefactoredCLI:
             self.deployment_manager.stream_deployment_logs(deployment_id, log_callback)
             
         except KeyboardInterrupt:
-            self.console.print("\n\n⏹️ Log streaming stopped by user")
+            self.console.print("\n\n⏹️  Log streaming stopped by user")
         except Exception as e:
             self.formatter.print_error(f"Log streaming failed: {e}")
 

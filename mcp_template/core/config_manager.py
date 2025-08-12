@@ -162,7 +162,7 @@ class ConfigManager:
             Dictionary with all template configurations
         """
         try:
-            from mcp_template.common.template_manager import TemplateManager
+            from mcp_template.core.template_manager import TemplateManager
             
             template_manager = TemplateManager()
             template_path = template_manager.get_template_path(template_name)

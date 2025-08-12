@@ -10,8 +10,8 @@ import time
 from typing import Any, Dict, List, Optional, Callable
 
 from mcp_template.backends import get_backend
-from mcp_template.common.config_manager import ConfigManager
-from mcp_template.common.template_manager import TemplateManager
+from mcp_template.core.config_manager import ConfigManager
+from mcp_template.core.template_manager import TemplateManager
 
 logger = logging.getLogger(__name__)
 
@@ -344,7 +344,7 @@ class DeploymentManager:
             List of matching deployment information
         """
         try:
-            all_deployments = self.backend.list_all_deployments()
+            all_deployments = self.backend.list_deployments()
             matching_deployments = []
 
             for deployment in all_deployments:

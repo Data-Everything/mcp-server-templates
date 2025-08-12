@@ -42,8 +42,8 @@ from typing import Any, Dict, List, Literal, Optional
 from mcp_template.core import MCPConnection, ServerManager, ToolCaller, ToolManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 
-# Import RefactoredMCPClient for improved functionality
-from mcp_template.common.refactored_client import RefactoredMCPClient
+# Import CoreMCPClient for improved functionality
+from mcp_template.core.core_client import CoreMCPClient
 
 logger = logging.getLogger(__name__)
 
@@ -72,18 +72,11 @@ class MCPClient:
         self.backend_type = backend_type
         self.timeout = timeout
 
-        # Use RefactoredMCPClient for common functionality
-        self._refactored_client = RefactoredMCPClient(backend_type)
-
-        # Initialize managers for legacy compatibility
-        self.server_manager = ServerManager(backend_type)
-        self.tool_manager = ToolManager(timeout)
-        self.tool_caller = ToolCaller(backend_type, timeout)
-        self.template_discovery = TemplateDiscovery()
-
-        # Track active connections for cleanup
-        self._active_connections: Dict[str, MCPConnection] = {}
-        self._background_tasks: set = set()  # Track background tasks
+        # Use CoreMCPClient for all functionality
+        self._core_client = CoreMCPClient(backend_type)
+        
+        # Store configuration
+        self.timeout = timeout
 
     # Template Management
     def list_templates(self) -> Dict[str, Dict[str, Any]]:
@@ -93,7 +86,7 @@ class MCPClient:
         Returns:
             Dictionary mapping template_id to template information
         """
-        return self._refactored_client.list_templates()
+        return self._core_client.list_templates()
 
     def get_template_info(self, template_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -105,7 +98,7 @@ class MCPClient:
         Returns:
             Template information or None if not found
         """
-        return self._refactored_client.get_template_info(template_id)
+        return self._core_client.get_template_info(template_id)
 
     # Server Management
     def list_servers(self) -> List[Dict[str, Any]]:
@@ -115,7 +108,7 @@ class MCPClient:
         Returns:
             List of running server information
         """
-        return self._refactored_client.list_servers()
+        return self._core_client.list_servers()
 
     def list_servers_by_template(self, template: str) -> List[Dict[str, Any]]:
         """
@@ -127,7 +120,7 @@ class MCPClient:
         Returns:
             List of running server information for the specified template
         """
-        return self._refactored_client.list_servers_by_template(template)
+        return self._core_client.list_servers(template_name=template)
 
     def start_server(
         self,
@@ -150,7 +143,7 @@ class MCPClient:
         Returns:
             Server deployment information or None if failed
         """
-        return self._refactored_client.start_server(
+        return self._core_client.start_server(
             template_id, configuration, pull_image, transport, port
         )
         return self.server_manager.start_server(

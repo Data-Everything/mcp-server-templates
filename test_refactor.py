@@ -12,9 +12,9 @@ import os
 # Add the project root to Python path
 sys.path.insert(0, '/home/samarora/data-everything/mcp-server-templates')
 
-from mcp_template.common.refactored_cli import RefactoredCLI
-from mcp_template.common.refactored_client import RefactoredMCPClient
-from mcp_template.common import (
+from mcp_template.core.refactored_cli import RefactoredCLI
+from mcp_template.core.refactored_client import RefactoredMCPClient
+from mcp_template.core import (
     TemplateManager,
     DeploymentManager,
     ConfigManager,
