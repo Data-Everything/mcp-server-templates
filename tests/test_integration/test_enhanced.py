@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_template.client_enhanced import MCPClient
+from mcp_template.client import MCPClient
 from mcp_template.core.tool_caller import ToolCaller
 from mcp_template.exceptions import ToolCallError
 

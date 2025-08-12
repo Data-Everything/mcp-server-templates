@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from mcp_template.client_enhanced import MCPClient
+from mcp_template.client import MCPClient
 from mcp_template.core.tool_caller import ToolCallResult
 from mcp_template.exceptions import ToolCallError
 
@@ -18,18 +18,18 @@ class TestMCPClient:
     def setup_method(self):
         """Set up test fixtures."""
         with (
-            patch("mcp_template.client_enhanced.ServerManager"),
-            patch("mcp_template.client_enhanced.ToolManager"),
-            patch("mcp_template.client_enhanced.ToolCaller"),
+            patch("mcp_template.client.ServerManager"),
+            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.client.ToolCaller"),
         ):
             self.client = MCPClient()
 
     def test_initialization(self):
         """Test MCPClient initialization."""
         with (
-            patch("mcp_template.client_enhanced.ServerManager"),
-            patch("mcp_template.client_enhanced.ToolManager"),
-            patch("mcp_template.client_enhanced.ToolCaller"),
+            patch("mcp_template.client.ServerManager"),
+            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.client.ToolCaller"),
         ):
 
             # Test default initialization
@@ -40,7 +40,7 @@ class TestMCPClient:
             client = MCPClient(timeout=60)
             assert client.timeout == 60
 
-    @patch("mcp_template.client_enhanced.ServerManager")
+    @patch("mcp_template.client.ServerManager")
     def test_list_templates(self, mock_server_manager):
         """Test template listing."""
         # Mock server manager response
@@ -53,8 +53,8 @@ class TestMCPClient:
         )
 
         with (
-            patch("mcp_template.client_enhanced.ToolManager"),
-            patch("mcp_template.client_enhanced.ToolCaller"),
+            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.client.ToolCaller"),
         ):
             client = MCPClient()
             templates = client.list_templates()
@@ -62,7 +62,7 @@ class TestMCPClient:
         assert templates == mock_templates
         mock_server_manager.return_value.list_available_templates.assert_called_once()
 
-    @patch("mcp_template.client_enhanced.ServerManager")
+    @patch("mcp_template.client.ServerManager")
     def test_get_template_info(self, mock_server_manager):
         """Test getting template information."""
         # Mock server manager response
@@ -72,8 +72,8 @@ class TestMCPClient:
         )
 
         with (
-            patch("mcp_template.client_enhanced.ToolManager"),
-            patch("mcp_template.client_enhanced.ToolCaller"),
+            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.client.ToolCaller"),
         ):
             client = MCPClient()
             template_info = client.get_template_info("demo")
@@ -86,9 +86,9 @@ class TestMCPClient:
     def test_list_tools_demo_template(self):
         """Test tool listing for demo template (hardcoded)."""
         with (
-            patch("mcp_template.client_enhanced.ServerManager"),
-            patch("mcp_template.client_enhanced.ToolManager"),
-            patch("mcp_template.client_enhanced.ToolCaller"),
+            patch("mcp_template.client.ServerManager"),
+            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.client.ToolCaller"),
         ):
             client = MCPClient()
             tools = client.list_tools("demo")
@@ -100,7 +100,7 @@ class TestMCPClient:
         assert "get_server_info" in tool_names
         assert "echo_message" in tool_names
 
-    @patch("mcp_template.client_enhanced.ToolCaller")
+    @patch("mcp_template.client.ToolCaller")
     def test_call_tool_success(self, mock_tool_caller):
         """Test successful tool call."""
         # Mock ToolCaller response
@@ -117,8 +117,8 @@ class TestMCPClient:
 
         # Mock server manager to return template info
         with (
-            patch("mcp_template.client_enhanced.ServerManager") as mock_server_manager,
-            patch("mcp_template.client_enhanced.ToolManager"),
+            patch("mcp_template.client.ServerManager") as mock_server_manager,
+            patch("mcp_template.client.ToolManager"),
         ):
             mock_server_manager.return_value.get_template_info.return_value = {
                 "transport": {"supported": ["stdio"]}
@@ -132,7 +132,7 @@ class TestMCPClient:
         assert result["result"] is not None
         assert result["error_message"] is None
 
-    @patch("mcp_template.client_enhanced.ToolCaller")
+    @patch("mcp_template.client.ToolCaller")
     def test_call_tool_error(self, mock_tool_caller):
         """Test tool call error handling."""
         # Mock ToolCaller error response
@@ -143,8 +143,8 @@ class TestMCPClient:
 
         # Mock server manager to return template info
         with (
-            patch("mcp_template.client_enhanced.ServerManager") as mock_server_manager,
-            patch("mcp_template.client_enhanced.ToolManager"),
+            patch("mcp_template.client.ServerManager") as mock_server_manager,
+            patch("mcp_template.client.ToolManager"),
         ):
             mock_server_manager.return_value.get_template_info.return_value = {
                 "transport": {"supported": ["stdio"]}
@@ -160,9 +160,9 @@ class TestMCPClient:
     def test_call_tool_template_not_found(self):
         """Test tool call with non-existent template."""
         with (
-            patch("mcp_template.client_enhanced.ServerManager") as mock_server_manager,
-            patch("mcp_template.client_enhanced.ToolManager"),
-            patch("mcp_template.client_enhanced.ToolCaller"),
+            patch("mcp_template.client.ServerManager") as mock_server_manager,
+            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.client.ToolCaller"),
         ):
             mock_server_manager.return_value.get_template_info.return_value = None
 
@@ -170,7 +170,7 @@ class TestMCPClient:
             with pytest.raises(ToolCallError, match="Template 'nonexistent' not found"):
                 client.call_tool("nonexistent", "test_tool")
 
-    @patch("mcp_template.client_enhanced.ServerManager")
+    @patch("mcp_template.client.ServerManager")
     def test_list_servers(self, mock_server_manager):
         """Test listing running servers."""
         mock_servers = [{"id": "server1", "template": "demo"}]
@@ -179,8 +179,8 @@ class TestMCPClient:
         )
 
         with (
-            patch("mcp_template.client_enhanced.ToolManager"),
-            patch("mcp_template.client_enhanced.ToolCaller"),
+            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.client.ToolCaller"),
         ):
             client = MCPClient()
             servers = client.list_servers()
@@ -188,15 +188,15 @@ class TestMCPClient:
         assert servers == mock_servers
         mock_server_manager.return_value.list_running_servers.assert_called_once()
 
-    @patch("mcp_template.client_enhanced.ServerManager")
+    @patch("mcp_template.client.ServerManager")
     def test_start_server(self, mock_server_manager):
         """Test starting a server."""
         mock_server_info = {"id": "server1", "template": "demo", "status": "running"}
         mock_server_manager.return_value.start_server.return_value = mock_server_info
 
         with (
-            patch("mcp_template.client_enhanced.ToolManager"),
-            patch("mcp_template.client_enhanced.ToolCaller"),
+            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.client.ToolCaller"),
         ):
             client = MCPClient()
             server_info = client.start_server("demo", {"config": "value"})
@@ -210,14 +210,14 @@ class TestMCPClient:
             port=None,
         )
 
-    @patch("mcp_template.client_enhanced.ServerManager")
+    @patch("mcp_template.client.ServerManager")
     def test_stop_server(self, mock_server_manager):
         """Test stopping a server."""
         mock_server_manager.return_value.stop_server.return_value = True
 
         with (
-            patch("mcp_template.client_enhanced.ToolManager"),
-            patch("mcp_template.client_enhanced.ToolCaller"),
+            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.client.ToolCaller"),
         ):
             client = MCPClient()
             success = client.stop_server("server1")

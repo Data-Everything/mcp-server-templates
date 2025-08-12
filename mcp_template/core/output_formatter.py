@@ -64,7 +64,7 @@ class OutputFormatter:
                 deployed = info.get("deployed", False)
                 deployment_count = info.get("deployment_count", 0)
 
-                status = "✅ Running" if deployed else "⏹️  Stopped"
+                status = "✅ Running" if deployed else "❌ Not Running"
                 deployments = str(deployment_count) if deployment_count > 0 else "-"
 
                 row.extend([status, deployments])

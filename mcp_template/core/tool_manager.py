@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from mcp_template.backends import get_backend
 from mcp_template.core.template_manager import TemplateManager
+from mcp_template.core.tool_caller import ToolCaller
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class ToolManager:
         """Initialize the tool manager."""
         self.backend = get_backend(backend_type)
         self.template_manager = TemplateManager(backend_type)
+        self.tool_caller = ToolCaller(backend_type=backend_type)
         self._cache = {}
 
     def list_tools(
@@ -127,11 +129,6 @@ class ToolManager:
             List of dynamic tool definitions
         """
         try:
-            # Import here to avoid circular imports
-            from mcp_template.core.tool_caller import ToolCaller
-
-            tool_caller = ToolCaller()
-
             # Get deployment info to find connection details
             deployment_info = self.backend.get_deployment_info(deployment_id)
             if not deployment_info:
@@ -149,7 +146,7 @@ class ToolManager:
                 return []
 
             # Connect and list tools
-            tools = tool_caller.list_tools_from_server(endpoint, transport, timeout)
+            tools = self.tool_caller.list_tools_from_server(endpoint, transport, timeout)
             return tools
 
         except Exception as e:
@@ -313,10 +310,7 @@ class ToolManager:
             Tool call result
         """
         try:
-            # Import here to avoid circular imports
-            from mcp_template.core.tool_caller import ToolCaller
-
-            tool_caller = ToolCaller()
+            self.tool_caller = ToolCaller()
 
             # Get deployment info
             deployment_info = self.backend.get_deployment_info(template_or_deployment)
@@ -346,7 +340,7 @@ class ToolManager:
                 }
 
             # Call the tool
-            result = tool_caller.call_tool(
+            result = self.tool_caller.call_tool(
                 endpoint, transport, tool_name, parameters, timeout
             )
             return result

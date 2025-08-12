@@ -24,8 +24,8 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
 
-from mcp_template.cli import EnhancedCLI
-from mcp_template.deployer import MCPDeployer
+from mcp_template.core.core_cli import CoreCLI
+from mcp_template.core import TemplateManager, DeploymentManager, ToolManager, OutputFormatter
 from mcp_template.tools.cache import CacheManager
 from mcp_template.tools.http_tool_caller import HTTPToolCaller
 from mcp_template.utils.config_processor import ConfigProcessor
@@ -978,8 +978,14 @@ class InteractiveCLI(cmd2.Cmd):
 
     def __init__(self):
         super().__init__()
-        self.enhanced_cli = EnhancedCLI()
-        self.deployer = MCPDeployer()
+        # Use core modules for all business logic
+        self.core_cli = CoreCLI()
+        self.template_manager = TemplateManager()
+        self.deployment_manager = DeploymentManager()
+        self.tool_manager = ToolManager()
+        self.formatter = OutputFormatter()
+        
+        # Keep utility components
         self.cache = CacheManager()
         self.beautifier = ResponseBeautifier()
         self.http_tool_caller = HTTPToolCaller()
@@ -1056,7 +1062,7 @@ class InteractiveCLI(cmd2.Cmd):
 
         # Get deployed servers from deployer
         try:
-            all_servers = self.deployer.deployment_manager.list_deployments()
+            all_servers = self.deployment_manager.list_deployments()
             # Filter to only show running servers
             active_servers = [s for s in all_servers if s.get("status") == "running"]
             self.deployed_servers = active_servers
@@ -1097,9 +1103,9 @@ class InteractiveCLI(cmd2.Cmd):
         config_values = self.session_configs.get(template_name, {})
 
         # Add environment variables to config_values if available and not already set
-        if template_name in self.enhanced_cli.templates:
-            template = self.enhanced_cli.templates[template_name]
-            config_schema = template.get("config_schema", {})
+        template_info = self.template_manager.get_template_info(template_name)
+        if template_info:
+            config_schema = template_info.get("config_schema", {})
             properties = config_schema.get("properties", {})
 
             for prop_name, prop_config in properties.items():
@@ -1112,7 +1118,7 @@ class InteractiveCLI(cmd2.Cmd):
                     config_values[prop_name] = os.environ[env_mapping]
 
         # Use the shared CLI method - this handles all the logic correctly
-        self.enhanced_cli.list_tools(
+        self.tool_manager.list_tools_for_template(
             template_name=template_name,
             no_cache=False,
             refresh=False,
@@ -1122,14 +1128,16 @@ class InteractiveCLI(cmd2.Cmd):
 
     def _show_template_help(self, template_name: str):
         """Show detailed help for a template including configuration and tools."""
-        if template_name not in self.enhanced_cli.templates:
+        template_info = self.template_manager.get_template_info(template_name)
+        if not template_info:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
+            available_templates = self.template_manager.list_templates()
             console.print(
-                f"[dim]Available templates: {', '.join(self.enhanced_cli.templates.keys())}[/dim]"
+                f"[dim]Available templates: {', '.join(available_templates.keys())}[/dim]"
             )
             return
 
-        template = self.enhanced_cli.templates[template_name]
+        template = template_info
 
         # Template overview
         console.print(
@@ -1189,11 +1197,9 @@ class InteractiveCLI(cmd2.Cmd):
 
         try:
             # Get tools using tool discovery
-            tools = self.enhanced_cli.tool_discovery.discover_tools(
+            tools = self.tool_manager.discover_tools_from_template(
                 template_name,
                 config_values or {},
-                force_refresh=False,  # Use cached tools if available
-                force_server_discovery=False,  # Allow both static and dynamic for help
             )
 
             if tools:
@@ -1380,7 +1386,7 @@ class InteractiveCLI(cmd2.Cmd):
 
             # Get tool information using tool discovery
             try:
-                tools = self.enhanced_cli.tool_discovery.discover_tools(
+                tools = self.tool_manager.discover_tools_from_template(
                     template_name,
                     config_values or {},
                 )
@@ -1558,11 +1564,12 @@ class InteractiveCLI(cmd2.Cmd):
         template_name = args.template_name
 
         # Get template info for proper config processing
-        if template_name not in self.enhanced_cli.templates:
+        available_templates = self.template_manager.get_available_templates()
+        if template_name not in available_templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             return
 
-        template = self.enhanced_cli.templates[template_name]
+        template = self.template_manager.get_template(template_name)
 
         try:
             config_values = merge_config_sources(
@@ -1583,11 +1590,12 @@ class InteractiveCLI(cmd2.Cmd):
             f"\n[cyan]🚀 Calling tool '{tool_name}' from template '{template_name}'[/cyan]"
         )
         # Check if template exists
-        if template_name not in self.enhanced_cli.templates:
+        available_templates = self.template_manager.get_available_templates()
+        if template_name not in available_templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             return
 
-        template = self.enhanced_cli.templates[template_name]
+        template = self.template_manager.get_template(template_name)
         transport_config = template.get("transport", {})
         default_transport = transport_config.get("default", "http")
         supported_transports = transport_config.get("supported", ["http"])
@@ -1663,7 +1671,7 @@ class InteractiveCLI(cmd2.Cmd):
                 return
 
             try:
-                result = self.enhanced_cli.run_stdio_tool(
+                result = self.tool_manager.execute_tool(
                     template_name,
                     tool_name,
                     validated_tool_args,
@@ -1703,8 +1711,8 @@ class InteractiveCLI(cmd2.Cmd):
                     )
 
                     try:
-                        # Use deployer to deploy the template with merged config
-                        success = self.deployer.deploy(
+                        # Use deployment manager to deploy the template with merged config
+                        success = self.deployment_manager.deploy(
                             template_name=template_name,
                             config_values=config_values,
                             pull_image=True,
@@ -1830,7 +1838,7 @@ class InteractiveCLI(cmd2.Cmd):
         """List all available templates.
         Usage: templates
         """
-        templates = self.enhanced_cli.templates
+        templates = self.template_manager.get_available_templates()
 
         if not templates:
             console.print("[yellow]⚠️  No templates found[/yellow]")
