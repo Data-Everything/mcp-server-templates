@@ -388,8 +388,11 @@ class DeploymentManager:
                 if custom_name and deployment.get("name") != custom_name:
                     continue
 
-                # Filter by deployment ID
-                if deployment_id and deployment.get("id") != deployment_id:
+                # Filter by deployment ID (check both 'id' and 'name' fields)
+                if deployment_id and (
+                    deployment.get("id") != deployment_id
+                    and deployment.get("name") != deployment_id
+                ):
                     continue
 
                 if status and deployment.get("status") != status:

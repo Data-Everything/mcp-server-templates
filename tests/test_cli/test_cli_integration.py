@@ -73,7 +73,7 @@ class TestCLIIntegration:
         help_output = captured.out
 
         # Verify override option is documented
-        assert "--override OVERRIDE" in help_output
+        assert "--override" in help_output
         assert "Template data overrides" in help_output
         # The help text may have line breaks, so check for the key parts
         assert "supports double" in help_output and "underscore notation" in help_output

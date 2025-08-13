@@ -133,12 +133,27 @@ class MockDeploymentService(BaseDeploymentBackend):
         return False
 
     def get_deployment_logs(
-        self, deployment_name: str, lines: int = 100, follow: bool = False
-    ) -> str:
+        self, 
+        deployment_name: str, 
+        lines: int = 100, 
+        follow: bool = False,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Get mock deployment logs."""
         if deployment_name in self.deployments:
-            return f"Mock log line 1 for {deployment_name}\nMock log line 2 for {deployment_name}\nMock log line 3 for {deployment_name}"
-        return ""
+            logs = f"Mock log line 1 for {deployment_name}\nMock log line 2 for {deployment_name}\nMock log line 3 for {deployment_name}"
+            return {
+                "success": True,
+                "logs": logs,
+                "lines_returned": len(logs.split("\n")),
+            }
+        return {
+            "success": False,
+            "error": f"Deployment {deployment_name} not found",
+            "logs": "",
+            "lines_returned": 0,
+        }
 
     def force_stop_deployment(self, deployment_name: str) -> bool:
         """Force stop mock deployment."""

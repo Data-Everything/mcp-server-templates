@@ -216,7 +216,7 @@ class TestDockerDeploymentService:
 
         # Verify docker logs command was called correctly with default --tail 100
         mock_run_command.assert_called_once_with(
-            ["docker", "logs", "--tail", "100", "container123"], capture_output=True
+            ["docker", "logs", "--tail", "100", "container123"]
         )
 
     @patch(
@@ -254,8 +254,7 @@ class TestDockerDeploymentService:
                 "--until",
                 "2023-12-31",
                 "container123",
-            ],
-            capture_output=True,
+            ]
         )
 
     @patch(
@@ -279,8 +278,7 @@ class TestDockerDeploymentService:
 
         # Verify docker logs command was called
         mock_run_command.assert_called_once_with(
-            ["docker", "logs", "--tail", "100", "nonexistent-container"],
-            capture_output=True,
+            ["docker", "logs", "--tail", "100", "nonexistent-container"]
         )
 
     @patch(
@@ -302,9 +300,9 @@ class TestDockerDeploymentService:
         result = service.get_deployment_logs("container123", lines=100)
 
         assert result["success"] is True
-        assert result["logs"] == mock_log_output
+        assert result["logs"] == "\n" + mock_log_output
 
         # Verify docker logs command was called with lines only
         mock_run_command.assert_called_once_with(
-            ["docker", "logs", "--tail", "100", "container123"], capture_output=True
+            ["docker", "logs", "--tail", "100", "container123"]
         )

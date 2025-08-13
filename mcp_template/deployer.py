@@ -276,18 +276,37 @@ class MCPDeployer:
                     return False
 
                 # Deploy using unified manager
+                from mcp_template.core.deployment_manager import DeploymentOptions
+                
+                deployment_options = DeploymentOptions(
+                    pull_image=pull_image,
+                    data_dir=data_dir,
+                    config_dir=config_dir,
+                )
+                
+                config_sources = {
+                    "config_values": config,
+                    "config_file": config_file,
+                    "env_vars": env_vars,
+                    "override_values": override_values,
+                }
+                
                 result = self.deployment_manager.deploy_template(
                     template_id=template_name,
-                    configuration=config,
-                    template_data=template_copy,
-                    pull_image=pull_image,
+                    config_sources=config_sources,
+                    deployment_options=deployment_options,
                 )
 
                 progress.update(task, completed=True)
 
+                # Check deployment success
+                if not result.success:
+                    console.print(f"[red]❌ Failed to deploy {template_name}: {result.error}[/red]")
+                    return False
+
                 # Generate MCP config
                 self._generate_mcp_config(
-                    template_name, result["deployment_name"], template
+                    template_name, result.deployment_id, template
                 )
 
                 # Success message
@@ -295,9 +314,9 @@ class MCPDeployer:
                     Panel(
                         f"[green]✅ Successfully deployed {template_name}![/green]\n\n"
                         f"[cyan]📋 Details:[/cyan]\n"
-                        f"• Container: {result['deployment_name']}\n"
-                        f"• Image: {result.get('image', template['image'])}\n"
-                        f"• Status: {result.get('status', 'deployed')}\n\n"
+                        f"• Container: {result.deployment_id}\n"
+                        f"• Image: {result.image or template['image']}\n"
+                        f"• Status: {result.status or 'deployed'}\n\n"
                         f"[cyan]🔧 MCP Configuration:[/cyan]\n"
                         f"Config saved to: ~/.mcp/{template_name}.json\n\n"
                         f"[cyan]💡 Management:[/cyan]\n"
@@ -361,7 +380,7 @@ class MCPDeployer:
             # Stop the deployment(s)
             success_count = 0
             for deployment in target_deployments:
-                if self.deployment_manager.delete_deployment(deployment["name"]):
+                if self.deployment_manager.stop_deployment(deployment["name"]):
                     console.print(f"[green]✅ Stopped {deployment['name']}[/green]")
                     success_count += 1
                 else:
@@ -399,16 +418,10 @@ class MCPDeployer:
                     return
 
             deployment = target_deployments[0]
-            status = self.deployment_manager.backend.get_deployment_info(
-                deployment["name"], include_logs=True
-            )
+            status = self.deployment_manager.get_deployment_status(deployment["name"])
 
             console.print(f"[blue]📋 Logs for {deployment['name']}:[/blue]")
-            logs = (
-                status.get("logs", "No logs available")
-                if status
-                else "No logs available"
-            )
+            logs = status.get("logs", "No logs available")
             if logs:
                 console.print(logs)
             else:
@@ -511,7 +524,7 @@ class MCPDeployer:
             # Clean up deployments
             success_count = 0
             for deployment in target_deployments:
-                if self.deployment_manager.delete_deployment(deployment["name"]):
+                if self.deployment_manager.stop_deployment(deployment["name"]):
                     console.print(f"[green]✅ Cleaned up {deployment['name']}[/green]")
                     success_count += 1
                 else:

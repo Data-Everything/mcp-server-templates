@@ -118,8 +118,9 @@ def main():
     Main entry point for the MCP deployer CLI.
     Uses refactored CLI with common modules for centralized functionality.
     """
+    from mcp_template.utils.rich_help import create_rich_argument_parser
 
-    parser = argparse.ArgumentParser(
+    parser = create_rich_argument_parser()(
         description="Deploy MCP server templates with zero configuration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""

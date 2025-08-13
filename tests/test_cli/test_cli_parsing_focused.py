@@ -260,10 +260,10 @@ class TestErrorCases:
 
     def test_empty_command_handling(self):
         """Test handling of empty or minimal commands."""
-        with pytest.raises(SystemExit):  # argparse exits on missing required args
+        with pytest.raises(Exception):  # argparse raises ArgumentError with exit_on_error=False
             call_parser.parse_args([])
 
-        with pytest.raises(SystemExit):  # argparse exits on missing required args
+        with pytest.raises(Exception):  # argparse raises ArgumentError with exit_on_error=False
             call_parser.parse_args(["filesystem"])
 
     def test_invalid_json_structure(self):

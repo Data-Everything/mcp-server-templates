@@ -116,6 +116,7 @@ class TestInteractiveCLICommands:
                 template_or_id="github",
                 discovery_method="auto",
                 force_refresh=False,
+                config_values={},
             )
 
     def test_do_tools_with_force_server(self, cli):
@@ -136,6 +137,7 @@ class TestInteractiveCLICommands:
                 template_or_id="github",
                 discovery_method="auto",
                 force_refresh=True,
+                config_values={},
             )
 
     def test_do_tools_with_help(self, cli):
@@ -174,6 +176,7 @@ class TestInteractiveCLICommands:
                 template_or_id="github",
                 discovery_method="auto",
                 force_refresh=False,
+                config_values={"token": "test_token"},
             )
 
     def test_do_config_no_args(self, cli):

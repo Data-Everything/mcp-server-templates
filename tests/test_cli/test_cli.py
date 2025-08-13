@@ -267,16 +267,16 @@ class TestMCPDeployer:
             result = deployer.deploy("nonexistent")
             assert result is False
 
-    @patch("mcp_template.CLI")
-    def test_config_command(self, mock_cli_class):
+    @patch("mcp_template.cli.EnhancedCLI")
+    def test_config_command(self, mock_enhanced_cli_class):
         """Test config command."""
-        mock_cli = Mock()
-        mock_cli_class.return_value = mock_cli
+        mock_enhanced_cli = Mock()
+        mock_enhanced_cli_class.return_value = mock_enhanced_cli
 
         sys.argv = ["mcp_template", "config", "demo"]
 
         main()
-        mock_cli.handle_config_command.assert_called_once()
+        mock_enhanced_cli.show_config_options.assert_called_once_with("demo")
 
     @patch("mcp_template.CLI")
     def test_logs_command_with_lines_parameter(self, mock_cli_class):
@@ -308,13 +308,16 @@ class TestMCPDeployer:
         main()
         mock_cli.handle_deploy_command.assert_called_once()
 
-    @patch("mcp_template.CLI")
-    def test_examples_command(self, mock_cli_class):
+    @patch("mcp_template.cli.EnhancedCLI")
+    def test_examples_command(self, mock_enhanced_cli_class):
         """Test examples command."""
-        mock_cli = Mock()
-        mock_cli_class.return_value = mock_cli
+        mock_enhanced_cli = Mock()
+        mock_enhanced_cli.template_manager = Mock()
+        mock_enhanced_cli.console = Mock()
+        mock_enhanced_cli.template_manager.get_template_info.return_value = {"name": "demo"}
+        mock_enhanced_cli_class.return_value = mock_enhanced_cli
 
         sys.argv = ["mcp_template", "examples", "demo"]
 
         main()
-        mock_cli.handle_examples_command.assert_called_once()
+        mock_enhanced_cli.template_manager.get_template_info.assert_called_once_with("demo")
