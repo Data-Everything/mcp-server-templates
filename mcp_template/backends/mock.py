@@ -183,7 +183,7 @@ class MockDeploymentService(BaseDeploymentBackend):
             "success": True,
             "cleaned": 0,
             "errors": [],
-            "message": "Mock cleanup - no actual images to clean"
+            "message": "Mock cleanup - no actual images to clean",
         }
 
     def cleanup_stopped_containers(self) -> Dict[str, Any]:
@@ -193,7 +193,7 @@ class MockDeploymentService(BaseDeploymentBackend):
             "success": True,
             "cleaned": 0,
             "errors": [],
-            "message": "Mock cleanup - no actual containers to clean"
+            "message": "Mock cleanup - no actual containers to clean",
         }
 
     def connect_to_deployment(self, deployment_id: str) -> Optional[str]:

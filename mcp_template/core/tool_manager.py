@@ -689,7 +689,7 @@ class ToolManager:
     def clear_cache(self, template_name: Optional[str] = None):
         """
         Clear the tool discovery cache.
-        
+
         Args:
             template_name: Optional template name to clear specific cache entry.
                           If None, clears entire cache.

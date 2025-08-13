@@ -15,7 +15,7 @@ from mcp_template.exceptions import (
     TemplateNotFoundError,
     DeploymentError,
     ToolCallError,
-    MCPException
+    MCPException,
 )
 
 
@@ -57,12 +57,12 @@ class TestMCPClientTemplates:
         """Test successful template listing."""
         expected_templates = {
             "demo": {"name": "demo", "description": "Demo template"},
-            "github": {"name": "github", "description": "GitHub template"}
+            "github": {"name": "github", "description": "GitHub template"},
         }
         self.mock_template_manager.list_templates.return_value = expected_templates
-        
+
         result = self.client.list_templates()
-        
+
         assert result == expected_templates
         self.mock_template_manager.list_templates.assert_called_once_with(
             include_deployed_status=False
@@ -72,12 +72,12 @@ class TestMCPClientTemplates:
         """Test template listing with deployment status."""
         expected_templates = {
             "demo": {"name": "demo", "deployed": True},
-            "github": {"name": "github", "deployed": False}
+            "github": {"name": "github", "deployed": False},
         }
         self.mock_template_manager.list_templates.return_value = expected_templates
-        
+
         result = self.client.list_templates(include_deployed_status=True)
-        
+
         assert result == expected_templates
         self.mock_template_manager.list_templates.assert_called_once_with(
             include_deployed_status=True
@@ -85,87 +85,95 @@ class TestMCPClientTemplates:
 
     def test_list_templates_error(self):
         """Test template listing error handling."""
-        self.mock_template_manager.list_templates.side_effect = Exception("Template error")
-        
+        self.mock_template_manager.list_templates.side_effect = Exception(
+            "Template error"
+        )
+
         result = self.client.list_templates()
-        
+
         assert result == {}
 
     def test_get_template_info_success(self):
         """Test successful template info retrieval."""
         expected_info = {"name": "demo", "description": "Demo template"}
         self.mock_template_manager.get_template_info.return_value = expected_info
-        
+
         result = self.client.get_template_info("demo")
-        
+
         assert result == expected_info
         self.mock_template_manager.get_template_info.assert_called_once_with("demo")
 
     def test_get_template_info_not_found(self):
         """Test template info retrieval for non-existent template."""
         self.mock_template_manager.get_template_info.return_value = None
-        
+
         result = self.client.get_template_info("nonexistent")
-        
+
         assert result is None
 
     def test_get_template_info_error(self):
         """Test template info retrieval error handling."""
-        self.mock_template_manager.get_template_info.side_effect = Exception("Info error")
-        
+        self.mock_template_manager.get_template_info.side_effect = Exception(
+            "Info error"
+        )
+
         result = self.client.get_template_info("demo")
-        
+
         assert result is None
 
     def test_validate_template_success(self):
         """Test successful template validation."""
         self.mock_template_manager.validate_template.return_value = True
-        
+
         result = self.client.validate_template("demo")
-        
+
         assert result is True
         self.mock_template_manager.validate_template.assert_called_once_with("demo")
 
     def test_validate_template_invalid(self):
         """Test validation of invalid template."""
         self.mock_template_manager.validate_template.return_value = False
-        
+
         result = self.client.validate_template("invalid")
-        
+
         assert result is False
 
     def test_validate_template_error(self):
         """Test template validation error handling."""
-        self.mock_template_manager.validate_template.side_effect = Exception("Validation error")
-        
+        self.mock_template_manager.validate_template.side_effect = Exception(
+            "Validation error"
+        )
+
         result = self.client.validate_template("demo")
-        
+
         assert result is False
 
     def test_search_templates_success(self):
         """Test successful template search."""
         expected_results = {"demo": {"name": "demo", "score": 1.0}}
         self.mock_template_manager.search_templates.return_value = expected_results
-        
+
         result = self.client.search_templates("demo")
-        
+
         assert result == expected_results
         self.mock_template_manager.search_templates.assert_called_once_with("demo")
 
     def test_search_templates_no_results(self):
         """Test template search with no results."""
         self.mock_template_manager.search_templates.return_value = {}
-        
+
         result = self.client.search_templates("nonexistent")
-        
+
         assert result == {}
 
     def test_search_templates_error(self):
         """Test template search error handling."""
-        self.mock_template_manager.search_templates.side_effect = Exception("Search error")
-        
+        self.mock_template_manager.search_templates.side_effect = Exception(
+            "Search error"
+        )
+
         result = self.client.search_templates("demo")
-        
+
         assert result == {}
 
     def test_get_template_info_edge_cases(self):
@@ -173,11 +181,11 @@ class TestMCPClientTemplates:
         # Test None input
         result = self.client.get_template_info(None)
         assert result is None
-        
+
         # Test empty string
         result = self.client.get_template_info("")
         assert result is None
-        
+
         # Test very long string
         long_name = "x" * 10000
         result = self.client.get_template_info(long_name)
@@ -197,34 +205,36 @@ class TestMCPClientServers:
         """Test successful server listing."""
         expected_servers = [
             {"id": "server1", "template": "demo", "status": "running"},
-            {"id": "server2", "template": "github", "status": "stopped"}
+            {"id": "server2", "template": "github", "status": "stopped"},
         ]
         self.mock_deployment_manager.list_deployments.return_value = expected_servers
-        
+
         result = self.client.list_servers()
-        
+
         assert result == expected_servers
         self.mock_deployment_manager.list_deployments.assert_called_once()
 
     def test_list_servers_error(self):
         """Test server listing error handling."""
-        self.mock_deployment_manager.list_deployments.side_effect = Exception("List error")
-        
+        self.mock_deployment_manager.list_deployments.side_effect = Exception(
+            "List error"
+        )
+
         result = self.client.list_servers()
-        
+
         assert result == []
 
     def test_list_servers_by_template_success(self):
         """Test successful server listing by template."""
-        expected_servers = [
-            {"id": "server1", "template": "demo", "status": "running"}
-        ]
+        expected_servers = [{"id": "server1", "template": "demo", "status": "running"}]
         mock_result = Mock()
         mock_result.deployments = expected_servers
-        self.mock_deployment_manager.find_deployments_by_criteria.return_value = mock_result
-        
+        self.mock_deployment_manager.find_deployments_by_criteria.return_value = (
+            mock_result
+        )
+
         result = self.client.list_servers_by_template("demo")
-        
+
         assert result == expected_servers
         self.mock_deployment_manager.find_deployments_by_criteria.assert_called_once_with(
             template_id="demo"
@@ -235,11 +245,14 @@ class TestMCPClientServers:
         config = {"greeting": "Hello"}
         mock_result = Mock()
         mock_result.success = True
-        mock_result.to_dict.return_value = {"deployment_id": "server123", "status": "deployed"}
+        mock_result.to_dict.return_value = {
+            "deployment_id": "server123",
+            "status": "deployed",
+        }
         self.mock_deployment_manager.deploy_template.return_value = mock_result
-        
+
         result = self.client.start_server("demo", config)
-        
+
         assert result == {"deployment_id": "server123", "status": "deployed"}
 
     def test_start_server_failure(self):
@@ -248,18 +261,20 @@ class TestMCPClientServers:
         mock_result = Mock()
         mock_result.success = False
         self.mock_deployment_manager.deploy_template.return_value = mock_result
-        
+
         result = self.client.start_server("demo", config)
-        
+
         assert result is None
 
     def test_start_server_error(self):
         """Test server start error handling."""
         config = {"greeting": "Hello"}
-        self.mock_deployment_manager.deploy_template.side_effect = Exception("Deploy error")
-        
+        self.mock_deployment_manager.deploy_template.side_effect = Exception(
+            "Deploy error"
+        )
+
         result = self.client.start_server("demo", config)
-        
+
         assert result is None
 
     def test_stop_server_success(self):
@@ -268,11 +283,13 @@ class TestMCPClientServers:
         mock_result.success = True
         mock_result.to_dict.return_value = {"success": True, "message": "Stopped"}
         self.mock_deployment_manager.stop_deployment.return_value = mock_result
-        
+
         result = self.client.stop_server("server123")
-        
+
         assert result == {"success": True, "message": "Stopped"}
-        self.mock_deployment_manager.stop_deployment.assert_called_once_with("server123", 30)
+        self.mock_deployment_manager.stop_deployment.assert_called_once_with(
+            "server123", 30
+        )
 
     def test_stop_server_failure(self):
         """Test server stop failure."""
@@ -280,35 +297,37 @@ class TestMCPClientServers:
         mock_result.success = False
         mock_result.to_dict.return_value = {"success": False, "error": "Not found"}
         self.mock_deployment_manager.stop_deployment.return_value = mock_result
-        
+
         result = self.client.stop_server("invalid_server")
-        
+
         assert result == {"success": False, "error": "Not found"}
 
     def test_get_server_info_success(self):
         """Test successful server info retrieval."""
         expected_info = {"id": "server123", "status": "running", "template": "demo"}
-        self.mock_deployment_manager.find_deployments_by_criteria.return_value = [expected_info]
-        
+        self.mock_deployment_manager.find_deployments_by_criteria.return_value = [
+            expected_info
+        ]
+
         result = self.client.get_server_info("server123")
-        
+
         assert result == expected_info
 
     def test_get_server_info_not_found(self):
         """Test server info retrieval for non-existent server."""
         self.mock_deployment_manager.find_deployments_by_criteria.return_value = []
-        
+
         result = self.client.get_server_info("nonexistent")
-        
+
         assert result is None
 
     def test_get_server_logs_success(self):
         """Test successful server log retrieval."""
         expected_logs = "Log line 1\nLog line 2\nLog line 3"
         self.mock_deployment_manager.get_deployment_logs.return_value = expected_logs
-        
+
         result = self.client.get_server_logs("server123")
-        
+
         assert result == expected_logs
         self.mock_deployment_manager.get_deployment_logs.assert_called_once_with(
             "server123", 100, False
@@ -318,9 +337,9 @@ class TestMCPClientServers:
         """Test server log retrieval with custom parameters."""
         expected_logs = "Recent logs"
         self.mock_deployment_manager.get_deployment_logs.return_value = expected_logs
-        
+
         result = self.client.get_server_logs("server123", lines=50, follow=True)
-        
+
         assert result == expected_logs
         self.mock_deployment_manager.get_deployment_logs.assert_called_once_with(
             "server123", 50, True
@@ -340,54 +359,58 @@ class TestMCPClientTools:
         """Test successful tool listing."""
         expected_tools = [
             {"name": "echo", "description": "Echo tool"},
-            {"name": "hello", "description": "Hello tool"}
+            {"name": "hello", "description": "Hello tool"},
         ]
         self.mock_tool_manager.list_tools.return_value = expected_tools
-        
+
         result = self.client.list_tools("demo")
-        
+
         assert result == expected_tools
         self.mock_tool_manager.list_tools.assert_called_once_with(
-            "demo", discovery_method="auto", force_refresh=False, timeout=30, config_values=None
+            "demo",
+            discovery_method="auto",
+            force_refresh=False,
+            timeout=30,
+            config_values=None,
         )
 
     def test_list_tools_with_params(self):
         """Test tool listing with custom parameters."""
         expected_tools = [{"name": "echo", "description": "Echo tool"}]
         self.mock_tool_manager.list_tools.return_value = expected_tools
-        
+
         result = self.client.list_tools(
-            "demo", 
-            discovery_method="static", 
-            force_refresh=True, 
+            "demo",
+            discovery_method="static",
+            force_refresh=True,
             timeout=60,
-            config_values={"key": "value"}
+            config_values={"key": "value"},
         )
-        
+
         assert result == expected_tools
         self.mock_tool_manager.list_tools.assert_called_once_with(
-            "demo", 
-            discovery_method="static", 
-            force_refresh=True, 
-            timeout=60, 
-            config_values={"key": "value"}
+            "demo",
+            discovery_method="static",
+            force_refresh=True,
+            timeout=60,
+            config_values={"key": "value"},
         )
 
     def test_list_tools_error(self):
         """Test tool listing error handling."""
         self.mock_tool_manager.list_tools.side_effect = Exception("Tool error")
-        
+
         result = self.client.list_tools("demo")
-        
+
         assert result == []
 
     def test_call_tool_success(self):
         """Test successful tool calling."""
         expected_result = {"success": True, "result": {"output": "Hello World"}}
         self.mock_tool_manager.call_tool.return_value = expected_result
-        
+
         result = self.client.call_tool("demo", "echo", {"message": "Hello World"})
-        
+
         assert result == expected_result
         self.mock_tool_manager.call_tool.assert_called_once_with(
             "demo", "echo", {"message": "Hello World"}, 30
@@ -396,20 +419,22 @@ class TestMCPClientTools:
     def test_call_tool_error(self):
         """Test tool calling error handling."""
         self.mock_tool_manager.call_tool.side_effect = Exception("Call error")
-        
+
         result = self.client.call_tool("demo", "echo", {"message": "Hello"})
-        
+
         assert result is None
 
     def test_call_tool_with_defaults(self):
         """Test tool calling with default arguments."""
         expected_result = {"success": True, "result": {}}
         self.mock_tool_manager.call_tool.return_value = expected_result
-        
+
         result = self.client.call_tool("demo", "hello")
-        
+
         assert result == expected_result
-        self.mock_tool_manager.call_tool.assert_called_once_with("demo", "hello", {}, 30)
+        self.mock_tool_manager.call_tool.assert_called_once_with(
+            "demo", "hello", {}, 30
+        )
 
 
 class TestMCPClientConnections:
@@ -425,13 +450,13 @@ class TestMCPClientConnections:
         """Test successful stdio connection."""
         mock_connection = AsyncMock()
         mock_connection.connection_id = "conn123"
-        
-        with patch('mcp_template.core.mcp_connection.MCPConnection') as mock_conn_class:
+
+        with patch("mcp_template.core.mcp_connection.MCPConnection") as mock_conn_class:
             mock_conn_class.return_value = mock_connection
             mock_connection.connect.return_value = True
-            
+
             result = await self.client.connect_stdio(["echo", "test"])
-            
+
             assert result == "conn123"
             assert "conn123" in self.client.connections
 
@@ -439,13 +464,13 @@ class TestMCPClientConnections:
     async def test_connect_stdio_failure(self):
         """Test stdio connection failure."""
         mock_connection = AsyncMock()
-        
-        with patch('mcp_template.core.mcp_connection.MCPConnection') as mock_conn_class:
+
+        with patch("mcp_template.core.mcp_connection.MCPConnection") as mock_conn_class:
             mock_conn_class.return_value = mock_connection
             mock_connection.connect.return_value = False
-            
+
             result = await self.client.connect_stdio(["invalid_command"])
-            
+
             assert result is None
 
     @pytest.mark.asyncio
@@ -453,9 +478,9 @@ class TestMCPClientConnections:
         """Test successful disconnection."""
         mock_connection = AsyncMock()
         self.client.connections["conn123"] = mock_connection
-        
+
         result = await self.client.disconnect("conn123")
-        
+
         assert result is True
         assert "conn123" not in self.client.connections
         mock_connection.disconnect.assert_called_once()
@@ -464,7 +489,7 @@ class TestMCPClientConnections:
     async def test_disconnect_not_found(self):
         """Test disconnection of non-existent connection."""
         result = await self.client.disconnect("nonexistent")
-        
+
         assert result is False
 
     @pytest.mark.asyncio
@@ -473,16 +498,16 @@ class TestMCPClientConnections:
         mock_connection = AsyncMock()
         mock_connection.list_tools.return_value = [{"name": "test_tool"}]
         self.client.connections["conn123"] = mock_connection
-        
+
         result = await self.client.list_tools_from_connection("conn123")
-        
+
         assert result == [{"name": "test_tool"}]
 
     @pytest.mark.asyncio
     async def test_list_tools_from_connection_not_found(self):
         """Test tool listing from non-existent connection."""
         result = await self.client.list_tools_from_connection("nonexistent")
-        
+
         assert result is None
 
     @pytest.mark.asyncio
@@ -491,9 +516,11 @@ class TestMCPClientConnections:
         mock_connection = AsyncMock()
         mock_connection.call_tool.return_value = {"result": "success"}
         self.client.connections["conn123"] = mock_connection
-        
-        result = await self.client.call_tool_from_connection("conn123", "test_tool", {"arg": "value"})
-        
+
+        result = await self.client.call_tool_from_connection(
+            "conn123", "test_tool", {"arg": "value"}
+        )
+
         assert result == {"result": "success"}
         mock_connection.call_tool.assert_called_once_with("test_tool", {"arg": "value"})
 
@@ -501,7 +528,7 @@ class TestMCPClientConnections:
     async def test_call_tool_from_connection_not_found(self):
         """Test tool calling from non-existent connection."""
         result = await self.client.call_tool_from_connection("nonexistent", "tool", {})
-        
+
         assert result is None
 
     @pytest.mark.asyncio
@@ -510,9 +537,9 @@ class TestMCPClientConnections:
         mock_conn1 = AsyncMock()
         mock_conn2 = AsyncMock()
         self.client.connections = {"conn1": mock_conn1, "conn2": mock_conn2}
-        
+
         await self.client.cleanup()
-        
+
         assert len(self.client.connections) == 0
         mock_conn1.disconnect.assert_called_once()
         mock_conn2.disconnect.assert_called_once()
@@ -532,14 +559,14 @@ class TestMCPClientContextManager:
     async def test_context_manager_cleanup(self):
         """Test context manager cleanup."""
         client = MCPClient(backend_type="mock")
-        
+
         # Add a mock connection
         mock_connection = AsyncMock()
         client.connections["test"] = mock_connection
-        
+
         async with client:
             assert "test" in client.connections
-        
+
         # Should be cleaned up after exiting context
         assert len(client.connections) == 0
 
@@ -580,9 +607,9 @@ class TestMCPClientEdgeCases:
         """Test cache clearing functionality."""
         mock_tool_manager = Mock()
         self.client.tool_manager = mock_tool_manager
-        
+
         self.client.clear_caches()
-        
+
         mock_tool_manager.clear_cache.assert_called_once()
 
 
@@ -592,51 +619,62 @@ class TestMCPClientIntegration:
     def test_complete_workflow(self):
         """Test a complete workflow using the client."""
         client = MCPClient(backend_type="mock")
-        
+
         # Mock all managers
         client.template_manager = Mock()
         client.deployment_manager = Mock()
         client.tool_manager = Mock()
-        
+
         # Set up mock responses
         client.template_manager.list_templates.return_value = {"demo": {"name": "demo"}}
-        client.template_manager.get_template_info.return_value = {"name": "demo", "description": "Demo"}
+        client.template_manager.get_template_info.return_value = {
+            "name": "demo",
+            "description": "Demo",
+        }
         client.template_manager.validate_template.return_value = True
-        
+
         mock_deploy_result = Mock()
         mock_deploy_result.success = True
-        mock_deploy_result.to_dict.return_value = {"deployment_id": "demo123", "status": "deployed"}
+        mock_deploy_result.to_dict.return_value = {
+            "deployment_id": "demo123",
+            "status": "deployed",
+        }
         client.deployment_manager.deploy_template.return_value = mock_deploy_result
-        
-        client.tool_manager.list_tools.return_value = [{"name": "echo", "description": "Echo tool"}]
-        client.tool_manager.call_tool.return_value = {"success": True, "result": {"output": "Hello"}}
-        
+
+        client.tool_manager.list_tools.return_value = [
+            {"name": "echo", "description": "Echo tool"}
+        ]
+        client.tool_manager.call_tool.return_value = {
+            "success": True,
+            "result": {"output": "Hello"},
+        }
+
         mock_stop_result = Mock()
         mock_stop_result.success = True
         mock_stop_result.to_dict.return_value = {"success": True, "message": "Stopped"}
         client.deployment_manager.stop_deployment.return_value = mock_stop_result
-        
+
         # Execute workflow
         templates = client.list_templates()
         assert "demo" in templates
-        
+
         template_info = client.get_template_info("demo")
         assert template_info["name"] == "demo"
-        
+
         is_valid = client.validate_template("demo")
         assert is_valid is True
-        
+
         server_result = client.start_server("demo", {"greeting": "Test"})
         assert server_result["deployment_id"] == "demo123"
-        
+
         tools = client.list_tools("demo")
         assert len(tools) == 1
         assert tools[0]["name"] == "echo"
-        
+
         tool_result = client.call_tool("demo", "echo", {"message": "Hello"})
         assert tool_result["success"] is True
         assert tool_result["result"]["output"] == "Hello"
-        
+
         stop_result = client.stop_server("demo123")
         assert stop_result["success"] is True
 

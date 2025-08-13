@@ -572,24 +572,22 @@ class DeploymentManager:
         """
         self.backend.connect_to_deployment(deployment_id)
 
-    def cleanup_stopped_deployments(
-        self, template_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def cleanup_stopped_deployments(self, template_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Clean up stopped/failed deployments.
-
+        
         Args:
             template_name: If provided, only clean deployments for this template
-
+            
         Returns:
             Dict with cleanup results
         """
         return self.backend.cleanup_stopped_containers(template_name)
-
+    
     def cleanup_dangling_images(self) -> Dict[str, Any]:
         """
         Clean up dangling images.
-
+        
         Returns:
             Dict with cleanup results
         """

@@ -280,19 +280,22 @@ class CLI:
 
             if getattr(args, "all", False):
                 targets = self.deployment_manager.find_deployments_by_criteria(
-                    template_name=getattr(args, "template", None)
+                    template_name=getattr(args, "template", None),
+                    status='running'
                 )
             elif getattr(args, "name", None):
                 targets = self.deployment_manager.find_deployments_by_criteria(
-                    custom_name=args.name
+                    custom_name=args.name,
+                    status='running'
                 )
             elif getattr(args, "template", None):
                 targets = self.deployment_manager.find_deployments_by_criteria(
-                    template_name=args.template
+                    template_name=args.template,
+                    status='running'
                 )
 
             if not targets:
-                self.formatter.print_error("No deployments found matching criteria")
+                self.formatter.print_error(f"No deployments found")
                 return
 
             # Confirm bulk operations

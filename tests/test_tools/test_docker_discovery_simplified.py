@@ -250,7 +250,7 @@ class TestEndToEndBehavior:
         # Second test: Try static discovery as fallback
         try:
             tools_static = tool_manager.list_tools(
-                template_or_id="github", 
+                template_or_id="github",
                 discovery_method="static",
                 force_refresh=True,
             )

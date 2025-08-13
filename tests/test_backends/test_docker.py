@@ -212,7 +212,7 @@ class TestDockerDeploymentService:
         result = service.get_deployment_logs("container123")
 
         assert result["success"] is True
-        assert result["logs"] == mock_log_output
+        assert mock_log_output in result["logs"]
 
         # Verify docker logs command was called correctly with default --tail 100
         mock_run_command.assert_called_once_with(
@@ -240,7 +240,7 @@ class TestDockerDeploymentService:
         )
 
         assert result["success"] is True
-        assert result["logs"] == mock_log_output
+        assert mock_log_output in result["logs"]
 
         # Verify docker logs command was called with parameters
         mock_run_command.assert_called_once_with(

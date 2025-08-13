@@ -80,7 +80,7 @@ class ToolCaller:
                 response = requests.post(url, json=data, timeout=self.timeout)
             else:
                 response = requests.get(url, timeout=self.timeout)
-            
+
             response.raise_for_status()
             return {"status": "success", "data": response.json()}
         except requests.exceptions.RequestException as e:
