@@ -949,23 +949,23 @@ EOF""",
             None - Gives access to deployment shell
         """
         import os
-        
+
         # Check if container is running
         container_info = self.get_deployment_info(deployment_id)
         if not container_info or container_info.get("status") != "running":
             raise RuntimeError(f"Container {deployment_id} is not running")
-        
+
         # Try to detect available shells in order of preference
         shells_to_try = [
-            "bash",   # Most feature-rich
-            "sh",     # Basic POSIX shell
-            "zsh",    # Modern alternative
-            "ash",    # Alpine Linux default
-            "dash",   # Debian/Ubuntu minimal
+            "bash",  # Most feature-rich
+            "sh",  # Basic POSIX shell
+            "zsh",  # Modern alternative
+            "ash",  # Alpine Linux default
+            "dash",  # Debian/Ubuntu minimal
         ]
-        
+
         logger.info(f"Attempting to connect to container {deployment_id}")
-        
+
         # First, try to detect which shells are available
         available_shells = []
         for shell in shells_to_try:
@@ -973,50 +973,51 @@ EOF""",
                 # Check if shell exists in container
                 check_cmd = ["docker", "exec", deployment_id, "which", shell]
                 result = subprocess.run(
-                    check_cmd, 
-                    capture_output=True, 
-                    text=True, 
-                    timeout=5
+                    check_cmd, capture_output=True, text=True, timeout=5
                 )
                 if result.returncode == 0:
                     available_shells.append(shell)
                     logger.debug(f"Found shell: {shell}")
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
                 continue
-        
+
         if not available_shells:
             # Fallback: try shells without checking availability
             available_shells = ["sh", "bash"]
             logger.warning("Could not detect available shells, trying fallback options")
-        
+
         # Try to connect using available shells
         for shell in available_shells:
             try:
                 cmd = ["docker", "exec", "-it", deployment_id, shell]
                 logger.info(f"Connecting with {shell}...")
-                
+
                 # Use os.execvp to replace current process for proper terminal handling
                 os.execvp("docker", cmd)
-                
+
                 # Note: execvp only returns if it fails, so this line should never be reached
                 # in normal operation. However, in testing scenarios where execvp is mocked,
                 # we return here to indicate success.
                 return
-                
+
             except Exception as e:
                 logger.debug(f"Failed to connect with {shell}: {e}")
                 continue
-        
-        # If we get here, all shells failed
-        raise RuntimeError(f"Could not connect to container {deployment_id}. No working shell found.")
 
-    def cleanup_stopped_containers(self, template_name: Optional[str] = None) -> Dict[str, Any]:
+        # If we get here, all shells failed
+        raise RuntimeError(
+            f"Could not connect to container {deployment_id}. No working shell found."
+        )
+
+    def cleanup_stopped_containers(
+        self, template_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Clean up stopped containers.
-        
+
         Args:
             template_name: If provided, only clean containers for this template
-            
+
         Returns:
             Dict with cleanup results
         """
@@ -1025,81 +1026,90 @@ EOF""",
             if template_name:
                 # Get all containers for this template
                 cmd = [
-                    "docker", "ps", "-a", 
-                    "--filter", f"label=mcp.template={template_name}",
-                    "--filter", "status=exited",
-                    "--format", "{{.ID}}\t{{.Names}}\t{{.Status}}"
+                    "docker",
+                    "ps",
+                    "-a",
+                    "--filter",
+                    f"label=mcp.template={template_name}",
+                    "--filter",
+                    "status=exited",
+                    "--format",
+                    "{{.ID}}\t{{.Names}}\t{{.Status}}",
                 ]
             else:
                 # Get all stopped MCP containers
                 cmd = [
-                    "docker", "ps", "-a",
-                    "--filter", "label=mcp.template",
-                    "--filter", "status=exited", 
-                    "--format", "{{.ID}}\t{{.Names}}\t{{.Status}}"
+                    "docker",
+                    "ps",
+                    "-a",
+                    "--filter",
+                    "label=mcp.template",
+                    "--filter",
+                    "status=exited",
+                    "--format",
+                    "{{.ID}}\t{{.Names}}\t{{.Status}}",
                 ]
-            
+
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            
+
             if not result.stdout.strip():
                 return {
                     "success": True,
                     "cleaned_containers": [],
-                    "message": "No stopped containers to clean up"
+                    "message": "No stopped containers to clean up",
                 }
-            
+
             # Parse container information
             containers_to_clean = []
-            for line in result.stdout.strip().split('\n'):
+            for line in result.stdout.strip().split("\n"):
                 if line:
-                    parts = line.split('\t')
+                    parts = line.split("\t")
                     if len(parts) >= 3:
-                        containers_to_clean.append({
-                            "id": parts[0],
-                            "name": parts[1], 
-                            "status": parts[2]
-                        })
-            
+                        containers_to_clean.append(
+                            {"id": parts[0], "name": parts[1], "status": parts[2]}
+                        )
+
             # Remove the containers
             cleaned_containers = []
             failed_cleanups = []
-            
+
             for container in containers_to_clean:
                 try:
                     subprocess.run(
-                        ["docker", "rm", container["id"]], 
-                        check=True, 
-                        capture_output=True
+                        ["docker", "rm", container["id"]],
+                        check=True,
+                        capture_output=True,
                     )
                     cleaned_containers.append(container)
-                    logger.info(f"Cleaned up container: {container['name']} ({container['id'][:12]})")
+                    logger.info(
+                        f"Cleaned up container: {container['name']} ({container['id'][:12]})"
+                    )
                 except subprocess.CalledProcessError as e:
-                    failed_cleanups.append({
-                        "container": container,
-                        "error": str(e)
-                    })
-                    logger.warning(f"Failed to clean up container {container['name']}: {e}")
-            
+                    failed_cleanups.append({"container": container, "error": str(e)})
+                    logger.warning(
+                        f"Failed to clean up container {container['name']}: {e}"
+                    )
+
             return {
                 "success": len(failed_cleanups) == 0,
                 "cleaned_containers": cleaned_containers,
                 "failed_cleanups": failed_cleanups,
-                "message": f"Cleaned up {len(cleaned_containers)} containers"
+                "message": f"Cleaned up {len(cleaned_containers)} containers",
             }
-            
+
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to list containers for cleanup: {e}")
             return {
                 "success": False,
                 "error": f"Failed to list containers: {e}",
                 "cleaned_containers": [],
-                "failed_cleanups": []
+                "failed_cleanups": [],
             }
-    
+
     def cleanup_dangling_images(self) -> Dict[str, Any]:
         """
         Clean up dangling Docker images related to MCP templates.
-        
+
         Returns:
             Dict with cleanup results
         """
@@ -1107,41 +1117,39 @@ EOF""",
             # Find dangling images
             cmd = ["docker", "images", "--filter", "dangling=true", "-q"]
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            
+
             if not result.stdout.strip():
                 return {
                     "success": True,
                     "cleaned_images": [],
-                    "message": "No dangling images to clean up"
+                    "message": "No dangling images to clean up",
                 }
-            
-            image_ids = result.stdout.strip().split('\n')
-            
+
+            image_ids = result.stdout.strip().split("\n")
+
             # Remove dangling images
             try:
                 subprocess.run(
-                    ["docker", "rmi"] + image_ids,
-                    check=True,
-                    capture_output=True
+                    ["docker", "rmi"] + image_ids, check=True, capture_output=True
                 )
-                
+
                 return {
                     "success": True,
                     "cleaned_images": image_ids,
-                    "message": f"Cleaned up {len(image_ids)} dangling images"
+                    "message": f"Cleaned up {len(image_ids)} dangling images",
                 }
-                
+
             except subprocess.CalledProcessError as e:
                 return {
                     "success": False,
                     "error": f"Failed to remove dangling images: {e}",
                     "cleaned_images": [],
                 }
-                
+
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to list dangling images: {e}")
             return {
                 "success": False,
                 "error": f"Failed to list dangling images: {e}",
-                "cleaned_images": []
+                "cleaned_images": [],
             }

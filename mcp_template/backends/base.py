@@ -97,23 +97,25 @@ class BaseDeploymentBackend(ABC):
         pass
 
     @abstractmethod
-    def cleanup_stopped_containers(self, template_name: Optional[str] = None) -> Dict[str, Any]:
+    def cleanup_stopped_containers(
+        self, template_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Clean up stopped containers.
-        
+
         Args:
             template_name: If provided, only clean containers for this template
-            
+
         Returns:
             Dict with cleanup results
         """
         pass
 
-    @abstractmethod 
+    @abstractmethod
     def cleanup_dangling_images(self) -> Dict[str, Any]:
         """
         Clean up dangling images.
-        
+
         Returns:
             Dict with cleanup results
         """

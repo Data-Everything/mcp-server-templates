@@ -113,9 +113,7 @@ class CLI:
                 self.formatter.print_info(f"Opening shell in container: {custom_name}")
                 self.deployment_manager.connect_to_deployment(custom_name)
             else:
-                self.formatter.print_error(
-                    "Failed to find deployment to connect to"
-                )
+                self.formatter.print_error("Failed to find deployment to connect to")
                 sys.exit(1)
 
         except Exception as e:
@@ -127,40 +125,52 @@ class CLI:
         try:
             template_name = getattr(args, "template", None)
             all_containers = getattr(args, "all", False)
-            
+
             self.formatter.print_info("Starting cleanup operation...")
-            
+
             if all_containers and not template_name:
                 # Clean up all stopped MCP containers
                 result = self.deployment_manager.cleanup_stopped_deployments()
                 images_result = self.deployment_manager.cleanup_dangling_images()
             elif template_name:
                 # Clean up containers for specific template
-                result = self.deployment_manager.cleanup_stopped_deployments(template_name)
+                result = self.deployment_manager.cleanup_stopped_deployments(
+                    template_name
+                )
                 images_result = None  # Don't clean images for specific template
             else:
-                self.formatter.print_error("Please specify a template name or use --all flag")
+                self.formatter.print_error(
+                    "Please specify a template name or use --all flag"
+                )
                 sys.exit(1)
-            
+
             # Display container cleanup results
             if result["success"]:
                 cleaned_count = len(result["cleaned_containers"])
                 if cleaned_count > 0:
                     self.formatter.print_success(f"✅ {result['message']}")
                     for container in result["cleaned_containers"]:
-                        self.console.print(f"  • Removed: {container['name']} ({container['id'][:12]})")
+                        self.console.print(
+                            f"  • Removed: {container['name']} ({container['id'][:12]})"
+                        )
                 else:
                     self.formatter.print_info("No stopped containers found to clean up")
-                
+
                 # Show failed cleanups if any
                 if result.get("failed_cleanups"):
-                    self.formatter.print_warning(f"Failed to clean {len(result['failed_cleanups'])} containers:")
+                    self.formatter.print_warning(
+                        f"Failed to clean {len(result['failed_cleanups'])} containers:"
+                    )
                     for failure in result["failed_cleanups"]:
                         container = failure["container"]
-                        self.console.print(f"  • {container['name']}: {failure['error']}")
+                        self.console.print(
+                            f"  • {container['name']}: {failure['error']}"
+                        )
             else:
-                self.formatter.print_error(f"Cleanup failed: {result.get('error', 'Unknown error')}")
-            
+                self.formatter.print_error(
+                    f"Cleanup failed: {result.get('error', 'Unknown error')}"
+                )
+
             # Display image cleanup results if performed
             if images_result:
                 if images_result["success"]:
@@ -168,13 +178,21 @@ class CLI:
                     if cleaned_images > 0:
                         self.formatter.print_success(f"✅ {images_result['message']}")
                     else:
-                        self.formatter.print_info("No dangling images found to clean up")
+                        self.formatter.print_info(
+                            "No dangling images found to clean up"
+                        )
                 else:
-                    self.formatter.print_warning(f"Image cleanup failed: {images_result.get('error', 'Unknown error')}")
-            
+                    self.formatter.print_warning(
+                        f"Image cleanup failed: {images_result.get('error', 'Unknown error')}"
+                    )
+
             # Show helpful tips
-            self.console.print("\n💡 Use 'mcpt cleanup --all' to clean all stopped containers")
-            self.console.print("💡 Use 'mcpt cleanup <template>' to clean specific template containers")
+            self.console.print(
+                "\n💡 Use 'mcpt cleanup --all' to clean all stopped containers"
+            )
+            self.console.print(
+                "💡 Use 'mcpt cleanup <template>' to clean specific template containers"
+            )
 
         except Exception as e:
             self.formatter.print_error(f"Error during cleanup: {e}")
@@ -184,11 +202,11 @@ class CLI:
         """Handle config command to show template configuration options."""
         try:
             template_name = getattr(args, "template", None)
-            
+
             if not template_name:
                 self.formatter.print_error("Template name is required")
                 sys.exit(1)
-            
+
             self._show_config_options(template_name)
 
         except Exception as e:
