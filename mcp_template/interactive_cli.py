@@ -24,7 +24,6 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
 
-from mcp_template.core.core_cli import CoreCLI
 from mcp_template.core import TemplateManager, DeploymentManager, ToolManager, OutputFormatter
 from mcp_template.tools.cache import CacheManager
 from mcp_template.tools.http_tool_caller import HTTPToolCaller
@@ -34,7 +33,7 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 # Argparse parser for `call` command flags: --config-file, --env, --config
-call_parser = argparse.ArgumentParser(prog="call")
+call_parser = argparse.ArgumentParser(prog="call", exit_on_error=False)
 call_parser.add_argument(
     "-c", "--config-file", dest="config_file", help="Path to JSON config file"
 )
@@ -979,7 +978,6 @@ class InteractiveCLI(cmd2.Cmd):
     def __init__(self):
         super().__init__()
         # Use core modules for all business logic
-        self.core_cli = CoreCLI()
         self.template_manager = TemplateManager()
         self.deployment_manager = DeploymentManager()
         self.tool_manager = ToolManager()
@@ -1118,12 +1116,11 @@ class InteractiveCLI(cmd2.Cmd):
                     config_values[prop_name] = os.environ[env_mapping]
 
         # Use the shared CLI method - this handles all the logic correctly
-        self.tool_manager.list_tools_for_template(
-            template_name=template_name,
-            no_cache=False,
-            refresh=False,
+        self.tool_manager.list_tools(
+            template_or_id=template_name,
+            discovery_method="auto",
+            force_refresh=force_server_discovery,
             config_values=config_values,
-            force_server_discovery=force_server_discovery,
         )
 
     def _show_template_help(self, template_name: str):
@@ -1197,9 +1194,8 @@ class InteractiveCLI(cmd2.Cmd):
 
         try:
             # Get tools using tool discovery
-            tools = self.tool_manager.discover_tools_from_template(
-                template_name,
-                config_values or {},
+            tools = self.tool_manager.discover_tools_static(
+                template_name
             )
 
             if tools:
@@ -1386,9 +1382,8 @@ class InteractiveCLI(cmd2.Cmd):
 
             # Get tool information using tool discovery
             try:
-                tools = self.tool_manager.discover_tools_from_template(
-                    template_name,
-                    config_values or {},
+                tools = self.tool_manager.discover_tools_static(
+                    template_name
                 )
             except Exception as e:
                 console.print(
@@ -1509,67 +1504,27 @@ class InteractiveCLI(cmd2.Cmd):
           call --config-file config.json <template_name> <tool_name> [json_args]
           call --env API_KEY=value --config timeout=30 <template_name> <tool_name> [json_args]
         """
-        # Check if we have quoted space-separated values that cmd2 can't handle
-        if '"' in line and " " in line:
-            # Use shlex for proper quote parsing when quotes are present
-            try:
-                argv = shlex.split(line)
-
-                # Special handling for JSON arguments - if the last argument looks like
-                # it might be a split JSON object, try to rejoin it
-                if len(argv) > 2:
-                    # Check if we have a potential split JSON (last few args contain { and })
-                    json_start_idx = None
-                    for i, arg in enumerate(argv):
-                        if "{" in arg:
-                            json_start_idx = i
-                            break
-
-                    if json_start_idx is not None and json_start_idx < len(argv) - 1:
-                        # Found a JSON start that's not the last argument - rejoin
-                        json_parts = argv[json_start_idx:]
-                        rejoined_json = " ".join(json_parts)
-                        # Check if this creates valid JSON-like string
-                        if rejoined_json.count("{") == rejoined_json.count(
-                            "}"
-                        ) and rejoined_json.count("[") == rejoined_json.count("]"):
-                            argv = argv[:json_start_idx] + [rejoined_json]
-
-                args = call_parser.parse_args(argv)
-            except (ValueError, SystemExit) as e:
-                console.print(f"[red]❌ Error parsing command line: {e}[/red]")
-                console.print(
-                    '[dim]For JSON with spaces, use quotes: \'{"key": "value"}\'[/dim]'
-                )
-                console.print(
-                    "[dim]For paths with spaces, use quotes: 'path=\"/dir1 /dir2\"'[/dim]"
-                )
-                return
-        else:
-            # Use standard cmd2 parsing for simple cases
-            try:
-                # Temporarily replace the method to use with_argparser
-                @with_argparser(call_parser)
-                def temp_call(self, args):
-                    return args
-
-                # Parse using cmd2's mechanism
-                statement = self.statement_parser.parse(line)
-                args = call_parser.parse_args(statement.arg_list)
-            except (ValueError, SystemExit) as e:
-                console.print(f"[red]❌ Error parsing command line: {e}[/red]")
-                console.print("[dim]Use: call <template> <tool> [json_args][/dim]")
-                return
+        try:
+            # Use shlex to split the line properly, handling quotes
+            argv = shlex.split(line) if line.strip() else []
+            
+            # Parse arguments using the call_parser
+            args = call_parser.parse_args(argv)
+                
+        except (ValueError, SystemExit) as e:
+            console.print(f"[red]❌ Error parsing command line: {e}[/red]")
+            console.print("[dim]Use: call <template> <tool> [json_args][/dim]")
+            return
         # Merge configuration from all sources
         template_name = args.template_name
 
         # Get template info for proper config processing
-        available_templates = self.template_manager.get_available_templates()
+        available_templates = self.template_manager.list_templates()
         if template_name not in available_templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             return
 
-        template = self.template_manager.get_template(template_name)
+        template = self.template_manager.get_template_info(template_name)
 
         try:
             config_values = merge_config_sources(
@@ -1590,12 +1545,12 @@ class InteractiveCLI(cmd2.Cmd):
             f"\n[cyan]🚀 Calling tool '{tool_name}' from template '{template_name}'[/cyan]"
         )
         # Check if template exists
-        available_templates = self.template_manager.get_available_templates()
+        available_templates = self.template_manager.list_templates()
         if template_name not in available_templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             return
 
-        template = self.template_manager.get_template(template_name)
+        template = self.template_manager.get_template_info(template_name)
         transport_config = template.get("transport", {})
         default_transport = transport_config.get("default", "http")
         supported_transports = transport_config.get("supported", ["http"])
@@ -1656,123 +1611,47 @@ class InteractiveCLI(cmd2.Cmd):
                         )
                         return
 
-        # Handle different transport protocols
-        if "stdio" in supported_transports or default_transport == "stdio":
-            # Use stdio approach
-            console.print("[dim]Using stdio transport...[/dim]")
+        # Use the enhanced tool manager call_tool method that implements HTTP-first logic
+        console.print("[dim]Checking for running server (HTTP first, stdio fallback)...[/dim]")
 
-            # Validate tool parameters and prompt for missing ones
-            validated_tool_args = self._validate_and_get_tool_parameters(
-                template_name, tool_name, tool_args, config_values
+        try:
+            # Ensure tool_args is parsed as JSON if it's a string
+            if isinstance(tool_args, str):
+                try:
+                    tool_args = json.loads(tool_args)
+                except json.JSONDecodeError:
+                    console.print(f"[red]❌ Invalid JSON arguments: {tool_args}[/red]")
+                    return
+            
+            result = self.tool_manager.call_tool(
+                template_name,
+                tool_name,
+                tool_args,
+                config_values,
+                pull_image=not no_pull,
             )
 
-            if validated_tool_args is None:
-                # Parameter validation failed
-                return
-
-            try:
-                result = self.tool_manager.execute_tool(
-                    template_name,
-                    tool_name,
-                    validated_tool_args,
-                    config_values,
-                    pull_image=not no_pull,
-                )
-
-                # The enhanced CLI already beautifies stdio responses
-                if not result:
-                    console.print("[red]❌ Tool execution failed[/red]")
-
-            except Exception as e:
-                console.print(f"[red]❌ Failed to execute tool: {e}[/red]")
-
-        else:
-            # Handle HTTP/SSE transports - check if server is deployed
-            console.print("[dim]Checking for deployed server...[/dim]")
-
-            # Find deployed server
-            deployed_server = None
-            for server in self.deployed_servers:
-                if server.get("template_name") == template_name:
-                    deployed_server = server
-                    break
-
-            if not deployed_server:
-                console.print(
-                    f"[yellow]⚠️  Template '{template_name}' is not deployed[/yellow]"
-                )
-                console.print(
-                    f"[dim]Supported transports: {', '.join(supported_transports)}[/dim]"
-                )
-
-                if Confirm.ask(f"Would you like to deploy '{template_name}' now?"):
-                    console.print(
-                        f"[cyan]🚀 Deploying '{template_name}' server...[/cyan]"
-                    )
-
-                    try:
-                        # Use deployment manager to deploy the template with merged config
-                        success = self.deployment_manager.deploy(
-                            template_name=template_name,
-                            config_values=config_values,
-                            pull_image=True,
-                        )
-
-                        if success:
-                            console.print(
-                                "[green]✅ Server deployed successfully![/green]"
-                            )
-                            console.print("[dim]Refreshing server list...[/dim]")
-                            # Refresh deployed servers list
-                            self.do_list_servers("")
-                            console.print(
-                                f"[green]Now you can call tools on '{template_name}'[/green]"
-                            )
-                        else:
-                            console.print("[red]❌ Server deployment failed[/red]")
-                    except Exception as e:
-                        console.print(f"[red]❌ Deployment error: {e}[/red]")
-                    return
+            if result and result.get("success"):
+                # Display successful result
+                if result.get("result"):
+                    self._display_tool_result(result["result"], tool_name)
                 else:
-                    return
+                    console.print("[green]✅ Tool executed successfully (no output)[/green]")
+            else:
+                error_msg = result.get("error", "Tool execution failed") if result else "Tool execution failed"
+                console.print(f"[red]❌ Tool execution failed: {error_msg}[/red]")
 
-            # Call tool on deployed server
-            console.print(
-                f"[dim]Calling tool on deployed server at {deployed_server.get('endpoint')}[/dim]"
-            )
+        except Exception as e:
+            console.print(f"[red]❌ Failed to execute tool: {e}[/red]")
 
-            # Parse tool arguments
-            try:
-                if tool_args == "{}":
-                    arguments = {}
-                else:
-                    arguments = json.loads(tool_args)
-            except json.JSONDecodeError:
-                console.print(f"[red]❌ Invalid JSON arguments: {tool_args}[/red]")
-                console.print("[dim]Use JSON format: {'param': 'value'}[/dim]")
-                return
-
-            # Call HTTP tool
-            try:
-                server_url = deployed_server.get("endpoint")
-                result = self.http_tool_caller.call_tool_sync(
-                    server_url=server_url, tool_name=tool_name, arguments=arguments
-                )
-
-                if result.get("status") == "success":
-                    console.print(
-                        f"[green]✅ Tool '{tool_name}' executed successfully[/green]"
-                    )
-                    self.beautifier.beautify_json(
-                        result.get("result", {}), f"Tool Result: {tool_name}"
-                    )
-                else:
-                    console.print(
-                        f"[red]❌ Tool execution failed: {result.get('error', 'Unknown error')}[/red]"
-                    )
-
-            except Exception as e:
-                console.print(f"[red]❌ HTTP tool call failed: {e}[/red]")
+    def _display_tool_result(self, result: Any, tool_name: str):
+        """Display tool result using the beautifier."""
+        try:
+            self.beautifier.beautify_json(result, f"Tool Result: {tool_name}")
+        except Exception:
+            # Fallback to simple display if beautifier fails
+            console.print(f"[green]✅ Tool '{tool_name}' result:[/green]")
+            console.print(result)
 
     def do_show_config(self, template_name):
         """Show current configuration for a template.
@@ -1838,7 +1717,7 @@ class InteractiveCLI(cmd2.Cmd):
         """List all available templates.
         Usage: templates
         """
-        templates = self.template_manager.get_available_templates()
+        templates = self.template_manager.list_templates()
 
         if not templates:
             console.print("[yellow]⚠️  No templates found[/yellow]")

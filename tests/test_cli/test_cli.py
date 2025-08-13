@@ -35,89 +35,73 @@ class TestMainCLI:
             # Should exit without error (help is shown)
             assert exc_info.value.code is None or exc_info.value.code == 0
 
-    @patch("mcp_template.MCPDeployer")
-    def test_list_command(self, mock_deployer_class):
+    @patch("mcp_template.CLI")
+    def test_list_command(self, mock_cli_class):
         """Test list command."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo", "file-server"]
-        mock_deployer_class.return_value = mock_deployer
+        mock_cli = Mock()
+        mock_cli_class.return_value = mock_cli
 
         # Test default list
         sys.argv = ["mcp_template", "list"]
         main()
-        mock_deployer.list_templates.assert_called_with(deployed_only=False)
+        mock_cli.handle_list_command.assert_called_once()
 
         # Test list with --deployed
+        mock_cli.reset_mock()
         sys.argv = ["mcp_template", "list", "--deployed"]
         main()
-        mock_deployer.list_templates.assert_called_with(deployed_only=True)
+        mock_cli.handle_list_command.assert_called_once()
 
-    @patch("mcp_template.cli.EnhancedCLI")
-    @patch("mcp_template.MCPDeployer")
-    def test_deploy_command(self, mock_deployer_class, mock_enhanced_cli):
+    @patch("mcp_template.CLI")
+    def test_deploy_command(self, mock_cli_class):
         """Test deploy command."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer_class.return_value = mock_deployer
-
-        mock_enhanced_cli_instance = Mock()
-        mock_enhanced_cli.return_value = mock_enhanced_cli_instance
-        mock_enhanced_cli_instance.deploy_with_transport.return_value = True
+        mock_cli = Mock()
+        mock_cli_class.return_value = mock_cli
 
         sys.argv = ["mcpt", "deploy", "demo"]
 
         main()
-        mock_enhanced_cli_instance.deploy_with_transport.assert_called_once()
+        mock_cli.handle_deploy_command.assert_called_once()
 
-    @patch("mcp_template.MCPDeployer")
-    def test_stop_command(self, mock_deployer_class):
+    @patch("mcp_template.CLI")
+    def test_stop_command(self, mock_cli_class):
         """Test stop command with various options."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer_class.return_value = mock_deployer
+        mock_cli = Mock()
+        mock_cli_class.return_value = mock_cli
 
         # Stop by template
         sys.argv = ["mcp_template", "stop", "demo"]
         main()
-        mock_deployer.stop.assert_called_with(
-            "demo", custom_name=None, all_containers=False
-        )
-        mock_deployer.stop.reset_mock()
+        mock_cli.handle_stop_command.assert_called_once()
+        mock_cli.reset_mock()
 
         # Stop all deployments of a template
         sys.argv = ["mcp_template", "stop", "demo", "--all"]
         main()
-        mock_deployer.stop.assert_called_with(
-            "demo", custom_name=None, all_containers=True
-        )
-        mock_deployer.stop.reset_mock()
+        mock_cli.handle_stop_command.assert_called_once()
+        mock_cli.reset_mock()
 
         # Stop by custom name
         sys.argv = ["mcp_template", "stop", "--name", "mcp-demo-123"]
         main()
-        mock_deployer.stop.assert_called_with(
-            None, custom_name="mcp-demo-123", all_containers=False
-        )
-        mock_deployer.stop.reset_mock()
+        mock_cli.handle_stop_command.assert_called_once()
+        mock_cli.reset_mock()
 
         # Stop all deployments (global)
         sys.argv = ["mcp_template", "stop", "--all"]
         main()
-        mock_deployer.stop.assert_called_with(
-            None, custom_name=None, all_containers=True
-        )
+        mock_cli.handle_stop_command.assert_called_once()
 
-    @patch("mcp_template.MCPDeployer")
-    def test_logs_command(self, mock_deployer_class):
+    @patch("mcp_template.CLI")
+    def test_logs_command(self, mock_cli_class):
         """Test logs command."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer_class.return_value = mock_deployer
+        mock_cli = Mock()
+        mock_cli_class.return_value = mock_cli
 
         sys.argv = ["mcp_template", "logs", "demo"]
 
         main()
-        mock_deployer.logs.assert_called_once_with("demo", custom_name=None)
+        mock_cli.handle_logs_command.assert_called_once()
 
     def test_tools_command_with_template_deprecated(self):
         """Test tools command shows deprecation message."""
@@ -165,17 +149,16 @@ class TestMainCLI:
         # The command should exit with status code 2 (argparse error)
         assert exc_info.value.code == 2
 
-    @patch("mcp_template.MCPDeployer")
-    def test_cleanup_command(self, mock_deployer_class):
+    @patch("mcp_template.CLI")
+    def test_cleanup_command(self, mock_cli_class):
         """Test cleanup command."""
-        mock_deployer = Mock()
-        mock_deployer.templates.keys.return_value = ["demo"]
-        mock_deployer_class.return_value = mock_deployer
+        mock_cli = Mock()
+        mock_cli_class.return_value = mock_cli
 
         sys.argv = ["mcp_template", "cleanup"]
 
         main()
-        mock_deployer.cleanup.assert_called_once()
+        mock_cli.handle_cleanup_command.assert_called_once()
 
     @patch("mcp_template.TemplateCreator")
     def test_create_command(self, mock_creator_class):
@@ -266,7 +249,7 @@ class TestMCPDeployer:
         mock_manager.deploy_template.assert_called_once()
 
     @patch("mcp_template.template.utils.discovery.TemplateDiscovery")
-    @patch("mcp_template.manager.DeploymentManager")
+    @patch("mcp_template.core.deployment_manager.DeploymentManager")
     def test_deploy_nonexistent_template(
         self, mock_manager_class, mock_discovery_class
     ):
@@ -283,3 +266,47 @@ class TestMCPDeployer:
         with patch("mcp_template.console"):
             result = deployer.deploy("nonexistent")
             assert result is False
+
+    @patch("mcp_template.CLI")
+    def test_config_command(self, mock_cli_class):
+        """Test config command."""
+        mock_cli = Mock()
+        mock_cli_class.return_value = mock_cli
+
+        sys.argv = ["mcp_template", "config", "demo"]
+
+        main()
+        mock_cli.handle_config_command.assert_called_once()
+
+    @patch("mcp_template.CLI")
+    def test_logs_command_with_lines_parameter(self, mock_cli_class):
+        """Test logs command with --lines parameter."""
+        mock_cli = Mock()
+        mock_cli_class.return_value = mock_cli
+
+        sys.argv = ["mcp_template", "logs", "demo", "--lines", "50"]
+
+        main()
+        mock_cli.handle_logs_command.assert_called_once()
+
+    @patch("mcp_template.CLI")
+    def test_deploy_command_with_reserved_env_vars(self, mock_cli_class):
+        """Test deploy command with RESERVED_ENV_VARS (transport and port)."""
+        mock_cli = Mock()
+        mock_cli_class.return_value = mock_cli
+
+        sys.argv = ["mcp_template", "deploy", "demo", "--transport", "http", "--port", "8080"]
+
+        main()
+        mock_cli.handle_deploy_command.assert_called_once()
+
+    @patch("mcp_template.CLI")
+    def test_examples_command(self, mock_cli_class):
+        """Test examples command."""
+        mock_cli = Mock()
+        mock_cli_class.return_value = mock_cli
+
+        sys.argv = ["mcp_template", "examples", "demo"]
+
+        main()
+        mock_cli.handle_examples_command.assert_called_once()

@@ -2,6 +2,7 @@
 Docker backend for managing deployments using Docker containers.
 """
 
+from contextlib import suppress
 import json
 import logging
 import os
@@ -10,7 +11,7 @@ import subprocess
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 from rich.panel import Panel
@@ -741,6 +742,127 @@ EOF""",
             logger.error("Failed to list deployments: %s", e)
             return []
 
+    def get_deployment_info(self, deployment_name: str, include_logs: bool = False, lines: int = 10) -> Dict[str, Any]:
+        """Get detailed information about a specific deployment.
+
+        Args:
+            deployment_name: Name or ID of the deployment
+            include_logs: Whether to include container logs in the response
+            lines: Number of log lines to retrieve (only if include_logs=True)
+
+        Returns:
+            Dictionary with deployment information, or None if not found
+        """
+        try:
+            # Get detailed container information
+            result = self._run_command(
+                [
+                    "docker",
+                    "inspect",
+                    deployment_name,
+                ]
+            )
+
+            if result.stdout.strip():
+                containers = json.loads(result.stdout)
+                if containers:
+                    container = containers[0]
+                    
+                    # Extract relevant information
+                    labels = container.get("Config", {}).get("Labels", {}) or {}
+                    template_name = labels.get("template", "unknown")
+                    
+                    # Get port information
+                    ports = container.get("NetworkSettings", {}).get("Ports", {})
+                    port_display = ""
+                    for port, mappings in ports.items():
+                        if mappings:
+                            host_port = mappings[0].get("HostPort", "")
+                            if host_port:
+                                port_display = host_port
+                                break
+                    
+                    # Build result with unified information
+                    result_info = {
+                        "id": container.get("Id", "unknown"),
+                        "name": container.get("Name", "").lstrip("/"),
+                        "template": template_name,
+                        "status": container.get("State", {}).get("Status", "unknown"),
+                        "running": container.get("State", {}).get("Running", False),
+                        "image": container.get("Config", {}).get("Image", "unknown"),
+                        "ports": port_display,
+                        "created": container.get("Created", ""),
+                        "raw_container": container,  # Include full container data for advanced operations
+                    }
+                    
+                    # Add logs if requested
+                    if include_logs:
+                        try:
+                            log_result = self._run_command(
+                                ["docker", "logs", "--tail", str(int(lines)), deployment_name],
+                                check=False,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,  # Because docker logs are sent to stderr by default
+                            )
+                            result_info["logs"] = log_result.stdout
+                        except Exception:
+                            result_info["logs"] = "Unable to fetch logs"
+                    
+                    return result_info
+            
+            return None
+
+        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
+            logger.debug(f"Failed to get deployment info for {deployment_name}: {e}")
+            return None
+
+    def get_deployment_logs(
+        self, deployment_name: str, lines: int = 100, follow: bool = False, since: Optional[str] = None, until: Optional[str] = None
+    ) -> dict:
+        """Get logs from a deployment.
+        
+        Args:
+            deployment_name: Name or ID of the deployment
+            lines: Number of log lines to retrieve
+            follow: Whether to stream logs (not implemented for this method)
+            since: Start time for log filtering
+            until: End time for log filtering
+            
+        Returns:
+            Dictionary with success status and logs or error message
+        """
+        try:
+            cmd = ["docker", "logs"]
+            
+            if lines:
+                cmd.extend(["--tail", str(lines)])
+            if since:
+                cmd.extend(["--since", since])
+            if until:
+                cmd.extend(["--until", until])
+                
+            cmd.append(deployment_name)
+            
+            result = self._run_command(cmd)
+            
+            if result.returncode == 0:
+                return {
+                    "success": True,
+                    "logs": result.stderr + '\n' + result.stdout or ""
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.stderr or "Unknown error retrieving logs"
+                }
+            
+        except Exception as e:
+            logger.error(f"Failed to get logs for deployment {deployment_name}: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
     def delete_deployment(
         self, deployment_name: str, raise_on_failure: bool = False
     ) -> bool:
@@ -764,53 +886,24 @@ EOF""",
             logger.error("Failed to delete deployment %s: %s", deployment_name, e)
             return False
 
-    def get_deployment_status(
-        self, deployment_name: str, lines: int = 10
-    ) -> Dict[str, Any]:
-        """Get detailed status of a deployment including logs.
+    def stop_deployment(self, deployment_name: str, force: bool = False) -> bool:
+        """Stop a deployment.
 
         Args:
-            deployment_name: Name of the deployment
-            lines: Number of log lines to retrieve
+            deployment_name: Name of the deployment to stop
+            force: Whether to force stop the deployment
 
         Returns:
-            Dict containing deployment status, logs, and metadata
-
-        Raises:
-            ValueError: If deployment is not found
+            True if stop was successful, False otherwise
         """
         try:
-            # Get container info
-            result = self._run_command(
-                ["docker", "inspect", deployment_name, "--format", "json"]
-            )
-            container_data = json.loads(result.stdout)[0]
-
-            # Get container logs (last 10 lines)
-            try:
-                log_result = self._run_command(
-                    ["docker", "logs", "--tail", str(int(lines)), deployment_name],
-                    check=False,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,  # Because docker logs are sent to stderr by default
-                )
-                logs = log_result.stdout
-            except Exception:
-                logs = "Unable to fetch logs"
-
-            return {
-                "name": container_data["Name"].lstrip("/"),
-                "status": container_data["State"]["Status"],
-                "running": container_data["State"]["Running"],
-                "created": container_data["Created"],
-                "image": container_data["Config"]["Image"],
-                "logs": logs,
-            }
-        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as exc:
-            logger.error(
-                "Failed to get container info for %s: %s", deployment_name, exc
-            )
-            raise ValueError(f"Deployment {deployment_name} not found") from exc
+            if force:
+                self._run_command(["docker", "kill", deployment_name])
+            else:
+                self._run_command(["docker", "stop", deployment_name])
+            return True
+        except subprocess.CalledProcessError:
+            return False
 
     def _build_internal_image(
         self, template_id: str, image_name: str, template_data: Dict[str, Any]
@@ -835,3 +928,20 @@ EOF""",
         # Build the Docker image
         build_command = ["docker", "build", "-t", image_name, str(template_dir)]
         self._run_command(build_command)
+
+    def connect_to_deployment(self, deployment_id: str):
+        """
+        Connecton to deployment
+        Args:
+            deployment_name: Name or ID of the deployment
+
+        Returns:
+            None - Gives access to deployment shell
+        """
+
+        cmd = ['docker', 'exec', '-it', deployment_id]
+
+        for shell in ['sh', 'bash']:
+            with suppress(subprocess.CalledProcessError, Exception):
+                self._run_command(cmd + [shell], check=True)
+                return

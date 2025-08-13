@@ -58,21 +58,28 @@ class ConfigManager:
         2. config_values (CLI --config)
         3. env_vars (CLI --env)
         4. config_file (CLI --config-file)
-        5. template_config (template defaults)
+        5. template defaults (from config_schema)
 
         Args:
-            template_config: Base template configuration
+            template_config: Base template configuration (contains metadata and schema)
             config_file: Path to JSON/YAML configuration file
             env_vars: Environment variables dictionary
             config_values: Configuration values dictionary
             override_values: Override values dictionary (with double-underscore notation)
 
         Returns:
-            Merged configuration dictionary
+            Merged configuration dictionary (only user config values, not template metadata)
         """
         try:
-            # Start with template configuration
-            merged_config = template_config.copy()
+            # Start with defaults from config schema, not the entire template
+            merged_config = {}
+            config_schema = template_config.get("config_schema", {})
+            properties = config_schema.get("properties", {})
+            
+            # Apply defaults from schema
+            for prop_name, prop_config in properties.items():
+                if "default" in prop_config:
+                    merged_config[prop_name] = prop_config["default"]
 
             # Load and merge config file
             if config_file and os.path.exists(config_file):
@@ -92,12 +99,23 @@ class ConfigManager:
             # Apply overrides with double-underscore notation
             if override_values:
                 merged_config = self._apply_overrides(merged_config, override_values)
+                
+                # Also add override values with OVERRIDE_ prefix for CLI compatibility
+                for key, value in override_values.items():
+                    merged_config[f"OVERRIDE_{key}"] = value
 
             return merged_config
 
         except Exception as e:
             logger.error(f"Failed to merge config sources: {e}")
-            return template_config.copy()
+            # Return just defaults from schema on error
+            defaults = {}
+            config_schema = template_config.get("config_schema", {})
+            properties = config_schema.get("properties", {})
+            for prop_name, prop_config in properties.items():
+                if "default" in prop_config:
+                    defaults[prop_name] = prop_config["default"]
+            return defaults
 
     def validate_config(
         self, config: Dict[str, Any], schema: Dict[str, Any]

@@ -15,7 +15,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from mcp_template.exceptions import StdIoTransportDeploymentError
-from mcp_template.manager import DeploymentManager
+from mcp_template.core.deployment_manager import DeploymentManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.utils.config_processor import ConfigProcessor
 
@@ -399,10 +399,10 @@ class MCPDeployer:
                     return
 
             deployment = target_deployments[0]
-            status = self.deployment_manager.get_deployment_status(deployment["name"])
+            status = self.deployment_manager.backend.get_deployment_info(deployment["name"], include_logs=True)
 
             console.print(f"[blue]📋 Logs for {deployment['name']}:[/blue]")
-            logs = status.get("logs", "No logs available")
+            logs = status.get("logs", "No logs available") if status else "No logs available"
             if logs:
                 console.print(logs)
             else:

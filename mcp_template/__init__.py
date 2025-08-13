@@ -28,6 +28,7 @@ from mcp_template.backends.docker import DockerDeploymentService
 
 # Import enhanced CLI modules
 from mcp_template.cli import (
+    CLI,
     EnhancedCLI,
     add_enhanced_cli_args,
     handle_enhanced_cli_commands,
@@ -36,11 +37,11 @@ from mcp_template.cli import (
 # Import the new MCP Client for programmatic access
 from mcp_template.client import MCPClient
 from mcp_template.deployer import MCPDeployer
-from mcp_template.manager import DeploymentManager
+from mcp_template.core.deployment_manager import DeploymentManager
 from mcp_template.template.utils.creation import TemplateCreator
 
-# Import CoreCLI for improved command handling
-from mcp_template.core.core_cli import CoreCLI
+# Import unified CLI for improved command handling
+from mcp_template.cli import CLI
 
 # Import core classes that are used in CI and the CLI
 from mcp_template.template.utils.discovery import TemplateDiscovery
@@ -220,6 +221,7 @@ Examples:
     logs_parser.add_argument("template", help="Template name")
     logs_parser.add_argument("--name", help=CUSTOM_NAME_HELP)
     logs_parser.add_argument("-f", "--follow", action="store_true", help="Follow logs")
+    logs_parser.add_argument("--lines", type=int, default=100, help="Number of log lines to show (default: 100)")
 
     # Shell command
     shell_parser = subparsers.add_parser("shell", help="Open shell in template")
@@ -264,8 +266,8 @@ Examples:
         if handle_enhanced_cli_commands(args):
             return
 
-        # Use CoreCLI for centralized command handling using common modules
-        cli = CoreCLI()
+        # Use unified CLI for centralized command handling using core modules
+        cli = CLI()
 
         if args.command == "list":
             cli.handle_list_command(args)

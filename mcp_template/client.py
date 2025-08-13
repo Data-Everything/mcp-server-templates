@@ -2,7 +2,7 @@
 MCP Client - Programmatic Python API for MCP Template system.
 
 This module provides a high-level Python API for programmatic access to MCP servers,
-using the refactored common modules for consistent functionality.
+using the refactored core modules for consistent functionality.
 
 Example usage:
     ```python
@@ -17,14 +17,14 @@ Example usage:
         print(f"Available templates: {list(templates.keys())}")
 
         # Start a server
-        server = await client.start_server("demo", {"greeting": "Hello from API!"})
+        server = client.start_server("demo", {"greeting": "Hello from API!"})
 
         # List tools
-        tools = await client.list_tools("demo")
+        tools = client.list_tools("demo")
         print(f"Available tools: {[t['name'] for t in tools]}")
 
         # Call a tool
-        result = await client.call_tool("demo", "echo", {"message": "Hello World"})
+        result = client.call_tool("demo", "echo", {"message": "Hello World"})
         print(f"Tool result: {result}")
 
         # List running servers
@@ -37,20 +37,27 @@ Example usage:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
+import weakref
 
-from mcp_template.core import MCPConnection, ServerManager, ToolCaller, ToolManager
+from mcp_template.core import (
+    TemplateManager,
+    DeploymentManager,
+    ConfigManager,
+    ToolManager,
+    MCPConnection,
+    ServerManager,
+    ToolCaller,
+)
+from mcp_template.core.deployment_manager import DeploymentOptions
 from mcp_template.template.utils.discovery import TemplateDiscovery
-
-# Import CoreMCPClient for improved functionality
-from mcp_template.core.core_client import CoreMCPClient
 
 logger = logging.getLogger(__name__)
 
 
 class MCPClient:
     """
-    High-level MCP Client for programmatic access to MCP servers.
+    Unified MCP Client for programmatic access to MCP servers.
 
     This client provides a simplified interface for common MCP operations:
     - Connecting to MCP servers
@@ -58,7 +65,7 @@ class MCPClient:
     - Managing server instances
     - Template discovery
 
-    Uses RefactoredMCPClient internally for common module functionality.
+    Consolidates functionality from both MCPClient and CoreMCPClient for simplicity.
     """
 
     def __init__(self, backend_type: str = "docker", timeout: int = 30):
@@ -72,21 +79,41 @@ class MCPClient:
         self.backend_type = backend_type
         self.timeout = timeout
 
-        # Use CoreMCPClient for all functionality
-        self._core_client = CoreMCPClient(backend_type)
+        # Initialize core managers
+        self.template_manager = TemplateManager(backend_type)
+        self.deployment_manager = DeploymentManager(backend_type)
+        self.config_manager = ConfigManager()
+        self.tool_manager = ToolManager(backend_type)
 
-        # Store configuration
-        self.timeout = timeout
+        # Connection management for direct MCP connections
+        self._active_connections = {}
+        self._background_tasks = set()
+
+        # Initialize other components
+        self.template_discovery = TemplateDiscovery()
+        self.server_manager = ServerManager(backend_type)
+        self.tool_caller = ToolCaller(backend_type)
 
     # Template Management
-    def list_templates(self) -> Dict[str, Dict[str, Any]]:
+    def list_templates(
+        self, include_deployed_status: bool = False
+    ) -> Dict[str, Dict[str, Any]]:
         """
         List all available MCP server templates.
+
+        Args:
+            include_deployed_status: Whether to include deployment status
 
         Returns:
             Dictionary mapping template_id to template information
         """
-        return self._core_client.list_templates()
+        try:
+            return self.template_manager.list_templates(
+                include_deployed_status=include_deployed_status
+            )
+        except Exception as e:
+            logger.error(f"Failed to list templates: {e}")
+            return {}
 
     def get_template_info(self, template_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -98,17 +125,62 @@ class MCPClient:
         Returns:
             Template information or None if not found
         """
-        return self._core_client.get_template_info(template_id)
+        try:
+            return self.template_manager.get_template_info(template_id)
+        except Exception as e:
+            logger.error(f"Failed to get template info for {template_id}: {e}")
+            return None
+
+    def validate_template(self, template_id: str) -> bool:
+        """
+        Validate that a template exists and is properly structured.
+
+        Args:
+            template_id: The template identifier
+
+        Returns:
+            True if template is valid, False otherwise
+        """
+        try:
+            return self.template_manager.validate_template(template_id)
+        except Exception as e:
+            logger.error(f"Failed to validate template {template_id}: {e}")
+            return False
+
+    def search_templates(self, query: str) -> Dict[str, Dict[str, Any]]:
+        """
+        Search templates by name, description, or tags.
+
+        Args:
+            query: Search query string
+
+        Returns:
+            Dictionary of matching templates
+        """
+        try:
+            return self.template_manager.search_templates(query)
+        except Exception as e:
+            logger.error(f"Failed to search templates: {e}")
+            return {}
 
     # Server Management
-    def list_servers(self) -> List[Dict[str, Any]]:
+    def list_servers(self, template_name: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         List all currently running MCP servers.
+
+        Args:
+            template_name: Optional filter by template name
 
         Returns:
             List of running server information
         """
-        return self._core_client.list_servers()
+        try:
+            return self.deployment_manager.find_deployments_by_criteria(
+                template_name=template_name
+            )
+        except Exception as e:
+            logger.error(f"Failed to list servers: {e}")
+            return []
 
     def list_servers_by_template(self, template: str) -> List[Dict[str, Any]]:
         """
@@ -120,15 +192,17 @@ class MCPClient:
         Returns:
             List of running server information for the specified template
         """
-        return self._core_client.list_servers(template_name=template)
+        return self.list_servers(template_name=template)
 
     def start_server(
         self,
         template_id: str,
         configuration: Optional[Dict[str, Any]] = None,
         pull_image: bool = True,
-        transport: Optional[Literal["http", "stdio", "sse", "http-stream"]] = None,
+        transport: Optional[str] = None,
         port: Optional[int] = None,
+        name: Optional[str] = None,
+        timeout: int = 300,
     ) -> Optional[Dict[str, Any]]:
         """
         Start a new MCP server instance.
@@ -139,49 +213,65 @@ class MCPClient:
             pull_image: Whether to pull the latest image
             transport: Optional transport type (e.g., "http", "stdio")
             port: Optional port for HTTP transport
+            name: Custom deployment name
+            timeout: Deployment timeout
 
         Returns:
             Server deployment information or None if failed
         """
-        return self._core_client.start_server(
-            template_id, configuration, pull_image, transport, port
-        )
-        return self.server_manager.start_server(
-            template_id=template_id,
-            configuration=configuration,
-            pull_image=pull_image,
-            transport=transport,
-            port=port,
-        )
+        try:
+            config_sources = {"config_values": configuration or {}}
 
-    def stop_server(self, deployment_id: str) -> Dict[str, Any]:
+            deployment_options = DeploymentOptions(
+                name=name,
+                transport=transport,
+                port=port or 7071,
+                pull_image=pull_image,
+                timeout=timeout,
+            )
+
+            result = self.deployment_manager.deploy_template(
+                template_id, config_sources, deployment_options
+            )
+
+            return result.to_dict() if result.success else None
+
+        except Exception as e:
+            logger.error(f"Failed to start server for {template_id}: {e}")
+            return None
+
+    def stop_server(self, deployment_id: str, timeout: int = 30) -> Dict[str, Any]:
         """Stop a running server.
 
         Args:
             deployment_id: Unique identifier for the deployment
+            timeout: Timeout for graceful shutdown
 
         Returns:
             Result of the stop operation
         """
+        try:
+            # Disconnect any active connections first
+            if deployment_id in self._active_connections:
+                # Don't create task if no event loop is running
+                try:
+                    asyncio.get_running_loop()
+                    # Store task to prevent garbage collection
+                    task = asyncio.create_task(
+                        self._active_connections[deployment_id].disconnect()
+                    )
+                    # Store the task in a background set
+                    self._background_tasks.add(task)
+                    task.add_done_callback(self._background_tasks.discard)
+                except RuntimeError:
+                    # No event loop running, just remove the connection
+                    pass
+                del self._active_connections[deployment_id]
 
-        # Disconnect any active connections first
-        if deployment_id in self._active_connections:
-            # Don't create task if no event loop is running
-            try:
-                asyncio.get_running_loop()
-                # Store task to prevent garbage collection
-                task = asyncio.create_task(
-                    self._active_connections[deployment_id].disconnect()
-                )
-                # Store the task in a background set
-                self._background_tasks.add(task)
-                task.add_done_callback(self._background_tasks.discard)
-            except RuntimeError:
-                # No event loop running, just remove the connection
-                pass
-            del self._active_connections[deployment_id]
-
-        return self.server_manager.stop_server(deployment_id)
+            return self.deployment_manager.stop_deployment(deployment_id, timeout)
+        except Exception as e:
+            logger.error(f"Failed to stop server {deployment_id}: {e}")
+            return {"success": False, "error": str(e)}
 
     def stop_all_servers(self, template: str = None) -> bool:
         """
@@ -193,16 +283,23 @@ class MCPClient:
         Returns:
             True if all servers were stopped successfully, False otherwise
         """
+        try:
+            targets = self.deployment_manager.find_deployments_by_criteria(
+                template_name=template
+            )
 
-        deployments = self.server_manager.list_running_servers(template=template)
-        results = []
+            if not targets:
+                return True  # No servers to stop is considered success
 
-        for deployment in deployments:
-            if deployment.get("template") == template:
-                result = self.stop_server(deployment["id"])
-                results.append(result)
+            result = self.deployment_manager.stop_deployments_bulk(
+                [t["id"] for t in targets]
+            )
 
-        return all(results)
+            return result.get("success", False)
+
+        except Exception as e:
+            logger.error(f"Failed to stop all servers for template {template}: {e}")
+            return False
 
     def get_server_info(self, deployment_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -214,22 +311,37 @@ class MCPClient:
         Returns:
             Server information or None if not found
         """
+        try:
+            deployments = self.deployment_manager.find_deployments_by_criteria(
+                deployment_id=deployment_id
+            )
+            return deployments[0] if deployments else None
+        except Exception as e:
+            logger.error(f"Failed to get server info for {deployment_id}: {e}")
+            return None
 
-        return self.server_manager.get_server_info(deployment_id)
-
-    def get_server_logs(self, deployment_id: str, lines: int = 100) -> Optional[str]:
+    def get_server_logs(
+        self, deployment_id: str, lines: int = 100, follow: bool = False
+    ) -> Optional[str]:
         """
         Get logs from a running server.
 
         Args:
             deployment_id: ID of the deployment
             lines: Number of log lines to retrieve
+            follow: Whether to stream logs in real-time
 
         Returns:
             Log content or None if failed
         """
-
-        return self.server_manager.get_server_logs(deployment_id, lines)
+        try:
+            result = self.deployment_manager.get_deployment_logs(
+                deployment_id, lines=lines, follow=follow
+            )
+            return result.get("logs") if result.get("success") else None
+        except Exception as e:
+            logger.error(f"Failed to get server logs for {deployment_id}: {e}")
+            return None
 
     # Tool Discovery and Management
     def list_tools(
@@ -237,7 +349,8 @@ class MCPClient:
         template_name: Optional[str] = None,
         force_refresh: bool = False,
         force_server_discovery: bool = False,
-    ) -> Dict[str, Any]:
+        discovery_method: str = "auto",
+    ) -> List[Dict[str, Any]]:
         """
         List available tools from a template or all discovered tools.
 
@@ -245,28 +358,23 @@ class MCPClient:
             template_name: Specific template to get tools from
             force_refresh: Force refresh of tool cache
             force_server_discovery: Force discovery from server if available
+            discovery_method: How to discover tools (static, dynamic, image, auto)
 
         Returns:
-            Dictionary of tools with their descriptions
+            List of tools with their descriptions
         """
-        if force_refresh:
-            self.tool_manager.clear_cache(template_name=template_name)
+        try:
+            if force_refresh:
+                self.tool_manager.clear_cache(template_name=template_name)
 
-        if template_name:
-            # Get tools for a specific template
-            template_info = self.get_template_info(template_name)
-            if not template_info:
-                raise ValueError(f"Template '{template_name}' not found")
-
-            return self.tool_manager.discover_tools_from_template(
-                template_name=template_name,
-                template_config=template_info,
+            return self.tool_manager.list_tools(
+                template_name or "",
+                discovery_method=discovery_method,
                 force_refresh=force_refresh,
-                force_server_discovery=force_server_discovery,
             )
-        else:
-            # Return all discovered tools
-            return self.tool_manager.list_discovered_tools(template_name=template_name)
+        except Exception as e:
+            logger.error(f"Failed to list tools for {template_name}: {e}")
+            return []
 
     def call_tool(
         self,
@@ -275,6 +383,7 @@ class MCPClient:
         arguments: Dict[str, Any] = None,
         deployment_id: Optional[str] = None,
         server_config: Optional[Dict[str, Any]] = None,
+        timeout: int = 30,
     ) -> Optional[Dict[str, Any]]:
         """
         Call a tool on an MCP server.
@@ -288,50 +397,17 @@ class MCPClient:
             arguments: Arguments to pass to the tool
             deployment_id: Existing deployment to use (optional)
             server_config: Configuration for server if starting new instance
+            timeout: Timeout for the call
 
         Returns:
             Tool response or None if failed
         """
-        # Get template configuration
-        template_info = self.get_template_info(template_id)
-        if not template_info:
-            logger.error("Template %s not found", template_id)
-            return None
-
-        # If deployment_id is provided, try to use running server
-        if deployment_id:
-            server_info = self.get_server_info(deployment_id)
-            if server_info:
-                # Try HTTP call first if the server supports it
-                transport = server_info.get("transport", {})
-                if transport.get("default") == "http" or "http" in transport.get(
-                    "supported", []
-                ):
-                    server_url = f"http://localhost:{transport.get('port', 8080)}"
-                    try:
-                        return self.tool_caller.call_tool_http(
-                            server_url=server_url,
-                            tool_name=tool_name,
-                            arguments=arguments,
-                        )
-                    except Exception as e:
-                        logger.warning(
-                            "HTTP tool call failed, falling back to stdio: %s", e
-                        )
-
-        # Use stdio approach (default)
         try:
-            return self.tool_caller.call_tool_stdio(
-                template_name=template_id,
-                tool_name=tool_name,
-                arguments=arguments,
-                template_config=template_info,
-                config_values=server_config or {},
+            return self.tool_manager.call_tool(
+                template_id, tool_name, arguments or {}, timeout
             )
         except Exception as e:
-            logger.error(
-                "Failed to call tool %s on template %s: %s", tool_name, template_id, e
-            )
+            logger.error(f"Failed to call tool {tool_name}: {e}")
             return None
 
     # Direct Connection Methods
@@ -427,7 +503,88 @@ class MCPClient:
         del self._active_connections[connection_id]
         return True
 
-    # Cleanup
+    # Async versions of main methods
+    async def start_server_async(
+        self,
+        template_id: str,
+        configuration: Optional[Dict[str, Any]] = None,
+        pull_image: bool = True,
+        transport: Optional[str] = None,
+        port: Optional[int] = None,
+        name: Optional[str] = None,
+        timeout: int = 300,
+    ) -> Optional[Dict[str, Any]]:
+        """Async version of start_server."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            self.start_server,
+            template_id,
+            configuration,
+            pull_image,
+            transport,
+            port,
+            name,
+            timeout,
+        )
+
+    async def list_tools_async(
+        self,
+        template_name: Optional[str] = None,
+        force_refresh: bool = False,
+        discovery_method: str = "auto",
+    ) -> List[Dict[str, Any]]:
+        """Async version of list_tools."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, self.list_tools, template_name, force_refresh, False, discovery_method
+        )
+
+    async def call_tool_async(
+        self,
+        template_id: str,
+        tool_name: str,
+        arguments: Dict[str, Any] = None,
+        timeout: int = 30,
+    ) -> Optional[Dict[str, Any]]:
+        """Async version of call_tool."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, self.call_tool, template_id, tool_name, arguments, None, None, timeout
+        )
+
+    # Utility methods
+    def clear_caches(self) -> None:
+        """Clear all internal caches."""
+        try:
+            self.template_manager.refresh_cache()
+            self.tool_manager.clear_cache()
+        except Exception as e:
+            logger.error(f"Failed to clear caches: {e}")
+
+    def get_backend_type(self) -> str:
+        """Get the backend type being used."""
+        return self.backend_type
+
+    def set_backend_type(self, backend_type: str) -> None:
+        """
+        Change the backend type (reinitializes all managers).
+
+        Args:
+            backend_type: New backend type (docker, kubernetes, mock)
+        """
+        try:
+            self.backend_type = backend_type
+            self.template_manager = TemplateManager(backend_type)
+            self.deployment_manager = DeploymentManager(backend_type)
+            self.tool_manager = ToolManager(backend_type)
+            self.server_manager = ServerManager(backend_type)
+            self.tool_caller = ToolCaller(backend_type)
+        except Exception as e:
+            logger.error(f"Failed to set backend type to {backend_type}: {e}")
+            raise
+
+    # Cleanup methods
     async def cleanup(self) -> None:
         """Clean up all active connections and resources."""
         # Create a copy of keys to avoid modifying dict during iteration
@@ -442,3 +599,11 @@ class MCPClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         await self.cleanup()
+
+
+# Legacy compatibility - some methods for backward compatibility
+class CoreMCPClient(MCPClient):
+    """Legacy alias for backward compatibility."""
+
+    def __init__(self, backend_type: str = "docker"):
+        super().__init__(backend_type=backend_type)

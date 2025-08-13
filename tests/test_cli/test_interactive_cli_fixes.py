@@ -71,10 +71,28 @@ class TestInteractiveCLIParameterValidation:
         """Test that parameter validation detects missing required parameters."""
         # Create actual InteractiveCLI instance for the method we're testing
         real_cli = InteractiveCLI()
-        real_cli.enhanced_cli = mock_interactive_cli.enhanced_cli
+
+        # Mock the tool discovery
+        mock_tools = [
+            {
+                "name": "list_directory",
+                "description": "List directory contents",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Directory path to list",
+                        }
+                    },
+                    "required": ["path"],
+                },
+            }
+        ]
 
         # Test the parameter validation method
         with (
+            patch.object(real_cli.tool_manager, 'discover_tools_static', return_value=mock_tools),
             patch("rich.prompt.Confirm.ask", return_value=True),
             patch("rich.prompt.Prompt.ask", return_value="/test/path"),
             patch("rich.console.Console.print"),
@@ -93,9 +111,29 @@ class TestInteractiveCLIParameterValidation:
     def test_parameter_validation_with_existing_params(self, mock_interactive_cli):
         """Test that parameter validation succeeds when all required params are provided."""
         real_cli = InteractiveCLI()
-        real_cli.enhanced_cli = mock_interactive_cli.enhanced_cli
 
-        with patch("rich.console.Console.print"):
+        # Mock the tool discovery
+        mock_tools = [
+            {
+                "name": "list_directory",
+                "description": "List directory contents",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Directory path to list",
+                        }
+                    },
+                    "required": ["path"],
+                },
+            }
+        ]
+
+        with (
+            patch.object(real_cli.tool_manager, 'discover_tools_static', return_value=mock_tools),
+            patch("rich.console.Console.print")
+        ):
             result = real_cli._validate_and_get_tool_parameters(
                 "filesystem",
                 "list_directory",
@@ -109,14 +147,12 @@ class TestInteractiveCLIParameterValidation:
     def test_parameter_validation_graceful_failure(self, mock_interactive_cli):
         """Test that parameter validation fails gracefully when tool discovery fails."""
         real_cli = InteractiveCLI()
-        real_cli.enhanced_cli = mock_interactive_cli.enhanced_cli
 
         # Make tool discovery fail
-        mock_interactive_cli.enhanced_cli.tool_discovery.discover_tools.side_effect = (
-            Exception("Discovery failed")
-        )
-
-        with patch("rich.console.Console.print"):
+        with (
+            patch.object(real_cli.tool_manager, 'discover_tools_static', side_effect=Exception("Discovery failed")),
+            patch("rich.console.Console.print")
+        ):
             result = real_cli._validate_and_get_tool_parameters(
                 "filesystem", "list_directory", "{}", {"allowed_dirs": "/tmp"}
             )

@@ -64,15 +64,17 @@ class TestMockDeploymentService:
         assert success is False
 
     def test_get_deployment_status(self):
-        """Test getting deployment status."""
+        """Test getting deployment status via unified get_deployment_info method."""
         service = MockDeploymentService()
 
         # Deploy first
         result = service.deploy_template("test", {}, {"image": "test:latest"})
         deployment_name = result["deployment_name"]
 
-        # Get status
-        status = service.get_deployment_status(deployment_name)
+        # Get status with logs
+        status = service.get_deployment_info(deployment_name, include_logs=True)
         assert status["name"] == deployment_name
         assert status["status"] == "running"
+        assert status["running"] is True
         assert status["mock"] is True
+        assert "logs" in status

@@ -40,6 +40,9 @@ class TestInteractiveCLICommands:
             # Mock dependencies to avoid real initialization
             cli.enhanced_cli = MagicMock()
             cli.deployer = MagicMock()
+            cli.deployment_manager = MagicMock()
+            cli.tool_manager = MagicMock()
+            cli.template_manager = MagicMock()
             cli.cache = MagicMock()
             cli.beautifier = MagicMock()
             cli.http_tool_caller = MagicMock()
@@ -55,13 +58,13 @@ class TestInteractiveCLICommands:
             {"id": "2", "name": "test2", "status": "stopped"},
             {"id": "3", "name": "test3", "status": "running"},
         ]
-        cli.deployer.deployment_manager.list_deployments.return_value = mock_servers
+        cli.deployment_manager.list_deployments.return_value = mock_servers
 
         with patch("mcp_template.interactive_cli.console") as mock_console:
             cli.do_list_servers("")
 
             # Verify deployment manager was called
-            cli.deployer.deployment_manager.list_deployments.assert_called_once()
+            cli.deployment_manager.list_deployments.assert_called_once()
 
             # Verify beautifier was called with only running servers
             active_servers = [s for s in mock_servers if s["status"] == "running"]
@@ -79,7 +82,7 @@ class TestInteractiveCLICommands:
 
     def test_do_list_servers_error(self, cli):
         """Test do_list_servers command with error."""
-        cli.deployer.deployment_manager.list_deployments.side_effect = Exception(
+        cli.deployment_manager.list_deployments.side_effect = Exception(
             "Connection failed"
         )
 
@@ -103,24 +106,22 @@ class TestInteractiveCLICommands:
     def test_do_tools_basic(self, cli):
         """Test do_tools command with template name."""
         cli.enhanced_cli.templates = {"github": {"name": "github"}}
-        cli.enhanced_cli.list_tools = MagicMock()
+        cli.tool_manager.list_tools = MagicMock()
 
         with patch("mcp_template.interactive_cli.console"):
             cli.do_tools("github")
 
             # Verify list_tools was called with correct arguments
-            cli.enhanced_cli.list_tools.assert_called_once_with(
-                template_name="github",
-                no_cache=False,
-                refresh=False,
-                config_values={},
-                force_server_discovery=False,
+            cli.tool_manager.list_tools.assert_called_once_with(
+                template_or_id="github",
+                discovery_method="auto",
+                force_refresh=False,
             )
 
     def test_do_tools_with_force_server(self, cli):
         """Test do_tools command with --force-server flag."""
         cli.enhanced_cli.templates = {"github": {"name": "github"}}
-        cli.enhanced_cli.list_tools = MagicMock()
+        cli.tool_manager.list_tools = MagicMock()
 
         with patch("mcp_template.interactive_cli.console") as mock_console:
             cli.do_tools("github --force-server")
@@ -130,13 +131,11 @@ class TestInteractiveCLICommands:
                 "[yellow]🔍 Force server discovery mode - MCP probe only (no static fallback)[/yellow]"
             )
 
-            # Verify list_tools was called with force_server_discovery=True
-            cli.enhanced_cli.list_tools.assert_called_once_with(
-                template_name="github",
-                no_cache=False,
-                refresh=False,
-                config_values={},
-                force_server_discovery=True,
+            # Verify list_tools was called with force_refresh=True
+            cli.tool_manager.list_tools.assert_called_once_with(
+                template_or_id="github",
+                discovery_method="auto",
+                force_refresh=True,
             )
 
     def test_do_tools_with_help(self, cli):
@@ -157,19 +156,22 @@ class TestInteractiveCLICommands:
                 },
             }
         }
-        cli.enhanced_cli.list_tools = MagicMock()
+        cli.tool_manager.list_tools = MagicMock()
+        cli.template_manager.get_template_info = MagicMock(return_value={
+            "config_schema": {
+                "properties": {"token": {"env_mapping": "GITHUB_TOKEN"}}
+            }
+        })
         cli.session_configs["github"] = {"token": "test_token"}
 
         with patch.dict("os.environ", {"GITHUB_TOKEN": "env_token"}):
             cli.do_tools("github")
 
-            # Should use session config, not env var
-            cli.enhanced_cli.list_tools.assert_called_once_with(
-                template_name="github",
-                no_cache=False,
-                refresh=False,
-                config_values={"token": "test_token"},
-                force_server_discovery=False,
+            # Should call tool_manager with correct template
+            cli.tool_manager.list_tools.assert_called_once_with(
+                template_or_id="github",
+                discovery_method="auto",
+                force_refresh=False,
             )
 
     def test_do_config_no_args(self, cli):

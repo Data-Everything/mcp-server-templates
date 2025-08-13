@@ -15,24 +15,24 @@ class TestMCPClient:
     def mock_managers(self):
         """Mock the internal managers."""
         with (
-            patch("mcp_template.client.ServerManager") as mock_server_manager,
+            patch("mcp_template.client.DeploymentManager") as mock_deployment_manager,
             patch("mcp_template.client.ToolManager") as mock_tool_manager,
-            patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
+            patch("mcp_template.client.TemplateManager") as mock_template_manager,
         ):
 
             # Setup mock instances
-            mock_server_mgr = Mock()
+            mock_deploy_mgr = Mock()
             mock_tool_mgr = Mock()
-            mock_template_disc = Mock()
+            mock_template_mgr = Mock()
 
-            mock_server_manager.return_value = mock_server_mgr
+            mock_deployment_manager.return_value = mock_deploy_mgr
             mock_tool_manager.return_value = mock_tool_mgr
-            mock_template_discovery.return_value = mock_template_disc
+            mock_template_manager.return_value = mock_template_mgr
 
             yield {
-                "server_manager": mock_server_mgr,
+                "deployment_manager": mock_deploy_mgr,
                 "tool_manager": mock_tool_mgr,
-                "template_discovery": mock_template_disc,
+                "template_manager": mock_template_mgr,
             }
 
     def test_client_initialization(self, mock_managers):
@@ -45,52 +45,42 @@ class TestMCPClient:
 
     def test_client_initialization_with_custom_params(self, mock_managers):
         """Test client initialization with custom parameters."""
-        client = MCPClient(backend_type="kubernetes", timeout=60)
+        client = MCPClient(backend_type="mock", timeout=60)
 
-        assert client.backend_type == "kubernetes"
+        assert client.backend_type == "mock"
         assert client.timeout == 60
 
-    def test_list_templates(self, mock_managers):
+    def test_list_templates(self):
         """Test listing available templates."""
         client = MCPClient()
 
-        # Mock template data
-        expected_templates = {
-            "demo": {"name": "Demo Template", "version": "1.0.0"},
-            "filesystem": {"name": "Filesystem Template", "version": "1.0.0"},
-        }
-        mock_managers["server_manager"].list_available_templates.return_value = (
-            expected_templates
-        )
+        # Use real template manager to get actual template data
+        templates = client.list_templates()
+        
+        # Verify we get actual templates from discovery
+        assert isinstance(templates, dict)
+        assert "demo" in templates
+        
+        # Check demo template has expected structure
+        demo_template = templates["demo"]
+        assert "name" in demo_template
+        assert "transport" in demo_template
 
-        result = client.list_templates()
-
-        assert result == expected_templates
-        mock_managers["server_manager"].list_available_templates.assert_called_once()
-
-    def test_get_template_info(self, mock_managers):
+    def test_get_template_info(self):
         """Test getting template information."""
         client = MCPClient()
 
-        expected_info = {"name": "Demo Template", "version": "1.0.0"}
-        mock_managers["server_manager"].get_template_info.return_value = expected_info
-
+        # Test getting info for demo template
         result = client.get_template_info("demo")
-
-        assert result == expected_info
-        mock_managers["server_manager"].get_template_info.assert_called_once_with(
-            "demo"
-        )
-
-    def test_get_template_info_not_found(self, mock_managers):
-        """Test getting template information for non-existent template."""
-        client = MCPClient()
-
-        mock_managers["server_manager"].get_template_info.return_value = None
-
-        result = client.get_template_info("nonexistent")
-
-        assert result is None
+        
+        # Verify we get actual template info
+        assert result is not None
+        assert isinstance(result, dict)
+        assert "name" in result
+        
+        # Test getting info for non-existent template
+        non_existent = client.get_template_info("nonexistent")
+        assert non_existent is None
 
     def test_list_servers(self, mock_managers):
         """Test listing running servers."""
@@ -100,66 +90,74 @@ class TestMCPClient:
             {"id": "demo-1", "template": "demo", "status": "running"},
             {"id": "filesystem-1", "template": "filesystem", "status": "running"},
         ]
-        mock_managers["server_manager"].list_running_servers.return_value = (
+        mock_managers["deployment_manager"].find_deployments_by_criteria.return_value = (
             expected_servers
         )
 
         result = client.list_servers()
 
         assert result == expected_servers
-        mock_managers["server_manager"].list_running_servers.assert_called_once()
+        mock_managers["deployment_manager"].find_deployments_by_criteria.assert_called_once_with(
+            template_name=None
+        )
 
     def test_start_server(self, mock_managers):
         """Test starting a new server."""
         client = MCPClient()
 
-        expected_result = {
-            "id": "demo-1",
-            "status": "running",
-            "success": True,
-        }
-        mock_managers["server_manager"].start_server.return_value = expected_result
+        # Mock a successful DeploymentResult
+        from mcp_template.core.deployment_manager import DeploymentResult
+        mock_deployment_result = DeploymentResult(
+            success=True,
+            deployment_id="demo-1",
+            template="demo",
+            status="running"
+        )
+        
+        mock_managers["deployment_manager"].deploy_template.return_value = mock_deployment_result
 
         config = {"greeting": "Hello"}
         result = client.start_server("demo", config)
 
-        assert result == expected_result
-        mock_managers["server_manager"].start_server.assert_called_once_with(
-            template_id="demo",
-            configuration=config,
-            pull_image=True,
-            transport=None,
-            port=None,
-        )
+        assert result["deployment_id"] == "demo-1"
+        assert result["status"] == "running"
+        assert result["success"] is True
+        mock_managers["deployment_manager"].deploy_template.assert_called_once()
 
     def test_start_server_without_config(self, mock_managers):
         """Test starting a server without configuration."""
         client = MCPClient()
 
-        expected_result = {"id": "demo-1", "status": "running", "success": True}
-        mock_managers["server_manager"].start_server.return_value = expected_result
+        # Mock a successful DeploymentResult
+        from mcp_template.core.deployment_manager import DeploymentResult
+        mock_deployment_result = DeploymentResult(
+            success=True,
+            deployment_id="demo-1",
+            template="demo",
+            status="running"
+        )
+        
+        mock_managers["deployment_manager"].deploy_template.return_value = mock_deployment_result
 
         result = client.start_server("demo")
 
-        assert result == expected_result
-        mock_managers["server_manager"].start_server.assert_called_once_with(
-            template_id="demo",
-            configuration=None,
-            pull_image=True,
-            transport=None,
-            port=None,
-        )
+        assert result["deployment_id"] == "demo-1"
+        assert result["status"] == "running"
+        assert result["success"] is True
+        mock_managers["deployment_manager"].deploy_template.assert_called_once()
 
     def test_stop_server(self, mock_managers):
         """Test stopping a server."""
         client = MCPClient()
 
-        mock_managers["server_manager"].stop_server.return_value = True
+        mock_stop_result = {"success": True, "deployment_id": "demo-1"}
+        mock_managers["deployment_manager"].stop_deployment.return_value = mock_stop_result
 
         result = client.stop_server("demo-1")
 
-        assert result is True
-        mock_managers["server_manager"].stop_server.assert_called_once_with("demo-1")
+        assert result["success"] is True
+        assert result["deployment_id"] == "demo-1"
+        mock_managers["deployment_manager"].stop_deployment.assert_called_once_with("demo-1", 30)
 
     def test_stop_server_with_active_connection(self, mock_managers):
         """Test stopping a server with active connection."""
@@ -169,26 +167,27 @@ class TestMCPClient:
         mock_connection = AsyncMock()
         client._active_connections["demo-1"] = mock_connection
 
-        mock_managers["server_manager"].stop_server.return_value = True
+        mock_stop_result = {"success": True, "deployment_id": "demo-1"}
+        mock_managers["deployment_manager"].stop_deployment.return_value = mock_stop_result
 
         result = client.stop_server("demo-1")
 
-        assert result is True
+        assert result["success"] is True
         assert "demo-1" not in client._active_connections
-        mock_managers["server_manager"].stop_server.assert_called_once_with("demo-1")
+        mock_managers["deployment_manager"].stop_deployment.assert_called_once_with("demo-1", 30)
 
     def test_get_server_info(self, mock_managers):
         """Test getting server information."""
         client = MCPClient()
 
-        expected_info = {"id": "demo-1", "template": "demo", "status": "running"}
-        mock_managers["server_manager"].get_server_info.return_value = expected_info
+        expected_info = [{"id": "demo-1", "template": "demo", "status": "running"}]
+        mock_managers["deployment_manager"].find_deployments_by_criteria.return_value = expected_info
 
         result = client.get_server_info("demo-1")
 
-        assert result == expected_info
-        mock_managers["server_manager"].get_server_info.assert_called_once_with(
-            "demo-1"
+        assert result == expected_info[0]
+        mock_managers["deployment_manager"].find_deployments_by_criteria.assert_called_once_with(
+            deployment_id="demo-1"
         )
 
     def test_get_server_logs(self, mock_managers):
@@ -196,13 +195,14 @@ class TestMCPClient:
         client = MCPClient()
 
         expected_logs = "Server started successfully\nProcessing requests..."
-        mock_managers["server_manager"].get_server_logs.return_value = expected_logs
+        log_result = {"success": True, "logs": expected_logs}
+        mock_managers["deployment_manager"].get_deployment_logs.return_value = log_result
 
         result = client.get_server_logs("demo-1")
 
         assert result == expected_logs
-        mock_managers["server_manager"].get_server_logs.assert_called_once_with(
-            "demo-1", 100
+        mock_managers["deployment_manager"].get_deployment_logs.assert_called_once_with(
+            "demo-1", lines=100, follow=False
         )
 
     def test_get_server_logs_custom_lines(self, mock_managers):
@@ -210,13 +210,14 @@ class TestMCPClient:
         client = MCPClient()
 
         expected_logs = "Recent logs..."
-        mock_managers["server_manager"].get_server_logs.return_value = expected_logs
+        log_result = {"success": True, "logs": expected_logs}
+        mock_managers["deployment_manager"].get_deployment_logs.return_value = log_result
 
         result = client.get_server_logs("demo-1", lines=50)
 
         assert result == expected_logs
-        mock_managers["server_manager"].get_server_logs.assert_called_once_with(
-            "demo-1", 50
+        mock_managers["deployment_manager"].get_deployment_logs.assert_called_once_with(
+            "demo-1", lines=50, follow=False
         )
 
     def test_list_tools_cached(self, mock_managers):
@@ -228,65 +229,42 @@ class TestMCPClient:
             {"name": "greet", "description": "Greet someone"},
         ]
 
-        # Setup template info mock
-        template_info = {"template_dir": "/path/to/template"}
-        mock_managers["tool_manager"].discover_tools_from_template.return_value = (
-            expected_tools
-        )
-        mock_managers["server_manager"].get_template_info.return_value = template_info
+        mock_managers["tool_manager"].list_tools.return_value = expected_tools
 
         result = client.list_tools("demo")
         assert result == expected_tools
-        mock_managers[
-            "tool_manager"
-        ].discover_tools_from_template.assert_called_once_with(
-            template_name="demo",
-            template_config=template_info,
-            force_refresh=False,
-            force_server_discovery=False,
+        mock_managers["tool_manager"].list_tools.assert_called_once_with(
+            "demo", discovery_method="auto", force_refresh=False
         )
 
     def test_list_tools_force_refresh(self, mock_managers):
         """Test listing tools with forced refresh."""
         client = MCPClient()
 
-        # Setup mocks
-        template_info = {"template_dir": "/path/to/template"}
-        mock_managers["server_manager"].get_template_info.return_value = template_info
+        expected_tools = [
+            {"name": "echo", "description": "Echo a message"},
+            {"name": "greet", "description": "Greet someone"},
+        ]
 
-        discovery_result = {
-            "tools": [
-                {"name": "echo", "description": "Echo a message"},
-                {"name": "greet", "description": "Greet someone"},
-            ]
-        }
-        mock_managers["tool_manager"].discover_tools_from_template.return_value = (
-            discovery_result
-        )
+        mock_managers["tool_manager"].list_tools.return_value = expected_tools
 
         result = client.list_tools("demo", force_refresh=True)
 
-        assert result == discovery_result
-        mock_managers["server_manager"].get_template_info.assert_called_once_with(
-            "demo"
-        )
-        mock_managers[
-            "tool_manager"
-        ].discover_tools_from_template.assert_called_once_with(
-            template_name="demo",
-            template_config=template_info,
-            force_refresh=True,
-            force_server_discovery=False,
+        assert result == expected_tools
+        mock_managers["tool_manager"].clear_cache.assert_called_once_with(template_name="demo")
+        mock_managers["tool_manager"].list_tools.assert_called_once_with(
+            "demo", discovery_method="auto", force_refresh=True
         )
 
     def test_list_tools_template_not_found(self, mock_managers):
         """Test listing tools for non-existent template."""
         client = MCPClient()
 
-        mock_managers["server_manager"].get_template_info.return_value = None
+        mock_managers["tool_manager"].list_tools.return_value = []
 
-        with pytest.raises(ValueError, match="Template 'nonexistent' not found"):
-            client.list_tools("nonexistent")
+        result = client.list_tools("nonexistent")
+        
+        assert result == []
 
     @pytest.mark.asyncio
     async def test_connect_stdio(self, mock_managers):

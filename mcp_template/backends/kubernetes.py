@@ -36,6 +36,10 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         """Delete Kubernetes deployment."""
         raise NotImplementedError
 
-    def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:
-        """Get Kubernetes deployment status."""
+    def stop_deployment(self, deployment_name: str, force: bool = False) -> bool:
+        """Stop Kubernetes deployment."""
+        raise NotImplementedError
+
+    def get_deployment_info(self, deployment_name: str, include_logs: bool = False, lines: int = 10) -> Dict[str, Any]:
+        """Get detailed Kubernetes deployment information."""
         raise NotImplementedError

@@ -263,7 +263,7 @@ class TestVolumeAndCommandIntegrationWithDeployer:
         "mcp_template.backends.docker.DockerDeploymentService._ensure_docker_available"
     )
     @patch("mcp_template.backends.docker.DockerDeploymentService._run_command")
-    @patch("mcp_template.manager.DeploymentManager.deploy_template")
+    @patch("mcp_template.core.deployment_manager.DeploymentManager.deploy_template")
     def test_deployer_handles_volume_and_command_processing(
         self, mock_deploy, mock_docker, mock_docker_available
     ):

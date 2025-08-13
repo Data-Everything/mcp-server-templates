@@ -22,6 +22,7 @@ class MockDeploymentService(BaseDeploymentBackend):
     def __init__(self):
         """Initialize mock service."""
         self.deployments = {}
+        self.backend_type = "mock"
 
     def deploy_template(
         self,
@@ -102,34 +103,22 @@ class MockDeploymentService(BaseDeploymentBackend):
             raise ValueError(f"Deployment {deployment_name} not found")
         return False
 
-    def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:
-        """Get mock deployment status."""
-        if deployment_name in self.deployments:
-            info = self.deployments[deployment_name]
-            return {
-                "name": deployment_name,
-                "template": info["template_id"],
-                "status": "running",
-                "created": info["created_at"],
-                "mock": True,
-            }
-        raise ValueError(f"Deployment {deployment_name} not found")
-
-    def get_deployment_info(self, deployment_name: str) -> Dict[str, Any]:
+    def get_deployment_info(self, deployment_name: str, include_logs: bool = False, lines: int = 10) -> Dict[str, Any]:
         """Get detailed mock deployment info."""
         if deployment_name in self.deployments:
-            return self.deployments[deployment_name]
+            info = self.deployments[deployment_name].copy()
+            # Add unified fields to match docker backend
+            info.update({
+                "name": deployment_name,
+                "status": "running",
+                "running": True,
+                "mock": True,
+            })
+            # Add logs if requested
+            if include_logs:
+                info["logs"] = f"Mock logs for {deployment_name} (last {lines} lines)"
+            return info
         return None
-
-    def deploy(
-        self,
-        template_id: str,
-        config: Dict[str, Any],
-        template_data: Dict[str, Any],
-        pull_image: bool = True,
-    ) -> Dict[str, Any]:
-        """Alias for deploy_template for test compatibility."""
-        return self.deploy_template(template_id, config, template_data, pull_image)
 
     def stop_deployment(self, deployment_name: str, force: bool = False) -> bool:
         """Stop mock deployment."""
@@ -140,22 +129,23 @@ class MockDeploymentService(BaseDeploymentBackend):
         return False
 
     def get_deployment_logs(
-        self, deployment_name: str, tail: int = 100, follow: bool = False
-    ) -> List[str]:
+        self, deployment_name: str, lines: int = 100, follow: bool = False
+    ) -> str:
         """Get mock deployment logs."""
         if deployment_name in self.deployments:
-            return [
-                f"Mock log line 1 for {deployment_name}",
-                f"Mock log line 2 for {deployment_name}",
-                f"Mock log line 3 for {deployment_name}",
-            ]
-        return []
+            return f"Mock log line 1 for {deployment_name}\nMock log line 2 for {deployment_name}\nMock log line 3 for {deployment_name}"
+        return ""
 
-    def stream_deployment_logs(self, deployment_name: str, tail: int = 100):
+    def force_stop_deployment(self, deployment_name: str) -> bool:
+        """Force stop mock deployment."""
+        return self.stop_deployment(deployment_name, force=True)
+
+    def stream_deployment_logs(self, deployment_name: str, lines: int = 100):
         """Stream mock deployment logs."""
-        logs = self.get_deployment_logs(deployment_name, tail)
-        for log in logs:
-            yield log
+        logs = self.get_deployment_logs(deployment_name, lines)
+        for log_line in logs.split('\n'):
+            if log_line:
+                yield log_line
 
     def list_all_deployments(self) -> List[Dict[str, Any]]:
         """Alias for list_deployments for test compatibility."""
@@ -171,3 +161,13 @@ class MockDeploymentService(BaseDeploymentBackend):
     ) -> str:
         """Mock container deployment method for test compatibility."""
         return f"mock-container-{container_name}"
+
+    def deploy(
+        self,
+        template_id: str,
+        config: Dict[str, Any],
+        template_data: Dict[str, Any],
+        pull_image: bool = True,
+    ) -> Dict[str, Any]:
+        """Alias for deploy_template for test compatibility."""
+        return self.deploy_template(template_id, config, template_data, pull_image)

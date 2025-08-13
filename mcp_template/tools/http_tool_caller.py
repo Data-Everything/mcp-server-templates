@@ -61,17 +61,16 @@ class HTTPToolCaller:
         if not self.session:
             raise RuntimeError("HTTPToolCaller must be used as async context manager")
 
-        # Construct MCP call URL
-        if not server_url.endswith("/"):
-            server_url += "/"
-
-        call_url = f"{server_url}tools/call"
-
-        # Prepare request payload
-        payload = {"name": tool_name, "arguments": arguments}
+        # Construct MCP JSON-RPC request
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": arguments}
+        }
 
         if session_id:
-            payload["sessionId"] = session_id
+            payload["params"]["sessionId"] = session_id
 
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
@@ -79,19 +78,35 @@ class HTTPToolCaller:
             logger.info("Calling tool %s on %s", tool_name, server_url)
 
             async with self.session.post(
-                call_url, json=payload, headers=headers
+                server_url, json=payload, headers=headers
             ) as response:
                 response_text = await response.text()
 
                 if response.status == 200:
                     try:
                         result = json.loads(response_text)
-                        return {
-                            "status": "success",
-                            "result": result,
-                            "tool_name": tool_name,
-                            "method": "http",
-                        }
+                        # Handle JSON-RPC response format
+                        if "result" in result:
+                            return {
+                                "status": "success",
+                                "result": result["result"],
+                                "tool_name": tool_name,
+                                "method": "http",
+                            }
+                        elif "error" in result:
+                            return {
+                                "status": "error",
+                                "error": result["error"],
+                                "tool_name": tool_name,
+                                "method": "http",
+                            }
+                        else:
+                            return {
+                                "status": "success",
+                                "result": result,
+                                "tool_name": tool_name,
+                                "method": "http",
+                            }
                     except json.JSONDecodeError:
                         return {
                             "status": "success",
@@ -179,28 +194,44 @@ class HTTPToolCaller:
         if not self.session:
             raise RuntimeError("HTTPToolCaller must be used as async context manager")
 
-        # Construct MCP tools URL
-        if not server_url.endswith("/"):
-            server_url += "/"
+        # Construct MCP JSON-RPC request for tools/list
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/list"
+        }
 
-        tools_url = f"{server_url}tools/list"
-
-        headers = {"Accept": "application/json"}
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
         try:
             logger.info("Listing tools from %s", server_url)
 
-            async with self.session.get(tools_url, headers=headers) as response:
+            async with self.session.post(server_url, json=payload, headers=headers) as response:
                 response_text = await response.text()
 
                 if response.status == 200:
                     try:
                         result = json.loads(response_text)
-                        return {
-                            "status": "success",
-                            "tools": result.get("tools", []),
-                            "method": "http",
-                        }
+                        # Handle JSON-RPC response format
+                        if "result" in result:
+                            tools = result["result"].get("tools", [])
+                            return {
+                                "status": "success",
+                                "tools": tools,
+                                "method": "http",
+                            }
+                        elif "error" in result:
+                            return {
+                                "status": "error",
+                                "error": result["error"],
+                                "method": "http",
+                            }
+                        else:
+                            return {
+                                "status": "success",
+                                "tools": result.get("tools", []),
+                                "method": "http",
+                            }
                     except json.JSONDecodeError:
                         return {
                             "status": "error",

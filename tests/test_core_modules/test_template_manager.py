@@ -99,10 +99,11 @@ class TestTemplateManager:
         }
 
         # Mock backend to return deployments only for demo
-        def mock_list_deployments(template_name):
-            if template_name == "demo":
-                return [{"id": "demo-123", "template": "demo"}]
-            return []
+        def mock_list_deployments():
+            return [
+                {"id": "demo-123", "template": "demo"},
+                {"id": "demo-456", "template": "demo"},
+            ]
 
         with patch.object(
             self.template_manager.template_discovery,

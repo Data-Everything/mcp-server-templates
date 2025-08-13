@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from mcp_template.deployer import MCPDeployer
 from mcp_template.exceptions import StdIoTransportDeploymentError
-from mcp_template.manager import DeploymentManager
+from mcp_template.core.deployment_manager import DeploymentManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.tools.docker_probe import DockerProbe
 from mcp_template.utils.config_processor import ConfigProcessor
@@ -317,8 +317,8 @@ class ServerManager:
         # Note: lines parameter is kept for API compatibility but not used
         # by the underlying backend which returns fixed log length
         try:
-            result = self.deployment_manager.get_deployment_status(deployment_id)
-            if "logs" in result:
+            result = self.deployment_manager.backend.get_deployment_info(deployment_id, include_logs=True)
+            if result and "logs" in result:
                 return result["logs"]
             else:
                 logger.error("No logs available for %s", deployment_id)
