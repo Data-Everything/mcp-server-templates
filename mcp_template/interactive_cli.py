@@ -31,7 +31,7 @@ from mcp_template.core import (
     OutputFormatter,
 )
 from mcp_template.tools.cache import CacheManager
-from mcp_template.tools.http_tool_caller import HTTPToolCaller
+from mcp_template.core.tool_caller import ToolCaller
 from mcp_template.utils.config_processor import ConfigProcessor
 
 console = Console()
@@ -991,7 +991,7 @@ class InteractiveCLI(cmd2.Cmd):
         # Keep utility components
         self.cache = CacheManager()
         self.beautifier = ResponseBeautifier()
-        self.http_tool_caller = HTTPToolCaller()
+        self.tool_caller = ToolCaller(backend_type="docker", caller_type="cli")
 
         # Session state
         self.session_configs = {}  # Template name -> config

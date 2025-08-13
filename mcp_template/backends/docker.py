@@ -139,15 +139,15 @@ class DockerDeploymentService(BaseDeploymentBackend):
         # If stdio transport is detected, prevent deployment
         if is_stdio is True or (is_stdio is None and default_transport == "stdio"):
             # Import here to avoid circular import
-            from mcp_template.tools.discovery import ToolDiscovery
+            from mcp_template.core.tool_manager import ToolManager
 
-            tool_discovery = ToolDiscovery()
+            tool_manager = ToolManager(backend_type="docker")
 
             # Get available tools for this template
             try:
-                discovery_result = tool_discovery.discover_tools(
+                discovery_result = tool_manager.list_tools(
                     template_id,
-                    template_data,
+                    discovery_method="static",
                     use_cache=True,
                     force_refresh=False,
                 )

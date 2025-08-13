@@ -5,7 +5,7 @@ Mock deployment service for testing.
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from mcp_template.backends import BaseDeploymentBackend
 
@@ -175,3 +175,30 @@ class MockDeploymentService(BaseDeploymentBackend):
     ) -> Dict[str, Any]:
         """Alias for deploy_template for test compatibility."""
         return self.deploy_template(template_id, config, template_data, pull_image)
+
+    def cleanup_dangling_images(self) -> Dict[str, Any]:
+        """Mock implementation for cleanup_dangling_images."""
+        logger.info("Mock: Cleaning up dangling images")
+        return {
+            "success": True,
+            "cleaned": 0,
+            "errors": [],
+            "message": "Mock cleanup - no actual images to clean"
+        }
+
+    def cleanup_stopped_containers(self) -> Dict[str, Any]:
+        """Mock implementation for cleanup_stopped_containers."""
+        logger.info("Mock: Cleaning up stopped containers")
+        return {
+            "success": True,
+            "cleaned": 0,
+            "errors": [],
+            "message": "Mock cleanup - no actual containers to clean"
+        }
+
+    def connect_to_deployment(self, deployment_id: str) -> Optional[str]:
+        """Mock implementation for connect_to_deployment."""
+        logger.info("Mock: Connecting to deployment %s", deployment_id)
+        if deployment_id in self.deployments:
+            return f"mock-connection-{deployment_id}"
+        return None

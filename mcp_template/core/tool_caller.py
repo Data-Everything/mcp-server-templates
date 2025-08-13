@@ -7,12 +7,13 @@ the CLI and Client components, ensuring consistent behavior and reducing code du
 
 import json
 import logging
+import requests
 from dataclasses import dataclass
 from typing import Any, Dict, List, Literal, Optional
 
 from mcp_template.backends.docker import DockerDeploymentService
 from mcp_template.exceptions import ToolCallError
-from mcp_template.tools.http_tool_caller import HTTPToolCaller
+from mcp_template.core.config_manager import ConfigManager
 from mcp_template.utils.config_processor import ConfigProcessor
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,6 @@ class ToolCaller:
         self.backend_type = backend_type
         self.timeout = timeout
         self.caller_type = caller_type
-        self.http_caller = HTTPToolCaller(timeout=timeout)
 
         # Import here to avoid circular imports
         from mcp_template.utils.config_processor import ConfigProcessor
@@ -73,7 +73,20 @@ class ToolCaller:
         else:
             self.docker_service = None  # For mock/other backends
 
-        self.http_tool_caller = HTTPToolCaller(timeout=timeout)
+    def _call_http_api(self, url: str, method: str = "GET", data: Dict = None) -> Dict:
+        """Make HTTP API call with error handling."""
+        try:
+            if method == "POST":
+                response = requests.post(url, json=data, timeout=self.timeout)
+            else:
+                response = requests.get(url, timeout=self.timeout)
+            
+            response.raise_for_status()
+            return {"status": "success", "data": response.json()}
+        except requests.exceptions.RequestException as e:
+            return {"status": "error", "error": str(e)}
+        except Exception as e:
+            return {"status": "error", "error": f"Unexpected error: {e}"}
 
     def list_tools_from_server(
         self, endpoint: str, transport: str, timeout: int = 30
@@ -81,9 +94,17 @@ class ToolCaller:
         """List tools from a running MCP server."""
         try:
             if transport == "http":
-                result = self.http_caller.list_tools_sync(endpoint)
+                # Try standard tools endpoint
+                tools_url = f"{endpoint.rstrip('/')}/tools"
+                result = self._call_http_api(tools_url)
                 if result.get("status") == "success":
-                    return result.get("tools", [])
+                    data = result.get("data", {})
+                    # Handle different response formats
+                    if isinstance(data, list):
+                        return data
+                    elif isinstance(data, dict) and "tools" in data:
+                        return data["tools"]
+                    return []
             # For other transports, return empty list for now
             return []
         except Exception as e:
@@ -101,11 +122,11 @@ class ToolCaller:
         """Call a tool on a running MCP server."""
         try:
             if transport == "http":
-                result = self.http_caller.call_tool_sync(
-                    endpoint, tool_name, parameters
-                )
+                # Call HTTP tool endpoint
+                tool_url = f"{endpoint.rstrip('/')}/call/{tool_name}"
+                result = self._call_http_api(tool_url, "POST", parameters)
                 if result.get("status") == "success":
-                    return {"success": True, "result": result.get("result")}
+                    return {"success": True, "result": result.get("data")}
                 else:
                     return {
                         "success": False,
@@ -232,13 +253,13 @@ class ToolCaller:
             Tool response or None if failed
         """
         try:
-            result = self.http_tool_caller.call_tool_sync(
-                server_url=server_url, tool_name=tool_name, arguments=arguments
-            )
+            # Call HTTP tool endpoint
+            tool_url = f"{server_url.rstrip('/')}/call/{tool_name}"
+            result = self._call_http_api(tool_url, "POST", arguments)
 
             if result.get("status") == "success":
                 logger.debug("Tool executed successfully via HTTP")
-                return result.get("result")
+                return result.get("data")
             else:
                 logger.error("HTTP tool call failed: %s", result.get("error"))
                 return None

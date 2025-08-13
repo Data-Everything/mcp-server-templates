@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from mcp_template.cli import EnhancedCLI
-from mcp_template.tools.discovery import ToolDiscovery
+from mcp_template.core.tool_manager import ToolManager
 from mcp_template.tools.docker_probe import DockerProbe
 from mcp_template.tools.mcp_client_probe import MCPClientProbe
 
@@ -20,7 +20,7 @@ class TestDockerDiscoveryIntegration:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.discovery = ToolDiscovery()
+        self.tool_manager = ToolManager(backend_type="docker")
         self.docker_probe = DockerProbe()
         self.mcp_client = MCPClientProbe()
         self.cli = EnhancedCLI()

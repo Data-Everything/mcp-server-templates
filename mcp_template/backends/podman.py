@@ -375,17 +375,15 @@ class PodmanDeploymentService(BaseDeploymentBackend):
         template_transport = template_data.get("transport", {})
         default_transport = template_transport.get("default", "http")
         if is_stdio is True or (is_stdio is None and default_transport == "stdio"):
-            from mcp_template.tools.discovery import ToolDiscovery
+            from mcp_template.core.tool_manager import ToolManager
 
-            tool_discovery = ToolDiscovery()
+            tool_manager = ToolManager(backend_type="podman")
             try:
-                discovery_result = tool_discovery.discover_tools(
+                tools = tool_manager.list_tools(
                     template_id,
-                    template_data,
-                    use_cache=True,
+                    discovery_method="static",
                     force_refresh=False,
                 )
-                tools = discovery_result.get("tools", [])
                 tool_names = [tool.get("name", "unknown") for tool in tools]
             except Exception as e:
                 logger.warning("Failed to discover tools for %s: %s", template_id, e)

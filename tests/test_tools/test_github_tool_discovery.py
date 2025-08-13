@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from mcp_template.tools.discovery import ToolDiscovery
+from mcp_template.core.tool_manager import ToolManager
 
 
 @pytest.mark.unit
@@ -23,7 +23,7 @@ class TestGitHubToolDiscovery:
         self.template_dir = self.temp_dir / "github"
         self.template_dir.mkdir(parents=True)
 
-        self.discovery = ToolDiscovery(cache_dir=self.cache_dir)
+        self.tool_manager = ToolManager(backend_type="docker")
 
     def teardown_method(self):
         """Clean up test environment."""
@@ -476,7 +476,7 @@ class TestGitHubToolDiscoveryIntegration:
 
     def setup_method(self):
         """Set up integration test environment."""
-        self.discovery = ToolDiscovery()
+        self.tool_manager = ToolManager(backend_type="docker")
 
     @pytest.mark.skip(reason="Integration test requires real GitHub token")
     def test_github_real_token_dynamic_discovery(self):

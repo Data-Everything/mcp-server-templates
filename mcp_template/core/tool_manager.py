@@ -686,9 +686,22 @@ class ToolManager:
         # No tools found
         return []
 
-    def clear_cache(self):
-        """Clear the tool discovery cache."""
-        self._cache = {}
+    def clear_cache(self, template_name: Optional[str] = None):
+        """
+        Clear the tool discovery cache.
+        
+        Args:
+            template_name: Optional template name to clear specific cache entry.
+                          If None, clears entire cache.
+        """
+        if template_name:
+            # Clear cache for specific template
+            keys_to_remove = [key for key in self._cache.keys() if template_name in key]
+            for key in keys_to_remove:
+                del self._cache[key]
+        else:
+            # Clear entire cache
+            self._cache = {}
 
     def get_cached_tools(
         self, template_or_id: str, discovery_method: str = "auto"
