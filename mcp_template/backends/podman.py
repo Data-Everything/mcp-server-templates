@@ -682,7 +682,9 @@ class PodmanDeploymentService(BaseDeploymentBackend):
             logger.error("Failed to delete deployment %s: %s", deployment_name, e)
             return False
 
-    def get_deployment_status(self, deployment_name: str, lines: int = 10) -> Dict[str, Any]:
+    def get_deployment_status(
+        self, deployment_name: str, lines: int = 10
+    ) -> Dict[str, Any]:
         """
         Get detailed status of a deployment including logs.
 
@@ -793,11 +795,11 @@ class PodmanDeploymentService(BaseDeploymentBackend):
                 containers = json.loads(result.stdout)
                 if containers:
                     container = containers[0]
-                    
+
                     # Extract relevant information
                     labels = container.get("Config", {}).get("Labels", {}) or {}
                     template_name = labels.get("template", "unknown")
-                    
+
                     # Get port information
                     ports = container.get("NetworkSettings", {}).get("Ports", {})
                     port_display = ""
@@ -807,7 +809,7 @@ class PodmanDeploymentService(BaseDeploymentBackend):
                             if host_port:
                                 port_display = host_port
                                 break
-                    
+
                     return {
                         "id": container.get("Id", "unknown"),
                         "name": container.get("Name", "").lstrip("/"),
@@ -818,7 +820,7 @@ class PodmanDeploymentService(BaseDeploymentBackend):
                         "created": container.get("Created", ""),
                         "raw_container": container,  # Include full container data for advanced operations
                     }
-            
+
             return None
 
         except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:

@@ -92,7 +92,9 @@ class TestInteractiveCLIParameterValidation:
 
         # Test the parameter validation method
         with (
-            patch.object(real_cli.tool_manager, 'discover_tools_static', return_value=mock_tools),
+            patch.object(
+                real_cli.tool_manager, "discover_tools_static", return_value=mock_tools
+            ),
             patch("rich.prompt.Confirm.ask", return_value=True),
             patch("rich.prompt.Prompt.ask", return_value="/test/path"),
             patch("rich.console.Console.print"),
@@ -131,8 +133,10 @@ class TestInteractiveCLIParameterValidation:
         ]
 
         with (
-            patch.object(real_cli.tool_manager, 'discover_tools_static', return_value=mock_tools),
-            patch("rich.console.Console.print")
+            patch.object(
+                real_cli.tool_manager, "discover_tools_static", return_value=mock_tools
+            ),
+            patch("rich.console.Console.print"),
         ):
             result = real_cli._validate_and_get_tool_parameters(
                 "filesystem",
@@ -150,8 +154,12 @@ class TestInteractiveCLIParameterValidation:
 
         # Make tool discovery fail
         with (
-            patch.object(real_cli.tool_manager, 'discover_tools_static', side_effect=Exception("Discovery failed")),
-            patch("rich.console.Console.print")
+            patch.object(
+                real_cli.tool_manager,
+                "discover_tools_static",
+                side_effect=Exception("Discovery failed"),
+            ),
+            patch("rich.console.Console.print"),
         ):
             result = real_cli._validate_and_get_tool_parameters(
                 "filesystem", "list_directory", "{}", {"allowed_dirs": "/tmp"}

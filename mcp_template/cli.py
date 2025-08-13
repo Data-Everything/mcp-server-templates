@@ -89,10 +89,11 @@ class CLI:
                 self.formatter.print_error("Template name or custom name is required")
                 sys.exit(1)
 
-
             if template_name and not custom_name:
-                running_deployments = self.deployment_manager.find_deployments_by_criteria(
-                    template_name=template_name, status="running"
+                running_deployments = (
+                    self.deployment_manager.find_deployments_by_criteria(
+                        template_name=template_name, status="running"
+                    )
                 )
                 if not running_deployments:
                     self.formatter.print_error(
@@ -105,11 +106,9 @@ class CLI:
                     )
                     sys.exit(1)
                 else:
-                    self.formatter.print_info(
-                        "Connecting to running deployment..."
-                    )
+                    self.formatter.print_info("Connecting to running deployment...")
                     custom_name = running_deployments[0].get("id", None)
-            
+
             if custom_name:
                 self.deployment_manager.connect_to_deployment(custom_name)
             else:
@@ -117,8 +116,6 @@ class CLI:
                     "Failed to connect to deployment. Please create an issue in the project repo"
                 )
                 sys.exit(1)
-
-                
 
             # Use deployment manager to access shell (placeholder)
             self.formatter.print_info(
@@ -148,7 +145,9 @@ class CLI:
             # Parse CLI arguments into structured config
             config_sources = {
                 "config_file": getattr(args, "config_file", None),
-                "env_vars": self._parse_key_value_args(getattr(args, "env", None) or []),
+                "env_vars": self._parse_key_value_args(
+                    getattr(args, "env", None) or []
+                ),
                 "config_values": self._parse_key_value_args(
                     getattr(args, "config", None) or []
                 ),
@@ -393,11 +392,15 @@ class EnhancedCLI(CLI):
             if template_name:
                 tools = self.tool_manager.list_tools(template_name)
             elif image_name:
-                tools = self.tool_manager.discover_tools_from_image(image_name, connect_timeout)
+                tools = self.tool_manager.discover_tools_from_image(
+                    image_name, connect_timeout
+                )
             else:
                 # For listing all tools, we could list from all templates, but that's complex
                 # For now, just show a message
-                self.console.print("[yellow]Please specify a template_name or image_name[/yellow]")
+                self.console.print(
+                    "[yellow]Please specify a template_name or image_name[/yellow]"
+                )
                 return
 
             # Use formatter to display tools
@@ -461,9 +464,7 @@ class EnhancedCLI(CLI):
     ) -> None:
         """Run a tool via stdio transport."""
         try:
-            result = self.tool_manager.call_tool(
-                template_name, tool_name, arguments
-            )
+            result = self.tool_manager.call_tool(template_name, tool_name, arguments)
             if result:
                 self.console.print("[green]✅ Tool executed successfully[/green]")
                 self.console.print(json.dumps(result, indent=2))
@@ -482,7 +483,10 @@ def add_enhanced_cli_args(subparsers) -> None:
     config_parser.add_argument("template", help="Template name")
 
     # Tools command
-    tools_parser = subparsers.add_parser("tools", help="List available tools [Deprecated - Use mcpt interactive shell in-stead]")
+    tools_parser = subparsers.add_parser(
+        "tools",
+        help="List available tools [Deprecated - Use mcpt interactive shell in-stead]",
+    )
     tools_parser.add_argument("template", nargs="?", help="Template name (optional)")
     tools_parser.add_argument("--image", help="Docker image name")
     tools_parser.add_argument(
@@ -492,7 +496,8 @@ def add_enhanced_cli_args(subparsers) -> None:
 
     # Discover tools command
     discover_parser = subparsers.add_parser(
-        "discover-tools", help="Discover tools from Docker image  [Deprecated - Use mcpt interactive shell in-stead]"
+        "discover-tools",
+        help="Discover tools from Docker image  [Deprecated - Use mcpt interactive shell in-stead]",
     )
     discover_parser.add_argument("image", help="Docker image name")
     discover_parser.add_argument("--format", default="table", help="Output format")
@@ -504,7 +509,10 @@ def add_enhanced_cli_args(subparsers) -> None:
     examples_parser.add_argument("template", help="Template name")
 
     # Run tool command
-    run_tool_parser = subparsers.add_parser("run-tool", help="Run a specific tool [Deprecated - Use mcpt interactive shell in-stead]")
+    run_tool_parser = subparsers.add_parser(
+        "run-tool",
+        help="Run a specific tool [Deprecated - Use mcpt interactive shell in-stead]",
+    )
     run_tool_parser.add_argument("template", help="Template name")
     run_tool_parser.add_argument("tool", help="Tool name")
     run_tool_parser.add_argument("--args", help="Tool arguments as JSON")
@@ -518,6 +526,7 @@ def add_enhanced_cli_args(subparsers) -> None:
 def handle_enhanced_cli_commands(args) -> bool:
     """Handle enhanced CLI commands for backward compatibility."""
     from rich.console import Console
+
     console = Console()
 
     if args.command == "config":
@@ -528,17 +537,24 @@ def handle_enhanced_cli_commands(args) -> bool:
     elif args.command == "interactive":
         # Start interactive CLI
         from mcp_template.interactive_cli import start_interactive_cli
+
         start_interactive_cli()
         return True
     elif args.command == "tools":
         # Tools command is deprecated
         console.print("[yellow]⚠️  The 'tools' command has been deprecated.[/yellow]")
-        console.print("[blue]💡 Use 'mcpt interactive' to access tool management features.[/blue]")
+        console.print(
+            "[blue]💡 Use 'mcpt interactive' to access tool management features.[/blue]"
+        )
         sys.exit(2)
     elif args.command == "discover-tools":
         # Discover tools command is deprecated
-        console.print("[yellow]⚠️  The 'discover-tools' command has been deprecated.[/yellow]")
-        console.print("[blue]💡 Use 'mcpt interactive' to access tool discovery features.[/blue]")
+        console.print(
+            "[yellow]⚠️  The 'discover-tools' command has been deprecated.[/yellow]"
+        )
+        console.print(
+            "[blue]💡 Use 'mcpt interactive' to access tool discovery features.[/blue]"
+        )
         sys.exit(2)
     elif args.command == "run-tool":
         # Run tool command is deprecated
@@ -551,7 +567,9 @@ def handle_enhanced_cli_commands(args) -> bool:
         template_info = cli.template_manager.get_template_info(args.template)
         if template_info:
             cli.console.print(f"[blue]Integration examples for {args.template}:[/blue]")
-            cli.console.print(f"• Connect to running server: mcpt connect {args.template}")
+            cli.console.print(
+                f"• Connect to running server: mcpt connect {args.template}"
+            )
             cli.console.print(f"• List tools: mcpt interactive")
             cli.console.print(f"• View logs: mcpt logs {args.template}")
         else:
@@ -566,4 +584,3 @@ def get_enhanced_cli() -> "CLI":
     if not hasattr(get_enhanced_cli, "_instance"):
         get_enhanced_cli._instance = CLI()
     return get_enhanced_cli._instance
-

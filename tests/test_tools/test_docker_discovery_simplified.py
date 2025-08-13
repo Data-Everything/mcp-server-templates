@@ -163,9 +163,9 @@ class TestCLIConfigIntegration:
         # Test that tool manager can be used for tool discovery
         # In our refactored architecture, config merging is handled by the deployment manager
         # and tool discovery is handled by the tool manager
-        
+
         tools = self.cli.tool_manager.list_tools("github")
-        
+
         # This test now simply verifies that the CLI can access tool discovery through tool_manager
         # The actual config merging is tested in other integration tests
         assert isinstance(tools, list)

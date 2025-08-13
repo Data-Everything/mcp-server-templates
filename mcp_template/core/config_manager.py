@@ -75,7 +75,7 @@ class ConfigManager:
             merged_config = {}
             config_schema = template_config.get("config_schema", {})
             properties = config_schema.get("properties", {})
-            
+
             # Apply defaults from schema
             for prop_name, prop_config in properties.items():
                 if "default" in prop_config:
@@ -99,7 +99,7 @@ class ConfigManager:
             # Apply overrides with double-underscore notation
             if override_values:
                 merged_config = self._apply_overrides(merged_config, override_values)
-                
+
                 # Also add override values with OVERRIDE_ prefix for CLI compatibility
                 for key, value in override_values.items():
                     merged_config[f"OVERRIDE_{key}"] = value

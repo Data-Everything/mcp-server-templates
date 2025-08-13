@@ -66,7 +66,7 @@ class HTTPToolCaller:
             "jsonrpc": "2.0",
             "id": 1,
             "method": "tools/call",
-            "params": {"name": tool_name, "arguments": arguments}
+            "params": {"name": tool_name, "arguments": arguments},
         }
 
         if session_id:
@@ -195,18 +195,16 @@ class HTTPToolCaller:
             raise RuntimeError("HTTPToolCaller must be used as async context manager")
 
         # Construct MCP JSON-RPC request for tools/list
-        payload = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/list"
-        }
+        payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
 
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
         try:
             logger.info("Listing tools from %s", server_url)
 
-            async with self.session.post(server_url, json=payload, headers=headers) as response:
+            async with self.session.post(
+                server_url, json=payload, headers=headers
+            ) as response:
                 response_text = await response.text()
 
                 if response.status == 200:

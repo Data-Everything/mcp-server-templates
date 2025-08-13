@@ -143,7 +143,9 @@ class DeploymentManager:
                 )
 
             # Validate and set transport
-            transport_result = self._validate_and_set_transport(template_info, deployment_options)
+            transport_result = self._validate_and_set_transport(
+                template_info, deployment_options
+            )
             if not transport_result["success"]:
                 return DeploymentResult(
                     success=False,
@@ -313,7 +315,7 @@ class DeploymentManager:
             logs_result = self.backend.get_deployment_logs(
                 deployment_id, lines=lines, follow=follow, since=since, until=until
             )
-            
+
             if not logs_result.get("success", False):
                 return {
                     "success": False,
@@ -321,7 +323,7 @@ class DeploymentManager:
                     "logs": "",
                     "lines_returned": 0,
                 }
-            
+
             logs = logs_result.get("logs", "")
             lines_returned = len(logs.split("\n")) if logs else 0
 
@@ -359,7 +361,7 @@ class DeploymentManager:
         template_name: Optional[str] = None,
         custom_name: Optional[str] = None,
         deployment_id: Optional[str] = None,
-        status: Optional[str] = None
+        status: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Find deployments matching specified criteria.
@@ -413,16 +415,17 @@ class DeploymentManager:
         """
         try:
             all_deployments = self.backend.list_deployments()
-            
+
             if running_only:
                 # Filter to only running deployments
                 return [
-                    deployment for deployment in all_deployments
+                    deployment
+                    for deployment in all_deployments
                     if deployment.get("status") == "running"
                 ]
-            
+
             return all_deployments
-            
+
         except Exception as e:
             logger.error(f"Failed to list deployments: {e}")
             return []
@@ -473,30 +476,34 @@ class DeploymentManager:
             template_info = deployment_spec["template_info"]
             config = deployment_spec["config"]
             options = deployment_spec["options"]
-            
+
             # Apply deployment options to config using RESERVED_ENV_VARS mapping
             from mcp_template.utils.config_processor import RESERVED_ENV_VARS
-            
+
             # Add deployment options as environment variables
             for option_key, env_var_key in RESERVED_ENV_VARS.items():
                 if option_key in options and options[option_key] is not None:
                     config[env_var_key] = options[option_key]
-            
+
             # Call the correct backend method
             result = self.backend.deploy_template(
                 template_id=template_id,
                 config=config,
                 template_data=template_info,
-                pull_image=options.get("pull_image", True)
+                pull_image=options.get("pull_image", True),
             )
 
             # If deployment returned a result without exception, consider it successful
             # unless explicitly marked as failed
-            success = (result.get("success", True) or result.get("status") == "running")  # Default to True if no explicit success key
-            
+            success = (
+                result.get("success", True) or result.get("status") == "running"
+            )  # Default to True if no explicit success key
+
             return DeploymentResult(
                 success=success,
-                deployment_id=result.get("deployment_id", result.get("deployment_name")),
+                deployment_id=result.get(
+                    "deployment_id", result.get("deployment_name")
+                ),
                 template=result.get("template", result.get("template_id")),
                 status=result.get("status"),
                 container_id=result.get("container_id"),
@@ -515,42 +522,50 @@ class DeploymentManager:
                 success=False, error=f"Backend deployment failed: {str(e)}"
             )
 
-    def _validate_and_set_transport(self, template_info: Dict[str, Any], deployment_options: DeploymentOptions) -> Dict[str, Any]:
+    def _validate_and_set_transport(
+        self, template_info: Dict[str, Any], deployment_options: DeploymentOptions
+    ) -> Dict[str, Any]:
         """
         Validate transport selection and set the appropriate transport.
-        
+
         Args:
             template_info: Template information containing transport configuration
             deployment_options: Deployment options that may include transport override
-        
+
         Returns:
             Dictionary with success status and error message if failed
         """
         transport_config = template_info.get("transport", {})
-        
+
         # Get supported transports and default
-        supported_transports = transport_config.get("supported", ["stdio"])  # Default to stdio if not specified
-        default_transport = transport_config.get("default", supported_transports[0] if supported_transports else "stdio")
-        
+        supported_transports = transport_config.get(
+            "supported", ["stdio"]
+        )  # Default to stdio if not specified
+        default_transport = transport_config.get(
+            "default", supported_transports[0] if supported_transports else "stdio"
+        )
+
         # Use provided transport or fall back to template default
         requested_transport = deployment_options.transport or default_transport
-        
+
         # Validate that requested transport is supported
         if requested_transport not in supported_transports:
             return {
                 "success": False,
                 "error": f"Transport '{requested_transport}' is not supported by template. "
-                        f"Supported transports: {', '.join(supported_transports)}. "
-                        f"Template default: {default_transport}"
+                f"Supported transports: {', '.join(supported_transports)}. "
+                f"Template default: {default_transport}",
             }
-        
+
         # Set the validated transport back to deployment options
         deployment_options.transport = requested_transport
-        
-        logger.info(f"Using transport: {requested_transport} (supported: {supported_transports})")
-        
+
+        logger.info(
+            f"Using transport: {requested_transport} (supported: {supported_transports})"
+        )
+
         return {"success": True}
-    
+
     def connect_to_deployment(self, deployment_id: str):
         """
         Connect to deployment

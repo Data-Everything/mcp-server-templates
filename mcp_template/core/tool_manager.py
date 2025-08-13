@@ -56,10 +56,10 @@ class ToolManager:
             if discovery_method == "auto":
                 # Use the enhanced discover_tools method that implements user's flow
                 tools = self.discover_tools(
-                    template_or_id, 
-                    timeout=timeout, 
+                    template_or_id,
+                    timeout=timeout,
                     force_refresh=force_refresh,
-                    config_values=config_values
+                    config_values=config_values,
                 )
             else:
                 # Handle specific discovery methods
@@ -76,7 +76,7 @@ class ToolManager:
                     else:
                         logger.warning(f"Unknown discovery method: {discovery_method}")
                         tools = self.discover_tools_static(template_or_id)
-                    
+
                     # Cache the results
                     self._cache[cache_key] = tools
 
@@ -102,7 +102,7 @@ class ToolManager:
     ) -> List[Dict]:
         """
         Discover tools using the best available method with caching.
-        
+
         Implements the user's specified discovery flow:
         1. Check for running server (HTTP) first
         2. Fallback to stdio if template supports it
@@ -120,7 +120,7 @@ class ToolManager:
             List of discovered tools
         """
         cache_key = f"tools_{template_or_deployment}"
-        
+
         # Check cache first unless force_refresh
         if not force_refresh:
             cached_tools = self.get_cached_tools(template_or_deployment)
@@ -130,13 +130,15 @@ class ToolManager:
 
         try:
             # Initialize tool caller
-            if not hasattr(self, 'tool_caller') or self.tool_caller is None:
+            if not hasattr(self, "tool_caller") or self.tool_caller is None:
                 self.tool_caller = ToolCaller()
 
             # First try: Check for running server (HTTP)
             try:
                 # Get deployment info
-                deployment_info = self.backend.get_deployment_info(template_or_deployment)
+                deployment_info = self.backend.get_deployment_info(
+                    template_or_deployment
+                )
                 if not deployment_info:
                     # Try to find deployment by template name
                     from mcp_template.core.deployment_manager import DeploymentManager
@@ -146,7 +148,9 @@ class ToolManager:
                         template_name=template_or_deployment
                     )
                     # Find the first running deployment
-                    running_deployments = [d for d in deployments if d.get('status') == 'running']
+                    running_deployments = [
+                        d for d in deployments if d.get("status") == "running"
+                    ]
                     if running_deployments:
                         deployment_info = running_deployments[0]
 
@@ -156,7 +160,7 @@ class ToolManager:
                     ports = deployment_info.get("ports", "")
                     endpoint = None
                     transport = "http"
-                    
+
                     # Parse port mapping like "7071->7071" to extract external port
                     if "->" in ports:
                         external_port = ports.split("->")[0]
@@ -165,12 +169,18 @@ class ToolManager:
                         endpoint = deployment_info.get("endpoint")
 
                     if endpoint:
-                        logger.info(f"Discovering tools via HTTP for {template_or_deployment} at {endpoint}")
-                        tools = self.tool_caller.list_tools_from_server(endpoint, transport, timeout)
+                        logger.info(
+                            f"Discovering tools via HTTP for {template_or_deployment} at {endpoint}"
+                        )
+                        tools = self.tool_caller.list_tools_from_server(
+                            endpoint, transport, timeout
+                        )
                         if tools:
                             # Cache the successful result
                             self._cache[cache_key] = tools
-                            logger.info(f"Cached {len(tools)} tools from HTTP for {template_or_deployment}")
+                            logger.info(
+                                f"Cached {len(tools)} tools from HTTP for {template_or_deployment}"
+                            )
                             return tools
 
             except Exception as e:
@@ -179,7 +189,9 @@ class ToolManager:
             # Second try: Use stdio if template supports it
             try:
                 # Get template info to check stdio support
-                template_info = self.template_manager.get_template_info(template_or_deployment)
+                template_info = self.template_manager.get_template_info(
+                    template_or_deployment
+                )
                 if not template_info:
                     logger.warning(f"Template '{template_or_deployment}' not found")
                     return []
@@ -190,17 +202,19 @@ class ToolManager:
                 default_transport = transport_config.get("default", "http")
 
                 if "stdio" in supported_transports or default_transport == "stdio":
-                    logger.info(f"Discovering tools via stdio for {template_or_deployment}")
-                    
+                    logger.info(
+                        f"Discovering tools via stdio for {template_or_deployment}"
+                    )
+
                     # Mock required config values if not provided
                     if config_values is None:
                         config_values = {}
-                    
+
                     # Auto-generate mock values for required config
                     config_schema = template_info.get("config_schema", {})
                     required_props = config_schema.get("required", [])
                     properties = config_schema.get("properties", {})
-                    
+
                     for prop in required_props:
                         if prop not in config_values:
                             prop_config = properties.get(prop, {})
@@ -222,22 +236,30 @@ class ToolManager:
                         if tools:
                             # Cache the successful result
                             self._cache[cache_key] = tools
-                            logger.info(f"Cached {len(tools)} tools from stdio for {template_or_deployment}")
+                            logger.info(
+                                f"Cached {len(tools)} tools from stdio for {template_or_deployment}"
+                            )
                             return tools
 
                 else:
-                    logger.warning(f"Template '{template_or_deployment}' does not support stdio transport and no running server found")
+                    logger.warning(
+                        f"Template '{template_or_deployment}' does not support stdio transport and no running server found"
+                    )
 
             except Exception as e:
                 logger.error(f"Stdio tool discovery failed: {e}")
 
             # Fallback to static discovery
-            logger.info(f"Falling back to static tool discovery for {template_or_deployment}")
+            logger.info(
+                f"Falling back to static tool discovery for {template_or_deployment}"
+            )
             tools = self.discover_tools_static(template_or_deployment)
             if tools:
                 # Cache the successful result
                 self._cache[cache_key] = tools
-                logger.info(f"Cached {len(tools)} tools from static discovery for {template_or_deployment}")
+                logger.info(
+                    f"Cached {len(tools)} tools from static discovery for {template_or_deployment}"
+                )
                 return tools
 
             logger.warning(f"No tools discovered for {template_or_deployment}")
@@ -308,7 +330,9 @@ class ToolManager:
                 return []
 
             # Connect and list tools
-            tools = self.tool_caller.list_tools_from_server(endpoint, transport, timeout)
+            tools = self.tool_caller.list_tools_from_server(
+                endpoint, transport, timeout
+            )
             return tools
 
         except Exception as e:
@@ -464,10 +488,10 @@ class ToolManager:
     ) -> Dict[str, Any]:
         """
         Call a tool using the best available transport.
-        
+
         This method implements the user's specified discovery flow:
         1. Check for running server (HTTP) first
-        2. Fallback to stdio if template supports it  
+        2. Fallback to stdio if template supports it
         3. Cache results if successful
         4. Mock required config values for stdio calls
 
@@ -490,17 +514,25 @@ class ToolManager:
             if not force_stdio:
                 try:
                     # Get deployment info
-                    deployment_info = self.backend.get_deployment_info(template_or_deployment)
+                    deployment_info = self.backend.get_deployment_info(
+                        template_or_deployment
+                    )
                     if not deployment_info:
                         # Try to find deployment by template name
-                        from mcp_template.core.deployment_manager import DeploymentManager
+                        from mcp_template.core.deployment_manager import (
+                            DeploymentManager,
+                        )
 
-                        deployment_manager = DeploymentManager(self.backend.backend_type)
+                        deployment_manager = DeploymentManager(
+                            self.backend.backend_type
+                        )
                         deployments = deployment_manager.find_deployments_by_criteria(
                             template_name=template_or_deployment
                         )
                         # Find the first running deployment
-                        running_deployments = [d for d in deployments if d.get('status') == 'running']
+                        running_deployments = [
+                            d for d in deployments if d.get("status") == "running"
+                        ]
                         if running_deployments:
                             deployment_info = running_deployments[0]
 
@@ -510,7 +542,7 @@ class ToolManager:
                         ports = deployment_info.get("ports", "")
                         endpoint = None
                         transport = "http"
-                        
+
                         # Parse port mapping like "7071->7071" to extract external port
                         if "->" in ports:
                             external_port = ports.split("->")[0]
@@ -519,7 +551,9 @@ class ToolManager:
                             endpoint = deployment_info.get("endpoint")
 
                         if endpoint:
-                            logger.info(f"Using HTTP transport for {template_or_deployment} at {endpoint}")
+                            logger.info(
+                                f"Using HTTP transport for {template_or_deployment} at {endpoint}"
+                            )
                             result = self.tool_caller.call_tool(
                                 endpoint, transport, tool_name, parameters, timeout
                             )
@@ -531,7 +565,9 @@ class ToolManager:
             # Second try: Use stdio if template supports it
             try:
                 # Get template info to check stdio support
-                template_info = self.template_manager.get_template_info(template_or_deployment)
+                template_info = self.template_manager.get_template_info(
+                    template_or_deployment
+                )
                 if not template_info:
                     return {
                         "success": False,
@@ -545,16 +581,16 @@ class ToolManager:
 
                 if "stdio" in supported_transports or default_transport == "stdio":
                     logger.info(f"Using stdio transport for {template_or_deployment}")
-                    
+
                     # Mock required config values if not provided
                     if config_values is None:
                         config_values = {}
-                    
+
                     # Auto-generate mock values for required config
                     config_schema = template_info.get("config_schema", {})
                     required_props = config_schema.get("required", [])
                     properties = config_schema.get("properties", {})
-                    
+
                     for prop in required_props:
                         if prop not in config_values:
                             prop_config = properties.get(prop, {})
@@ -568,7 +604,7 @@ class ToolManager:
                                 config_values[prop] = True
                             else:
                                 config_values[prop] = f"mock_{prop}_value"
-                    
+
                     # Call tool via stdio
                     result = self.tool_caller.call_tool_stdio(
                         template_or_deployment,
@@ -578,13 +614,15 @@ class ToolManager:
                         config_values=config_values,
                         pull_image=pull_image,
                     )
-                    
+
                     # Convert ToolCallResult to dict format
-                    if hasattr(result, 'success'):
+                    if hasattr(result, "success"):
                         return {
                             "success": result.success,
                             "result": result.result if result.success else None,
-                            "error": result.error_message if not result.success else None,
+                            "error": (
+                                result.error_message if not result.success else None
+                            ),
                         }
                     else:
                         return result

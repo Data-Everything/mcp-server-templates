@@ -102,7 +102,7 @@ class TestDeploymentManager:
                 self.deployment_manager.template_manager, "get_template_info"
             ) as mock_get_info:
                 mock_get_info.return_value = {
-                    "name": "Demo Template", 
+                    "name": "Demo Template",
                     "docker_image": "demo:latest",
                     "config_schema": {},
                 }
@@ -194,7 +194,9 @@ class TestDeploymentManager:
 
         assert result.success is True
         assert "Application started" in result.logs
-        mock_logs.assert_called_once_with("demo-123", lines=None, since=None, until=None)
+        mock_logs.assert_called_once_with(
+            "demo-123", lines=None, since=None, until=None
+        )
 
     def test_get_deployment_logs_not_found(self):
         """Test log retrieval for non-existent deployment."""
@@ -228,7 +230,11 @@ class TestDeploymentManager:
         """Test finding deployments by various criteria."""
         mock_deployments = [
             {"deployment_id": "demo-123", "template": "demo", "status": "running"},
-            {"deployment_id": "file-456", "template": "filesystem", "status": "stopped"},
+            {
+                "deployment_id": "file-456",
+                "template": "filesystem",
+                "status": "stopped",
+            },
         ]
 
         with patch.object(
@@ -306,7 +312,7 @@ class TestDeploymentManager:
                 "transport": "http",
                 "port": "8080",
                 "host": "0.0.0.0",
-                "log_level": "debug"
+                "log_level": "debug",
             }
         }
         options = DeploymentOptions(name="test-reserved-env", port=None)
@@ -331,10 +337,10 @@ class TestDeploymentManager:
                     # Mock merged config with RESERVED_ENV_VARS already mapped
                     merged_config = {
                         "MCP_TRANSPORT": "http",
-                        "MCP_PORT": "8080", 
+                        "MCP_PORT": "8080",
                         "MCP_HOST": "0.0.0.0",
                         "MCP_LOG_LEVEL": "debug",
-                        "hello_from": "Test"
+                        "hello_from": "Test",
                     }
                     mock_merge.return_value = merged_config
 
@@ -364,28 +370,35 @@ class TestDeploymentManager:
 
                             # Verify backend.deploy was called
                             mock_deploy.assert_called_once()
-                            
+
                             # Get the call arguments to backend.deploy_template
                             call_args = mock_deploy.call_args
-                            
+
                             # The call should be deploy_template(template_id=..., config=..., template_data=..., pull_image=...)
                             # Let's get the config parameter which contains the environment variables
                             call_kwargs = call_args.kwargs if call_args.kwargs else {}
                             deployment_config = call_kwargs.get("config", {})
-                            
+
                             # Verify RESERVED_ENV_VARS are mapped correctly in config
                             expected_env_mappings = {
                                 "MCP_TRANSPORT": "http",
                                 "MCP_PORT": "8080",
-                                "MCP_HOST": "0.0.0.0", 
-                                "MCP_LOG_LEVEL": "debug"
+                                "MCP_HOST": "0.0.0.0",
+                                "MCP_LOG_LEVEL": "debug",
                             }
-                            
+
                             # Check that config contains the mapped RESERVED_ENV_VARS
-                            for env_key, expected_value in expected_env_mappings.items():
-                                assert env_key in deployment_config, f"Missing {env_key} in config"
-                                assert str(deployment_config[env_key]) == expected_value, f"Wrong value for {env_key}: got {deployment_config.get(env_key)}, expected {expected_value}"
-                            
+                            for (
+                                env_key,
+                                expected_value,
+                            ) in expected_env_mappings.items():
+                                assert (
+                                    env_key in deployment_config
+                                ), f"Missing {env_key} in config"
+                                assert (
+                                    str(deployment_config[env_key]) == expected_value
+                                ), f"Wrong value for {env_key}: got {deployment_config.get(env_key)}, expected {expected_value}"
+
                             # hello_from is not a RESERVED_ENV_VAR so it should remain as-is
                             assert "hello_from" in deployment_config
                             assert deployment_config["hello_from"] == "Test"
@@ -398,7 +411,7 @@ class TestDeploymentManager:
                 "transport": "http",
                 "port": "9090",
                 # Missing host and log_level - should not cause issues
-                "hello_from": "Partial Test"
+                "hello_from": "Partial Test",
             }
         }
         options = DeploymentOptions(name="test-partial-env", port=None)
@@ -423,7 +436,7 @@ class TestDeploymentManager:
                     merged_config = {
                         "MCP_TRANSPORT": "http",
                         "MCP_PORT": "9090",
-                        "hello_from": "Partial Test"
+                        "hello_from": "Partial Test",
                     }
                     mock_merge.return_value = merged_config
 
@@ -453,28 +466,30 @@ class TestDeploymentManager:
 
                             # Verify backend.deploy was called
                             mock_deploy.assert_called_once()
-                            
+
                             # Get the call arguments
                             call_args = mock_deploy.call_args
-                            
+
                             # The call should be deploy_template(template_id=..., config=..., template_data=..., pull_image=...)
                             # Let's get the config parameter which contains the environment variables
                             call_kwargs = call_args.kwargs if call_args.kwargs else {}
                             deployment_config = call_kwargs.get("config", {})
-                            
+
                             # Verify that only present RESERVED_ENV_VARS are mapped
-                            
+
                             # Should have these mapped in config directly
                             assert "MCP_TRANSPORT" in deployment_config
                             assert deployment_config["MCP_TRANSPORT"] == "http"
-                            assert "MCP_PORT" in deployment_config  
+                            assert "MCP_PORT" in deployment_config
                             assert deployment_config["MCP_PORT"] == "9090"
-                            
+
                             # hello_from is not a RESERVED_ENV_VAR so it should remain as-is
                             assert "hello_from" in deployment_config
                             assert deployment_config["hello_from"] == "Partial Test"
-                            assert "MCP_HELLO_FROM" not in deployment_config  # Should NOT be mapped
-                            
+                            assert (
+                                "MCP_HELLO_FROM" not in deployment_config
+                            )  # Should NOT be mapped
+
                             # Should NOT have these (not in config)
                             assert "MCP_HOST" not in deployment_config
                             assert "MCP_LOG_LEVEL" not in deployment_config

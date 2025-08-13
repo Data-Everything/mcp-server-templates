@@ -742,7 +742,9 @@ EOF""",
             logger.error("Failed to list deployments: %s", e)
             return []
 
-    def get_deployment_info(self, deployment_name: str, include_logs: bool = False, lines: int = 10) -> Dict[str, Any]:
+    def get_deployment_info(
+        self, deployment_name: str, include_logs: bool = False, lines: int = 10
+    ) -> Dict[str, Any]:
         """Get detailed information about a specific deployment.
 
         Args:
@@ -767,11 +769,11 @@ EOF""",
                 containers = json.loads(result.stdout)
                 if containers:
                     container = containers[0]
-                    
+
                     # Extract relevant information
                     labels = container.get("Config", {}).get("Labels", {}) or {}
                     template_name = labels.get("template", "unknown")
-                    
+
                     # Get port information
                     ports = container.get("NetworkSettings", {}).get("Ports", {})
                     port_display = ""
@@ -781,7 +783,7 @@ EOF""",
                             if host_port:
                                 port_display = host_port
                                 break
-                    
+
                     # Build result with unified information
                     result_info = {
                         "id": container.get("Id", "unknown"),
@@ -794,12 +796,18 @@ EOF""",
                         "created": container.get("Created", ""),
                         "raw_container": container,  # Include full container data for advanced operations
                     }
-                    
+
                     # Add logs if requested
                     if include_logs:
                         try:
                             log_result = self._run_command(
-                                ["docker", "logs", "--tail", str(int(lines)), deployment_name],
+                                [
+                                    "docker",
+                                    "logs",
+                                    "--tail",
+                                    str(int(lines)),
+                                    deployment_name,
+                                ],
                                 check=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT,  # Because docker logs are sent to stderr by default
@@ -807,9 +815,9 @@ EOF""",
                             result_info["logs"] = log_result.stdout
                         except Exception:
                             result_info["logs"] = "Unable to fetch logs"
-                    
+
                     return result_info
-            
+
             return None
 
         except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
@@ -817,51 +825,53 @@ EOF""",
             return None
 
     def get_deployment_logs(
-        self, deployment_name: str, lines: int = 100, follow: bool = False, since: Optional[str] = None, until: Optional[str] = None
+        self,
+        deployment_name: str,
+        lines: int = 100,
+        follow: bool = False,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
     ) -> dict:
         """Get logs from a deployment.
-        
+
         Args:
             deployment_name: Name or ID of the deployment
             lines: Number of log lines to retrieve
             follow: Whether to stream logs (not implemented for this method)
             since: Start time for log filtering
             until: End time for log filtering
-            
+
         Returns:
             Dictionary with success status and logs or error message
         """
         try:
             cmd = ["docker", "logs"]
-            
+
             if lines:
                 cmd.extend(["--tail", str(lines)])
             if since:
                 cmd.extend(["--since", since])
             if until:
                 cmd.extend(["--until", until])
-                
+
             cmd.append(deployment_name)
-            
+
             result = self._run_command(cmd)
-            
+
             if result.returncode == 0:
                 return {
                     "success": True,
-                    "logs": result.stderr + '\n' + result.stdout or ""
+                    "logs": result.stderr + "\n" + result.stdout or "",
                 }
             else:
                 return {
                     "success": False,
-                    "error": result.stderr or "Unknown error retrieving logs"
+                    "error": result.stderr or "Unknown error retrieving logs",
                 }
-            
+
         except Exception as e:
             logger.error(f"Failed to get logs for deployment {deployment_name}: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     def delete_deployment(
         self, deployment_name: str, raise_on_failure: bool = False
@@ -939,9 +949,9 @@ EOF""",
             None - Gives access to deployment shell
         """
 
-        cmd = ['docker', 'exec', '-it', deployment_id]
+        cmd = ["docker", "exec", "-it", deployment_id]
 
-        for shell in ['sh', 'bash']:
+        for shell in ["sh", "bash"]:
             with suppress(subprocess.CalledProcessError, Exception):
                 self._run_command(cmd + [shell], check=True)
                 return

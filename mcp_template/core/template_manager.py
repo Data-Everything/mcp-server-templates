@@ -64,16 +64,19 @@ class TemplateManager:
                             template_deployments = [
                                 d
                                 for d in all_deployments
-                                if (d.get("template") == template_name
-                                    or d.get("Template") == template_name)
+                                if (
+                                    d.get("template") == template_name
+                                    or d.get("Template") == template_name
+                                )
                             ]
-                            
+
                             # Filter to only running deployments for the count and status
                             running_deployments = [
-                                d for d in template_deployments
+                                d
+                                for d in template_deployments
                                 if d.get("status") == "running"
                             ]
-                            
+
                             templates[template_name]["deployed"] = (
                                 len(running_deployments) > 0
                             )

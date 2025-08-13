@@ -157,11 +157,13 @@ class TestInteractiveCLICommands:
             }
         }
         cli.tool_manager.list_tools = MagicMock()
-        cli.template_manager.get_template_info = MagicMock(return_value={
-            "config_schema": {
-                "properties": {"token": {"env_mapping": "GITHUB_TOKEN"}}
+        cli.template_manager.get_template_info = MagicMock(
+            return_value={
+                "config_schema": {
+                    "properties": {"token": {"env_mapping": "GITHUB_TOKEN"}}
+                }
             }
-        })
+        )
         cli.session_configs["github"] = {"token": "test_token"}
 
         with patch.dict("os.environ", {"GITHUB_TOKEN": "env_token"}):

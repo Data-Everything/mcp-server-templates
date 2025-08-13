@@ -103,17 +103,21 @@ class MockDeploymentService(BaseDeploymentBackend):
             raise ValueError(f"Deployment {deployment_name} not found")
         return False
 
-    def get_deployment_info(self, deployment_name: str, include_logs: bool = False, lines: int = 10) -> Dict[str, Any]:
+    def get_deployment_info(
+        self, deployment_name: str, include_logs: bool = False, lines: int = 10
+    ) -> Dict[str, Any]:
         """Get detailed mock deployment info."""
         if deployment_name in self.deployments:
             info = self.deployments[deployment_name].copy()
             # Add unified fields to match docker backend
-            info.update({
-                "name": deployment_name,
-                "status": "running",
-                "running": True,
-                "mock": True,
-            })
+            info.update(
+                {
+                    "name": deployment_name,
+                    "status": "running",
+                    "running": True,
+                    "mock": True,
+                }
+            )
             # Add logs if requested
             if include_logs:
                 info["logs"] = f"Mock logs for {deployment_name} (last {lines} lines)"
@@ -143,7 +147,7 @@ class MockDeploymentService(BaseDeploymentBackend):
     def stream_deployment_logs(self, deployment_name: str, lines: int = 100):
         """Stream mock deployment logs."""
         logs = self.get_deployment_logs(deployment_name, lines)
-        for log_line in logs.split('\n'):
+        for log_line in logs.split("\n"):
             if log_line:
                 yield log_line
 

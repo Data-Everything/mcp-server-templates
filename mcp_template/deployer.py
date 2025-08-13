@@ -399,10 +399,16 @@ class MCPDeployer:
                     return
 
             deployment = target_deployments[0]
-            status = self.deployment_manager.backend.get_deployment_info(deployment["name"], include_logs=True)
+            status = self.deployment_manager.backend.get_deployment_info(
+                deployment["name"], include_logs=True
+            )
 
             console.print(f"[blue]📋 Logs for {deployment['name']}:[/blue]")
-            logs = status.get("logs", "No logs available") if status else "No logs available"
+            logs = (
+                status.get("logs", "No logs available")
+                if status
+                else "No logs available"
+            )
             if logs:
                 console.print(logs)
             else:

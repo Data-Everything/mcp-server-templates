@@ -176,7 +176,7 @@ class TestToolManager:
             with patch.object(
                 self.tool_manager.tool_caller,
                 "list_tools_from_server",
-                return_value=mock_tools
+                return_value=mock_tools,
             ):
                 tools = self.tool_manager.discover_tools_dynamic("demo-123", timeout=30)
 
@@ -297,9 +297,7 @@ class TestToolManager:
             return_value=mock_deployment_info,
         ):
             with patch.object(
-                self.tool_manager.tool_caller,
-                "call_tool",
-                return_value=mock_result
+                self.tool_manager.tool_caller, "call_tool", return_value=mock_result
             ):
                 result = self.tool_manager.call_tool(
                     "demo-123", "say_hello", {"name": "World"}, timeout=30

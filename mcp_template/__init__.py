@@ -221,7 +221,12 @@ Examples:
     logs_parser.add_argument("template", help="Template name")
     logs_parser.add_argument("--name", help=CUSTOM_NAME_HELP)
     logs_parser.add_argument("-f", "--follow", action="store_true", help="Follow logs")
-    logs_parser.add_argument("--lines", type=int, default=100, help="Number of log lines to show (default: 100)")
+    logs_parser.add_argument(
+        "--lines",
+        type=int,
+        default=100,
+        help="Number of log lines to show (default: 100)",
+    )
 
     # Shell command
     shell_parser = subparsers.add_parser("shell", help="Open shell in template")

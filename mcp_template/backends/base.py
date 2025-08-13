@@ -69,7 +69,9 @@ class BaseDeploymentBackend(ABC):
         pass
 
     @abstractmethod
-    def get_deployment_info(self, deployment_name: str, include_logs: bool = False, lines: int = 10) -> Dict[str, Any]:
+    def get_deployment_info(
+        self, deployment_name: str, include_logs: bool = False, lines: int = 10
+    ) -> Dict[str, Any]:
         """Get detailed information about a specific deployment.
 
         Args:
@@ -81,7 +83,6 @@ class BaseDeploymentBackend(ABC):
             Dictionary with deployment information, or None if not found
         """
         pass
-
 
     @abstractmethod
     def connect_to_deployment(self, deployment_id: str):

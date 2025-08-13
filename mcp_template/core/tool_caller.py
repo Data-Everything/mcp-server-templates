@@ -60,11 +60,11 @@ class ToolCaller:
         self.timeout = timeout
         self.caller_type = caller_type
         self.http_caller = HTTPToolCaller(timeout=timeout)
-        
+
         # Import here to avoid circular imports
         from mcp_template.utils.config_processor import ConfigProcessor
         from mcp_template.backends.docker import DockerDeploymentService
-        
+
         self.config_processor = ConfigProcessor()
 
         # Initialize backends
@@ -75,7 +75,9 @@ class ToolCaller:
 
         self.http_tool_caller = HTTPToolCaller(timeout=timeout)
 
-    def list_tools_from_server(self, endpoint: str, transport: str, timeout: int = 30) -> List[Dict]:
+    def list_tools_from_server(
+        self, endpoint: str, transport: str, timeout: int = 30
+    ) -> List[Dict]:
         """List tools from a running MCP server."""
         try:
             if transport == "http":
@@ -88,19 +90,35 @@ class ToolCaller:
             logger.error(f"Failed to list tools from {endpoint}: {e}")
             return []
 
-    def call_tool(self, endpoint: str, transport: str, tool_name: str, parameters: Dict, timeout: int = 30) -> Dict:
+    def call_tool(
+        self,
+        endpoint: str,
+        transport: str,
+        tool_name: str,
+        parameters: Dict,
+        timeout: int = 30,
+    ) -> Dict:
         """Call a tool on a running MCP server."""
         try:
             if transport == "http":
-                result = self.http_caller.call_tool_sync(endpoint, tool_name, parameters)
+                result = self.http_caller.call_tool_sync(
+                    endpoint, tool_name, parameters
+                )
                 if result.get("status") == "success":
                     return {"success": True, "result": result.get("result")}
                 else:
-                    return {"success": False, "error": result.get("error", "Unknown error")}
+                    return {
+                        "success": False,
+                        "error": result.get("error", "Unknown error"),
+                    }
             else:
                 # For other transports, use stdio
                 result = self.call_tool_stdio(endpoint, tool_name, parameters, timeout)
-                return {"success": result.success, "result": result.result, "error": result.error_message}
+                return {
+                    "success": result.success,
+                    "result": result.result,
+                    "error": result.error_message,
+                }
         except Exception as e:
             logger.error(f"Failed to call tool {tool_name}: {e}")
             return {"success": False, "error": str(e)}

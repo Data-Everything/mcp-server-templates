@@ -44,7 +44,10 @@ class TestInteractiveCLIHelpers:
     def test_show_template_help_template_not_found(self, cli):
         """Test _show_template_help with non-existent template."""
         cli.template_manager.get_template_info.return_value = None
-        cli.template_manager.list_templates.return_value = {"demo": {}, "filesystem": {}}
+        cli.template_manager.list_templates.return_value = {
+            "demo": {},
+            "filesystem": {},
+        }
 
         with patch("mcp_template.interactive_cli.console") as mock_console:
             cli._show_template_help("nonexistent")
@@ -251,14 +254,16 @@ class TestInteractiveCLIHelpers:
             }
         }
         cli.tool_manager.list_tools = MagicMock()
-        cli.template_manager.get_template_info = MagicMock(return_value={
-            "config_schema": {
-                "properties": {
-                    "token": {"env_mapping": "GITHUB_TOKEN"},
-                    "org": {"env_mapping": "GITHUB_ORG"},
+        cli.template_manager.get_template_info = MagicMock(
+            return_value={
+                "config_schema": {
+                    "properties": {
+                        "token": {"env_mapping": "GITHUB_TOKEN"},
+                        "org": {"env_mapping": "GITHUB_ORG"},
+                    }
                 }
             }
-        })
+        )
 
         with patch.dict(
             "os.environ", {"GITHUB_TOKEN": "env_token", "GITHUB_ORG": "test-org"}
@@ -284,11 +289,13 @@ class TestInteractiveCLIHelpers:
         }
         cli.session_configs["github"] = {"token": "session_token"}
         cli.tool_manager.list_tools = MagicMock()
-        cli.template_manager.get_template_info = MagicMock(return_value={
-            "config_schema": {
-                "properties": {"token": {"env_mapping": "GITHUB_TOKEN"}}
+        cli.template_manager.get_template_info = MagicMock(
+            return_value={
+                "config_schema": {
+                    "properties": {"token": {"env_mapping": "GITHUB_TOKEN"}}
+                }
             }
-        })
+        )
 
         with patch.dict("os.environ", {"GITHUB_TOKEN": "env_token"}):
             with patch("mcp_template.interactive_cli.console"):

@@ -295,7 +295,15 @@ class TestMCPDeployer:
         mock_cli = Mock()
         mock_cli_class.return_value = mock_cli
 
-        sys.argv = ["mcp_template", "deploy", "demo", "--transport", "http", "--port", "8080"]
+        sys.argv = [
+            "mcp_template",
+            "deploy",
+            "demo",
+            "--transport",
+            "http",
+            "--port",
+            "8080",
+        ]
 
         main()
         mock_cli.handle_deploy_command.assert_called_once()

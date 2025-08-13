@@ -317,7 +317,9 @@ class ServerManager:
         # Note: lines parameter is kept for API compatibility but not used
         # by the underlying backend which returns fixed log length
         try:
-            result = self.deployment_manager.backend.get_deployment_info(deployment_id, include_logs=True)
+            result = self.deployment_manager.backend.get_deployment_info(
+                deployment_id, include_logs=True
+            )
             if result and "logs" in result:
                 return result["logs"]
             else:

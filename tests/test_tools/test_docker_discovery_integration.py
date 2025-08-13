@@ -268,7 +268,7 @@ class TestDockerDiscoveryIntegration:
 
         # Test that tool manager can be used for tool discovery
         tools = self.cli.tool_manager.list_tools("test_template")
-        
+
         # This test now simply verifies that the CLI can access tool discovery through tool_manager
         # The actual config passing is tested in other integration tests
         assert isinstance(tools, list)

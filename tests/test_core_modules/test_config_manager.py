@@ -1,4 +1,5 @@
 from mcp_template.core.config_manager import ValidationResult
+
 """
 Unit tests for ConfigManager.
 
@@ -33,7 +34,7 @@ class TestConfigManager:
                     "setting2": {"default": "template_value"},
                     "setting3": {"default": "template_value"},
                 }
-            }
+            },
         }
 
         env_vars = {"setting2": "env_value", "setting3": "env_value"}
@@ -364,7 +365,7 @@ settings:
                     "server_port": {"default": 7071},
                     "server_debug": {"default": False},
                 }
-            }
+            },
         }
 
         file_config = {"server_port": 8080, "server_debug": True}
@@ -387,8 +388,10 @@ settings:
             )
 
             # Verify final merged configuration
-            assert result["server_host"] == "localhost"  # Template default 
-            assert result["server_port"] == 8080  # From file (override not processed correctly)
+            assert result["server_host"] == "localhost"  # Template default
+            assert (
+                result["server_port"] == 8080
+            )  # From file (override not processed correctly)
             assert result["server_debug"] is False  # Config overrides file
         finally:
             os.unlink(config_file_path)

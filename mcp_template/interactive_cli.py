@@ -24,7 +24,12 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
 
-from mcp_template.core import TemplateManager, DeploymentManager, ToolManager, OutputFormatter
+from mcp_template.core import (
+    TemplateManager,
+    DeploymentManager,
+    ToolManager,
+    OutputFormatter,
+)
 from mcp_template.tools.cache import CacheManager
 from mcp_template.tools.http_tool_caller import HTTPToolCaller
 from mcp_template.utils.config_processor import ConfigProcessor
@@ -982,7 +987,7 @@ class InteractiveCLI(cmd2.Cmd):
         self.deployment_manager = DeploymentManager()
         self.tool_manager = ToolManager()
         self.formatter = OutputFormatter()
-        
+
         # Keep utility components
         self.cache = CacheManager()
         self.beautifier = ResponseBeautifier()
@@ -1194,9 +1199,7 @@ class InteractiveCLI(cmd2.Cmd):
 
         try:
             # Get tools using tool discovery
-            tools = self.tool_manager.discover_tools_static(
-                template_name
-            )
+            tools = self.tool_manager.discover_tools_static(template_name)
 
             if tools:
                 # Show detailed tool information
@@ -1382,9 +1385,7 @@ class InteractiveCLI(cmd2.Cmd):
 
             # Get tool information using tool discovery
             try:
-                tools = self.tool_manager.discover_tools_static(
-                    template_name
-                )
+                tools = self.tool_manager.discover_tools_static(template_name)
             except Exception as e:
                 console.print(
                     f"[yellow]⚠️  Could not discover tools for validation: {e}[/yellow]"
@@ -1507,10 +1508,10 @@ class InteractiveCLI(cmd2.Cmd):
         try:
             # Use shlex to split the line properly, handling quotes
             argv = shlex.split(line) if line.strip() else []
-            
+
             # Parse arguments using the call_parser
             args = call_parser.parse_args(argv)
-                
+
         except (ValueError, SystemExit) as e:
             console.print(f"[red]❌ Error parsing command line: {e}[/red]")
             console.print("[dim]Use: call <template> <tool> [json_args][/dim]")
@@ -1612,7 +1613,9 @@ class InteractiveCLI(cmd2.Cmd):
                         return
 
         # Use the enhanced tool manager call_tool method that implements HTTP-first logic
-        console.print("[dim]Checking for running server (HTTP first, stdio fallback)...[/dim]")
+        console.print(
+            "[dim]Checking for running server (HTTP first, stdio fallback)...[/dim]"
+        )
 
         try:
             # Ensure tool_args is parsed as JSON if it's a string
@@ -1622,7 +1625,7 @@ class InteractiveCLI(cmd2.Cmd):
                 except json.JSONDecodeError:
                     console.print(f"[red]❌ Invalid JSON arguments: {tool_args}[/red]")
                     return
-            
+
             result = self.tool_manager.call_tool(
                 template_name,
                 tool_name,
@@ -1636,9 +1639,15 @@ class InteractiveCLI(cmd2.Cmd):
                 if result.get("result"):
                     self._display_tool_result(result["result"], tool_name)
                 else:
-                    console.print("[green]✅ Tool executed successfully (no output)[/green]")
+                    console.print(
+                        "[green]✅ Tool executed successfully (no output)[/green]"
+                    )
             else:
-                error_msg = result.get("error", "Tool execution failed") if result else "Tool execution failed"
+                error_msg = (
+                    result.get("error", "Tool execution failed")
+                    if result
+                    else "Tool execution failed"
+                )
                 console.print(f"[red]❌ Tool execution failed: {error_msg}[/red]")
 
         except Exception as e:
