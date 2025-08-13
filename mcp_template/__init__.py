@@ -294,6 +294,8 @@ Examples:
             cli.handle_shell_command(args)
         elif args.command == "cleanup":
             cli.handle_cleanup_command(args)
+        elif args.command == "config":
+            cli.handle_config_command(args)
         else:
             get_console().print(f"[red]❌ Unknown command: {args.command}[/red]")
             parser.print_help()
