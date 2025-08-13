@@ -570,7 +570,7 @@ def handle_enhanced_cli_commands(args) -> bool:
             cli.console.print(
                 f"• Connect to running server: mcpt connect {args.template}"
             )
-            cli.console.print(f"• List tools: mcpt interactive")
+            cli.console.print("• List tools: mcpt interactive")
             cli.console.print(f"• View logs: mcpt logs {args.template}")
         else:
             cli.console.print(f"[red]❌ Template '{args.template}' not found[/red]")
