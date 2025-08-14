@@ -233,10 +233,14 @@ class TestMCPDeployer:
         mock_discovery_class.return_value = mock_discovery
 
         mock_manager = Mock()
-        mock_manager.deploy_template.return_value = {
-            "deployment_name": "demo-123",
-            "status": "deployed",
-        }
+        # Mock the deploy_template to return a proper DeploymentResult-like object
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.deployment_id = "demo-123"
+        mock_result.status = "deployed"
+        mock_result.image = "demo:latest"
+        mock_result.error = None
+        mock_manager.deploy_template.return_value = mock_result
         mock_manager_class.return_value = mock_manager
 
         deployer = MCPDeployer()

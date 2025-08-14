@@ -59,10 +59,17 @@ call_parser.add_argument(
     action="store_true",
     help="Do not pull the Docker image",
 )
+call_parser.add_argument(
+    "-R",
+    "--raw",
+    dest="raw",
+    action="store_true",
+    help="Show raw JSON response instead of formatted table",
+)
 call_parser.add_argument("template_name", help="Template name to call")
 call_parser.add_argument("tool_name", help="Tool name to execute")
 call_parser.add_argument(
-    "json_args", nargs="?", default="{}", help="JSON string arguments"
+    "json_args", nargs="*", default=[], help="JSON string arguments (use quotes for JSON with spaces)"
 )
 
 
@@ -1121,12 +1128,23 @@ class InteractiveCLI(cmd2.Cmd):
                     config_values[prop_name] = os.environ[env_mapping]
 
         # Use the shared CLI method - this handles all the logic correctly
-        self.tool_manager.list_tools(
-            template_or_id=template_name,
-            discovery_method="auto",
-            force_refresh=force_server_discovery,
-            config_values=config_values,
-        )
+        try:
+            tools = self.tool_manager.list_tools(
+                template_or_id=template_name,
+                discovery_method="auto",
+                force_refresh=force_server_discovery,
+                config_values=config_values,
+            )
+            
+            # Display the tools if we got any
+            if tools:
+                self.beautifier.beautify_tools_list(tools, f"Template: {template_name}")
+            else:
+                console.print(f"[yellow]⚠️  No tools found for template '{template_name}'[/yellow]")
+                
+        except Exception as e:
+            console.print(f"[red]❌ Exception during tool discovery for template '{template_name}': {e}[/red]")
+            return
 
     def _show_template_help(self, template_name: str):
         """Show detailed help for a template including configuration and tools."""
@@ -1504,10 +1522,33 @@ class InteractiveCLI(cmd2.Cmd):
           call <template_name> <tool_name> [json_args]
           call --config-file config.json <template_name> <tool_name> [json_args]
           call --env API_KEY=value --config timeout=30 <template_name> <tool_name> [json_args]
+          call --raw <template_name> <tool_name> [json_args]  # Show raw JSON output
         """
         try:
-            # Use shlex to split the line properly, handling quotes
-            argv = shlex.split(line) if line.strip() else []
+            # Handle JSON arguments specially - find JSON-like content and preserve it
+            line = line.strip()
+            if not line:
+                argv = []
+            else:
+                # Look for JSON-like content (starts with { and ends with })
+                json_start = line.find('{')
+                json_end = line.rfind('}')
+                
+                if json_start != -1 and json_end != -1 and json_end > json_start:
+                    # Split the line into non-JSON part and JSON part
+                    before_json = line[:json_start].strip()
+                    json_part = line[json_start:json_end + 1].strip()
+                    after_json = line[json_end + 1:].strip()
+                    
+                    # Use shlex for the non-JSON parts
+                    argv = shlex.split(before_json) if before_json else []
+                    if json_part:
+                        argv.append(json_part)
+                    if after_json:
+                        argv.extend(shlex.split(after_json))
+                else:
+                    # No JSON detected, use normal shlex splitting
+                    argv = shlex.split(line)
 
             # Parse arguments using the call_parser
             args = call_parser.parse_args(argv)
@@ -1539,7 +1580,16 @@ class InteractiveCLI(cmd2.Cmd):
             return  # Error already printed in merge_config_sources
 
         tool_name = args.tool_name
-        tool_args = args.json_args
+        
+        # Handle json_args - join multiple parts back together and default to empty dict
+        if isinstance(args.json_args, list):
+            if not args.json_args:
+                tool_args = "{}"
+            else:
+                tool_args = " ".join(args.json_args)
+        else:
+            tool_args = args.json_args or "{}"
+            
         no_pull = args.no_pull
 
         console.print(
@@ -1637,7 +1687,7 @@ class InteractiveCLI(cmd2.Cmd):
             if result and result.get("success"):
                 # Display successful result
                 if result.get("result"):
-                    self._display_tool_result(result["result"], tool_name)
+                    self._display_tool_result(result["result"], tool_name, args.raw)
                 else:
                     console.print(
                         "[green]✅ Tool executed successfully (no output)[/green]"
@@ -1653,14 +1703,173 @@ class InteractiveCLI(cmd2.Cmd):
         except Exception as e:
             console.print(f"[red]❌ Failed to execute tool: {e}[/red]")
 
-    def _display_tool_result(self, result: Any, tool_name: str):
-        """Display tool result using the beautifier."""
+    def _display_tool_result(self, result: Any, tool_name: str, raw: bool = False):
+        """Display tool result in tabular format or raw JSON."""
         try:
-            self.beautifier.beautify_json(result, f"Tool Result: {tool_name}")
+            if raw:
+                # Show raw JSON format
+                self.beautifier.beautify_json(result, f"Tool Result: {tool_name}")
+            else:
+                # Show tabular format
+                self._display_tool_result_table(result, tool_name)
         except Exception:
-            # Fallback to simple display if beautifier fails
+            # Fallback to simple display if both methods fail
             console.print(f"[green]✅ Tool '{tool_name}' result:[/green]")
             console.print(result)
+
+    def _display_tool_result_table(self, result: Any, tool_name: str):
+        """Display tool result in a user-friendly tabular format."""
+        from rich.table import Table
+        from rich import box
+        
+        # Handle different types of results
+        if isinstance(result, dict):
+            # Check if it's an MCP-style response with content
+            if "content" in result and isinstance(result["content"], list):
+                self._display_mcp_content_table(result["content"], tool_name)
+            # Check if it's a structured response with result data
+            elif "structuredContent" in result and "result" in result["structuredContent"]:
+                self._display_simple_result_table(result["structuredContent"]["result"], tool_name)
+            # Check if it's a simple dict that can be displayed as key-value pairs
+            else:
+                self._display_dict_as_table(result, tool_name)
+        elif isinstance(result, list):
+            self._display_list_as_table(result, tool_name)
+        else:
+            # Single value result
+            self._display_simple_result_table(result, tool_name)
+    
+    def _display_mcp_content_table(self, content_list: list, tool_name: str):
+        """Display MCP content array in tabular format."""
+        from rich.table import Table
+        from rich import box
+        
+        table = Table(
+            title=f"🎯 {tool_name} Results",
+            box=box.ROUNDED,
+            show_header=True,
+            header_style="bold cyan"
+        )
+        
+        table.add_column("Type", style="yellow", width=12)
+        table.add_column("Content", style="white", min_width=40)
+        
+        for i, content in enumerate(content_list):
+            if isinstance(content, dict):
+                content_type = content.get("type", "unknown")
+                if content_type == "text":
+                    text_content = content.get("text", "")
+                    # Try to parse as JSON for better formatting
+                    try:
+                        import json
+                        parsed = json.loads(text_content)
+                        if isinstance(parsed, dict):
+                            # Display nested dict in a compact format
+                            formatted_content = "\n".join([f"{k}: {v}" for k, v in parsed.items()])
+                        else:
+                            formatted_content = str(parsed)
+                    except (json.JSONDecodeError, AttributeError):
+                        formatted_content = text_content
+                    table.add_row(content_type, formatted_content)
+                else:
+                    # Handle other content types
+                    table.add_row(content_type, str(content))
+            else:
+                table.add_row("unknown", str(content))
+        
+        console.print(table)
+        
+        # Also check for structured content if available
+        if hasattr(self, '_current_result') and "structuredContent" in getattr(self, '_current_result', {}):
+            structured = getattr(self, '_current_result')["structuredContent"]
+            if "result" in structured:
+                console.print(f"\n[green]✅ Result:[/green] {structured['result']}")
+    
+    def _display_simple_result_table(self, result: Any, tool_name: str):
+        """Display a simple result value in a clean format."""
+        from rich.table import Table
+        from rich import box
+        
+        table = Table(
+            title=f"🎯 {tool_name} Result",
+            box=box.ROUNDED,
+            show_header=False,
+            width=60
+        )
+        
+        table.add_column("", style="bold green", justify="center")
+        table.add_row(str(result))
+        
+        console.print(table)
+    
+    def _display_dict_as_table(self, data: dict, tool_name: str):
+        """Display a dictionary as a key-value table."""
+        from rich.table import Table
+        from rich import box
+        
+        table = Table(
+            title=f"🎯 {tool_name} Results",
+            box=box.ROUNDED,
+            show_header=True,
+            header_style="bold cyan"
+        )
+        
+        table.add_column("Property", style="yellow", width=20)
+        table.add_column("Value", style="white", min_width=40)
+        
+        for key, value in data.items():
+            if isinstance(value, (dict, list)):
+                # For complex values, show a summary
+                if isinstance(value, dict):
+                    display_value = f"Dict with {len(value)} items"
+                    if len(value) <= 3:  # Show small dicts inline
+                        display_value = ", ".join([f"{k}: {v}" for k, v in value.items()])
+                else:  # list
+                    display_value = f"List with {len(value)} items"
+                    if len(value) <= 3 and all(not isinstance(item, (dict, list)) for item in value):
+                        display_value = ", ".join(str(item) for item in value)
+            else:
+                display_value = str(value)
+            
+            table.add_row(key, display_value)
+        
+        console.print(table)
+    
+    def _display_list_as_table(self, data: list, tool_name: str):
+        """Display a list as a table."""
+        from rich.table import Table
+        from rich import box
+        
+        table = Table(
+            title=f"🎯 {tool_name} Results",
+            box=box.ROUNDED,
+            show_header=True,
+            header_style="bold cyan"
+        )
+        
+        if data and isinstance(data[0], dict):
+            # List of dicts - use dict keys as columns
+            if data:
+                keys = list(data[0].keys())
+                for key in keys:
+                    table.add_column(key.title(), style="white")
+                
+                for item in data:
+                    row = []
+                    for key in keys:
+                        value = item.get(key, "")
+                        if isinstance(value, (dict, list)):
+                            row.append(f"{type(value).__name__}({len(value)})")
+                        else:
+                            row.append(str(value))
+                    table.add_row(*row)
+        else:
+            # Simple list - show as single column
+            table.add_column("Item", style="white")
+            for i, item in enumerate(data):
+                table.add_row(str(item))
+        
+        console.print(table)
 
     def do_show_config(self, template_name):
         """Show current configuration for a template.

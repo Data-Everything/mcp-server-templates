@@ -204,7 +204,7 @@ class DockerProbe:
             try:
                 # Check if container is still running
                 if not self._is_container_running(container_name):
-                    logger.error("Container %s is not running", container_name)
+                    logger.debug("Container %s is not running", container_name)
                     return False
 
                 # Try to connect to the service

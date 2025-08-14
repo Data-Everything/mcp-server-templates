@@ -78,10 +78,10 @@ class DockerDeploymentService(BaseDeploymentBackend):
                 logger.debug("Command stderr: %s", result.stderr)
             return result
         except subprocess.CalledProcessError as e:
-            logger.error("Command failed: %s", " ".join(command))
-            logger.error("Exit code: %d", e.returncode)
-            logger.error("Stdout: %s", e.stdout)
-            logger.error("Stderr: %s", e.stderr)
+            logger.debug("Command failed: %s", " ".join(command))
+            logger.debug("Exit code: %d", e.returncode)
+            logger.debug("Stdout: %s", e.stdout)
+            logger.debug("Stderr: %s", e.stderr)
             raise
 
     def _ensure_docker_available(self):

@@ -87,8 +87,6 @@ class ToolManager:
 
             return normalized_tools
 
-            return normalized_tools
-
         except Exception as e:
             logger.error(f"Failed to list tools for {template_or_id}: {e}")
             return []
@@ -143,7 +141,7 @@ class ToolManager:
                     # Try to find deployment by template name
                     from mcp_template.core.deployment_manager import DeploymentManager
 
-                    deployment_manager = DeploymentManager(self.backend.backend_type)
+                    deployment_manager = DeploymentManager("docker")  # Use "docker" as default backend type
                     deployments = deployment_manager.find_deployments_by_criteria(
                         template_name=template_or_deployment
                     )
@@ -355,8 +353,15 @@ class ToolManager:
             from mcp_template.tools import DockerProbe
 
             docker_probe = DockerProbe()
-            tools = docker_probe.discover_tools_from_image(image, timeout)
-            return tools
+            result = docker_probe.discover_tools_from_image(image, timeout)
+            
+            # DockerProbe returns a dict with tools, extract the tools list
+            if result and isinstance(result, dict) and "tools" in result:
+                tools = result["tools"]
+                if isinstance(tools, list):
+                    return tools
+            
+            return []
 
         except Exception as e:
             logger.error(f"Failed to discover tools from image {image}: {e}")
