@@ -19,6 +19,7 @@ dependencies = [
     "cmd2==2.7",
     "aiohttp>=3.8.0",
     "setuptools_scm>=8.3.1",
+    "typer>=0.16.0",
 ]
 keywords = ["MCP", "Model Context Protocol", "AI Tools", "Server Templates", "Docker", "Kubernetes"]
 classifiers = [

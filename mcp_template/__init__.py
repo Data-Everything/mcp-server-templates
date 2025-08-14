@@ -26,6 +26,7 @@ import sys
 
 from mcp_template.backends.docker import DockerDeploymentService
 
+# Import unified CLI for improved command handling
 # Import enhanced CLI modules
 from mcp_template.cli import (
     CLI,
@@ -36,24 +37,17 @@ from mcp_template.cli import (
 
 # Import the new MCP Client for programmatic access
 from mcp_template.client import MCPClient
-from mcp_template.deployer import MCPDeployer
-from mcp_template.core.deployment_manager import DeploymentManager
-from mcp_template.template.utils.creation import TemplateCreator
 
-# Import unified CLI for improved command handling
-from mcp_template.cli import CLI
+# Import common modules for shared functionality
+from mcp_template.core import ConfigManager
+from mcp_template.core import DeploymentManager as CommonDeploymentManager
+from mcp_template.core import OutputFormatter, TemplateManager, ToolManager
+from mcp_template.core.deployment_manager import DeploymentManager
+from mcp_template.deployer import MCPDeployer
+from mcp_template.template.utils.creation import TemplateCreator
 
 # Import core classes that are used in CI and the CLI
 from mcp_template.template.utils.discovery import TemplateDiscovery
-
-# Import common modules for shared functionality
-from mcp_template.core import (
-    TemplateManager,
-    DeploymentManager as CommonDeploymentManager,
-    ConfigManager,
-    ToolManager,
-    OutputFormatter,
-)
 
 # Export the classes for external use (CI compatibility)
 __all__ = [
@@ -114,6 +108,28 @@ def split_command_args(args):
 
 
 def main():
+    """
+    Main entry point for the MCP deployer CLI.
+    Uses new Typer-based CLI with autocomplete and enhanced features.
+    """
+    import os
+
+    # Check if user wants legacy CLI (for backward compatibility)
+    if os.environ.get("MCPT_USE_LEGACY_CLI"):
+        main_legacy()
+        return
+
+    # Use new Typer CLI by default
+    try:
+        from mcp_template.typer_cli import app
+
+        app()
+    except ImportError:
+        # Fallback to legacy CLI if Typer not available
+        main_legacy()
+
+
+def main_legacy():
     """
     Main entry point for the MCP deployer CLI.
     Uses refactored CLI with common modules for centralized functionality.

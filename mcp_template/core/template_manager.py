@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from mcp_template.backends import get_backend
+from mcp_template.core.cache import CacheManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,9 @@ class TemplateManager:
         """Initialize the template manager."""
         self.template_discovery = TemplateDiscovery()
         self.backend = get_backend(backend_type)
+        self.cache_manager = CacheManager(
+            max_age_hours=6.0
+        )  # 6-hour cache for templates
         self._template_cache = {}
         self._cache_valid = False
 
@@ -46,12 +50,22 @@ class TemplateManager:
             Dictionary mapping template names to template metadata
         """
         try:
-            # Get base template information
-            if not self._cache_valid:
-                self._template_cache = self.template_discovery.discover_templates()
-                self._cache_valid = True
+            # Check persistent cache first
+            cache_key = "templates"
+            cached_templates = self.cache_manager.get(cache_key)
 
-            templates = self._template_cache.copy()
+            if cached_templates is not None:
+                templates = cached_templates.get(
+                    "data", cached_templates
+                )  # Handle both formats
+            elif not self._cache_valid:
+                templates = self.template_discovery.discover_templates()
+                self._template_cache = templates
+                self._cache_valid = True
+                # Store in persistent cache
+                self.cache_manager.set(cache_key, templates)
+            else:
+                templates = self._template_cache.copy()
 
             # Add deployment status if requested
             if include_deployed_status:
@@ -248,6 +262,8 @@ class TemplateManager:
         """Force refresh of the template cache."""
         self._cache_valid = False
         self._template_cache = {}
+        # Clear persistent cache
+        self.cache_manager.delete("templates")
 
     def get_template_path(self, template_id: str) -> Optional[Path]:
         """

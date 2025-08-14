@@ -5,6 +5,7 @@ Tests the command-line interface functionality including argument parsing,
 command dispatch, and error handling.
 """
 
+import os
 import sys
 from unittest.mock import Mock, patch
 
@@ -14,6 +15,7 @@ from mcp_template import MCPDeployer, main
 
 
 @pytest.mark.unit
+@patch.dict(os.environ, {"MCPT_USE_LEGACY_CLI": "1"})
 class TestMainCLI:
     """Test main CLI functionality."""
 
@@ -174,6 +176,7 @@ class TestMainCLI:
 
 
 @pytest.mark.unit
+@patch.dict(os.environ, {"MCPT_USE_LEGACY_CLI": "1"})
 class TestMCPDeployer:
     """Test MCPDeployer class functionality."""
 

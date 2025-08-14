@@ -20,6 +20,8 @@ class TestToolManager:
     def setup_method(self):
         """Set up test fixtures."""
         self.tool_manager = ToolManager(backend_type="mock")
+        # Clear all caches to ensure clean test state
+        self.tool_manager.clear_cache()
 
     def test_list_tools_static(self):
         """Test static tool discovery."""
@@ -39,11 +41,21 @@ class TestToolManager:
         with patch.object(
             self.tool_manager, "discover_tools_static", return_value=mock_tools
         ):
-            tools = self.tool_manager.list_tools("demo", discovery_method="static")
+            result = self.tool_manager.list_tools(
+                "static_test_demo", discovery_method="static"
+            )
 
+        # Check that we get the new structure
+        assert isinstance(result, dict)
+        assert "tools" in result
+        assert "discovery_method" in result
+        assert "metadata" in result
+
+        tools = result["tools"]
         assert len(tools) == 1
         assert tools[0]["name"] == "say_hello"
         assert tools[0]["source"] == "static"
+        assert result["discovery_method"] == "static"
 
     def test_list_tools_dynamic(self):
         """Test dynamic tool discovery."""
@@ -64,11 +76,21 @@ class TestToolManager:
         with patch.object(
             self.tool_manager, "discover_tools_dynamic", return_value=mock_tools
         ):
-            tools = self.tool_manager.list_tools("demo-123", discovery_method="dynamic")
+            result = self.tool_manager.list_tools(
+                "demo-123", discovery_method="dynamic"
+            )
 
+        # Check that we get the new structure
+        assert isinstance(result, dict)
+        assert "tools" in result
+        assert "discovery_method" in result
+        assert "metadata" in result
+
+        tools = result["tools"]
         assert len(tools) == 1
         assert tools[0]["name"] == "echo_message"
-        assert tools[0]["source"] == "dynamic"
+        assert tools[0]["source"] == "http"  # dynamic maps to http
+        assert result["discovery_method"] == "http"
 
     def test_list_tools_from_image(self):
         """Test image-based tool discovery."""
@@ -88,13 +110,20 @@ class TestToolManager:
         with patch.object(
             self.tool_manager, "discover_tools_from_image", return_value=mock_tools
         ):
-            tools = self.tool_manager.list_tools(
+            result = self.tool_manager.list_tools(
                 "demo:latest", discovery_method="image"
             )
 
+        # Check that we get the new structure
+        assert isinstance(result, dict)
+        assert "tools" in result
+        assert "discovery_method" in result
+        assert "metadata" in result
+
+        tools = result["tools"]
         assert len(tools) == 1
         assert tools[0]["name"] == "file_read"
-        assert tools[0]["source"] == "image"
+        assert tools[0]["source"] == "stdio"  # image maps to stdio
 
     def test_list_tools_auto_discovery(self):
         """Test automatic tool discovery method selection."""
@@ -109,8 +138,10 @@ class TestToolManager:
                 self.tool_manager, "discover_tools_static", return_value=static_tools
             ):
                 # Auto should try dynamic first and succeed
-                tools = self.tool_manager.list_tools("demo", discovery_method="auto")
+                result = self.tool_manager.list_tools("demo", discovery_method="auto")
 
+        assert isinstance(result, dict)
+        tools = result["tools"]
         assert len(tools) == 1
         assert tools[0]["name"] == "static_tool"  # Current logic tries static first
 
@@ -126,8 +157,10 @@ class TestToolManager:
             with patch.object(
                 self.tool_manager, "discover_tools_static", return_value=static_tools
             ):
-                tools = self.tool_manager.list_tools("demo", discovery_method="auto")
+                result = self.tool_manager.list_tools("demo", discovery_method="auto")
 
+        assert isinstance(result, dict)
+        tools = result["tools"]
         assert len(tools) == 1
         assert tools[0]["name"] == "static_tool"
 
@@ -324,61 +357,112 @@ class TestToolManager:
         """Test tool discovery caching."""
         mock_tools = [{"name": "cached_tool", "description": "Tool for caching test"}]
 
-        with patch.object(
-            self.tool_manager, "discover_tools_static", return_value=mock_tools
-        ) as mock_discover:
-            # First call should discover tools
-            tools1 = self.tool_manager.list_tools("demo", discovery_method="static")
+        # Clear any existing cache
+        self.tool_manager.clear_cache()
 
-            # Second call should use cache
-            tools2 = self.tool_manager.list_tools("demo", discovery_method="static")
+        # Mock the persistent cache manager to return None initially
+        with patch.object(self.tool_manager.cache_manager, "get", return_value=None):
+            with patch.object(
+                self.tool_manager, "discover_tools_static", return_value=mock_tools
+            ) as mock_discover:
+                # First call should discover tools
+                result1 = self.tool_manager.list_tools(
+                    "cache_behavior_test", discovery_method="static"
+                )
 
-            # Third call with force_refresh should discover again
-            tools3 = self.tool_manager.list_tools(
-                "demo", discovery_method="static", force_refresh=True
+                # Second call should use cache
+                result2 = self.tool_manager.list_tools(
+                    "cache_behavior_test", discovery_method="static"
+                )
+
+                # Third call with force_refresh should discover again
+                result3 = self.tool_manager.list_tools(
+                    "cache_behavior_test", discovery_method="static", force_refresh=True
+                )
+
+            # Verify structure and content
+            assert (
+                isinstance(result1, dict)
+                and isinstance(result2, dict)
+                and isinstance(result3, dict)
             )
-
-        assert tools1 == tools2 == tools3
-        assert mock_discover.call_count == 2  # Initial call + force refresh
+            assert result1["tools"] == result2["tools"] == result3["tools"]
+            assert mock_discover.call_count == 2  # Initial call + force refresh
 
     def test_cache_invalidation(self):
         """Test cache invalidation functionality."""
         mock_tools = [{"name": "test_tool"}]
 
-        with patch.object(
-            self.tool_manager, "discover_tools_static", return_value=mock_tools
-        ):
-            # Populate cache
-            self.tool_manager.list_tools("demo", discovery_method="static")
+        # Clear any existing cache
+        self.tool_manager.clear_cache()
 
-            # Check cache is populated
-            cached = self.tool_manager.get_cached_tools("demo", "static")
-            assert cached is not None
+        # Mock the persistent cache manager to return None initially
+        with patch.object(self.tool_manager.cache_manager, "get", return_value=None):
+            with patch.object(
+                self.tool_manager, "discover_tools_static", return_value=mock_tools
+            ) as mock_discover:
+                # Populate cache
+                result = self.tool_manager.list_tools(
+                    "cache_invalidation_test", discovery_method="static"
+                )
+                assert isinstance(result, dict)
 
-            # Clear cache
-            self.tool_manager.clear_cache()
+                # Verify the mock was called once
+                assert mock_discover.call_count == 1
 
-            # Check cache is cleared
-            cached = self.tool_manager.get_cached_tools("demo", "static")
-            assert cached is None
+                # Call again to verify caching (mock should not be called again)
+                result2 = self.tool_manager.list_tools(
+                    "cache_invalidation_test", discovery_method="static"
+                )
+                assert isinstance(result2, dict)
+
+                # Mock should still only have been called once (cached)
+                assert mock_discover.call_count == 1
+
+                # Clear cache
+                self.tool_manager.clear_cache()
+
+                # Call again after cache clear (mock should be called again)
+                result3 = self.tool_manager.list_tools(
+                    "cache_invalidation_test", discovery_method="static"
+                )
+                assert isinstance(result3, dict)
+
+                # Mock should now have been called twice
+                assert mock_discover.call_count == 2
 
     def test_get_cached_tools(self):
         """Test getting cached tools."""
         mock_tools = [{"name": "cached_tool"}]
 
-        # Initially no cache
-        cached = self.tool_manager.get_cached_tools("demo", "static")
-        assert cached is None
+        # Clear any existing cache
+        self.tool_manager.clear_cache()
 
-        # After discovery, cache should be populated
-        with patch.object(
-            self.tool_manager, "discover_tools_static", return_value=mock_tools
-        ):
-            tools = self.tool_manager.list_tools("demo", discovery_method="static")
+        # Mock the persistent cache manager to return None initially
+        with patch.object(self.tool_manager.cache_manager, "get", return_value=None):
+            with patch.object(
+                self.tool_manager, "discover_tools_static", return_value=mock_tools
+            ) as mock_discover:
+                # First call should discover tools (cache miss)
+                result = self.tool_manager.list_tools(
+                    "get_cached_test", discovery_method="static"
+                )
+                assert isinstance(result, dict)
+                assert mock_discover.call_count == 1
 
-        cached = self.tool_manager.get_cached_tools("demo", "static")
-        assert cached is not None
-        assert len(cached) == 1
+                tools = result["tools"]
+                assert len(tools) == 1
+                assert tools[0]["name"] == "cached_tool"
+
+                # Second call should use cache (no additional discovery call)
+                result2 = self.tool_manager.list_tools(
+                    "get_cached_test", discovery_method="static"
+                )
+                assert isinstance(result2, dict)
+                assert mock_discover.call_count == 1  # Still just one call
+
+                # Results should be identical
+                assert result["tools"] == result2["tools"]
 
 
 @pytest.mark.integration
@@ -390,16 +474,20 @@ class TestToolManagerIntegration:
         tool_manager = ToolManager(backend_type="mock")
 
         # Should be able to discover tools without errors
-        tools = tool_manager.list_tools("demo", discovery_method="static")
-        assert isinstance(tools, list)
+        result = tool_manager.list_tools("demo", discovery_method="static")
+        assert isinstance(result, dict)
+        assert "tools" in result
+        assert isinstance(result["tools"], list)
 
     def test_tool_manager_with_multiple_sources(self):
         """Test tool manager with multiple discovery sources."""
         tool_manager = ToolManager(backend_type="mock")
 
         # Test that auto discovery doesn't crash
-        tools = tool_manager.list_tools("demo", discovery_method="auto")
-        assert isinstance(tools, list)
+        result = tool_manager.list_tools("demo", discovery_method="auto")
+        assert isinstance(result, dict)
+        assert "tools" in result
+        assert isinstance(result["tools"], list)
 
     def test_tool_normalization_integration(self):
         """Test tool normalization in integration context."""
@@ -419,8 +507,10 @@ class TestToolManagerIntegration:
         with patch.object(
             tool_manager, "discover_tools_static", return_value=raw_tools
         ):
-            tools = tool_manager.list_tools("demo", discovery_method="static")
+            result = tool_manager.list_tools("demo", discovery_method="static")
 
+        assert isinstance(result, dict)
+        tools = result["tools"]
         assert len(tools) == 1
         assert "parameters" in tools[0]
         assert tools[0]["source"] == "static"

@@ -143,6 +143,18 @@ class CacheManager:
         cache_file = self._get_cache_file(key)
         return self._remove_cache_file(cache_file)
 
+    def delete(self, key: str) -> bool:
+        """
+        Alias for remove method - deletes cached data for a key.
+
+        Args:
+            key: Cache key to delete
+
+        Returns:
+            True if deleted or didn't exist, False on error
+        """
+        return self.remove(key)
+
     def clear_all(self) -> int:
         """
         Clear all cached data.
