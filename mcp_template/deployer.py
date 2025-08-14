@@ -277,20 +277,20 @@ class MCPDeployer:
 
                 # Deploy using unified manager
                 from mcp_template.core.deployment_manager import DeploymentOptions
-                
+
                 deployment_options = DeploymentOptions(
                     pull_image=pull_image,
                     data_dir=data_dir,
                     config_dir=config_dir,
                 )
-                
+
                 config_sources = {
                     "config_values": config,
                     "config_file": config_file,
                     "env_vars": env_vars,
                     "override_values": override_values,
                 }
-                
+
                 result = self.deployment_manager.deploy_template(
                     template_id=template_name,
                     config_sources=config_sources,
@@ -301,13 +301,13 @@ class MCPDeployer:
 
                 # Check deployment success
                 if not result.success:
-                    console.print(f"[red]❌ Failed to deploy {template_name}: {result.error}[/red]")
+                    console.print(
+                        f"[red]❌ Failed to deploy {template_name}: {result.error}[/red]"
+                    )
                     return False
 
                 # Generate MCP config
-                self._generate_mcp_config(
-                    template_name, result.deployment_id, template
-                )
+                self._generate_mcp_config(template_name, result.deployment_id, template)
 
                 # Success message
                 console.print(

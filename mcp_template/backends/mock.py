@@ -133,9 +133,9 @@ class MockDeploymentService(BaseDeploymentBackend):
         return False
 
     def get_deployment_logs(
-        self, 
-        deployment_name: str, 
-        lines: int = 100, 
+        self,
+        deployment_name: str,
+        lines: int = 100,
         follow: bool = False,
         since: Optional[str] = None,
         until: Optional[str] = None,

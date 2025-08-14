@@ -21,7 +21,7 @@ class TestCallParserArgumentHandling:
         args = call_parser.parse_args(["filesystem", "list_directory"])
         assert args.template_name == "filesystem"
         assert args.tool_name == "list_directory"
-        assert args.json_args == "{}"
+        assert args.json_args == []
         assert args.config is None
         assert args.no_pull is False
 
@@ -46,7 +46,7 @@ class TestCallParserArgumentHandling:
         args = call_parser.parse_args(
             ["filesystem", "list_directory", '{"path": "/tmp"}']
         )
-        assert args.json_args == '{"path": "/tmp"}'
+        assert args.json_args == ['{"path": "/tmp"}']
         assert args.template_name == "filesystem"
         assert args.tool_name == "list_directory"
 
@@ -87,7 +87,7 @@ class TestCallParserArgumentHandling:
         assert args.no_pull is True
         assert args.template_name == "filesystem"
         assert args.tool_name == "list_directory"
-        assert args.json_args == '{"path": "/tmp"}'
+        assert args.json_args == ['{"path": "/tmp"}']
 
 
 class TestShlexQuoteHandling:
@@ -171,7 +171,7 @@ class TestShlexQuoteHandling:
 
         assert args.template_name == "filesystem"
         assert args.tool_name == "list_directory"
-        assert args.json_args == "{path: /tmp}"
+        assert args.json_args == ["{path: /tmp}"]
 
 
 class TestCompleteWorkflow:
@@ -260,10 +260,14 @@ class TestErrorCases:
 
     def test_empty_command_handling(self):
         """Test handling of empty or minimal commands."""
-        with pytest.raises(Exception):  # argparse raises ArgumentError with exit_on_error=False
+        with pytest.raises(
+            Exception
+        ):  # argparse raises ArgumentError with exit_on_error=False
             call_parser.parse_args([])
 
-        with pytest.raises(Exception):  # argparse raises ArgumentError with exit_on_error=False
+        with pytest.raises(
+            Exception
+        ):  # argparse raises ArgumentError with exit_on_error=False
             call_parser.parse_args(["filesystem"])
 
     def test_invalid_json_structure(self):
@@ -272,4 +276,4 @@ class TestErrorCases:
         args = call_parser.parse_args(
             ["filesystem", "list_directory", '{"invalid": json}']
         )
-        assert args.json_args == '{"invalid": json}'  # Passed through as-is
+        assert args.json_args == ['{"invalid": json}']  # Passed through as-is

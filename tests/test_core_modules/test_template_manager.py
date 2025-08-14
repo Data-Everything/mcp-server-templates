@@ -101,8 +101,8 @@ class TestTemplateManager:
         # Mock backend to return deployments only for demo
         def mock_list_deployments():
             return [
-                {"id": "demo-123", "template": "demo"},
-                {"id": "demo-456", "template": "demo"},
+                {"id": "demo-123", "template": "demo", "status": "running"},
+                {"id": "demo-456", "template": "demo", "status": "running"},
             ]
 
         with patch.object(

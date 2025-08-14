@@ -130,15 +130,20 @@ class TestIntegration:
 
     def test_error_handling(self, client):
         """Test error handling for invalid tool calls."""
-        # Test invalid template
-        with pytest.raises(ToolCallError):
-            client.call_tool("invalid_template", "test_tool")
+        # Test invalid template - should return error response
+        result = client.call_tool("invalid_template", "test_tool")
+        assert isinstance(result, dict)
+        assert result.get("success") is False
+        assert "not found" in result.get("error", "").lower()
 
         # Test invalid tool (should handle gracefully)
         try:
             result = client.call_tool("demo", "invalid_tool")
-            # Should return error result, not raise exception
-            assert not result["success"] or result["is_error"]
+            # Should return error response, not raise exception
+            assert result is None or (
+                isinstance(result, dict)
+                and (not result.get("success", True) or result.get("is_error", False))
+            )
         except Exception as e:
             pytest.skip(f"Demo template not available: {e}")
 

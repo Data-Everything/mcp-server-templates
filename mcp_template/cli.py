@@ -280,22 +280,19 @@ class CLI:
 
             if getattr(args, "all", False):
                 targets = self.deployment_manager.find_deployments_by_criteria(
-                    template_name=getattr(args, "template", None),
-                    status='running'
+                    template_name=getattr(args, "template", None), status="running"
                 )
             elif getattr(args, "name", None):
                 targets = self.deployment_manager.find_deployments_by_criteria(
-                    custom_name=args.name,
-                    status='running'
+                    custom_name=args.name, status="running"
                 )
             elif getattr(args, "template", None):
                 targets = self.deployment_manager.find_deployments_by_criteria(
-                    template_name=args.template,
-                    status='running'
+                    template_name=args.template, status="running"
                 )
 
             if not targets:
-                self.formatter.print_error(f"No deployments found")
+                self.formatter.print_error("No deployments found")
                 return
 
             # Confirm bulk operations
@@ -456,7 +453,7 @@ class EnhancedCLI(CLI):
         """Show configuration options for a template."""
         self._show_config_options(template_name)
 
-    
+
 def add_enhanced_cli_args(subparsers) -> None:
     """Add enhanced CLI arguments to subparsers for backward compatibility."""
     # Config command

@@ -52,7 +52,7 @@ class TestInteractiveCLIIntegration:
                     "required": ["token"],
                 },
             }
-            
+
             # Mock template list
             cli.template_manager.list_templates.return_value = {
                 "github": {

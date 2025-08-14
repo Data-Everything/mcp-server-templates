@@ -118,9 +118,11 @@ class TestInteractiveCLICommands:
                 force_refresh=False,
                 config_values={},
             )
-            
+
             # Verify beautify_tools_list was called with the tools
-            cli.beautifier.beautify_tools_list.assert_called_once_with([{"name": "test_tool"}], "Template: github")
+            cli.beautifier.beautify_tools_list.assert_called_once_with(
+                [{"name": "test_tool"}], "Template: github"
+            )
 
     def test_do_tools_no_tools_found(self, cli):
         """Test do_tools command when no tools are found."""
@@ -137,7 +139,7 @@ class TestInteractiveCLICommands:
                 force_refresh=False,
                 config_values={},
             )
-            
+
             # Verify beautify_tools_list was NOT called since no tools found
             cli.beautifier.beautify_tools_list.assert_not_called()
 
@@ -200,9 +202,11 @@ class TestInteractiveCLICommands:
                 force_refresh=False,
                 config_values={"token": "test_token"},
             )
-            
+
             # Verify beautify_tools_list was called with the tools
-            cli.beautifier.beautify_tools_list.assert_called_once_with([{"name": "repo_tool"}], "Template: github")
+            cli.beautifier.beautify_tools_list.assert_called_once_with(
+                [{"name": "repo_tool"}], "Template: github"
+            )
 
     def test_do_config_no_args(self, cli):
         """Test do_config command with no arguments."""
@@ -300,66 +304,64 @@ class TestInteractiveCLICommands:
 
     @patch("mcp_template.interactive_cli.merge_config_sources")
     @patch("mcp_template.interactive_cli.console")
-    def test_display_tool_result_default_table_format(self, mock_console, mock_merge, cli):
+    def test_display_tool_result_default_table_format(
+        self, mock_console, mock_merge, cli
+    ):
         """Test that _display_tool_result uses table format by default."""
         # Mock setup
         mock_merge.return_value = {"token": "test_token"}
-        
+
         # Create test result with MCP content structure
         test_result = {
-            "content": [
-                {"type": "text", "text": "Hello World! This is a test result."}
-            ]
+            "content": [{"type": "text", "text": "Hello World! This is a test result."}]
         }
-        
+
         # Mock the table display method
         cli._display_tool_result_table = MagicMock()
-        
+
         # Call _display_tool_result with raw=False (default)
         cli._display_tool_result(test_result, "test_tool", raw=False)
-        
+
         # Verify table display was called
         cli._display_tool_result_table.assert_called_once_with(test_result, "test_tool")
 
-    @patch("mcp_template.interactive_cli.merge_config_sources") 
+    @patch("mcp_template.interactive_cli.merge_config_sources")
     @patch("mcp_template.interactive_cli.console")
     def test_display_tool_result_raw_format(self, mock_console, mock_merge, cli):
         """Test that _display_tool_result uses beautifier for raw=True."""
         # Mock setup
         mock_merge.return_value = {"token": "test_token"}
-        
+
         # Create test result
         test_result = {
-            "content": [
-                {"type": "text", "text": "Hello World! This is a test result."}
-            ]
+            "content": [{"type": "text", "text": "Hello World! This is a test result."}]
         }
-        
+
         # Call _display_tool_result with raw=True
         cli._display_tool_result(test_result, "test_tool", raw=True)
-        
+
         # Verify beautifier.beautify_json was called
         cli.beautifier.beautify_json.assert_called_once_with(
             test_result, "Tool Result: test_tool"
         )
 
     @patch("mcp_template.interactive_cli.merge_config_sources")
-    @patch("mcp_template.interactive_cli.console") 
+    @patch("mcp_template.interactive_cli.console")
     def test_display_tool_result_fallback_on_error(self, mock_console, mock_merge, cli):
         """Test that _display_tool_result falls back to simple display on errors."""
         # Mock setup
         mock_merge.return_value = {"token": "test_token"}
-        
+
         # Create test result
         test_result = {"simple": "result"}
-        
+
         # Mock both display methods to raise exceptions
         cli._display_tool_result_table = MagicMock(side_effect=Exception("Table error"))
         cli.beautifier.beautify_json = MagicMock(side_effect=Exception("JSON error"))
-        
+
         # Call _display_tool_result - should not raise exception
         cli._display_tool_result(test_result, "test_tool", raw=False)
-        
+
         # Verify fallback console output was called
         mock_console.print.assert_any_call("[green]✅ Tool 'test_tool' result:[/green]")
         mock_console.print.assert_any_call(test_result)
@@ -371,37 +373,41 @@ class TestInteractiveCLICommands:
         mcp_result = {
             "content": [
                 {"type": "text", "text": "Hello from the tool!"},
-                {"type": "text", "text": "Second line of output"}
+                {"type": "text", "text": "Second line of output"},
             ]
         }
-        
+
         # Mock the Rich Table creation and console
-        with patch("rich.table.Table") as mock_table_class, \
-             patch("rich.syntax.Syntax") as mock_syntax:
-            
+        with (
+            patch("rich.table.Table") as mock_table_class,
+            patch("rich.syntax.Syntax") as mock_syntax,
+        ):
+
             mock_table = MagicMock()
             mock_table_class.return_value = mock_table
-            
+
             # Call the method
             cli._display_tool_result_table(mcp_result, "test_tool")
-            
+
             # Verify table was created - it calls _display_mcp_content_table internally
             # which creates a table with box=box.ROUNDED parameter
             mock_table_class.assert_called_with(
                 title="🎯 test_tool Results",
                 box=mock.ANY,  # box.ROUNDED - we don't want to mock the box import
                 show_header=True,
-                header_style="bold cyan"
+                header_style="bold cyan",
             )
-            
+
             # Verify columns were added
             assert mock_table.add_column.call_count == 2
             mock_table.add_column.assert_any_call("Type", style="yellow", width=12)
-            mock_table.add_column.assert_any_call("Content", style="white", min_width=40)
-            
+            mock_table.add_column.assert_any_call(
+                "Content", style="white", min_width=40
+            )
+
             # Verify rows were added for each content item
             assert mock_table.add_row.call_count == 2
-            
+
             # Verify console.print was called with the table
             mock_console.print.assert_called_with(mock_table)
 
@@ -412,32 +418,32 @@ class TestInteractiveCLICommands:
         dict_result = {
             "status": "success",
             "message": "Operation completed",
-            "count": 42
+            "count": 42,
         }
-        
+
         # Mock the Rich Table creation
         with patch("rich.table.Table") as mock_table_class:
             mock_table = MagicMock()
             mock_table_class.return_value = mock_table
-            
+
             # Call the method
             cli._display_tool_result_table(dict_result, "test_tool")
-            
+
             # Verify table was created - calls _display_dict_as_table
             mock_table_class.assert_called_with(
                 title="🎯 test_tool Results",
                 box=mock.ANY,  # box.ROUNDED
                 show_header=True,
-                header_style="bold cyan"
+                header_style="bold cyan",
             )
-            
+
             # Verify Property/Value columns were added
             mock_table.add_column.assert_any_call("Property", style="yellow", width=20)
             mock_table.add_column.assert_any_call("Value", style="white", min_width=40)
-            
+
             # Verify rows were added for each dict item
             assert mock_table.add_row.call_count == 3
-            
+
             # Verify console.print was called
             mock_console.print.assert_called_with(mock_table)
 
@@ -448,31 +454,31 @@ class TestInteractiveCLICommands:
         list_result = [
             {"name": "Alice", "age": 30},
             {"name": "Bob", "age": 25},
-            {"name": "Charlie", "age": 35}
+            {"name": "Charlie", "age": 35},
         ]
-        
+
         # Mock the Rich Table creation
         with patch("rich.table.Table") as mock_table_class:
             mock_table = MagicMock()
             mock_table_class.return_value = mock_table
-            
+
             # Call the method
             cli._display_tool_result_table(list_result, "test_tool")
-            
+
             # Verify table was created - calls _display_list_as_table
             mock_table_class.assert_called_with(
                 title="🎯 test_tool Results",
                 box=mock.ANY,  # box.ROUNDED
                 show_header=True,
-                header_style="bold cyan"
+                header_style="bold cyan",
             )
-            
+
             # Verify columns were added for dict keys (name, age)
             assert mock_table.add_column.call_count >= 2
-            
+
             # Verify rows were added for each list item
             assert mock_table.add_row.call_count == 3
-            
+
             # Verify console.print was called
             mock_console.print.assert_called_with(mock_table)
 
@@ -481,29 +487,31 @@ class TestInteractiveCLICommands:
         """Test _display_tool_result_table with simple string result."""
         # Test simple string result
         string_result = "Simple text response from tool"
-        
+
         # Mock the Rich Table creation
         with patch("rich.table.Table") as mock_table_class:
             mock_table = MagicMock()
             mock_table_class.return_value = mock_table
-            
+
             # Call the method
             cli._display_tool_result_table(string_result, "test_tool")
-            
+
             # Verify table was created - calls _display_simple_result_table
             mock_table_class.assert_called_with(
                 title="🎯 test_tool Result",  # Note: singular "Result"
                 box=mock.ANY,  # box.ROUNDED
                 show_header=False,  # Simple results don't show header
-                width=60
+                width=60,
             )
-            
+
             # Verify column was added - simple result has single column with no name
-            mock_table.add_column.assert_called_once_with("", style="bold green", justify="center")
-            
+            mock_table.add_column.assert_called_once_with(
+                "", style="bold green", justify="center"
+            )
+
             # Verify one row was added with the string
             mock_table.add_row.assert_called_once_with(string_result)
-            
+
             # Verify console.print was called
             mock_console.print.assert_called_with(mock_table)
 

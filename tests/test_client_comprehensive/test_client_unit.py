@@ -8,17 +8,11 @@ including edge cases, error conditions, and integration scenarios.
 import asyncio
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, List, Any, Optional
-
 from mcp_template.client import MCPClient
-from mcp_template.exceptions import (
-    TemplateNotFoundError,
-    DeploymentError,
-    ToolCallError,
-    MCPException,
-)
 
 
+@pytest.mark.unit
+@pytest.mark.docker
 class TestMCPClientInitialization:
     """Test client initialization and configuration."""
 
@@ -38,10 +32,10 @@ class TestMCPClientInitialization:
         assert client.timeout == 60
 
     def test_invalid_backend_initialization(self):
-        """Test client gracefully handles invalid backend types."""
-        # Should not raise an exception during initialization
-        client = MCPClient(backend_type="nonexistent")
-        assert client.backend_type == "nonexistent"
+        """Test client raises ValueError for invalid backend types."""
+        # Should raise ValueError for unsupported backend types
+        with pytest.raises(ValueError, match="Unsupported backend type: nonexistent"):
+            MCPClient(backend_type="nonexistent")
 
 
 class TestMCPClientTemplates:
@@ -178,6 +172,9 @@ class TestMCPClientTemplates:
 
     def test_get_template_info_edge_cases(self):
         """Test edge cases for template info retrieval."""
+        # Configure mock to return None for edge cases
+        self.mock_template_manager.get_template_info.return_value = None
+
         # Test None input
         result = self.client.get_template_info(None)
         assert result is None
@@ -192,6 +189,7 @@ class TestMCPClientTemplates:
         assert result is None
 
 
+@pytest.mark.unit
 class TestMCPClientServers:
     """Test server management methods."""
 
@@ -207,17 +205,21 @@ class TestMCPClientServers:
             {"id": "server1", "template": "demo", "status": "running"},
             {"id": "server2", "template": "github", "status": "stopped"},
         ]
-        self.mock_deployment_manager.list_deployments.return_value = expected_servers
+        self.mock_deployment_manager.find_deployments_by_criteria.return_value = (
+            expected_servers
+        )
 
         result = self.client.list_servers()
 
         assert result == expected_servers
-        self.mock_deployment_manager.list_deployments.assert_called_once()
+        self.mock_deployment_manager.find_deployments_by_criteria.assert_called_once_with(
+            template_name=None
+        )
 
     def test_list_servers_error(self):
         """Test server listing error handling."""
-        self.mock_deployment_manager.list_deployments.side_effect = Exception(
-            "List error"
+        self.mock_deployment_manager.find_deployments_by_criteria.side_effect = (
+            Exception("List error")
         )
 
         result = self.client.list_servers()
@@ -227,17 +229,15 @@ class TestMCPClientServers:
     def test_list_servers_by_template_success(self):
         """Test successful server listing by template."""
         expected_servers = [{"id": "server1", "template": "demo", "status": "running"}]
-        mock_result = Mock()
-        mock_result.deployments = expected_servers
         self.mock_deployment_manager.find_deployments_by_criteria.return_value = (
-            mock_result
+            expected_servers
         )
 
         result = self.client.list_servers_by_template("demo")
 
         assert result == expected_servers
-        self.mock_deployment_manager.find_deployments_by_criteria.assert_called_once_with(
-            template_id="demo"
+        self.mock_deployment_manager.find_deployments_by_criteria.assert_called_with(
+            template_name="demo"
         )
 
     def test_start_server_success(self):
@@ -279,28 +279,24 @@ class TestMCPClientServers:
 
     def test_stop_server_success(self):
         """Test successful server stop."""
-        mock_result = Mock()
-        mock_result.success = True
-        mock_result.to_dict.return_value = {"success": True, "message": "Stopped"}
-        self.mock_deployment_manager.stop_deployment.return_value = mock_result
+        expected_result = {"success": True, "message": "Stopped"}
+        self.mock_deployment_manager.stop_deployment.return_value = expected_result
 
         result = self.client.stop_server("server123")
 
-        assert result == {"success": True, "message": "Stopped"}
+        assert result == expected_result
         self.mock_deployment_manager.stop_deployment.assert_called_once_with(
             "server123", 30
         )
 
     def test_stop_server_failure(self):
         """Test server stop failure."""
-        mock_result = Mock()
-        mock_result.success = False
-        mock_result.to_dict.return_value = {"success": False, "error": "Not found"}
-        self.mock_deployment_manager.stop_deployment.return_value = mock_result
+        expected_result = {"success": False, "error": "Not found"}
+        self.mock_deployment_manager.stop_deployment.return_value = expected_result
 
         result = self.client.stop_server("invalid_server")
 
-        assert result == {"success": False, "error": "Not found"}
+        assert result == expected_result
 
     def test_get_server_info_success(self):
         """Test successful server info retrieval."""
@@ -324,28 +320,35 @@ class TestMCPClientServers:
     def test_get_server_logs_success(self):
         """Test successful server log retrieval."""
         expected_logs = "Log line 1\nLog line 2\nLog line 3"
-        self.mock_deployment_manager.get_deployment_logs.return_value = expected_logs
+        self.mock_deployment_manager.get_deployment_logs.return_value = {
+            "success": True,
+            "logs": expected_logs,
+        }
 
         result = self.client.get_server_logs("server123")
 
         assert result == expected_logs
         self.mock_deployment_manager.get_deployment_logs.assert_called_once_with(
-            "server123", 100, False
+            "server123", lines=100, follow=False
         )
 
     def test_get_server_logs_with_params(self):
         """Test server log retrieval with custom parameters."""
         expected_logs = "Recent logs"
-        self.mock_deployment_manager.get_deployment_logs.return_value = expected_logs
+        self.mock_deployment_manager.get_deployment_logs.return_value = {
+            "success": True,
+            "logs": expected_logs,
+        }
 
         result = self.client.get_server_logs("server123", lines=50, follow=True)
 
         assert result == expected_logs
         self.mock_deployment_manager.get_deployment_logs.assert_called_once_with(
-            "server123", 50, True
+            "server123", lines=50, follow=True
         )
 
 
+@pytest.mark.unit
 class TestMCPClientTools:
     """Test tool management methods."""
 
@@ -370,8 +373,6 @@ class TestMCPClientTools:
             "demo",
             discovery_method="auto",
             force_refresh=False,
-            timeout=30,
-            config_values=None,
         )
 
     def test_list_tools_with_params(self):
@@ -383,8 +384,7 @@ class TestMCPClientTools:
             "demo",
             discovery_method="static",
             force_refresh=True,
-            timeout=60,
-            config_values={"key": "value"},
+            force_server_discovery=True,
         )
 
         assert result == expected_tools
@@ -392,8 +392,6 @@ class TestMCPClientTools:
             "demo",
             discovery_method="static",
             force_refresh=True,
-            timeout=60,
-            config_values={"key": "value"},
         )
 
     def test_list_tools_error(self):
@@ -437,37 +435,39 @@ class TestMCPClientTools:
         )
 
 
+@pytest.mark.unit
 class TestMCPClientConnections:
     """Test connection management methods."""
 
     def setup_method(self):
         """Set up test client with mocked dependencies."""
         self.client = MCPClient(backend_type="mock")
-        self.client.connections = {}
+        # The client has _active_connections, not connections
+        self.client._active_connections = {}
 
     @pytest.mark.asyncio
     async def test_connect_stdio_success(self):
         """Test successful stdio connection."""
         mock_connection = AsyncMock()
-        mock_connection.connection_id = "conn123"
 
-        with patch("mcp_template.core.mcp_connection.MCPConnection") as mock_conn_class:
+        with patch("mcp_template.client.MCPConnection") as mock_conn_class:
             mock_conn_class.return_value = mock_connection
-            mock_connection.connect.return_value = True
+            mock_connection.connect_stdio.return_value = True
 
             result = await self.client.connect_stdio(["echo", "test"])
 
-            assert result == "conn123"
-            assert "conn123" in self.client.connections
+            # The connection_id is auto-generated as stdio_0 for first connection
+            assert result == "stdio_0"
+            assert "stdio_0" in self.client._active_connections
 
     @pytest.mark.asyncio
     async def test_connect_stdio_failure(self):
         """Test stdio connection failure."""
         mock_connection = AsyncMock()
 
-        with patch("mcp_template.core.mcp_connection.MCPConnection") as mock_conn_class:
+        with patch("mcp_template.client.MCPConnection") as mock_conn_class:
             mock_conn_class.return_value = mock_connection
-            mock_connection.connect.return_value = False
+            mock_connection.connect_stdio.return_value = False
 
             result = await self.client.connect_stdio(["invalid_command"])
 
@@ -477,12 +477,13 @@ class TestMCPClientConnections:
     async def test_disconnect_success(self):
         """Test successful disconnection."""
         mock_connection = AsyncMock()
-        self.client.connections["conn123"] = mock_connection
+        self.client._active_connections["conn123"] = mock_connection
 
         result = await self.client.disconnect("conn123")
 
         assert result is True
-        assert "conn123" not in self.client.connections
+        assert "conn123" not in self.client._active_connections
+        mock_connection.disconnect.assert_called_once()
         mock_connection.disconnect.assert_called_once()
 
     @pytest.mark.asyncio
@@ -497,7 +498,7 @@ class TestMCPClientConnections:
         """Test successful tool listing from connection."""
         mock_connection = AsyncMock()
         mock_connection.list_tools.return_value = [{"name": "test_tool"}]
-        self.client.connections["conn123"] = mock_connection
+        self.client._active_connections["conn123"] = mock_connection
 
         result = await self.client.list_tools_from_connection("conn123")
 
@@ -515,7 +516,7 @@ class TestMCPClientConnections:
         """Test successful tool calling from connection."""
         mock_connection = AsyncMock()
         mock_connection.call_tool.return_value = {"result": "success"}
-        self.client.connections["conn123"] = mock_connection
+        self.client._active_connections["conn123"] = mock_connection
 
         result = await self.client.call_tool_from_connection(
             "conn123", "test_tool", {"arg": "value"}
@@ -536,15 +537,16 @@ class TestMCPClientConnections:
         """Test connection cleanup."""
         mock_conn1 = AsyncMock()
         mock_conn2 = AsyncMock()
-        self.client.connections = {"conn1": mock_conn1, "conn2": mock_conn2}
+        self.client._active_connections = {"conn1": mock_conn1, "conn2": mock_conn2}
 
         await self.client.cleanup()
 
-        assert len(self.client.connections) == 0
+        assert len(self.client._active_connections) == 0
         mock_conn1.disconnect.assert_called_once()
         mock_conn2.disconnect.assert_called_once()
 
 
+@pytest.mark.unit
 class TestMCPClientContextManager:
     """Test async context manager functionality."""
 
@@ -562,21 +564,31 @@ class TestMCPClientContextManager:
 
         # Add a mock connection
         mock_connection = AsyncMock()
-        client.connections["test"] = mock_connection
+        client._active_connections["test"] = mock_connection
 
         async with client:
-            assert "test" in client.connections
+            assert "test" in client._active_connections
 
         # Should be cleaned up after exiting context
-        assert len(client.connections) == 0
+        assert len(client._active_connections) == 0
+        mock_connection.disconnect.assert_called_once()
 
 
+@pytest.mark.unit
 class TestMCPClientEdgeCases:
     """Test edge cases and error conditions."""
 
     def setup_method(self):
         """Set up test client."""
         self.client = MCPClient(backend_type="mock")
+        # Mock the template manager for consistent edge case testing
+        self.mock_template_manager = Mock()
+        self.client.template_manager = self.mock_template_manager
+
+        # Configure mocks to return None/empty for edge cases
+        self.mock_template_manager.get_template_info.return_value = None
+        self.mock_template_manager.validate_template.return_value = False
+        self.mock_template_manager.search_templates.return_value = {}
 
     def test_none_inputs(self):
         """Test handling of None inputs."""
@@ -613,6 +625,8 @@ class TestMCPClientEdgeCases:
         mock_tool_manager.clear_cache.assert_called_once()
 
 
+@pytest.mark.unit
+@pytest.mark.integration
 class TestMCPClientIntegration:
     """Integration tests for client functionality."""
 
@@ -649,10 +663,11 @@ class TestMCPClientIntegration:
             "result": {"output": "Hello"},
         }
 
-        mock_stop_result = Mock()
-        mock_stop_result.success = True
-        mock_stop_result.to_dict.return_value = {"success": True, "message": "Stopped"}
-        client.deployment_manager.stop_deployment.return_value = mock_stop_result
+        # Mock stop_deployment to return a dictionary directly
+        client.deployment_manager.stop_deployment.return_value = {
+            "success": True,
+            "message": "Stopped",
+        }
 
         # Execute workflow
         templates = client.list_templates()

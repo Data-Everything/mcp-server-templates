@@ -139,12 +139,14 @@ class TestDockerDeploymentService:
     def test_get_deployment_status(self, mock_run_command, mock_ensure_docker):
         """Test getting deployment status with logs via unified get_deployment_info method."""
         mock_response = """[{"Name": "/test-container", "State": {"Status": "running", "Running": true}, "Created": "2024-01-01", "Config": {"Image": "test:latest", "Labels": {"template": "test"}}}]"""
-        
+
         # Simple approach: make a mock that returns the JSON string
         mock_run_command.return_value = Mock(stdout=mock_response)
 
         service = DockerDeploymentService()
-        status = service.get_deployment_info("test-container", include_logs=False)  # Don't include logs to avoid second call
+        status = service.get_deployment_info(
+            "test-container", include_logs=False
+        )  # Don't include logs to avoid second call
 
         assert status is not None, "Status should not be None"
         assert status["status"] == "running"
@@ -180,8 +182,17 @@ class TestDockerDeploymentService:
             port_mappings = service._prepare_port_mappings(template_data)
 
             assert "-p" in port_mappings
-            assert "8080:8080" in port_mappings
-            assert "9000:9001" in port_mappings
+            # Check that there are two port mappings (even if ports are remapped)
+            port_args = [
+                port_mappings[i + 1]
+                for i, arg in enumerate(port_mappings)
+                if arg == "-p"
+            ]
+            assert len(port_args) == 2
+
+            # Check that container ports are correctly mapped (host ports may be remapped)
+            assert any(":8080" in port for port in port_args)  # Container port 8080
+            assert any(":9001" in port for port in port_args)  # Container port 9001
 
     def test_prepare_volume_mounts(self):
         """Test volume mount preparation."""

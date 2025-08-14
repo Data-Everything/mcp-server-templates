@@ -318,10 +318,14 @@ class TestMCPDeployer:
         mock_enhanced_cli = Mock()
         mock_enhanced_cli.template_manager = Mock()
         mock_enhanced_cli.console = Mock()
-        mock_enhanced_cli.template_manager.get_template_info.return_value = {"name": "demo"}
+        mock_enhanced_cli.template_manager.get_template_info.return_value = {
+            "name": "demo"
+        }
         mock_enhanced_cli_class.return_value = mock_enhanced_cli
 
         sys.argv = ["mcp_template", "examples", "demo"]
 
         main()
-        mock_enhanced_cli.template_manager.get_template_info.assert_called_once_with("demo")
+        mock_enhanced_cli.template_manager.get_template_info.assert_called_once_with(
+            "demo"
+        )
