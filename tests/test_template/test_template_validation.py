@@ -11,6 +11,7 @@ import pytest
 from mcp_template.template.utils.discovery import TemplateDiscovery
 
 
+@pytest.mark.unit
 class TestTemplateValidation:
     """Test template validation with new tool discovery fields."""
 
@@ -218,6 +219,7 @@ class TestTemplateValidation:
         assert "external-template" in templates
 
 
+@pytest.mark.integration
 class TestTemplateIntegration:
     """Integration tests for template discovery with tool discovery."""
 

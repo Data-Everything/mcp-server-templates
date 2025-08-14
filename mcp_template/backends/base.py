@@ -3,7 +3,7 @@ Deployment backend interface for managing deployments across different platforms
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class BaseDeploymentBackend(ABC):
@@ -56,16 +56,67 @@ class BaseDeploymentBackend(ABC):
         pass
 
     @abstractmethod
-    def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:
-        """Get the status of a deployment.
+    def stop_deployment(self, deployment_name: str, force: bool = False) -> bool:
+        """Stop a deployment.
 
         Args:
-            deployment_name: Name of the deployment
+            deployment_name: Name of the deployment to stop
+            force: Whether to force stop the deployment
 
         Returns:
-            Dict containing deployment status information
+            True if stop was successful, False otherwise
+        """
+        pass
 
-        Raises:
-            ValueError: If deployment is not found
+    @abstractmethod
+    def get_deployment_info(
+        self, deployment_name: str, include_logs: bool = False, lines: int = 10
+    ) -> Dict[str, Any]:
+        """Get detailed information about a specific deployment.
+
+        Args:
+            deployment_name: Name or ID of the deployment
+            include_logs: Whether to include container logs in the response
+            lines: Number of log lines to retrieve (only if include_logs=True)
+
+        Returns:
+            Dictionary with deployment information, or None if not found
+        """
+        pass
+
+    @abstractmethod
+    def connect_to_deployment(self, deployment_id: str):
+        """
+        Connect to deployment shell.
+        Args:
+            deployment_id: Name or ID of the deployment
+
+        Returns:
+            None - Gives access to deployment shell
+        """
+        pass
+
+    @abstractmethod
+    def cleanup_stopped_containers(
+        self, template_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Clean up stopped containers.
+
+        Args:
+            template_name: If provided, only clean containers for this template
+
+        Returns:
+            Dict with cleanup results
+        """
+        pass
+
+    @abstractmethod
+    def cleanup_dangling_images(self) -> Dict[str, Any]:
+        """
+        Clean up dangling images.
+
+        Returns:
+            Dict with cleanup results
         """
         pass

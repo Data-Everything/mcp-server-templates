@@ -16,10 +16,11 @@
 Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options. Built for developers who want to focus on AI integration, not infrastructure setup.
 
 ## 📢 Announcements
-- **🚀 Version 0.4.0 Released!**: Enhanced CLI parsing, filesystem template, volume mount auto-configuration, and comprehensive test coverage.
-- **🔧 CLI Shorthand Alias**: Introducing new `mcpt` alias for faster access to all CLI commands with full backward compatibility.
+- **� Enhanced Client Architecture**: New unified `MCPClient` with shared tool calling infrastructure between CLI and client components for consistent behavior and structured responses.
+- **�🔧 CLI Shorthand Alias**: Introducing new `mcpt` alias for faster access to all CLI commands with full backward compatibility.
 - **🗂️ New Filesystem Template**: Secure local filesystem access with 14 comprehensive tools and Docker volume auto-configuration.
 - **🎯 Enhanced Interactive CLI**: Advanced argument parsing with quote support, session configuration, and parameter validation.
+- **⚡ Unified Tool Calling**: Shared ToolCaller infrastructure ensures consistent stdio and HTTP transport handling across all components.
 
 ## 🌟 Why MCP Server Templates?
 Integrating LLMs with external tools is often tedious—every service needs its own setup. MCP is the protocol that fixes this.
@@ -565,6 +566,217 @@ mcpt> call -C config_path="/path with spaces/config.json" \
 
 # No-pull option for faster development cycles
 mcpt> call --no-pull filesystem read_file '{"path": "/tmp/test.txt"}'
+```
+
+## 🐍 Unified Python MCP Client
+
+For programmatic access to MCP servers, use the unified Python client built on the new core architecture with shared business logic between CLI and client components:
+
+### Architecture Overview
+
+The refactored architecture provides clean separation of concerns:
+- **Core Business Logic** (`mcp_template.core`): Shared modules for template management, deployments, configuration, and tools
+- **CLI Interface**: Command-line specific logic (argument parsing, output formatting)  
+- **Python Client**: Programmatic interface that delegates to the same core business logic
+- **Infrastructure**: MCP connections, server management, and tool execution
+
+This ensures both CLI and client provide identical functionality and behavior.
+
+### Quick Start
+
+```python
+from mcp_template.client import MCPClient
+
+# Initialize client (uses core business logic)
+client = MCPClient()
+
+# Discover available templates
+templates = client.list_templates()
+print("Available templates:", list(templates.keys()))
+
+# Get template information
+demo_info = client.get_template_info("demo")
+print(f"Demo template transport: {demo_info['transport']}")
+
+# List tools for a template
+tools = client.list_tools("demo")
+for tool in tools:
+    print(f"Tool: {tool['name']} - {tool.get('description', 'No description')}")
+
+# Call a tool directly (unified stdio/http interface)
+result = client.call_tool(
+    template_name="demo",
+    tool_name="say_hello",
+    arguments={"name": "World"}
+)
+
+if result["success"]:
+    print("Tool result:", result["result"])
+    # Access structured content
+    if "content" in result["result"]:
+        for item in result["result"]["content"]:
+            if item["type"] == "text":
+                print("Response:", item["text"])
+else:
+    print("Error:", result["error_message"])
+```
+
+### Server Management
+
+```python
+# Start a server deployment
+deployment = client.start_server(
+    template_name="demo",
+    config={"name": "my-demo-server"}
+)
+
+if deployment["success"]:
+    server_name = deployment["deployment_name"]
+    print(f"Server started: {server_name}")
+
+    # List running servers
+    servers = client.list_servers()
+    print("Running servers:", [s["name"] for s in servers])
+
+    # Stop the server when done
+    stop_result = client.stop_server(server_name)
+    print("Server stopped:", stop_result["success"])
+```
+
+### Key Features
+
+**Unified Tool Calling Interface:**
+- **Automatic Transport Detection**: Seamlessly works with stdio and HTTP transports
+- **Structured Responses**: Consistent response format with success/error handling
+- **Shared Infrastructure**: Uses the same tool calling backend as the CLI for consistency
+
+**Template Management:**
+```python
+from mcp_template.client import MCPClient
+
+client = MCPClient()
+
+# List all available templates with full configuration
+templates = client.list_templates()
+for name, config in templates.items():
+    print(f"Template: {name}")
+    print(f"  Description: {config.get('description', 'No description')}")
+    print(f"  Transport: {config.get('transport', {}).get('default', 'Unknown')}")
+
+# Get detailed template information
+template_info = client.get_template_info("filesystem")
+print(f"Filesystem template tools: {len(client.list_tools('filesystem'))}")
+```
+
+**Server Lifecycle:**
+```python
+# Start server with configuration
+server = client.start_server("github", {
+    "github_token": "your-token-here",
+    "default_repo": "owner/repo"
+})
+
+# List running servers
+servers = client.list_servers()
+
+# Stop server
+stopped = client.stop_server(server["id"])
+```
+
+**Tool Discovery and Execution:**
+```python
+# Discover tools from template (without running server)
+tools = client.list_tools("filesystem")
+
+# Connect to running server for direct tool calls
+connection_id = await client.connect_stdio("filesystem", server_id)
+
+# Execute tools via connection
+result = await client.call_tool_from_connection(
+    connection_id,
+    "list_directory",
+    {"path": "/tmp"}
+)
+```
+
+**Connection Management:**
+```python
+# Multiple connections
+conn1 = await client.connect_stdio("demo", server1_id)
+conn2 = await client.connect_stdio("github", server2_id)
+
+# Check connection status
+if client.is_connected(conn1):
+    tools = await client.list_tools_from_connection(conn1)
+
+# Cleanup
+await client.disconnect(conn1)
+await client.cleanup()  # Disconnect all
+```
+
+### Configuration Options
+
+```python
+# Custom backend and timeout
+client = MCPClient(backend_type="mock", timeout=60)
+
+# With different deployment backends
+client = MCPClient(backend_type="kubernetes")  # For k8s deployments
+client = MCPClient(backend_type="docker")      # For Docker (default)
+client = MCPClient(backend_type="mock")        # For testing
+```
+
+### Error Handling
+
+```python
+try:
+    # Start server
+    result = client.start_server("nonexistent-template")
+except ValueError as e:
+    print(f"Template error: {e}")
+
+try:
+    # Connect to server
+    conn_id = await client.connect_stdio("demo", "invalid-server-id")
+except ConnectionError as e:
+    print(f"Connection failed: {e}")
+```
+
+### Integration Example
+
+```python
+"""
+Example: GitHub repository analysis workflow
+"""
+async def analyze_repository(repo_url: str):
+    async with MCPClient() as client:
+        # Start GitHub server
+        server = client.start_server("github", {
+            "github_token": os.getenv("GITHUB_TOKEN"),
+            "default_repo": repo_url
+        })
+
+        # Connect and discover tools
+        conn = await client.connect_stdio("github", server["id"])
+        tools = await client.list_tools_from_connection(conn)
+
+        # Get repository info
+        repo_info = await client.call_tool_from_connection(
+            conn, "get_repository_info", {}
+        )
+
+        # Search for Python files
+        python_files = await client.call_tool_from_connection(
+            conn, "search_code", {"query": "*.py"}
+        )
+
+        return {
+            "repository": repo_info,
+            "python_files": python_files
+        }
+
+# Usage
+result = await analyze_repository("owner/repo")
 ```
 
 ---

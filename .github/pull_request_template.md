@@ -18,11 +18,10 @@ Please delete options that are not relevant:
 
 List the templates that are affected by this change:
 
-- [ ] file-server
-- [ ] database
+- [ ] filesystem
+- [ ] gitlab
 - [ ] github
 - [ ] demo
-- [ ] basic
 - [ ] other: ___________
 
 ## Testing

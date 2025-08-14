@@ -375,18 +375,15 @@ class PodmanDeploymentService(BaseDeploymentBackend):
         template_transport = template_data.get("transport", {})
         default_transport = template_transport.get("default", "http")
         if is_stdio is True or (is_stdio is None and default_transport == "stdio"):
-            from mcp_template.tools.discovery import ToolDiscovery
+            from mcp_template.core.tool_manager import ToolManager
 
-            tool_discovery = ToolDiscovery()
+            tool_manager = ToolManager(backend_type="podman")
             try:
-                discovery_result = tool_discovery.discover_tools(
+                tools = tool_manager.list_tools(
                     template_id,
-                    template_data.get("template_dir", ""),
-                    template_data,
-                    use_cache=True,
+                    discovery_method="static",
                     force_refresh=False,
                 )
-                tools = discovery_result.get("tools", [])
                 tool_names = [tool.get("name", "unknown") for tool in tools]
             except Exception as e:
                 logger.warning("Failed to discover tools for %s: %s", template_id, e)
@@ -683,7 +680,9 @@ class PodmanDeploymentService(BaseDeploymentBackend):
             logger.error("Failed to delete deployment %s: %s", deployment_name, e)
             return False
 
-    def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:
+    def get_deployment_status(
+        self, deployment_name: str, lines: int = 10
+    ) -> Dict[str, Any]:
         """
         Get detailed status of a deployment including logs.
 
@@ -751,3 +750,77 @@ class PodmanDeploymentService(BaseDeploymentBackend):
         logger.info(f"Building image {image_name} for internal template {template_id}")
         build_command = ["podman", "build", "-t", image_name, str(template_dir)]
         self._run_command(build_command)
+
+    def stop_deployment(self, deployment_name: str, force: bool = False) -> bool:
+        """Stop a deployment.
+
+        Args:
+            deployment_name: Name of the deployment to stop
+            force: Whether to force stop the deployment
+
+        Returns:
+            True if stop was successful, False otherwise
+        """
+        try:
+            if force:
+                self._run_command(["podman", "kill", deployment_name])
+            else:
+                self._run_command(["podman", "stop", deployment_name])
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    def get_deployment_info(self, deployment_name: str) -> Dict[str, Any]:
+        """Get detailed information about a specific deployment.
+
+        Args:
+            deployment_name: Name or ID of the deployment
+
+        Returns:
+            Dictionary with deployment information, or None if not found
+        """
+        try:
+            # Get detailed container information
+            result = self._run_command(
+                [
+                    "podman",
+                    "inspect",
+                    deployment_name,
+                ]
+            )
+
+            if result.stdout.strip():
+                containers = json.loads(result.stdout)
+                if containers:
+                    container = containers[0]
+
+                    # Extract relevant information
+                    labels = container.get("Config", {}).get("Labels", {}) or {}
+                    template_name = labels.get("template", "unknown")
+
+                    # Get port information
+                    ports = container.get("NetworkSettings", {}).get("Ports", {})
+                    port_display = ""
+                    for port, mappings in ports.items():
+                        if mappings:
+                            host_port = mappings[0].get("HostPort", "")
+                            if host_port:
+                                port_display = host_port
+                                break
+
+                    return {
+                        "id": container.get("Id", "unknown"),
+                        "name": container.get("Name", "").lstrip("/"),
+                        "template": template_name,
+                        "status": container.get("State", {}).get("Status", "unknown"),
+                        "image": container.get("Config", {}).get("Image", "unknown"),
+                        "ports": port_display,
+                        "created": container.get("Created", ""),
+                        "raw_container": container,  # Include full container data for advanced operations
+                    }
+
+            return None
+
+        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
+            logger.debug(f"Failed to get deployment info for {deployment_name}: {e}")
+            return None

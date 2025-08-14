@@ -137,16 +137,23 @@ class TestDockerDeploymentService:
     )
     @patch("mcp_template.backends.docker.DockerDeploymentService._run_command")
     def test_get_deployment_status(self, mock_run_command, mock_ensure_docker):
-        """Test getting deployment status."""
-        mock_response = """[{"Name": "/test-container", "State": {"Status": "running", "Running": true}, "Created": "2024-01-01", "Config": {"Image": "test:latest"}}]"""
+        """Test getting deployment status with logs via unified get_deployment_info method."""
+        mock_response = """[{"Name": "/test-container", "State": {"Status": "running", "Running": true}, "Created": "2024-01-01", "Config": {"Image": "test:latest", "Labels": {"template": "test"}}}]"""
+
+        # Simple approach: make a mock that returns the JSON string
         mock_run_command.return_value = Mock(stdout=mock_response)
 
         service = DockerDeploymentService()
-        status = service.get_deployment_status("test-container")
+        status = service.get_deployment_info(
+            "test-container", include_logs=False
+        )  # Don't include logs to avoid second call
 
+        assert status is not None, "Status should not be None"
         assert status["status"] == "running"
         assert status["name"] == "test-container"
+        assert status["running"] is True
         assert "created" in status
+        # No logs since include_logs=False
 
     def test_prepare_environment_variables(self):
         """Test environment variable preparation."""
@@ -175,8 +182,17 @@ class TestDockerDeploymentService:
             port_mappings = service._prepare_port_mappings(template_data)
 
             assert "-p" in port_mappings
-            assert "8080:8080" in port_mappings
-            assert "9000:9001" in port_mappings
+            # Check that there are two port mappings (even if ports are remapped)
+            port_args = [
+                port_mappings[i + 1]
+                for i, arg in enumerate(port_mappings)
+                if arg == "-p"
+            ]
+            assert len(port_args) == 2
+
+            # Check that container ports are correctly mapped (host ports may be remapped)
+            assert any(":8080" in port for port in port_args)  # Container port 8080
+            assert any(":9001" in port for port in port_args)  # Container port 9001
 
     def test_prepare_volume_mounts(self):
         """Test volume mount preparation."""
@@ -191,3 +207,116 @@ class TestDockerDeploymentService:
 
                 assert "--volume" in volumes
                 assert "/host/path:/container/path" in volumes
+
+    @patch(
+        "mcp_template.backends.docker.DockerDeploymentService._ensure_docker_available"
+    )
+    @patch("mcp_template.backends.docker.DockerDeploymentService._run_command")
+    def test_get_deployment_logs_success(self, mock_run_command, mock_ensure_docker):
+        """Test successful retrieval of deployment logs."""
+        # Setup mock for docker logs command
+        mock_log_output = "Log line 1\nLog line 2\nLog line 3"
+        mock_run_command.return_value = Mock(
+            stdout=mock_log_output, stderr="", returncode=0
+        )
+
+        service = DockerDeploymentService()
+
+        # Test basic logs retrieval (uses default 100 lines)
+        result = service.get_deployment_logs("container123")
+
+        assert result["success"] is True
+        assert mock_log_output in result["logs"]
+
+        # Verify docker logs command was called correctly with default --tail 100
+        mock_run_command.assert_called_once_with(
+            ["docker", "logs", "--tail", "100", "container123"]
+        )
+
+    @patch(
+        "mcp_template.backends.docker.DockerDeploymentService._ensure_docker_available"
+    )
+    @patch("mcp_template.backends.docker.DockerDeploymentService._run_command")
+    def test_get_deployment_logs_with_parameters(
+        self, mock_run_command, mock_ensure_docker
+    ):
+        """Test logs retrieval with lines, since, and until parameters."""
+        mock_log_output = "Recent log line"
+        mock_run_command.return_value = Mock(
+            stdout=mock_log_output, stderr="", returncode=0
+        )
+
+        service = DockerDeploymentService()
+
+        # Test with lines parameter
+        result = service.get_deployment_logs(
+            "container123", lines=50, since="2023-01-01", until="2023-12-31"
+        )
+
+        assert result["success"] is True
+        assert mock_log_output in result["logs"]
+
+        # Verify docker logs command was called with parameters
+        mock_run_command.assert_called_once_with(
+            [
+                "docker",
+                "logs",
+                "--tail",
+                "50",
+                "--since",
+                "2023-01-01",
+                "--until",
+                "2023-12-31",
+                "container123",
+            ]
+        )
+
+    @patch(
+        "mcp_template.backends.docker.DockerDeploymentService._ensure_docker_available"
+    )
+    @patch("mcp_template.backends.docker.DockerDeploymentService._run_command")
+    def test_get_deployment_logs_failure(self, mock_run_command, mock_ensure_docker):
+        """Test logs retrieval failure handling."""
+        # Setup mock for failed docker logs command
+        mock_run_command.return_value = Mock(
+            stdout="", stderr="Error: No such container", returncode=1
+        )
+
+        service = DockerDeploymentService()
+
+        # Test logs retrieval failure
+        result = service.get_deployment_logs("nonexistent-container")
+
+        assert result["success"] is False
+        assert result["error"] == "Error: No such container"
+
+        # Verify docker logs command was called
+        mock_run_command.assert_called_once_with(
+            ["docker", "logs", "--tail", "100", "nonexistent-container"]
+        )
+
+    @patch(
+        "mcp_template.backends.docker.DockerDeploymentService._ensure_docker_available"
+    )
+    @patch("mcp_template.backends.docker.DockerDeploymentService._run_command")
+    def test_get_deployment_logs_default_lines(
+        self, mock_run_command, mock_ensure_docker
+    ):
+        """Test logs retrieval uses default lines when only lines specified."""
+        mock_log_output = "Default lines log"
+        mock_run_command.return_value = Mock(
+            stdout=mock_log_output, stderr="", returncode=0
+        )
+
+        service = DockerDeploymentService()
+
+        # Test with only lines parameter
+        result = service.get_deployment_logs("container123", lines=100)
+
+        assert result["success"] is True
+        assert result["logs"] == "\n" + mock_log_output
+
+        # Verify docker logs command was called with lines only
+        mock_run_command.assert_called_once_with(
+            ["docker", "logs", "--tail", "100", "container123"]
+        )

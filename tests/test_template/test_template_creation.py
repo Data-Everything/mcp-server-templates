@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""
-Test script to verify template creation functionality.
-"""
+"""Test script to verify template creation functionality."""
 
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
+import pytest
 
+from mcp_template.template.utils.creation import TemplateCreator
+
+
+@pytest.mark.unit
 def test_template_creation():
     """Test creating a simple template and verify its structure."""
     template_name = "test-simple"

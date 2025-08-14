@@ -146,7 +146,8 @@ class DockerProbe:
         random_suffix = random.randint(1000, 9999)
         return f"mcp-tool-discovery-{clean_name}-{timestamp}-{random_suffix}"
 
-    def _find_available_port(self) -> Optional[int]:
+    @staticmethod
+    def _find_available_port() -> Optional[int]:
         """Find an available port for the container."""
         for port in range(CONTAINER_PORT_RANGE[0], CONTAINER_PORT_RANGE[1]):
             try:
@@ -203,7 +204,7 @@ class DockerProbe:
             try:
                 # Check if container is still running
                 if not self._is_container_running(container_name):
-                    logger.error("Container %s is not running", container_name)
+                    logger.debug("Container %s is not running", container_name)
                     return False
 
                 # Try to connect to the service

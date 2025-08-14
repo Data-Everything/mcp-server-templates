@@ -30,16 +30,31 @@ class TestInteractiveCLIIntegration:
         with patch("mcp_template.interactive_cli.console"):
             cli = InteractiveCLI()
             # Mock dependencies to avoid real initialization
-            cli.enhanced_cli = MagicMock()
-            cli.deployer = MagicMock()
+            cli.template_manager = MagicMock()
+            cli.deployment_manager = MagicMock()
+            cli.tool_manager = MagicMock()
+            cli.formatter = MagicMock()
             cli.cache = MagicMock()
             cli.beautifier = MagicMock()
-            cli.http_tool_caller = MagicMock()
+            cli.tool_caller = MagicMock()
             cli.session_configs = {}
             cli.deployed_servers = []
 
             # Mock templates
-            cli.enhanced_cli.templates = {
+            cli.template_manager.get_template_info.return_value = {
+                "name": "github",
+                "description": "GitHub API client",
+                "transport": {"default": "http", "supported": ["http"]},
+                "config_schema": {
+                    "properties": {
+                        "token": {"type": "string", "env_mapping": "GITHUB_TOKEN"}
+                    },
+                    "required": ["token"],
+                },
+            }
+
+            # Mock template list
+            cli.template_manager.list_templates.return_value = {
                 "github": {
                     "name": "github",
                     "description": "GitHub API client",
@@ -70,18 +85,17 @@ class TestInteractiveCLIIntegration:
             assert cli.session_configs["github"] == {"token": "test_token"}
 
         # Step 2: List tools using the configuration
-        cli.enhanced_cli.list_tools = MagicMock()
+        cli.tool_manager.list_tools = MagicMock()
 
         with patch("mcp_template.interactive_cli.console"):
             cli.do_tools("github")
 
             # Verify list_tools was called with the stored config
-            cli.enhanced_cli.list_tools.assert_called_once_with(
-                template_name="github",
-                no_cache=False,
-                refresh=False,
+            cli.tool_manager.list_tools.assert_called_once_with(
+                template_or_id="github",
+                discovery_method="auto",
+                force_refresh=False,
                 config_values={"token": "test_token"},
-                force_server_discovery=False,
             )
 
     def test_config_and_call_tool_workflow(self, cli):
@@ -91,8 +105,8 @@ class TestInteractiveCLIIntegration:
             cli.do_config("github token=test_token url=https://api.github.com")
 
         # Step 2: Test tool calling functionality
-        cli.enhanced_cli.call_tool = MagicMock()
-        cli.enhanced_cli.call_tool.return_value = {
+        cli.tool_caller.call_tool = MagicMock()
+        cli.tool_caller.call_tool.return_value = {
             "status": "success",
             "result": {"repositories": []},
         }
@@ -132,7 +146,7 @@ class TestInteractiveCLIIntegration:
             },
             {"id": "2", "name": "demo-server", "status": "running", "tools": ["hello"]},
         ]
-        cli.deployer.deployment_manager.list_deployments.return_value = mock_servers
+        cli.deployment_manager.list_deployments.return_value = mock_servers
 
         with patch("mcp_template.interactive_cli.console"):
             cli.do_list_servers("")
@@ -142,13 +156,13 @@ class TestInteractiveCLIIntegration:
             assert cli.deployed_servers == active_servers
 
         # Step 2: List tools for a template
-        cli.enhanced_cli.list_tools = MagicMock()
+        cli.tool_manager.list_tools = MagicMock()
 
         with patch("mcp_template.interactive_cli.console"):
             cli.do_tools("github")
 
             # Should work with or without server info
-            cli.enhanced_cli.list_tools.assert_called_once()
+            cli.tool_manager.list_tools.assert_called_once()
 
     def test_multiple_config_updates_workflow(self, cli):
         """Test workflow: multiple configuration updates for same template."""
@@ -197,19 +211,18 @@ class TestInteractiveCLIIntegration:
         """Test environment variables are used when session config is missing."""
         # Mock environment variable
         with patch.dict("os.environ", {"GITHUB_TOKEN": "env_token_value"}):
-            cli.enhanced_cli.list_tools = MagicMock()
+            cli.tool_manager.list_tools = MagicMock()
 
             with patch("mcp_template.interactive_cli.console"):
                 cli.do_tools("github")
 
                 # Should use environment variable since no session config
                 expected_config = {"token": "env_token_value"}
-                cli.enhanced_cli.list_tools.assert_called_once_with(
-                    template_name="github",
-                    no_cache=False,
-                    refresh=False,
+                cli.tool_manager.list_tools.assert_called_once_with(
+                    template_or_id="github",
+                    discovery_method="auto",
+                    force_refresh=False,
                     config_values=expected_config,
-                    force_server_discovery=False,
                 )
 
     def test_session_config_overrides_env_workflow(self, cli):
@@ -219,18 +232,17 @@ class TestInteractiveCLIIntegration:
 
         # Mock environment variable (should be ignored)
         with patch.dict("os.environ", {"GITHUB_TOKEN": "env_token_value"}):
-            cli.enhanced_cli.list_tools = MagicMock()
+            cli.tool_manager.list_tools = MagicMock()
 
             with patch("mcp_template.interactive_cli.console"):
                 cli.do_tools("github")
 
                 # Should use session config, not environment variable
-                cli.enhanced_cli.list_tools.assert_called_once_with(
-                    template_name="github",
-                    no_cache=False,
-                    refresh=False,
+                cli.tool_manager.list_tools.assert_called_once_with(
+                    template_or_id="github",
+                    discovery_method="auto",
+                    force_refresh=False,
                     config_values={"token": "session_token"},
-                    force_server_discovery=False,
                 )
 
     def test_help_and_command_discovery_workflow(self, cli):
@@ -261,7 +273,7 @@ class TestInteractiveCLIIntegration:
             # Should show error about template not found
 
         # Test call functionality with invalid template
-        cli.enhanced_cli.templates = {}
+        cli.template_manager.list_templates.return_value = {}
 
         # Test that invalid template is handled gracefully
         with patch("mcp_template.interactive_cli.console") as mock_console:
@@ -271,7 +283,7 @@ class TestInteractiveCLIIntegration:
             assert mock_console.print.call_count >= 0
 
         # Test list_servers with error
-        cli.deployer.deployment_manager.list_deployments.side_effect = Exception(
+        cli.deployment_manager.list_deployments.side_effect = Exception(
             "Connection failed"
         )
 

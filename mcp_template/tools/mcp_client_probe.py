@@ -128,9 +128,7 @@ class MCPClientProbe:
             return await self.discover_tools_from_command(docker_cmd)
 
         except Exception as e:
-            logger.error(
-                "Failed to discover tools from Docker MCP server %s: %s", image_name, e
-            )
+            logger.debug("MCP discovery failed for Docker server %s: %s", image_name, e)
             return None
         finally:
             # Cleanup container if it's still running
@@ -263,6 +261,12 @@ class MCPClientProbe:
                 return None
 
             tools = response.get("result", {}).get("tools", [])
+
+            # Defensive check: ensure tools is a list
+            if not isinstance(tools, list):
+                logger.error(f"Expected list for tools, got {type(tools)}: {tools}")
+                return []
+
             logger.info("Found %d tools from MCP server", len(tools))
             return tools
 
@@ -278,6 +282,13 @@ class MCPClientProbe:
     ) -> List[Dict[str, Any]]:
         """Normalize MCP tools to standard format."""
         normalized = []
+
+        # Defensive check: ensure mcp_tools is iterable
+        if not isinstance(mcp_tools, (list, tuple)):
+            logger.error(
+                f"Expected list/tuple for mcp_tools, got {type(mcp_tools)}: {mcp_tools}"
+            )
+            return []
 
         for tool in mcp_tools:
             try:

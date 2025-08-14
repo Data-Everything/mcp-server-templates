@@ -11,6 +11,7 @@ import logging
 import os
 import shlex
 import sys
+import traceback
 from typing import Any, Dict, List, Union
 
 import cmd2
@@ -23,17 +24,21 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
 
-from mcp_template.cli import EnhancedCLI
-from mcp_template.deployer import MCPDeployer
+from mcp_template.core import (
+    TemplateManager,
+    DeploymentManager,
+    ToolManager,
+    OutputFormatter,
+)
 from mcp_template.tools.cache import CacheManager
-from mcp_template.tools.http_tool_caller import HTTPToolCaller
+from mcp_template.core.tool_caller import ToolCaller
 from mcp_template.utils.config_processor import ConfigProcessor
 
 console = Console()
 logger = logging.getLogger(__name__)
 
 # Argparse parser for `call` command flags: --config-file, --env, --config
-call_parser = argparse.ArgumentParser(prog="call")
+call_parser = argparse.ArgumentParser(prog="call", exit_on_error=False)
 call_parser.add_argument(
     "-c", "--config-file", dest="config_file", help="Path to JSON config file"
 )
@@ -54,10 +59,20 @@ call_parser.add_argument(
     action="store_true",
     help="Do not pull the Docker image",
 )
+call_parser.add_argument(
+    "-R",
+    "--raw",
+    dest="raw",
+    action="store_true",
+    help="Show raw JSON response instead of formatted table",
+)
 call_parser.add_argument("template_name", help="Template name to call")
 call_parser.add_argument("tool_name", help="Tool name to execute")
 call_parser.add_argument(
-    "json_args", nargs="?", default="{}", help="JSON string arguments"
+    "json_args",
+    nargs="*",
+    default=[],
+    help="JSON string arguments (use quotes for JSON with spaces)",
 )
 
 
@@ -163,8 +178,15 @@ def merge_config_sources(
 class ResponseBeautifier:
     """Class for beautifying and formatting MCP responses."""
 
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
+        """
+        Initialize the response beautifier.
+
+        Args:
+            verbose: Whether to enable verbose output for debugging
+        """
         self.console = Console()
+        self.verbose = verbose
 
     def _is_actual_error(self, stderr_text: str) -> bool:
         """Check if stderr contains actual errors vs informational messages."""
@@ -818,7 +840,6 @@ class ResponseBeautifier:
 
             except Exception as e:
                 # Debug the exception and fallback to raw output
-                import traceback
 
                 self.console.print(f"[yellow]⚠️  Beautifier parsing error: {e}[/yellow]")
                 self.console.print(f"[dim]Traceback: {traceback.format_exc()}[/dim]")
@@ -971,11 +992,16 @@ class InteractiveCLI(cmd2.Cmd):
 
     def __init__(self):
         super().__init__()
-        self.enhanced_cli = EnhancedCLI()
-        self.deployer = MCPDeployer()
+        # Use core modules for all business logic
+        self.template_manager = TemplateManager()
+        self.deployment_manager = DeploymentManager()
+        self.tool_manager = ToolManager()
+        self.formatter = OutputFormatter()
+
+        # Keep utility components
         self.cache = CacheManager()
         self.beautifier = ResponseBeautifier()
-        self.http_tool_caller = HTTPToolCaller()
+        self.tool_caller = ToolCaller(backend_type="docker", caller_type="cli")
 
         # Session state
         self.session_configs = {}  # Template name -> config
@@ -1049,7 +1075,7 @@ class InteractiveCLI(cmd2.Cmd):
 
         # Get deployed servers from deployer
         try:
-            all_servers = self.deployer.deployment_manager.list_deployments()
+            all_servers = self.deployment_manager.list_deployments()
             # Filter to only show running servers
             active_servers = [s for s in all_servers if s.get("status") == "running"]
             self.deployed_servers = active_servers
@@ -1090,9 +1116,9 @@ class InteractiveCLI(cmd2.Cmd):
         config_values = self.session_configs.get(template_name, {})
 
         # Add environment variables to config_values if available and not already set
-        if template_name in self.enhanced_cli.templates:
-            template = self.enhanced_cli.templates[template_name]
-            config_schema = template.get("config_schema", {})
+        template_info = self.template_manager.get_template_info(template_name)
+        if template_info:
+            config_schema = template_info.get("config_schema", {})
             properties = config_schema.get("properties", {})
 
             for prop_name, prop_config in properties.items():
@@ -1105,24 +1131,40 @@ class InteractiveCLI(cmd2.Cmd):
                     config_values[prop_name] = os.environ[env_mapping]
 
         # Use the shared CLI method - this handles all the logic correctly
-        self.enhanced_cli.list_tools(
-            template_name=template_name,
-            no_cache=False,
-            refresh=False,
-            config_values=config_values,
-            force_server_discovery=force_server_discovery,
-        )
+        try:
+            tools = self.tool_manager.list_tools(
+                template_or_id=template_name,
+                discovery_method="auto",
+                force_refresh=force_server_discovery,
+                config_values=config_values,
+            )
 
-    def _show_template_help(self, template_name: str):
-        """Show detailed help for a template including configuration and tools."""
-        if template_name not in self.enhanced_cli.templates:
-            console.print(f"[red]❌ Template '{template_name}' not found[/red]")
+            # Display the tools if we got any
+            if tools:
+                self.beautifier.beautify_tools_list(tools, f"Template: {template_name}")
+            else:
+                console.print(
+                    f"[yellow]⚠️  No tools found for template '{template_name}'[/yellow]"
+                )
+
+        except Exception as e:
             console.print(
-                f"[dim]Available templates: {', '.join(self.enhanced_cli.templates.keys())}[/dim]"
+                f"[red]❌ Exception during tool discovery for template '{template_name}': {e}[/red]"
             )
             return
 
-        template = self.enhanced_cli.templates[template_name]
+    def _show_template_help(self, template_name: str):
+        """Show detailed help for a template including configuration and tools."""
+        template_info = self.template_manager.get_template_info(template_name)
+        if not template_info:
+            console.print(f"[red]❌ Template '{template_name}' not found[/red]")
+            available_templates = self.template_manager.list_templates()
+            console.print(
+                f"[dim]Available templates: {', '.join(available_templates.keys())}[/dim]"
+            )
+            return
+
+        template = template_info
 
         # Template overview
         console.print(
@@ -1182,11 +1224,7 @@ class InteractiveCLI(cmd2.Cmd):
 
         try:
             # Get tools using tool discovery
-            tools = self.enhanced_cli.tool_discovery.discover_tools(
-                template_name,
-                config_values or {},
-                force_server=False,  # Allow both static and dynamic for help
-            )
+            tools = self.tool_manager.discover_tools_static(template_name)
 
             if tools:
                 # Show detailed tool information
@@ -1372,11 +1410,7 @@ class InteractiveCLI(cmd2.Cmd):
 
             # Get tool information using tool discovery
             try:
-                tools = self.enhanced_cli.tool_discovery.discover_tools(
-                    template_name,
-                    self.enhanced_cli.templates[template_name],
-                    config_values or {},
-                )
+                tools = self.tool_manager.discover_tools_static(template_name)
             except Exception as e:
                 console.print(
                     f"[yellow]⚠️  Could not discover tools for validation: {e}[/yellow]"
@@ -1495,67 +1529,51 @@ class InteractiveCLI(cmd2.Cmd):
           call <template_name> <tool_name> [json_args]
           call --config-file config.json <template_name> <tool_name> [json_args]
           call --env API_KEY=value --config timeout=30 <template_name> <tool_name> [json_args]
+          call --raw <template_name> <tool_name> [json_args]  # Show raw JSON output
         """
-        # Check if we have quoted space-separated values that cmd2 can't handle
-        if '"' in line and " " in line:
-            # Use shlex for proper quote parsing when quotes are present
-            try:
-                argv = shlex.split(line)
+        try:
+            # Handle JSON arguments specially - find JSON-like content and preserve it
+            line = line.strip()
+            if not line:
+                argv = []
+            else:
+                # Look for JSON-like content (starts with { and ends with })
+                json_start = line.find("{")
+                json_end = line.rfind("}")
 
-                # Special handling for JSON arguments - if the last argument looks like
-                # it might be a split JSON object, try to rejoin it
-                if len(argv) > 2:
-                    # Check if we have a potential split JSON (last few args contain { and })
-                    json_start_idx = None
-                    for i, arg in enumerate(argv):
-                        if "{" in arg:
-                            json_start_idx = i
-                            break
+                if json_start != -1 and json_end != -1 and json_end > json_start:
+                    # Split the line into non-JSON part and JSON part
+                    before_json = line[:json_start].strip()
+                    json_part = line[json_start : json_end + 1].strip()
+                    after_json = line[json_end + 1 :].strip()
 
-                    if json_start_idx is not None and json_start_idx < len(argv) - 1:
-                        # Found a JSON start that's not the last argument - rejoin
-                        json_parts = argv[json_start_idx:]
-                        rejoined_json = " ".join(json_parts)
-                        # Check if this creates valid JSON-like string
-                        if rejoined_json.count("{") == rejoined_json.count(
-                            "}"
-                        ) and rejoined_json.count("[") == rejoined_json.count("]"):
-                            argv = argv[:json_start_idx] + [rejoined_json]
+                    # Use shlex for the non-JSON parts
+                    argv = shlex.split(before_json) if before_json else []
+                    if json_part:
+                        argv.append(json_part)
+                    if after_json:
+                        argv.extend(shlex.split(after_json))
+                else:
+                    # No JSON detected, use normal shlex splitting
+                    argv = shlex.split(line)
 
-                args = call_parser.parse_args(argv)
-            except (ValueError, SystemExit) as e:
-                console.print(f"[red]❌ Error parsing command line: {e}[/red]")
-                console.print(
-                    '[dim]For JSON with spaces, use quotes: \'{"key": "value"}\'[/dim]'
-                )
-                console.print(
-                    "[dim]For paths with spaces, use quotes: 'path=\"/dir1 /dir2\"'[/dim]"
-                )
-                return
-        else:
-            # Use standard cmd2 parsing for simple cases
-            try:
-                # Temporarily replace the method to use with_argparser
-                @with_argparser(call_parser)
-                def temp_call(self, args):
-                    return args
+            # Parse arguments using the call_parser
+            args = call_parser.parse_args(argv)
 
-                # Parse using cmd2's mechanism
-                statement = self.statement_parser.parse(line)
-                args = call_parser.parse_args(statement.arg_list)
-            except (ValueError, SystemExit) as e:
-                console.print(f"[red]❌ Error parsing command line: {e}[/red]")
-                console.print("[dim]Use: call <template> <tool> [json_args][/dim]")
-                return
+        except (ValueError, SystemExit) as e:
+            console.print(f"[red]❌ Error parsing command line: {e}[/red]")
+            console.print("[dim]Use: call <template> <tool> [json_args][/dim]")
+            return
         # Merge configuration from all sources
         template_name = args.template_name
 
         # Get template info for proper config processing
-        if template_name not in self.enhanced_cli.templates:
+        available_templates = self.template_manager.list_templates()
+        if template_name not in available_templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             return
 
-        template = self.enhanced_cli.templates[template_name]
+        template = self.template_manager.get_template_info(template_name)
 
         try:
             config_values = merge_config_sources(
@@ -1569,18 +1587,28 @@ class InteractiveCLI(cmd2.Cmd):
             return  # Error already printed in merge_config_sources
 
         tool_name = args.tool_name
-        tool_args = args.json_args
+
+        # Handle json_args - join multiple parts back together and default to empty dict
+        if isinstance(args.json_args, list):
+            if not args.json_args:
+                tool_args = "{}"
+            else:
+                tool_args = " ".join(args.json_args)
+        else:
+            tool_args = args.json_args or "{}"
+
         no_pull = args.no_pull
 
         console.print(
             f"\n[cyan]🚀 Calling tool '{tool_name}' from template '{template_name}'[/cyan]"
         )
         # Check if template exists
-        if template_name not in self.enhanced_cli.templates:
+        available_templates = self.template_manager.list_templates()
+        if template_name not in available_templates:
             console.print(f"[red]❌ Template '{template_name}' not found[/red]")
             return
 
-        template = self.enhanced_cli.templates[template_name]
+        template = self.template_manager.get_template_info(template_name)
         transport_config = template.get("transport", {})
         default_transport = transport_config.get("default", "http")
         supported_transports = transport_config.get("supported", ["http"])
@@ -1641,123 +1669,225 @@ class InteractiveCLI(cmd2.Cmd):
                         )
                         return
 
-        # Handle different transport protocols
-        if "stdio" in supported_transports or default_transport == "stdio":
-            # Use stdio approach
-            console.print("[dim]Using stdio transport...[/dim]")
+        # Use the enhanced tool manager call_tool method that implements HTTP-first logic
+        console.print(
+            "[dim]Checking for running server (HTTP first, stdio fallback)...[/dim]"
+        )
 
-            # Validate tool parameters and prompt for missing ones
-            validated_tool_args = self._validate_and_get_tool_parameters(
-                template_name, tool_name, tool_args, config_values
+        try:
+            # Ensure tool_args is parsed as JSON if it's a string
+            if isinstance(tool_args, str):
+                try:
+                    tool_args = json.loads(tool_args)
+                except json.JSONDecodeError:
+                    console.print(f"[red]❌ Invalid JSON arguments: {tool_args}[/red]")
+                    return
+
+            result = self.tool_manager.call_tool(
+                template_name,
+                tool_name,
+                tool_args,
+                config_values,
+                pull_image=not no_pull,
             )
 
-            if validated_tool_args is None:
-                # Parameter validation failed
-                return
-
-            try:
-                result = self.enhanced_cli.run_stdio_tool(
-                    template_name,
-                    tool_name,
-                    validated_tool_args,
-                    config_values,
-                    pull_image=not no_pull,
-                )
-
-                # The enhanced CLI already beautifies stdio responses
-                if not result:
-                    console.print("[red]❌ Tool execution failed[/red]")
-
-            except Exception as e:
-                console.print(f"[red]❌ Failed to execute tool: {e}[/red]")
-
-        else:
-            # Handle HTTP/SSE transports - check if server is deployed
-            console.print("[dim]Checking for deployed server...[/dim]")
-
-            # Find deployed server
-            deployed_server = None
-            for server in self.deployed_servers:
-                if server.get("template_name") == template_name:
-                    deployed_server = server
-                    break
-
-            if not deployed_server:
-                console.print(
-                    f"[yellow]⚠️  Template '{template_name}' is not deployed[/yellow]"
-                )
-                console.print(
-                    f"[dim]Supported transports: {', '.join(supported_transports)}[/dim]"
-                )
-
-                if Confirm.ask(f"Would you like to deploy '{template_name}' now?"):
+            if result and result.get("success"):
+                # Display successful result
+                if result.get("result"):
+                    self._display_tool_result(result["result"], tool_name, args.raw)
+                else:
                     console.print(
-                        f"[cyan]🚀 Deploying '{template_name}' server...[/cyan]"
+                        "[green]✅ Tool executed successfully (no output)[/green]"
                     )
+            else:
+                error_msg = (
+                    result.get("error", "Tool execution failed")
+                    if result
+                    else "Tool execution failed"
+                )
+                console.print(f"[red]❌ Tool execution failed: {error_msg}[/red]")
 
+        except Exception as e:
+            console.print(f"[red]❌ Failed to execute tool: {e}[/red]")
+
+    def _display_tool_result(self, result: Any, tool_name: str, raw: bool = False):
+        """Display tool result in tabular format or raw JSON."""
+        try:
+            if raw:
+                # Show raw JSON format
+                self.beautifier.beautify_json(result, f"Tool Result: {tool_name}")
+            else:
+                # Show tabular format
+                self._display_tool_result_table(result, tool_name)
+        except Exception:
+            # Fallback to simple display if both methods fail
+            console.print(f"[green]✅ Tool '{tool_name}' result:[/green]")
+            console.print(result)
+
+    def _display_tool_result_table(self, result: Any, tool_name: str):
+        """Display tool result in a user-friendly tabular format."""
+        from rich.table import Table
+        from rich import box
+
+        # Handle different types of results
+        if isinstance(result, dict):
+            # Check if it's an MCP-style response with content
+            if "content" in result and isinstance(result["content"], list):
+                self._display_mcp_content_table(result["content"], tool_name)
+            # Check if it's a structured response with result data
+            elif (
+                "structuredContent" in result
+                and "result" in result["structuredContent"]
+            ):
+                self._display_simple_result_table(
+                    result["structuredContent"]["result"], tool_name
+                )
+            # Check if it's a simple dict that can be displayed as key-value pairs
+            else:
+                self._display_dict_as_table(result, tool_name)
+        elif isinstance(result, list):
+            self._display_list_as_table(result, tool_name)
+        else:
+            # Single value result
+            self._display_simple_result_table(result, tool_name)
+
+    def _display_mcp_content_table(self, content_list: list, tool_name: str):
+        """Display MCP content array in tabular format."""
+        from rich.table import Table
+        from rich import box
+
+        table = Table(
+            title=f"🎯 {tool_name} Results",
+            box=box.ROUNDED,
+            show_header=True,
+            header_style="bold cyan",
+        )
+
+        table.add_column("Type", style="yellow", width=12)
+        table.add_column("Content", style="white", min_width=40)
+
+        for i, content in enumerate(content_list):
+            if isinstance(content, dict):
+                content_type = content.get("type", "unknown")
+                if content_type == "text":
+                    text_content = content.get("text", "")
+                    # Try to parse as JSON for better formatting
                     try:
-                        # Use deployer to deploy the template with merged config
-                        success = self.deployer.deploy(
-                            template_name=template_name,
-                            config_values=config_values,
-                            pull_image=True,
-                        )
+                        import json
 
-                        if success:
-                            console.print(
-                                "[green]✅ Server deployed successfully![/green]"
-                            )
-                            console.print("[dim]Refreshing server list...[/dim]")
-                            # Refresh deployed servers list
-                            self.do_list_servers("")
-                            console.print(
-                                f"[green]Now you can call tools on '{template_name}'[/green]"
+                        parsed = json.loads(text_content)
+                        if isinstance(parsed, dict):
+                            # Display nested dict in a compact format
+                            formatted_content = "\n".join(
+                                [f"{k}: {v}" for k, v in parsed.items()]
                             )
                         else:
-                            console.print("[red]❌ Server deployment failed[/red]")
-                    except Exception as e:
-                        console.print(f"[red]❌ Deployment error: {e}[/red]")
-                    return
+                            formatted_content = str(parsed)
+                    except (json.JSONDecodeError, AttributeError):
+                        formatted_content = text_content
+                    table.add_row(content_type, formatted_content)
                 else:
-                    return
+                    # Handle other content types
+                    table.add_row(content_type, str(content))
+            else:
+                table.add_row("unknown", str(content))
 
-            # Call tool on deployed server
-            console.print(
-                f"[dim]Calling tool on deployed server at {deployed_server.get('endpoint')}[/dim]"
-            )
+        console.print(table)
 
-            # Parse tool arguments
-            try:
-                if tool_args == "{}":
-                    arguments = {}
-                else:
-                    arguments = json.loads(tool_args)
-            except json.JSONDecodeError:
-                console.print(f"[red]❌ Invalid JSON arguments: {tool_args}[/red]")
-                console.print("[dim]Use JSON format: {'param': 'value'}[/dim]")
-                return
+        # Also check for structured content if available
+        if hasattr(self, "_current_result") and "structuredContent" in getattr(
+            self, "_current_result", {}
+        ):
+            structured = getattr(self, "_current_result")["structuredContent"]
+            if "result" in structured:
+                console.print(f"\n[green]✅ Result:[/green] {structured['result']}")
 
-            # Call HTTP tool
-            try:
-                server_url = deployed_server.get("endpoint")
-                result = self.http_tool_caller.call_tool_sync(
-                    server_url=server_url, tool_name=tool_name, arguments=arguments
-                )
+    def _display_simple_result_table(self, result: Any, tool_name: str):
+        """Display a simple result value in a clean format."""
+        from rich.table import Table
+        from rich import box
 
-                if result.get("status") == "success":
-                    console.print(
-                        f"[green]✅ Tool '{tool_name}' executed successfully[/green]"
-                    )
-                    self.beautifier.beautify_json(
-                        result.get("result", {}), f"Tool Result: {tool_name}"
-                    )
-                else:
-                    console.print(
-                        f"[red]❌ Tool execution failed: {result.get('error', 'Unknown error')}[/red]"
-                    )
+        table = Table(
+            title=f"🎯 {tool_name} Result", box=box.ROUNDED, show_header=False, width=60
+        )
 
-            except Exception as e:
-                console.print(f"[red]❌ HTTP tool call failed: {e}[/red]")
+        table.add_column("", style="bold green", justify="center")
+        table.add_row(str(result))
+
+        console.print(table)
+
+    def _display_dict_as_table(self, data: dict, tool_name: str):
+        """Display a dictionary as a key-value table."""
+        from rich.table import Table
+        from rich import box
+
+        table = Table(
+            title=f"🎯 {tool_name} Results",
+            box=box.ROUNDED,
+            show_header=True,
+            header_style="bold cyan",
+        )
+
+        table.add_column("Property", style="yellow", width=20)
+        table.add_column("Value", style="white", min_width=40)
+
+        for key, value in data.items():
+            if isinstance(value, (dict, list)):
+                # For complex values, show a summary
+                if isinstance(value, dict):
+                    display_value = f"Dict with {len(value)} items"
+                    if len(value) <= 3:  # Show small dicts inline
+                        display_value = ", ".join(
+                            [f"{k}: {v}" for k, v in value.items()]
+                        )
+                else:  # list
+                    display_value = f"List with {len(value)} items"
+                    if len(value) <= 3 and all(
+                        not isinstance(item, (dict, list)) for item in value
+                    ):
+                        display_value = ", ".join(str(item) for item in value)
+            else:
+                display_value = str(value)
+
+            table.add_row(key, display_value)
+
+        console.print(table)
+
+    def _display_list_as_table(self, data: list, tool_name: str):
+        """Display a list as a table."""
+        from rich.table import Table
+        from rich import box
+
+        table = Table(
+            title=f"🎯 {tool_name} Results",
+            box=box.ROUNDED,
+            show_header=True,
+            header_style="bold cyan",
+        )
+
+        if data and isinstance(data[0], dict):
+            # List of dicts - use dict keys as columns
+            if data:
+                keys = list(data[0].keys())
+                for key in keys:
+                    table.add_column(key.title(), style="white")
+
+                for item in data:
+                    row = []
+                    for key in keys:
+                        value = item.get(key, "")
+                        if isinstance(value, (dict, list)):
+                            row.append(f"{type(value).__name__}({len(value)})")
+                        else:
+                            row.append(str(value))
+                    table.add_row(*row)
+        else:
+            # Simple list - show as single column
+            table.add_column("Item", style="white")
+            for i, item in enumerate(data):
+                table.add_row(str(item))
+
+        console.print(table)
 
     def do_show_config(self, template_name):
         """Show current configuration for a template.
@@ -1823,7 +1953,7 @@ class InteractiveCLI(cmd2.Cmd):
         """List all available templates.
         Usage: templates
         """
-        templates = self.enhanced_cli.templates
+        templates = self.template_manager.list_templates()
 
         if not templates:
             console.print("[yellow]⚠️  No templates found[/yellow]")

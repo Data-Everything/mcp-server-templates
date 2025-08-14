@@ -40,6 +40,9 @@ class TestInteractiveCLICommands:
             # Mock dependencies to avoid real initialization
             cli.enhanced_cli = MagicMock()
             cli.deployer = MagicMock()
+            cli.deployment_manager = MagicMock()
+            cli.tool_manager = MagicMock()
+            cli.template_manager = MagicMock()
             cli.cache = MagicMock()
             cli.beautifier = MagicMock()
             cli.http_tool_caller = MagicMock()
@@ -55,13 +58,13 @@ class TestInteractiveCLICommands:
             {"id": "2", "name": "test2", "status": "stopped"},
             {"id": "3", "name": "test3", "status": "running"},
         ]
-        cli.deployer.deployment_manager.list_deployments.return_value = mock_servers
+        cli.deployment_manager.list_deployments.return_value = mock_servers
 
         with patch("mcp_template.interactive_cli.console") as mock_console:
             cli.do_list_servers("")
 
             # Verify deployment manager was called
-            cli.deployer.deployment_manager.list_deployments.assert_called_once()
+            cli.deployment_manager.list_deployments.assert_called_once()
 
             # Verify beautifier was called with only running servers
             active_servers = [s for s in mock_servers if s["status"] == "running"]
@@ -79,7 +82,7 @@ class TestInteractiveCLICommands:
 
     def test_do_list_servers_error(self, cli):
         """Test do_list_servers command with error."""
-        cli.deployer.deployment_manager.list_deployments.side_effect = Exception(
+        cli.deployment_manager.list_deployments.side_effect = Exception(
             "Connection failed"
         )
 
@@ -103,24 +106,47 @@ class TestInteractiveCLICommands:
     def test_do_tools_basic(self, cli):
         """Test do_tools command with template name."""
         cli.enhanced_cli.templates = {"github": {"name": "github"}}
-        cli.enhanced_cli.list_tools = MagicMock()
+        cli.tool_manager.list_tools = MagicMock(return_value=[{"name": "test_tool"}])
 
         with patch("mcp_template.interactive_cli.console"):
             cli.do_tools("github")
 
             # Verify list_tools was called with correct arguments
-            cli.enhanced_cli.list_tools.assert_called_once_with(
-                template_name="github",
-                no_cache=False,
-                refresh=False,
+            cli.tool_manager.list_tools.assert_called_once_with(
+                template_or_id="github",
+                discovery_method="auto",
+                force_refresh=False,
                 config_values={},
-                force_server_discovery=False,
             )
+
+            # Verify beautify_tools_list was called with the tools
+            cli.beautifier.beautify_tools_list.assert_called_once_with(
+                [{"name": "test_tool"}], "Template: github"
+            )
+
+    def test_do_tools_no_tools_found(self, cli):
+        """Test do_tools command when no tools are found."""
+        cli.enhanced_cli.templates = {"github": {"name": "github"}}
+        cli.tool_manager.list_tools = MagicMock(return_value=[])
+
+        with patch("mcp_template.interactive_cli.console"):
+            cli.do_tools("github")
+
+            # Verify list_tools was called with correct arguments
+            cli.tool_manager.list_tools.assert_called_once_with(
+                template_or_id="github",
+                discovery_method="auto",
+                force_refresh=False,
+                config_values={},
+            )
+
+            # Verify beautify_tools_list was NOT called since no tools found
+            cli.beautifier.beautify_tools_list.assert_not_called()
 
     def test_do_tools_with_force_server(self, cli):
         """Test do_tools command with --force-server flag."""
         cli.enhanced_cli.templates = {"github": {"name": "github"}}
-        cli.enhanced_cli.list_tools = MagicMock()
+        cli.tool_manager.list_tools = MagicMock()
 
         with patch("mcp_template.interactive_cli.console") as mock_console:
             cli.do_tools("github --force-server")
@@ -130,13 +156,12 @@ class TestInteractiveCLICommands:
                 "[yellow]🔍 Force server discovery mode - MCP probe only (no static fallback)[/yellow]"
             )
 
-            # Verify list_tools was called with force_server_discovery=True
-            cli.enhanced_cli.list_tools.assert_called_once_with(
-                template_name="github",
-                no_cache=False,
-                refresh=False,
+            # Verify list_tools was called with force_refresh=True
+            cli.tool_manager.list_tools.assert_called_once_with(
+                template_or_id="github",
+                discovery_method="auto",
+                force_refresh=True,
                 config_values={},
-                force_server_discovery=True,
             )
 
     def test_do_tools_with_help(self, cli):
@@ -157,19 +182,30 @@ class TestInteractiveCLICommands:
                 },
             }
         }
-        cli.enhanced_cli.list_tools = MagicMock()
+        cli.tool_manager.list_tools = MagicMock(return_value=[{"name": "repo_tool"}])
+        cli.template_manager.get_template_info = MagicMock(
+            return_value={
+                "config_schema": {
+                    "properties": {"token": {"env_mapping": "GITHUB_TOKEN"}}
+                }
+            }
+        )
         cli.session_configs["github"] = {"token": "test_token"}
 
         with patch.dict("os.environ", {"GITHUB_TOKEN": "env_token"}):
             cli.do_tools("github")
 
-            # Should use session config, not env var
-            cli.enhanced_cli.list_tools.assert_called_once_with(
-                template_name="github",
-                no_cache=False,
-                refresh=False,
+            # Should call tool_manager with correct template
+            cli.tool_manager.list_tools.assert_called_once_with(
+                template_or_id="github",
+                discovery_method="auto",
+                force_refresh=False,
                 config_values={"token": "test_token"},
-                force_server_discovery=False,
+            )
+
+            # Verify beautify_tools_list was called with the tools
+            cli.beautifier.beautify_tools_list.assert_called_once_with(
+                [{"name": "repo_tool"}], "Template: github"
             )
 
     def test_do_config_no_args(self, cli):
@@ -265,6 +301,219 @@ class TestInteractiveCLICommands:
         template_exists = template_name in cli.enhanced_cli.templates
 
         assert not template_exists
+
+    @patch("mcp_template.interactive_cli.merge_config_sources")
+    @patch("mcp_template.interactive_cli.console")
+    def test_display_tool_result_default_table_format(
+        self, mock_console, mock_merge, cli
+    ):
+        """Test that _display_tool_result uses table format by default."""
+        # Mock setup
+        mock_merge.return_value = {"token": "test_token"}
+
+        # Create test result with MCP content structure
+        test_result = {
+            "content": [{"type": "text", "text": "Hello World! This is a test result."}]
+        }
+
+        # Mock the table display method
+        cli._display_tool_result_table = MagicMock()
+
+        # Call _display_tool_result with raw=False (default)
+        cli._display_tool_result(test_result, "test_tool", raw=False)
+
+        # Verify table display was called
+        cli._display_tool_result_table.assert_called_once_with(test_result, "test_tool")
+
+    @patch("mcp_template.interactive_cli.merge_config_sources")
+    @patch("mcp_template.interactive_cli.console")
+    def test_display_tool_result_raw_format(self, mock_console, mock_merge, cli):
+        """Test that _display_tool_result uses beautifier for raw=True."""
+        # Mock setup
+        mock_merge.return_value = {"token": "test_token"}
+
+        # Create test result
+        test_result = {
+            "content": [{"type": "text", "text": "Hello World! This is a test result."}]
+        }
+
+        # Call _display_tool_result with raw=True
+        cli._display_tool_result(test_result, "test_tool", raw=True)
+
+        # Verify beautifier.beautify_json was called
+        cli.beautifier.beautify_json.assert_called_once_with(
+            test_result, "Tool Result: test_tool"
+        )
+
+    @patch("mcp_template.interactive_cli.merge_config_sources")
+    @patch("mcp_template.interactive_cli.console")
+    def test_display_tool_result_fallback_on_error(self, mock_console, mock_merge, cli):
+        """Test that _display_tool_result falls back to simple display on errors."""
+        # Mock setup
+        mock_merge.return_value = {"token": "test_token"}
+
+        # Create test result
+        test_result = {"simple": "result"}
+
+        # Mock both display methods to raise exceptions
+        cli._display_tool_result_table = MagicMock(side_effect=Exception("Table error"))
+        cli.beautifier.beautify_json = MagicMock(side_effect=Exception("JSON error"))
+
+        # Call _display_tool_result - should not raise exception
+        cli._display_tool_result(test_result, "test_tool", raw=False)
+
+        # Verify fallback console output was called
+        mock_console.print.assert_any_call("[green]✅ Tool 'test_tool' result:[/green]")
+        mock_console.print.assert_any_call(test_result)
+
+    @patch("mcp_template.interactive_cli.console")
+    def test_display_tool_result_table_mcp_content(self, mock_console, cli):
+        """Test _display_tool_result_table with MCP content structure."""
+        # Test MCP content with text
+        mcp_result = {
+            "content": [
+                {"type": "text", "text": "Hello from the tool!"},
+                {"type": "text", "text": "Second line of output"},
+            ]
+        }
+
+        # Mock the Rich Table creation and console
+        with (
+            patch("rich.table.Table") as mock_table_class,
+            patch("rich.syntax.Syntax") as mock_syntax,
+        ):
+
+            mock_table = MagicMock()
+            mock_table_class.return_value = mock_table
+
+            # Call the method
+            cli._display_tool_result_table(mcp_result, "test_tool")
+
+            # Verify table was created - it calls _display_mcp_content_table internally
+            # which creates a table with box=box.ROUNDED parameter
+            mock_table_class.assert_called_with(
+                title="🎯 test_tool Results",
+                box=mock.ANY,  # box.ROUNDED - we don't want to mock the box import
+                show_header=True,
+                header_style="bold cyan",
+            )
+
+            # Verify columns were added
+            assert mock_table.add_column.call_count == 2
+            mock_table.add_column.assert_any_call("Type", style="yellow", width=12)
+            mock_table.add_column.assert_any_call(
+                "Content", style="white", min_width=40
+            )
+
+            # Verify rows were added for each content item
+            assert mock_table.add_row.call_count == 2
+
+            # Verify console.print was called with the table
+            mock_console.print.assert_called_with(mock_table)
+
+    @patch("mcp_template.interactive_cli.console")
+    def test_display_tool_result_table_simple_dict(self, mock_console, cli):
+        """Test _display_tool_result_table with simple dictionary."""
+        # Test simple dictionary result
+        dict_result = {
+            "status": "success",
+            "message": "Operation completed",
+            "count": 42,
+        }
+
+        # Mock the Rich Table creation
+        with patch("rich.table.Table") as mock_table_class:
+            mock_table = MagicMock()
+            mock_table_class.return_value = mock_table
+
+            # Call the method
+            cli._display_tool_result_table(dict_result, "test_tool")
+
+            # Verify table was created - calls _display_dict_as_table
+            mock_table_class.assert_called_with(
+                title="🎯 test_tool Results",
+                box=mock.ANY,  # box.ROUNDED
+                show_header=True,
+                header_style="bold cyan",
+            )
+
+            # Verify Property/Value columns were added
+            mock_table.add_column.assert_any_call("Property", style="yellow", width=20)
+            mock_table.add_column.assert_any_call("Value", style="white", min_width=40)
+
+            # Verify rows were added for each dict item
+            assert mock_table.add_row.call_count == 3
+
+            # Verify console.print was called
+            mock_console.print.assert_called_with(mock_table)
+
+    @patch("mcp_template.interactive_cli.console")
+    def test_display_tool_result_table_list_data(self, mock_console, cli):
+        """Test _display_tool_result_table with list data."""
+        # Test list result
+        list_result = [
+            {"name": "Alice", "age": 30},
+            {"name": "Bob", "age": 25},
+            {"name": "Charlie", "age": 35},
+        ]
+
+        # Mock the Rich Table creation
+        with patch("rich.table.Table") as mock_table_class:
+            mock_table = MagicMock()
+            mock_table_class.return_value = mock_table
+
+            # Call the method
+            cli._display_tool_result_table(list_result, "test_tool")
+
+            # Verify table was created - calls _display_list_as_table
+            mock_table_class.assert_called_with(
+                title="🎯 test_tool Results",
+                box=mock.ANY,  # box.ROUNDED
+                show_header=True,
+                header_style="bold cyan",
+            )
+
+            # Verify columns were added for dict keys (name, age)
+            assert mock_table.add_column.call_count >= 2
+
+            # Verify rows were added for each list item
+            assert mock_table.add_row.call_count == 3
+
+            # Verify console.print was called
+            mock_console.print.assert_called_with(mock_table)
+
+    @patch("mcp_template.interactive_cli.console")
+    def test_display_tool_result_table_simple_string(self, mock_console, cli):
+        """Test _display_tool_result_table with simple string result."""
+        # Test simple string result
+        string_result = "Simple text response from tool"
+
+        # Mock the Rich Table creation
+        with patch("rich.table.Table") as mock_table_class:
+            mock_table = MagicMock()
+            mock_table_class.return_value = mock_table
+
+            # Call the method
+            cli._display_tool_result_table(string_result, "test_tool")
+
+            # Verify table was created - calls _display_simple_result_table
+            mock_table_class.assert_called_with(
+                title="🎯 test_tool Result",  # Note: singular "Result"
+                box=mock.ANY,  # box.ROUNDED
+                show_header=False,  # Simple results don't show header
+                width=60,
+            )
+
+            # Verify column was added - simple result has single column with no name
+            mock_table.add_column.assert_called_once_with(
+                "", style="bold green", justify="center"
+            )
+
+            # Verify one row was added with the string
+            mock_table.add_row.assert_called_once_with(string_result)
+
+            # Verify console.print was called
+            mock_console.print.assert_called_with(mock_table)
 
     def test_do_show_config_no_template(self, cli):
         """Test do_show_config with no template name."""

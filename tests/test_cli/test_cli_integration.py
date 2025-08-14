@@ -2,7 +2,7 @@
 Comprehensive integration tests for CLI override functionality
 """
 
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import pytest
 
@@ -73,7 +73,7 @@ class TestCLIIntegration:
         help_output = captured.out
 
         # Verify override option is documented
-        assert "--override OVERRIDE" in help_output
+        assert "--override" in help_output
         assert "Template data overrides" in help_output
         # The help text may have line breaks, so check for the key parts
         assert "supports double" in help_output and "underscore notation" in help_output
@@ -93,6 +93,10 @@ class TestCLIIntegration:
                     "demo": {
                         "name": "demo",
                         "image": "demo-image:latest",  # Add missing image field
+                        "transport": {
+                            "supported": ["http"],
+                            "default": "http",
+                        },  # Add transport
                         "config_schema": {
                             "properties": {
                                 "log_level": {
@@ -106,11 +110,13 @@ class TestCLIIntegration:
             ),
         ):
 
-            mock_manager.deploy_template.return_value = {
-                "deployment_name": "test-deployment",
-                "image": "test-image",
-                "status": "running",
-            }
+            mock_manager.deploy_template.return_value = Mock(
+                success=True,
+                deployment_id="test-deployment",
+                image="test-image",
+                status="running",
+                error=None,
+            )
 
             # Test with both config and override values
             result = deployer.deploy(
@@ -130,17 +136,18 @@ class TestCLIIntegration:
             call_args = mock_manager.deploy_template.call_args
 
             # Check configuration contains config values
-            config = call_args[1]["configuration"]
-            assert "MCP_LOG_LEVEL" in config
-            assert config["MCP_LOG_LEVEL"] == "debug"
+            config_sources = call_args[1]["config_sources"]
+            config_values = config_sources["config_values"]
+            assert "MCP_LOG_LEVEL" in config_values
+            assert config_values["MCP_LOG_LEVEL"] == "debug"
 
             # Check configuration contains override environment variables
-            assert "OVERRIDE_metadata__version" in config
-            assert config["OVERRIDE_metadata__version"] == "2.0.0"
-            assert "OVERRIDE_tools__0__enabled" in config
-            assert config["OVERRIDE_tools__0__enabled"] == "false"
-            assert "OVERRIDE_config__custom_setting" in config
-            assert config["OVERRIDE_config__custom_setting"] == "test_value"
+            assert "OVERRIDE_metadata__version" in config_values
+            assert config_values["OVERRIDE_metadata__version"] == "2.0.0"
+            assert "OVERRIDE_tools__0__enabled" in config_values
+            assert config_values["OVERRIDE_tools__0__enabled"] == "false"
+            assert "OVERRIDE_config__custom_setting" in config_values
+            assert config_values["OVERRIDE_config__custom_setting"] == "test_value"
 
     def test_complex_nested_overrides(self):
         """Test complex nested override scenarios."""

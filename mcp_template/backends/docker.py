@@ -2,6 +2,7 @@
 Docker backend for managing deployments using Docker containers.
 """
 
+from contextlib import suppress
 import json
 import logging
 import os
@@ -10,12 +11,13 @@ import subprocess
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 from rich.panel import Panel
 
 from mcp_template.backends import BaseDeploymentBackend
+from mcp_template.template.utils.discovery import TemplateDiscovery
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -46,7 +48,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
 
     # Docker Infrastructure Methods
     def _run_command(
-        self, command: List[str], check: bool = True
+        self, command: List[str], check: bool = True, **kwargs: Any
     ) -> subprocess.CompletedProcess:
         """Execute a shell command and return the result.
 
@@ -61,20 +63,25 @@ class DockerDeploymentService(BaseDeploymentBackend):
             subprocess.CalledProcessError: If command fails and check=True
         """
 
+        if "stdout" in kwargs or "stderr" in kwargs:
+            capture_output = False
+        else:
+            capture_output = True
+
         try:
             logger.debug("Running command: %s", " ".join(command))
             result = subprocess.run(  # nosec B603
-                command, capture_output=True, text=True, check=check
+                command, capture_output=capture_output, text=True, check=check, **kwargs
             )
             logger.debug("Command output: %s", result.stdout)
             if result.stderr:
                 logger.debug("Command stderr: %s", result.stderr)
             return result
         except subprocess.CalledProcessError as e:
-            logger.error("Command failed: %s", " ".join(command))
-            logger.error("Exit code: %d", e.returncode)
-            logger.error("Stdout: %s", e.stdout)
-            logger.error("Stderr: %s", e.stderr)
+            logger.debug("Command failed: %s", " ".join(command))
+            logger.debug("Exit code: %d", e.returncode)
+            logger.debug("Stdout: %s", e.stdout)
+            logger.debug("Stderr: %s", e.stderr)
             raise
 
     def _ensure_docker_available(self):
@@ -132,16 +139,15 @@ class DockerDeploymentService(BaseDeploymentBackend):
         # If stdio transport is detected, prevent deployment
         if is_stdio is True or (is_stdio is None and default_transport == "stdio"):
             # Import here to avoid circular import
-            from mcp_template.tools.discovery import ToolDiscovery
+            from mcp_template.core.tool_manager import ToolManager
 
-            tool_discovery = ToolDiscovery()
+            tool_manager = ToolManager(backend_type="docker")
 
             # Get available tools for this template
             try:
-                discovery_result = tool_discovery.discover_tools(
+                discovery_result = tool_manager.list_tools(
                     template_id,
-                    template_data.get("template_dir", ""),
-                    template_data,
+                    discovery_method="static",
                     use_cache=True,
                     force_refresh=False,
                 )
@@ -316,7 +322,10 @@ class DockerDeploymentService(BaseDeploymentBackend):
                         free_sock.bind(("", 0))
                         port_to_use = free_sock.getsockname()[1]
                     logger.warning(
-                        f"Port {host_port} is in use, remapping to free port {port_to_use} for container port {container_port}"
+                        "Port %s is in use, remapping to free port %s for container port %s",
+                        host_port,
+                        port_to_use,
+                        container_port,
                     )
             ports.extend(["-p", f"{port_to_use}:{container_port}"])
         return ports
@@ -733,7 +742,140 @@ EOF""",
             logger.error("Failed to list deployments: %s", e)
             return []
 
-    def delete_deployment(self, deployment_name: str) -> bool:
+    def get_deployment_info(
+        self, deployment_name: str, include_logs: bool = False, lines: int = 10
+    ) -> Dict[str, Any]:
+        """Get detailed information about a specific deployment.
+
+        Args:
+            deployment_name: Name or ID of the deployment
+            include_logs: Whether to include container logs in the response
+            lines: Number of log lines to retrieve (only if include_logs=True)
+
+        Returns:
+            Dictionary with deployment information, or None if not found
+        """
+        try:
+            # Get detailed container information
+            result = self._run_command(
+                [
+                    "docker",
+                    "inspect",
+                    deployment_name,
+                ]
+            )
+
+            if result.stdout.strip():
+                containers = json.loads(result.stdout)
+                if containers:
+                    container = containers[0]
+
+                    # Extract relevant information
+                    labels = container.get("Config", {}).get("Labels", {}) or {}
+                    template_name = labels.get("template", "unknown")
+
+                    # Get port information
+                    ports = container.get("NetworkSettings", {}).get("Ports", {})
+                    port_display = ""
+                    for port, mappings in ports.items():
+                        if mappings:
+                            host_port = mappings[0].get("HostPort", "")
+                            if host_port:
+                                port_display = host_port
+                                break
+
+                    # Build result with unified information
+                    result_info = {
+                        "id": container.get("Id", "unknown"),
+                        "name": container.get("Name", "").lstrip("/"),
+                        "template": template_name,
+                        "status": container.get("State", {}).get("Status", "unknown"),
+                        "running": container.get("State", {}).get("Running", False),
+                        "image": container.get("Config", {}).get("Image", "unknown"),
+                        "ports": port_display,
+                        "created": container.get("Created", ""),
+                        "raw_container": container,  # Include full container data for advanced operations
+                    }
+
+                    # Add logs if requested
+                    if include_logs:
+                        try:
+                            log_result = self._run_command(
+                                [
+                                    "docker",
+                                    "logs",
+                                    "--tail",
+                                    str(int(lines)),
+                                    deployment_name,
+                                ],
+                                check=False,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,  # Because docker logs are sent to stderr by default
+                            )
+                            result_info["logs"] = log_result.stdout
+                        except Exception:
+                            result_info["logs"] = "Unable to fetch logs"
+
+                    return result_info
+
+            return None
+
+        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
+            logger.debug(f"Failed to get deployment info for {deployment_name}: {e}")
+            return None
+
+    def get_deployment_logs(
+        self,
+        deployment_name: str,
+        lines: int = 100,
+        follow: bool = False,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+    ) -> dict:
+        """Get logs from a deployment.
+
+        Args:
+            deployment_name: Name or ID of the deployment
+            lines: Number of log lines to retrieve
+            follow: Whether to stream logs (not implemented for this method)
+            since: Start time for log filtering
+            until: End time for log filtering
+
+        Returns:
+            Dictionary with success status and logs or error message
+        """
+        try:
+            cmd = ["docker", "logs"]
+
+            if lines:
+                cmd.extend(["--tail", str(lines)])
+            if since:
+                cmd.extend(["--since", since])
+            if until:
+                cmd.extend(["--until", until])
+
+            cmd.append(deployment_name)
+
+            result = self._run_command(cmd)
+
+            if result.returncode == 0:
+                return {
+                    "success": True,
+                    "logs": result.stderr + "\n" + result.stdout or "",
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.stderr or "Unknown error retrieving logs",
+                }
+
+        except Exception as e:
+            logger.error(f"Failed to get logs for deployment {deployment_name}: {e}")
+            return {"success": False, "error": str(e)}
+
+    def delete_deployment(
+        self, deployment_name: str, raise_on_failure: bool = False
+    ) -> bool:
         """Delete a deployment by stopping and removing the container.
 
         Args:
@@ -744,77 +886,270 @@ EOF""",
         """
         try:
             # Stop and remove the container
-            self._run_command(["docker", "stop", deployment_name], check=False)
-            self._run_command(["docker", "rm", deployment_name], check=False)
+            self._run_command(
+                ["docker", "stop", deployment_name], check=raise_on_failure
+            )
+            self._run_command(["docker", "rm", deployment_name], check=raise_on_failure)
             logger.info("Deleted deployment %s", deployment_name)
             return True
         except subprocess.CalledProcessError as e:
             logger.error("Failed to delete deployment %s: %s", deployment_name, e)
             return False
 
-    def get_deployment_status(self, deployment_name: str) -> Dict[str, Any]:
-        """Get detailed status of a deployment including logs.
+    def stop_deployment(self, deployment_name: str, force: bool = False) -> bool:
+        """Stop a deployment.
 
         Args:
-            deployment_name: Name of the deployment
+            deployment_name: Name of the deployment to stop
+            force: Whether to force stop the deployment
 
         Returns:
-            Dict containing deployment status, logs, and metadata
-
-        Raises:
-            ValueError: If deployment is not found
+            True if stop was successful, False otherwise
         """
         try:
-            # Get container info
-            result = self._run_command(
-                ["docker", "inspect", deployment_name, "--format", "json"]
-            )
-            container_data = json.loads(result.stdout)[0]
-
-            # Get container logs (last 10 lines)
-            try:
-                log_result = self._run_command(
-                    ["docker", "logs", "--tail", "10", deployment_name], check=False
-                )
-                logs = log_result.stdout
-            except Exception:
-                logs = "Unable to fetch logs"
-
-            return {
-                "name": container_data["Name"].lstrip("/"),
-                "status": container_data["State"]["Status"],
-                "running": container_data["State"]["Running"],
-                "created": container_data["Created"],
-                "image": container_data["Config"]["Image"],
-                "logs": logs,
-            }
-        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as exc:
-            logger.error(
-                "Failed to get container info for %s: %s", deployment_name, exc
-            )
-            raise ValueError(f"Deployment {deployment_name} not found") from exc
+            if force:
+                self._run_command(["docker", "kill", deployment_name])
+            else:
+                self._run_command(["docker", "stop", deployment_name])
+            return True
+        except subprocess.CalledProcessError:
+            return False
 
     def _build_internal_image(
         self, template_id: str, image_name: str, template_data: Dict[str, Any]
     ) -> None:
         """Build Docker image for internal templates."""
-        import os
-        from pathlib import Path
-
-        # Get template directory
-        from mcp_template.template.utils.discovery import TemplateDiscovery
 
         discovery = TemplateDiscovery()
-        template_dir = discovery.template_root / template_id
+        template_dir = discovery.templates_dir / template_id
 
         if not template_dir.exists() or not (template_dir / "Dockerfile").exists():
             logger.error(
-                f"Dockerfile not found for internal template {template_id} in {template_dir}"
+                "Dockerfile not found for internal template %s in %s",
+                template_id,
+                template_dir,
             )
             raise ValueError(f"Internal template {template_id} missing Dockerfile")
 
-        logger.info(f"Building image {image_name} for internal template {template_id}")
+        logger.info(
+            "Building image %s for internal template %s", image_name, template_id
+        )
 
         # Build the Docker image
         build_command = ["docker", "build", "-t", image_name, str(template_dir)]
         self._run_command(build_command)
+
+    def connect_to_deployment(self, deployment_id: str):
+        """
+        Connect to deployment shell with improved shell detection.
+        Args:
+            deployment_id: Name or ID of the deployment
+
+        Returns:
+            None - Gives access to deployment shell
+        """
+        import os
+
+        # Check if container is running
+        container_info = self.get_deployment_info(deployment_id)
+        if not container_info or container_info.get("status") != "running":
+            raise RuntimeError(f"Container {deployment_id} is not running")
+
+        # Try to detect available shells in order of preference
+        shells_to_try = [
+            "bash",  # Most feature-rich
+            "sh",  # Basic POSIX shell
+            "zsh",  # Modern alternative
+            "ash",  # Alpine Linux default
+            "dash",  # Debian/Ubuntu minimal
+        ]
+
+        logger.info(f"Attempting to connect to container {deployment_id}")
+
+        # First, try to detect which shells are available
+        available_shells = []
+        for shell in shells_to_try:
+            try:
+                # Check if shell exists in container
+                check_cmd = ["docker", "exec", deployment_id, "which", shell]
+                result = subprocess.run(
+                    check_cmd, capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0:
+                    available_shells.append(shell)
+                    logger.debug(f"Found shell: {shell}")
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                continue
+
+        if not available_shells:
+            # Fallback: try shells without checking availability
+            available_shells = ["sh", "bash"]
+            logger.warning("Could not detect available shells, trying fallback options")
+
+        # Try to connect using available shells
+        for shell in available_shells:
+            try:
+                cmd = ["docker", "exec", "-it", deployment_id, shell]
+                logger.info(f"Connecting with {shell}...")
+
+                # Use os.execvp to replace current process for proper terminal handling
+                os.execvp("docker", cmd)
+
+                # Note: execvp only returns if it fails, so this line should never be reached
+                # in normal operation. However, in testing scenarios where execvp is mocked,
+                # we return here to indicate success.
+                return
+
+            except Exception as e:
+                logger.debug(f"Failed to connect with {shell}: {e}")
+                continue
+
+        # If we get here, all shells failed
+        raise RuntimeError(
+            f"Could not connect to container {deployment_id}. No working shell found."
+        )
+
+    def cleanup_stopped_containers(
+        self, template_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Clean up stopped containers.
+
+        Args:
+            template_name: If provided, only clean containers for this template
+
+        Returns:
+            Dict with cleanup results
+        """
+        try:
+            # Find containers to clean up
+            if template_name:
+                # Get all containers for this template
+                cmd = [
+                    "docker",
+                    "ps",
+                    "-a",
+                    "--filter",
+                    f"label=mcp.template={template_name}",
+                    "--filter",
+                    "status=exited",
+                    "--format",
+                    "{{.ID}}\t{{.Names}}\t{{.Status}}",
+                ]
+            else:
+                # Get all stopped MCP containers
+                cmd = [
+                    "docker",
+                    "ps",
+                    "-a",
+                    "--filter",
+                    "label=mcp.template",
+                    "--filter",
+                    "status=exited",
+                    "--format",
+                    "{{.ID}}\t{{.Names}}\t{{.Status}}",
+                ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+            if not result.stdout.strip():
+                return {
+                    "success": True,
+                    "cleaned_containers": [],
+                    "message": "No stopped containers to clean up",
+                }
+
+            # Parse container information
+            containers_to_clean = []
+            for line in result.stdout.strip().split("\n"):
+                if line:
+                    parts = line.split("\t")
+                    if len(parts) >= 3:
+                        containers_to_clean.append(
+                            {"id": parts[0], "name": parts[1], "status": parts[2]}
+                        )
+
+            # Remove the containers
+            cleaned_containers = []
+            failed_cleanups = []
+
+            for container in containers_to_clean:
+                try:
+                    subprocess.run(
+                        ["docker", "rm", container["id"]],
+                        check=True,
+                        capture_output=True,
+                    )
+                    cleaned_containers.append(container)
+                    logger.info(
+                        f"Cleaned up container: {container['name']} ({container['id'][:12]})"
+                    )
+                except subprocess.CalledProcessError as e:
+                    failed_cleanups.append({"container": container, "error": str(e)})
+                    logger.warning(
+                        f"Failed to clean up container {container['name']}: {e}"
+                    )
+
+            return {
+                "success": len(failed_cleanups) == 0,
+                "cleaned_containers": cleaned_containers,
+                "failed_cleanups": failed_cleanups,
+                "message": f"Cleaned up {len(cleaned_containers)} containers",
+            }
+
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to list containers for cleanup: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to list containers: {e}",
+                "cleaned_containers": [],
+                "failed_cleanups": [],
+            }
+
+    def cleanup_dangling_images(self) -> Dict[str, Any]:
+        """
+        Clean up dangling Docker images related to MCP templates.
+
+        Returns:
+            Dict with cleanup results
+        """
+        try:
+            # Find dangling images
+            cmd = ["docker", "images", "--filter", "dangling=true", "-q"]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+            if not result.stdout.strip():
+                return {
+                    "success": True,
+                    "cleaned_images": [],
+                    "message": "No dangling images to clean up",
+                }
+
+            image_ids = result.stdout.strip().split("\n")
+
+            # Remove dangling images
+            try:
+                subprocess.run(
+                    ["docker", "rmi"] + image_ids, check=True, capture_output=True
+                )
+
+                return {
+                    "success": True,
+                    "cleaned_images": image_ids,
+                    "message": f"Cleaned up {len(image_ids)} dangling images",
+                }
+
+            except subprocess.CalledProcessError as e:
+                return {
+                    "success": False,
+                    "error": f"Failed to remove dangling images: {e}",
+                    "cleaned_images": [],
+                }
+
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to list dangling images: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to list dangling images: {e}",
+                "cleaned_images": [],
+            }
