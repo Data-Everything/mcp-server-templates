@@ -5,9 +5,10 @@ Tests the tool discovery, management, and operations
 provided by the ToolManager common module.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 import json
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 from mcp_template.core.tool_manager import ToolManager
 
@@ -286,7 +287,7 @@ class TestToolManager:
     def test_call_tool(self):
         """Test calling a tool on a running server."""
         mock_deployment_info = {
-            "endpoint": "http://localhost:8555ß",
+            "endpoint": "http://localhost:8555",
             "transport": "http",
         }
 
