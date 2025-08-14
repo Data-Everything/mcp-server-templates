@@ -497,34 +497,51 @@ docker run -d --name mcp-server template:latest
 
 ### Does it work with Kubernetes?
 
-While primarily designed for Docker, you can adapt for Kubernetes:
+**Yes!** Kubernetes backend is now fully supported alongside Docker.
 
-**Manual Kubernetes Deployment:**
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mcp-template
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: mcp-template
-  template:
-    metadata:
-      labels:
-        app: mcp-template
-    spec:
-      containers:
-      - name: mcp-server
-        image: template:latest
-        env:
-        - name: MCP_CONFIG
-          value: "production"
+**Kubernetes Deployment:**
+```bash
+# Deploy to Kubernetes
+mcpt --backend kubernetes deploy github-server
+
+# Specify namespace and replicas
+mcpt --backend kubernetes --namespace my-namespace deploy github-server --config replicas=3
+
+# Use custom kubeconfig
+mcpt --backend kubernetes --kubeconfig ~/.kube/config deploy github-server
 ```
 
-**Future Support:**
-Kubernetes backend support is planned for future releases.
+**Features:**
+- **Dynamic Pod Management**: Automatic pod creation and scaling
+- **Service Discovery**: Built-in Kubernetes Services for load balancing
+- **Helm Chart Templates**: Generic charts for all MCP servers
+- **Resource Management**: Configurable CPU/memory limits
+- **Namespace Isolation**: Deploy to custom namespaces
+
+**Example Kubernetes Configuration:**
+```json
+{
+  "github-server": {
+    "type": "k8s",
+    "replicas": 2,
+    "namespace": "mcp-servers",
+    "resources": {
+      "requests": {"cpu": "100m", "memory": "128Mi"},
+      "limits": {"cpu": "500m", "memory": "512Mi"}
+    },
+    "service": {"type": "ClusterIP", "port": 8080}
+  }
+}
+```
+
+**Docker vs Kubernetes:**
+| Feature | Docker | Kubernetes |
+|---------|--------|------------|
+| Orchestration | Manual | Automatic |
+| Scaling | Single container | Horizontal pod scaling |
+| Load Balancing | External | Built-in Services |
+| Health Checks | Basic | Liveness/Readiness probes |
+| Service Discovery | IP/Port | DNS-based |
 
 ## Contributing
 

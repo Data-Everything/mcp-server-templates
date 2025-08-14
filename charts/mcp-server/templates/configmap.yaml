@@ -1,0 +1,12 @@
+{{- if .Values.mcp.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mcp-server.fullname" . }}-config
+  labels:
+    {{- include "mcp-server.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.mcp.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}

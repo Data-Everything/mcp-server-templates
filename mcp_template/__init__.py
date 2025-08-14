@@ -132,7 +132,28 @@ Examples:
   mcpt interactive            # Start interactive CLI
   mcpt> file-server             # Deploy file server with defaults
   mcpt> file-server --name fs   # Deploy with custom name
+  
+Backend Selection:
+  mcpt --backend kubernetes deploy template  # Use Kubernetes backend
+  mcpt --backend docker deploy template      # Use Docker backend (default)
         """,
+    )
+
+    # Global options
+    parser.add_argument(
+        "--backend",
+        choices=["docker", "kubernetes", "mock"],
+        default="docker",
+        help="Deployment backend to use (default: docker)",
+    )
+    parser.add_argument(
+        "--namespace",
+        default="mcp-servers",
+        help="Kubernetes namespace (only used with kubernetes backend, default: mcp-servers)",
+    )
+    parser.add_argument(
+        "--kubeconfig",
+        help="Path to kubeconfig file (only used with kubernetes backend)",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
@@ -273,7 +294,13 @@ Examples:
             return
 
         # Use unified CLI for centralized command handling using core modules
-        cli = CLI()
+        backend_kwargs = {}
+        if args.backend == "kubernetes":
+            backend_kwargs["namespace"] = args.namespace
+            if args.kubeconfig:
+                backend_kwargs["kubeconfig_path"] = args.kubeconfig
+        
+        cli = CLI(backend_type=args.backend, **backend_kwargs)
 
         if args.command == "list":
             cli.handle_list_command(args)

@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mcp-server.fullname" . }}
+  labels:
+    {{- include "mcp-server.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "mcp-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "mcp-server.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "mcp-server.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if eq .Values.mcp.type "http" }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.mcp.port }}
+              protocol: {{ .Values.service.protocol }}
+          {{- end }}
+          env:
+            - name: MCP_SERVER_TYPE
+              value: {{ .Values.mcp.type | quote }}
+            {{- if eq .Values.mcp.type "http" }}
+            - name: MCP_PORT
+              value: {{ .Values.mcp.port | quote }}
+            {{- end }}
+            {{- if .Values.mcp.workingDirectory }}
+            - name: MCP_WORKING_DIR
+              value: {{ .Values.mcp.workingDirectory | quote }}
+            {{- end }}
+            {{- range $key, $value := .Values.mcp.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- if .Values.mcp.config }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "mcp-server.fullname" . }}-config
+          {{- end }}
+          {{- if and (eq .Values.mcp.type "http") .Values.mcp.healthCheck.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.mcp.healthCheck.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.mcp.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.mcp.healthCheck.periodSeconds }}
+            timeoutSeconds: {{ .Values.mcp.healthCheck.timeoutSeconds }}
+            failureThreshold: {{ .Values.mcp.healthCheck.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.mcp.healthCheck.path }}
+              port: http
+            initialDelaySeconds: {{ div .Values.mcp.healthCheck.initialDelaySeconds 2 }}
+            periodSeconds: {{ .Values.mcp.healthCheck.periodSeconds }}
+            timeoutSeconds: {{ .Values.mcp.healthCheck.timeoutSeconds }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath | default "/data" }}
+          {{- end }}
+          workingDir: {{ .Values.mcp.workingDirectory }}
+          {{- if and (eq .Values.mcp.type "stdio") .Values.mcp.command }}
+          command: {{ .Values.mcp.command | toJson }}
+          {{- end }}
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "mcp-server.fullname" .) }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
