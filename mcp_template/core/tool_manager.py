@@ -5,11 +5,12 @@ This module provides a unified interface for tool discovery, management, and ope
 consolidating functionality from CLI and MCPClient.
 """
 
-import logging
 import json
+import logging
 from typing import Any, Dict, List, Optional
 
 from mcp_template.backends import get_backend
+from mcp_template.core.cache import CacheManager
 from mcp_template.core.template_manager import TemplateManager
 from mcp_template.core.tool_caller import ToolCaller
 
@@ -29,7 +30,8 @@ class ToolManager:
         self.backend = get_backend(backend_type)
         self.template_manager = TemplateManager(backend_type)
         self.tool_caller = ToolCaller(backend_type=backend_type)
-        self._cache = {}
+        self.cache_manager = CacheManager(max_age_hours=24.0)  # 24-hour cache
+        self._cache = {}  # Keep in-memory cache for session
 
     def list_tools(
         self,
@@ -38,7 +40,7 @@ class ToolManager:
         force_refresh: bool = False,
         timeout: int = 30,
         config_values: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """
         List tools for a template or deployment using the enhanced discovery flow.
 
@@ -50,9 +52,23 @@ class ToolManager:
             config_values: Configuration values for stdio calls
 
         Returns:
-            List of tool definitions
+            Dictionary with tools and metadata:
+            {
+                "tools": [list of tool definitions],
+                "discovery_method": "static|stdio|http|cache",
+                "metadata": {
+                    "source": "...",
+                    "timestamp": "...",
+                    "cached": bool
+                }
+            }
         """
+        import time
+
         try:
+            actual_discovery_method = discovery_method
+            cached = False
+
             if discovery_method == "auto":
                 # Use the enhanced discover_tools method that implements user's flow
                 tools = self.discover_tools(
@@ -61,35 +77,85 @@ class ToolManager:
                     force_refresh=force_refresh,
                     config_values=config_values,
                 )
+                # Try to determine the actual discovery method used
+                actual_discovery_method = self._determine_actual_discovery_method(
+                    template_or_id, tools
+                )
             else:
                 # Handle specific discovery methods
                 cache_key = f"{template_or_id}:{discovery_method}"
-                if not force_refresh and cache_key in self._cache:
-                    tools = self._cache[cache_key]
-                else:
+
+                # Try persistent cache first (24-hour expiry)
+                if not force_refresh:
+                    cached_data = self.cache_manager.get(cache_key)
+                    if cached_data:
+                        tools = cached_data.get("tools", [])
+                        cached = True
+                        actual_discovery_method = cached_data.get(
+                            "discovery_method", discovery_method
+                        )
+                    elif cache_key in self._cache:
+                        # Fallback to in-memory cache
+                        tools = self._cache[cache_key]
+                        cached = True
+                        actual_discovery_method = discovery_method
+
+                if not cached:
                     if discovery_method == "static":
                         tools = self.discover_tools_static(template_or_id)
+                        actual_discovery_method = "static"
                     elif discovery_method == "dynamic":
                         tools = self.discover_tools_dynamic(template_or_id, timeout)
+                        actual_discovery_method = "http"  # dynamic usually means HTTP
                     elif discovery_method == "image":
                         tools = self.discover_tools_from_image(template_or_id, timeout)
+                        actual_discovery_method = "stdio"  # image discovery uses stdio
                     else:
                         logger.warning(f"Unknown discovery method: {discovery_method}")
                         tools = self.discover_tools_static(template_or_id)
+                        actual_discovery_method = "static"
 
-                    # Cache the results
+                    # Cache the results in both caches
                     self._cache[cache_key] = tools
+                    if tools:  # Only cache non-empty results in persistent cache
+                        cache_data = {
+                            "tools": tools,
+                            "discovery_method": actual_discovery_method,
+                            "template": template_or_id,
+                        }
+                        self.cache_manager.set(cache_key, cache_data)
 
             # Normalize tool schemas
             normalized_tools = [
-                self.normalize_tool_schema(tool, discovery_method) for tool in tools
+                self.normalize_tool_schema(tool, actual_discovery_method)
+                for tool in tools
             ]
 
-            return normalized_tools
+            # Build the enhanced response
+            return {
+                "tools": normalized_tools,
+                "discovery_method": actual_discovery_method,
+                "metadata": {
+                    "source": template_or_id,
+                    "timestamp": time.time(),
+                    "cached": cached,
+                    "force_refresh": force_refresh,
+                    "requested_method": discovery_method,
+                },
+            }
 
         except Exception as e:
             logger.error(f"Failed to list tools for {template_or_id}: {e}")
-            return []
+            return {
+                "tools": [],
+                "discovery_method": "error",
+                "metadata": {
+                    "source": template_or_id,
+                    "timestamp": time.time(),
+                    "cached": False,
+                    "error": str(e),
+                },
+            }
 
     def discover_tools(
         self,
@@ -725,3 +791,81 @@ class ToolManager:
         """
         cache_key = f"{template_or_id}:{discovery_method}"
         return self._cache.get(cache_key)
+
+    def _determine_actual_discovery_method(
+        self, template_or_id: str, tools: List[Dict]
+    ) -> str:
+        """
+        Determine the actual discovery method used based on template/deployment.
+
+        Args:
+            template_or_id: Template name or deployment ID
+            tools: The discovered tools (for context)
+
+        Returns:
+            The actual discovery method used: static, stdio, http, or cache
+        """
+        try:
+            # Check if it's a deployment ID (contains hyphens and numbers)
+            if "-" in template_or_id and any(c.isdigit() for c in template_or_id):
+                # Try to get deployment info to determine transport
+                try:
+                    deployment_info = self.backend.get_deployment_info(template_or_id)
+                    transport = deployment_info.get("transport", "unknown")
+                    if transport == "http":
+                        return "http"
+                    elif transport == "stdio":
+                        return "stdio"
+                except Exception:
+                    pass
+
+            # Check if we have running deployment for this template
+            try:
+                deployments = self.backend.list_deployments()
+                template_deployments = [
+                    d
+                    for d in deployments
+                    if d.get("template") == template_or_id
+                    or d.get("Template") == template_or_id
+                ]
+                if template_deployments:
+                    # Check the transport of the first running deployment
+                    for deployment in template_deployments:
+                        if deployment.get("status") == "running":
+                            endpoint = deployment.get("endpoint", "")
+                            if endpoint.startswith("http"):
+                                return "http"
+                            else:
+                                return "stdio"
+                    return "http"  # Default for deployments
+            except Exception:
+                pass
+
+            # If no deployment found, it was likely static discovery
+            return "static"
+
+        except Exception as e:
+            logger.debug(f"Could not determine discovery method: {e}")
+            return "static"  # Default fallback
+
+    def list_tools_legacy(
+        self,
+        template_or_id: str,
+        discovery_method: str = "auto",
+        force_refresh: bool = False,
+        timeout: int = 30,
+        config_values: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Legacy method that returns just the tools list for backward compatibility.
+
+        This method is deprecated. Use list_tools() instead which returns metadata.
+        """
+        result = self.list_tools(
+            template_or_id=template_or_id,
+            discovery_method=discovery_method,
+            force_refresh=force_refresh,
+            timeout=timeout,
+            config_values=config_values,
+        )
+        return result.get("tools", [])

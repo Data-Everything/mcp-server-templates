@@ -79,7 +79,11 @@ class TestMCPClientIntegration:
 
             mock_tool_mgr.discover_tools_from_template.return_value = demo_tools
             mock_tool_mgr.list_discovered_tools.return_value = demo_tools
-            mock_tool_mgr.list_tools.return_value = demo_tools
+            mock_tool_mgr.list_tools.return_value = {
+                "tools": demo_tools,
+                "discovery_method": "auto",
+                "metadata": {},
+            }
 
             # Test the client
             async with MCPClient(backend_type="mock") as client:

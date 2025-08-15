@@ -29,8 +29,9 @@ from mcp_template.template.utils.discovery import TemplateDiscovery
 def built_internal_images():
     """Build all internal template images before running deploy tests."""
     import subprocess
-    import docker
     from pathlib import Path
+
+    import docker
 
     # Get the root directory and templates path
     root_dir = Path(__file__).parent
@@ -150,8 +151,8 @@ def use_local_images_for_deploy_tests(request, built_internal_images):
         for marker in ["docker", "integration", "e2e"]
     ):
         # Patch the deploy methods to use pull_image=False by default
-        from mcp_template.deployer import MCPDeployer
         from mcp_template.backends.docker import DockerDeploymentService
+        from mcp_template.deployer import MCPDeployer
 
         original_deploy = MCPDeployer.deploy
         original_docker_deploy = DockerDeploymentService.deploy_template
@@ -329,6 +330,18 @@ def mock_filesystem():
             "is_dir": mock_is_dir,
             "open": mock_open,
         }
+
+
+@pytest.fixture
+def clear_cache():
+    """
+    Clear cache
+    """
+
+    from mcp_template.core.cache import CacheManager
+
+    cache_manager = CacheManager()
+    cache_manager.clear_all()
 
 
 # Test markers for different test categories

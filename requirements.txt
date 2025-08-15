@@ -5,3 +5,4 @@ requests>=2.25.0
 cmd2==2.7
 setuptools_scm>=8.3.1
 aiohttp>=3.8.0
+typer>=0.16.0

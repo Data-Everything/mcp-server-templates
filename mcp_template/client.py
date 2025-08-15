@@ -37,17 +37,17 @@ Example usage:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
 import weakref
+from typing import Any, Dict, List, Optional, Union
 
 from mcp_template.core import (
-    TemplateManager,
-    DeploymentManager,
     ConfigManager,
-    ToolManager,
+    DeploymentManager,
     MCPConnection,
     ServerManager,
+    TemplateManager,
     ToolCaller,
+    ToolManager,
 )
 from mcp_template.core.deployment_manager import DeploymentOptions
 from mcp_template.template.utils.discovery import TemplateDiscovery
@@ -350,7 +350,8 @@ class MCPClient:
         force_refresh: bool = False,
         force_server_discovery: bool = False,
         discovery_method: str = "auto",
-    ) -> List[Dict[str, Any]]:
+        include_metadata: bool = False,
+    ) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         """
         List available tools from a template or all discovered tools.
 
@@ -359,19 +360,27 @@ class MCPClient:
             force_refresh: Force refresh of tool cache
             force_server_discovery: Force discovery from server if available
             discovery_method: How to discover tools (static, dynamic, image, auto)
+            include_metadata: Whether to return metadata about discovery method
 
         Returns:
-            List of tools with their descriptions
+            If include_metadata=True: Dict with tools and metadata
+            If include_metadata=False: List of tools (backward compatible)
         """
         try:
             if force_refresh:
                 self.tool_manager.clear_cache(template_name=template_name)
 
-            return self.tool_manager.list_tools(
+            result = self.tool_manager.list_tools(
                 template_name or "",
                 discovery_method=discovery_method,
                 force_refresh=force_refresh,
             )
+
+            if include_metadata:
+                return result
+            else:
+                # Backward compatible - return just the tools list
+                return result.get("tools", [])
         except Exception as e:
             logger.error(f"Failed to list tools for {template_name}: {e}")
             return []

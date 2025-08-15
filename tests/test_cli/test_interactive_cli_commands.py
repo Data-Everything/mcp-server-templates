@@ -2,30 +2,30 @@
 Unit tests for InteractiveCLI command methods.
 """
 
-import pytest
-import unittest.mock as mock
-from unittest.mock import MagicMock, patch, call
-import json
-import sys
 import io
-from contextlib import redirect_stdout, redirect_stderr
-
-import cmd2
+import json
+import os
 
 # Add the project to path if not already there
 import sys
-import os
+import unittest.mock as mock
+from contextlib import redirect_stderr, redirect_stdout
+from unittest.mock import MagicMock, call, patch
+
+import cmd2
+import pytest
 
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if project_path not in sys.path:
     sys.path.insert(0, project_path)
+
+from rich.console import Console
 
 from mcp_template.interactive_cli import (
     InteractiveCLI,
     ResponseBeautifier,
     merge_config_sources,
 )
-from rich.console import Console
 
 
 @pytest.mark.unit
@@ -106,7 +106,12 @@ class TestInteractiveCLICommands:
     def test_do_tools_basic(self, cli):
         """Test do_tools command with template name."""
         cli.enhanced_cli.templates = {"github": {"name": "github"}}
-        cli.tool_manager.list_tools = MagicMock(return_value=[{"name": "test_tool"}])
+        mock_response = {
+            "tools": [{"name": "test_tool"}],
+            "discovery_method": "static",
+            "metadata": {"hints": "Tools found in static configuration"},
+        }
+        cli.tool_manager.list_tools = MagicMock(return_value=mock_response)
 
         with patch("mcp_template.interactive_cli.console"):
             cli.do_tools("github")
@@ -119,15 +124,20 @@ class TestInteractiveCLICommands:
                 config_values={},
             )
 
-            # Verify beautify_tools_list was called with the tools
+            # Verify beautify_tools_list was called with the tools and discovery method
             cli.beautifier.beautify_tools_list.assert_called_once_with(
-                [{"name": "test_tool"}], "Template: github"
+                [{"name": "test_tool"}], "Template: github (discovery: static)"
             )
 
     def test_do_tools_no_tools_found(self, cli):
         """Test do_tools command when no tools are found."""
         cli.enhanced_cli.templates = {"github": {"name": "github"}}
-        cli.tool_manager.list_tools = MagicMock(return_value=[])
+        mock_response = {
+            "tools": [],
+            "discovery_method": "static",
+            "metadata": {"hints": "No tools found in static configuration"},
+        }
+        cli.tool_manager.list_tools = MagicMock(return_value=mock_response)
 
         with patch("mcp_template.interactive_cli.console"):
             cli.do_tools("github")
@@ -182,7 +192,13 @@ class TestInteractiveCLICommands:
                 },
             }
         }
-        cli.tool_manager.list_tools = MagicMock(return_value=[{"name": "repo_tool"}])
+        cli.tool_manager.list_tools = MagicMock(
+            return_value={
+                "tools": [{"name": "repo_tool"}],
+                "discovery_method": "auto",
+                "metadata": {},
+            }
+        )
         cli.template_manager.get_template_info = MagicMock(
             return_value={
                 "config_schema": {
@@ -205,7 +221,7 @@ class TestInteractiveCLICommands:
 
             # Verify beautify_tools_list was called with the tools
             cli.beautifier.beautify_tools_list.assert_called_once_with(
-                [{"name": "repo_tool"}], "Template: github"
+                [{"name": "repo_tool"}], "Template: github (discovery: auto)"
             )
 
     def test_do_config_no_args(self, cli):
