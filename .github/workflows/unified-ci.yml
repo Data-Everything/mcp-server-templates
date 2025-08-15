@@ -157,6 +157,8 @@ jobs:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
     - uses: actions/checkout@v4
+      with:
+      fetch-depth: 0
 
     - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v5
@@ -180,6 +182,15 @@ jobs:
     - name: Run final tests before deploy
       run: |
         python tests/runner.py --unit
+
+    - name: Check version from setuptools_scm
+      run: |
+        VERSION=$(python -m setuptools_scm)
+        echo "Detected version: $VERSION"
+        if [[ "$VERSION" == "0.0.0" ]]; then
+          echo "❌ ERROR: setuptools_scm did not detect a version from tags"
+          exit 1
+        fi
 
     - name: Build package
       run: |
