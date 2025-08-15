@@ -7,15 +7,25 @@ and cache management utilities.
 
 import json
 import logging
+import os
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 logger = logging.getLogger(__name__)
 
 # Configuration constants
-DEFAULT_CACHE_MAX_AGE_HOURS = 6
-CACHE_FILE_PATTERN = "*.tools.json"
+MCP_DEFAULT_CACHE_MAX_AGE_HOURS = os.getenv("MCP_DEFAULT_CACHE_MAX_AGE_HOURS", 24.0)
+if isinstance(MCP_DEFAULT_CACHE_MAX_AGE_HOURS, str):
+    try:
+        MCP_DEFAULT_CACHE_MAX_AGE_HOURS = float(MCP_DEFAULT_CACHE_MAX_AGE_HOURS)
+    except ValueError:
+        logger.warning(
+            "Value %s is not a valid integer or float value. Setting cache to default 24 hours"
+        )
+        MCP_DEFAULT_CACHE_MAX_AGE_HOURS = 24.0
+
+MCP_CACHE_FILE_PATTERN = os.getenv("MCP_CACHE_FILE_PATTERN", "*.tools.json")
 
 
 class CacheManager:
@@ -32,7 +42,7 @@ class CacheManager:
     def __init__(
         self,
         cache_dir: Optional[Path] = None,
-        max_age_hours: float = DEFAULT_CACHE_MAX_AGE_HOURS,
+        max_age_hours: Union[float, int] = MCP_DEFAULT_CACHE_MAX_AGE_HOURS,
     ):
         """
         Initialize cache manager.
@@ -102,10 +112,8 @@ class CacheManager:
         cache_file = self._get_cache_file(key)
 
         try:
-            # Ensure timestamp is included
-            cache_data = data.copy()
-            cache_data["timestamp"] = time.time()
-            cache_data["cache_key"] = key
+            # Separate data from metadata to avoid contamination
+            cache_data = {"data": data, "timestamp": time.time(), "cache_key": key}
 
             # Write to temporary file first, then rename for atomicity
             temp_file = cache_file.with_suffix(f"{cache_file.suffix}.tmp")
@@ -143,6 +151,18 @@ class CacheManager:
         cache_file = self._get_cache_file(key)
         return self._remove_cache_file(cache_file)
 
+    def delete(self, key: str) -> bool:
+        """
+        Alias for remove method - deletes cached data for a key.
+
+        Args:
+            key: Cache key to delete
+
+        Returns:
+            True if deleted or didn't exist, False on error
+        """
+        return self.remove(key)
+
     def clear_all(self) -> int:
         """
         Clear all cached data.
@@ -153,7 +173,7 @@ class CacheManager:
         removed_count = 0
 
         try:
-            for cache_file in self.cache_dir.glob(CACHE_FILE_PATTERN):
+            for cache_file in self.cache_dir.glob(MCP_CACHE_FILE_PATTERN):
                 if self._remove_cache_file(cache_file):
                     removed_count += 1
 
@@ -175,7 +195,7 @@ class CacheManager:
         current_time = time.time()
 
         try:
-            for cache_file in self.cache_dir.glob(CACHE_FILE_PATTERN):
+            for cache_file in self.cache_dir.glob(MCP_CACHE_FILE_PATTERN):
                 if self._is_cache_expired(cache_file, current_time):
                     if self._remove_cache_file(cache_file):
                         removed_count += 1
@@ -216,7 +236,7 @@ class CacheManager:
             Dictionary with cache statistics
         """
         try:
-            cache_files = list(self.cache_dir.glob(CACHE_FILE_PATTERN))
+            cache_files = list(self.cache_dir.glob(MCP_CACHE_FILE_PATTERN))
             total_files = len(cache_files)
 
             if total_files == 0:

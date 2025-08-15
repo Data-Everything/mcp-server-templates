@@ -25,12 +25,12 @@ from rich.table import Table
 from rich.tree import Tree
 
 from mcp_template.core import (
-    TemplateManager,
     DeploymentManager,
-    ToolManager,
     OutputFormatter,
+    TemplateManager,
+    ToolManager,
 )
-from mcp_template.tools.cache import CacheManager
+from mcp_template.core.cache import CacheManager
 from mcp_template.core.tool_caller import ToolCaller
 from mcp_template.utils.config_processor import ConfigProcessor
 
@@ -1132,16 +1132,31 @@ class InteractiveCLI(cmd2.Cmd):
 
         # Use the shared CLI method - this handles all the logic correctly
         try:
-            tools = self.tool_manager.list_tools(
+            tools_result = self.tool_manager.list_tools(
                 template_or_id=template_name,
                 discovery_method="auto",
                 force_refresh=force_server_discovery,
                 config_values=config_values,
             )
 
+            # Extract tools and metadata
+            tools = tools_result.get("tools", [])
+            discovery_method = tools_result.get("discovery_method", "unknown")
+            metadata = tools_result.get("metadata", {})
+
             # Display the tools if we got any
             if tools:
-                self.beautifier.beautify_tools_list(tools, f"Template: {template_name}")
+                title = f"Template: {template_name} (discovery: {discovery_method})"
+                self.beautifier.beautify_tools_list(tools, title)
+
+                # Show discovery hint
+                if discovery_method in ["cache", "static"]:
+                    console.print(
+                        "[dim]💡 Hint: Use --force-refresh to refresh tools from server[/dim]"
+                    )
+                elif discovery_method == "error":
+                    error_msg = metadata.get("error", "Unknown error")
+                    console.print(f"[yellow]⚠️  Discovery error: {error_msg}[/yellow]")
             else:
                 console.print(
                     f"[yellow]⚠️  No tools found for template '{template_name}'[/yellow]"
@@ -1726,8 +1741,8 @@ class InteractiveCLI(cmd2.Cmd):
 
     def _display_tool_result_table(self, result: Any, tool_name: str):
         """Display tool result in a user-friendly tabular format."""
-        from rich.table import Table
         from rich import box
+        from rich.table import Table
 
         # Handle different types of results
         if isinstance(result, dict):
@@ -1753,8 +1768,8 @@ class InteractiveCLI(cmd2.Cmd):
 
     def _display_mcp_content_table(self, content_list: list, tool_name: str):
         """Display MCP content array in tabular format."""
-        from rich.table import Table
         from rich import box
+        from rich.table import Table
 
         table = Table(
             title=f"🎯 {tool_name} Results",
@@ -1804,8 +1819,8 @@ class InteractiveCLI(cmd2.Cmd):
 
     def _display_simple_result_table(self, result: Any, tool_name: str):
         """Display a simple result value in a clean format."""
-        from rich.table import Table
         from rich import box
+        from rich.table import Table
 
         table = Table(
             title=f"🎯 {tool_name} Result", box=box.ROUNDED, show_header=False, width=60
@@ -1818,8 +1833,8 @@ class InteractiveCLI(cmd2.Cmd):
 
     def _display_dict_as_table(self, data: dict, tool_name: str):
         """Display a dictionary as a key-value table."""
-        from rich.table import Table
         from rich import box
+        from rich.table import Table
 
         table = Table(
             title=f"🎯 {tool_name} Results",
@@ -1855,8 +1870,8 @@ class InteractiveCLI(cmd2.Cmd):
 
     def _display_list_as_table(self, data: list, tool_name: str):
         """Display a list as a table."""
-        from rich.table import Table
         from rich import box
+        from rich.table import Table
 
         table = Table(
             title=f"🎯 {tool_name} Results",

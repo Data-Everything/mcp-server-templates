@@ -2,14 +2,18 @@
 
 ## Overview
 
-The MCP Template platform provides an enhanced client library for programmatic interaction with Model Context Protocol (MCP) servers. This client provides a high-level Python API for managing templates, calling tools, and deploying servers.
+The MCP Template platform provides a comprehensive client library for programmatic interaction with Model Context Protocol (MCP) servers. This client provides a high-level Python API for managing templates, calling tools, and deploying servers.
 
 ## Installation
 
 The client is included as part of the mcp-template package:
 
+```bash
+pip install mcp-template
+```
+
 ```python
-from mcp_template.client_enhanced import MCPClient
+from mcp_template.client import MCPClient
 ```
 
 ## Quick Start
@@ -17,7 +21,7 @@ from mcp_template.client_enhanced import MCPClient
 ### Basic Client Usage
 
 ```python
-from mcp_template.client_enhanced import MCPClient
+from mcp_template.client import MCPClient
 
 # Initialize the client
 client = MCPClient()
@@ -28,7 +32,8 @@ print("Available templates:", list(templates.keys()))
 
 # Get information about a specific template
 demo_info = client.get_template_info("demo")
-print("Demo template transport:", demo_info["transport"])
+if demo_info:
+    print("Demo template name:", demo_info["name"])
 
 # List tools for a template
 tools = client.list_tools("demo")
@@ -42,36 +47,36 @@ result = client.call_tool(
     arguments={"name": "World"}
 )
 
-if result["success"]:
+if result.get("success"):
     print("Tool result:", result["result"])
 else:
-    print("Tool error:", result["error_message"])
+    print("Tool error:", result.get("error_message"))
 ```
 
 ### Server Management
 
 ```python
-from mcp_template.client_enhanced import MCPClient
+from mcp_template.client import MCPClient
 
 client = MCPClient()
 
 # List running servers
 servers = client.list_servers()
-print("Running servers:", servers)
+print("Running servers:", len(servers))
 
 # Start a server
 deployment_result = client.start_server(
     template_name="demo",
-    config={"name": "my-demo-server"}
+    config={"greeting": "Hello from API!"}
 )
 
-if deployment_result["success"]:
-    server_name = deployment_result["deployment_name"]
-    print(f"Server started: {server_name}")
+if deployment_result.get("success"):
+    deployment_id = deployment_result["deployment_id"]
+    print(f"Server started: {deployment_id}")
 
     # Stop the server when done
-    stop_result = client.stop_server(server_name)
-    print("Server stopped:", stop_result["success"])
+    stop_result = client.stop_server(deployment_id)
+    print("Server stopped:", stop_result.get("success"))
 ```
 
 ## API Reference
@@ -84,18 +89,424 @@ if deployment_result["success"]:
 MCPClient(backend_type: str = "docker", timeout: int = 30)
 ```
 
+**Parameters:**
 - `backend_type`: Backend for deployments ("docker", "kubernetes", "mock")
-- `timeout`: Default timeout for operations
+- `timeout`: Default timeout for operations in seconds
 
 #### Template Methods
 
-##### `list_templates() -> Dict[str, Dict[str, Any]]`
+##### `list_templates(include_deployed_status: bool = False) -> Dict[str, Dict[str, Any]]`
 
 Returns a dictionary of all available templates with their configurations.
 
 ```python
 templates = client.list_templates()
 # Returns: {"demo": {...}, "filesystem": {...}, ...}
+
+# Include deployment status
+templates_with_status = client.list_templates(include_deployed_status=True)
+```
+
+##### `get_template_info(template_id: str) -> Optional[Dict[str, Any]]`
+
+Get detailed information about a specific template.
+
+```python
+template_info = client.get_template_info("demo")
+if template_info:
+    print(f"Template: {template_info['name']} v{template_info['version']}")
+```
+
+##### `validate_template(template_id: str) -> bool`
+
+Validate if a template exists and is properly configured.
+
+```python
+is_valid = client.validate_template("demo")
+if not is_valid:
+    print("Template is invalid or missing")
+```
+
+##### `search_templates(query: str) -> Dict[str, Dict[str, Any]]`
+
+Search templates by name, description, or tags.
+
+```python
+results = client.search_templates("file")
+# Returns templates matching "file" in name, description, or tags
+```
+
+#### Server Management Methods
+
+##### `list_servers(template_name: Optional[str] = None) -> List[Dict[str, Any]]`
+
+List running MCP servers, optionally filtered by template.
+
+```python
+# List all servers
+all_servers = client.list_servers()
+
+# List servers for specific template
+demo_servers = client.list_servers("demo")
+```
+
+##### `list_servers_by_template(template: str) -> List[Dict[str, Any]]`
+
+List all servers running a specific template.
+
+```python
+servers = client.list_servers_by_template("filesystem")
+```
+
+##### `start_server(template_name: str, config: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]`
+
+Start a new MCP server instance.
+
+```python
+result = client.start_server(
+    template_name="demo",
+    config={
+        "greeting": "Hello World",
+        "port": 8080
+    },
+    transport="http",
+    no_pull=False
+)
+
+if result["success"]:
+    print(f"Server started with ID: {result['deployment_id']}")
+```
+
+##### `stop_server(deployment_id: str, timeout: int = 30) -> Dict[str, Any]`
+
+Stop a running server by deployment ID.
+
+```python
+result = client.stop_server("demo-12345")
+if result["success"]:
+    print("Server stopped successfully")
+```
+
+##### `stop_all_servers(template: str = None) -> bool`
+
+Stop all servers, optionally filtered by template.
+
+```python
+# Stop all servers
+client.stop_all_servers()
+
+# Stop all demo servers
+client.stop_all_servers("demo")
+```
+
+##### `get_server_info(deployment_id: str) -> Optional[Dict[str, Any]]`
+
+Get detailed information about a running server.
+
+```python
+info = client.get_server_info("demo-12345")
+if info:
+    print(f"Server status: {info['status']}")
+    print(f"Uptime: {info.get('uptime', 'Unknown')}")
+```
+
+##### `get_server_logs(deployment_id: str, lines: int = 100, follow: bool = False) -> Dict[str, Any]`
+
+Get logs from a running server.
+
+```python
+logs = client.get_server_logs("demo-12345", lines=50)
+if logs["success"]:
+    for line in logs["logs"]:
+        print(line)
+```
+
+#### Tool Management Methods
+
+##### `list_tools(template_or_id: str, discovery_method: str = "auto", force_refresh: bool = False) -> List[Dict[str, Any]]`
+
+List available tools from a template or running server.
+
+```python
+# List tools from template
+tools = client.list_tools("demo")
+
+# List tools from running server
+tools = client.list_tools("demo-12345")
+
+# Force refresh cache
+tools = client.list_tools("demo", force_refresh=True)
+
+# Use specific discovery method
+tools = client.list_tools("demo", discovery_method="static")
+```
+
+##### `call_tool(template_name: str, tool_name: str, arguments: Dict[str, Any], **kwargs) -> Dict[str, Any]`
+
+Call a tool on a template or server.
+
+```python
+result = client.call_tool(
+    template_name="demo",
+    tool_name="say_hello",
+    arguments={"name": "Alice"}
+)
+
+if result["success"]:
+    print("Result:", result["result"])
+else:
+    print("Error:", result["error_message"])
+```
+
+#### Async Connection Methods
+
+For advanced use cases requiring direct MCP protocol communication:
+
+##### `async connect_stdio(template_name: str, config: Optional[Dict[str, Any]] = None) -> str`
+
+Create a direct stdio connection to an MCP server.
+
+```python
+import asyncio
+
+async def main():
+    client = MCPClient()
+    connection_id = await client.connect_stdio("demo")
+    # Use connection for direct MCP protocol communication
+    await client.disconnect(connection_id)
+
+asyncio.run(main())
+```
+
+##### `async list_tools_from_connection(connection_id: str) -> List[Dict[str, Any]]`
+
+List tools through a direct connection.
+
+##### `async call_tool_from_connection(connection_id: str, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]`
+
+Call a tool through a direct connection.
+
+##### `async disconnect(connection_id: str) -> bool`
+
+Close a direct connection.
+
+#### Async Server Methods
+
+##### `async start_server_async(template_name: str, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]`
+
+Asynchronously start a server.
+
+##### `async list_tools_async(template_or_id: str, discovery_method: str = "auto") -> List[Dict[str, Any]]`
+
+Asynchronously list tools.
+
+## Configuration
+
+### Client Configuration
+
+```python
+# Use different backend
+client = MCPClient(backend_type="kubernetes")
+
+# Set custom timeout
+client = MCPClient(timeout=60)
+
+# Use mock backend for testing
+client = MCPClient(backend_type="mock")
+```
+
+### Server Configuration
+
+When starting servers, you can provide configuration in multiple ways:
+
+```python
+# Direct config dictionary
+config = {
+    "allowed_dirs": ["/tmp", "/home/user/data"],
+    "read_only": False,
+    "max_file_size": "100MB"
+}
+
+client.start_server("filesystem", config=config)
+
+# With transport options
+client.start_server(
+    "demo",
+    config={"greeting": "Hello"},
+    transport="http",
+    no_pull=True
+)
+```
+
+## Error Handling
+
+All methods return dictionaries with success indicators:
+
+```python
+result = client.start_server("demo")
+if result["success"]:
+    print("Server started:", result["deployment_id"])
+else:
+    print("Error:", result.get("error", "Unknown error"))
+    if "details" in result:
+        print("Details:", result["details"])
+```
+
+For async methods, exceptions may be raised:
+
+```python
+try:
+    connection_id = await client.connect_stdio("demo")
+except Exception as e:
+    print(f"Connection failed: {e}")
+```
+
+## Best Practices
+
+### Resource Management
+
+Always clean up resources when done:
+
+```python
+# Start server
+result = client.start_server("demo")
+deployment_id = result["deployment_id"]
+
+try:
+    # Use the server
+    tools = client.list_tools(deployment_id)
+    # ... work with tools ...
+finally:
+    # Clean up
+    client.stop_server(deployment_id)
+```
+
+### Connection Pooling
+
+For high-throughput applications, reuse client instances:
+
+```python
+# Create once, reuse many times
+client = MCPClient()
+
+for task in tasks:
+    result = client.call_tool("demo", "process", task)
+    # Process result
+```
+
+### Error Resilience
+
+Handle network and server errors gracefully:
+
+```python
+def safe_call_tool(client, template, tool, args, retries=3):
+    for attempt in range(retries):
+        try:
+            result = client.call_tool(template, tool, args)
+            if result["success"]:
+                return result
+            print(f"Attempt {attempt + 1} failed: {result.get('error')}")
+        except Exception as e:
+            print(f"Attempt {attempt + 1} error: {e}")
+
+        if attempt < retries - 1:
+            time.sleep(2 ** attempt)  # Exponential backoff
+
+    return {"success": False, "error": "All retries failed"}
+```
+
+## Examples
+
+### Basic File Operations
+
+```python
+client = MCPClient()
+
+# Start filesystem server
+server = client.start_server("filesystem", {
+    "allowed_dirs": ["/tmp"],
+    "read_only": False
+})
+
+deployment_id = server["deployment_id"]
+
+# List available tools
+tools = client.list_tools(deployment_id)
+print("Available file operations:", [t["name"] for t in tools])
+
+# Read a file
+content = client.call_tool(deployment_id, "read_file", {
+    "path": "/tmp/test.txt"
+})
+
+if content["success"]:
+    print("File content:", content["result"])
+
+# Clean up
+client.stop_server(deployment_id)
+```
+
+### GitHub Integration
+
+```python
+client = MCPClient()
+
+# Start GitHub server with API token
+server = client.start_server("github", {
+    "token": "ghp_your_token_here",
+    "default_repo": "owner/repo"
+})
+
+deployment_id = server["deployment_id"]
+
+# List repository issues
+issues = client.call_tool(deployment_id, "list_issues", {
+    "state": "open",
+    "labels": ["bug"]
+})
+
+if issues["success"]:
+    for issue in issues["result"]:
+        print(f"#{issue['number']}: {issue['title']}")
+
+client.stop_server(deployment_id)
+```
+
+### Batch Processing
+
+```python
+import asyncio
+
+async def batch_process():
+    client = MCPClient()
+
+    # Start multiple servers
+    servers = []
+    for i in range(3):
+        result = await client.start_server_async("demo", {
+            "instance_id": i
+        })
+        servers.append(result["deployment_id"])
+
+    # Process in parallel
+    tasks = []
+    for i, server_id in enumerate(servers):
+        task = client.call_tool(server_id, "process_batch", {
+            "batch_id": i,
+            "data": f"batch_{i}_data"
+        })
+        tasks.append(task)
+
+    # Wait for all to complete
+    results = await asyncio.gather(*tasks)
+
+    # Clean up
+    for server_id in servers:
+        await client.stop_server(server_id)
+
+    return results
+
+results = asyncio.run(batch_process())
 ```
 
 ##### `get_template_info(template_name: str) -> Optional[Dict[str, Any]]`

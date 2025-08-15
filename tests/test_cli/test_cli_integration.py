@@ -2,7 +2,7 @@
 Comprehensive integration tests for CLI override functionality
 """
 
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -27,19 +27,21 @@ class TestCLIIntegration:
             "metadata__version=2.0.0",
             "--override",
             "tools__0__enabled=false",
-            "--config",
+            "--set",
             "log_level=debug",
         ]
 
         with patch("sys.argv", test_args):
             with patch(
-                "mcp_template.backends.docker.DockerDeploymentService.deploy_template"
+                "mcp_template.core.deployment_manager.DeploymentManager.deploy_template"
             ) as mock_deploy:
-                mock_deploy.return_value = {
-                    "success": True,
-                    "deployment_id": "test-deployment",
-                    "container_id": "test-container",
-                }
+                from mcp_template.core.deployment_manager import DeploymentResult
+
+                mock_deploy.return_value = DeploymentResult(
+                    success=True,
+                    deployment_id="test-deployment",
+                    container_id="test-container",
+                )
 
                 try:
                     main()
@@ -50,16 +52,15 @@ class TestCLIIntegration:
                 mock_deploy.assert_called_once()
                 call_args = mock_deploy.call_args
 
-                # Check that template_id was passed correctly
-                assert call_args.kwargs["template_id"] == "demo"
-
-                # Check that override values were processed correctly
-                config = call_args.kwargs["config"]
-                assert config["OVERRIDE_metadata__version"] == "2.0.0"
-                assert config["OVERRIDE_tools__0__enabled"] == "false"
+                # Check that template name was passed correctly
+                assert call_args.args[0] == "demo"  # First positional argument
 
                 # Check that config values were processed correctly
-                assert config["MCP_LOG_LEVEL"] == "debug"
+                config = call_args.args[1]  # Second positional argument
+                assert config["OVERRIDE_metadata__version"] == "2.0.0"
+                assert config["OVERRIDE_tools__0__enabled"] == "false"
+                assert config["log_level"] == "debug"
+                assert config["MCP_TRANSPORT"] == "http"
 
     def test_cli_help_shows_override_option(self, capsys):
         """Test that CLI help displays the override option clearly."""
@@ -76,7 +77,10 @@ class TestCLIIntegration:
         assert "--override" in help_output
         assert "Template data overrides" in help_output
         # The help text may have line breaks, so check for the key parts
-        assert "supports double" in help_output and "underscore notation" in help_output
+        assert (
+            "supports double underscore" in help_output
+            and "notation for nested fields" in help_output
+        )
         assert "tools__0__custom_field=value" in help_output
 
     def test_deploy_with_mixed_config_and_overrides(self):

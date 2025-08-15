@@ -18,19 +18,21 @@ Infrastructure Components:
 """
 
 # Business Logic Modules (new refactored components)
+from .cache import CacheManager
 from .config_manager import ConfigManager
 from .deployment_manager import DeploymentManager
-from .output_formatter import OutputFormatter
-from .template_manager import TemplateManager
-from .tool_manager import ToolManager
 
 # Infrastructure Components (legacy components, kept for compatibility)
 from .mcp_connection import MCPConnection
+from .output_formatter import OutputFormatter
 from .server_manager import ServerManager
+from .template_manager import TemplateManager
 from .tool_caller import ToolCaller
+from .tool_manager import ToolManager
 
 __all__ = [
     # Business Logic
+    "CacheManager",
     "TemplateManager",
     "DeploymentManager",
     "ConfigManager",

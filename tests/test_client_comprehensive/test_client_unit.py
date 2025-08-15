@@ -6,8 +6,10 @@ including edge cases, error conditions, and integration scenarios.
 """
 
 import asyncio
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+
 from mcp_template.client import MCPClient
 
 
@@ -364,10 +366,17 @@ class TestMCPClientTools:
             {"name": "echo", "description": "Echo tool"},
             {"name": "hello", "description": "Hello tool"},
         ]
-        self.mock_tool_manager.list_tools.return_value = expected_tools
+        # Tool manager now returns new format
+        mock_response = {
+            "tools": expected_tools,
+            "discovery_method": "static",
+            "metadata": {"hints": "Tools found in static configuration"},
+        }
+        self.mock_tool_manager.list_tools.return_value = mock_response
 
         result = self.client.list_tools("demo")
 
+        # Client should return just the tools list for backward compatibility
         assert result == expected_tools
         self.mock_tool_manager.list_tools.assert_called_once_with(
             "demo",
@@ -378,7 +387,13 @@ class TestMCPClientTools:
     def test_list_tools_with_params(self):
         """Test tool listing with custom parameters."""
         expected_tools = [{"name": "echo", "description": "Echo tool"}]
-        self.mock_tool_manager.list_tools.return_value = expected_tools
+        # Tool manager now returns new format
+        mock_response = {
+            "tools": expected_tools,
+            "discovery_method": "static",
+            "metadata": {"hints": "Tools found in static configuration"},
+        }
+        self.mock_tool_manager.list_tools.return_value = mock_response
 
         result = self.client.list_tools(
             "demo",
@@ -387,6 +402,7 @@ class TestMCPClientTools:
             force_server_discovery=True,
         )
 
+        # Client should return just the tools list for backward compatibility
         assert result == expected_tools
         self.mock_tool_manager.list_tools.assert_called_once_with(
             "demo",
@@ -401,6 +417,29 @@ class TestMCPClientTools:
         result = self.client.list_tools("demo")
 
         assert result == []
+
+    def test_list_tools_with_metadata(self):
+        """Test tool listing with metadata included."""
+        expected_tools = [{"name": "echo", "description": "Echo tool"}]
+        mock_response = {
+            "tools": expected_tools,
+            "discovery_method": "stdio",
+            "metadata": {
+                "hints": "Tools discovered via stdio communication",
+                "server_status": "running",
+            },
+        }
+        self.mock_tool_manager.list_tools.return_value = mock_response
+
+        result = self.client.list_tools("demo", include_metadata=True)
+
+        # Should return full metadata structure
+        assert result == mock_response
+        self.mock_tool_manager.list_tools.assert_called_once_with(
+            "demo",
+            discovery_method="auto",
+            force_refresh=False,
+        )
 
     def test_call_tool_success(self):
         """Test successful tool calling."""
@@ -483,7 +522,6 @@ class TestMCPClientConnections:
 
         assert result is True
         assert "conn123" not in self.client._active_connections
-        mock_connection.disconnect.assert_called_once()
         mock_connection.disconnect.assert_called_once()
 
     @pytest.mark.asyncio
@@ -655,9 +693,11 @@ class TestMCPClientIntegration:
         }
         client.deployment_manager.deploy_template.return_value = mock_deploy_result
 
-        client.tool_manager.list_tools.return_value = [
-            {"name": "echo", "description": "Echo tool"}
-        ]
+        client.tool_manager.list_tools.return_value = {
+            "tools": [{"name": "echo", "description": "Echo tool"}],
+            "discovery_method": "static",
+            "metadata": {"hints": "Tools found in static configuration"},
+        }
         client.tool_manager.call_tool.return_value = {
             "success": True,
             "result": {"output": "Hello"},

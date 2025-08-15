@@ -6,20 +6,19 @@ This module provides CLI functionality using core modules for shared logic.
 Consolidates functionality from EnhancedCLI for simplicity.
 """
 
-import json
 import logging
 import sys
-from typing import Dict, Any, List, Optional
+from typing import Dict, List
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from mcp_template.core import (
-    TemplateManager,
-    DeploymentManager,
     ConfigManager,
-    ToolManager,
+    DeploymentManager,
     OutputFormatter,
+    TemplateManager,
+    ToolManager,
 )
 from mcp_template.core.deployment_manager import DeploymentOptions
 
