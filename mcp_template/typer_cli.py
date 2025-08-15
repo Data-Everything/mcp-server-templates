@@ -13,24 +13,18 @@ that provides:
 import json
 import logging
 import os
-import subprocess
-import sys
 import time
 from pathlib import Path
 from typing import Annotated, Any, Dict, List, Optional
 
 import typer
-from rich import print as rich_print
 from rich.console import Console
-from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.syntax import Syntax
 from rich.table import Table
 
 from mcp_template.core import (
     ConfigManager,
     DeploymentManager,
-    OutputFormatter,
     TemplateManager,
     ToolManager,
 )

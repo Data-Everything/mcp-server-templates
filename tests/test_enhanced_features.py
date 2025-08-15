@@ -6,16 +6,15 @@ Tests for newly enhanced features including:
 - CLI integration improvements
 """
 
-import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from typer.testing import CliRunner
 
 from mcp_template.core.cache import CacheManager
-from mcp_template.core.deployment_manager import DeploymentManager, DeploymentResult
+from mcp_template.core.deployment_manager import DeploymentResult
 from mcp_template.core.template_manager import TemplateManager
 from mcp_template.typer_cli import app
 from mcp_template.utils.config_processor import ConfigProcessor
@@ -27,9 +26,9 @@ class TestCacheSystemEnhancements:
     def test_cache_manager_initialization(self):
         """Test cache manager initializes correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            cache_manager = CacheManager(cache_dir=Path(temp_dir))
+            cache_manager = CacheManager(cache_dir=Path(temp_dir), max_age_hours=14.0)
             assert cache_manager.cache_dir == Path(temp_dir)
-            assert cache_manager.max_age_hours == 24.0  # Default cache hours
+            assert cache_manager.max_age_hours == 14.0  # Default cache hours
 
     def test_cache_set_and_get(self):
         """Test basic cache set and get operations."""
@@ -41,8 +40,11 @@ class TestCacheSystemEnhancements:
 
             retrieved_data = cache_manager.get("test_key")
             assert retrieved_data is not None
-            assert retrieved_data["key"] == "value"
-            assert retrieved_data["number"] == 42
+            assert "data" in retrieved_data
+            assert "timestamp" in retrieved_data
+            assert "cache_key" in retrieved_data
+            assert retrieved_data["data"]["key"] == "value"
+            assert retrieved_data["data"]["number"] == 42
 
     def test_cache_delete_alias(self):
         """Test that delete method is an alias for remove."""
@@ -156,11 +158,13 @@ class TestCLIOverrideOptions:
         assert "Transport protocol" in result.output
 
     @patch("mcp_template.typer_cli.DeploymentManager")
-    def test_deploy_with_override_processing(self, mock_deployment_manager):
+    def test_deploy_with_override_processing(
+        self, mock_deployment_manager, clear_cache
+    ):
         """Test deploy command processes override options correctly."""
         mock_manager = Mock()
         mock_manager.deploy_template.return_value = DeploymentResult(
-            success=True, deployment_id="test-123", endpoint="http://localhost:8000"
+            success=True, deployment_id="test-123", endpoint="http://localhost:8762"
         )
         mock_deployment_manager.return_value = mock_manager
 
@@ -176,6 +180,8 @@ class TestCLIOverrideOptions:
                 "nested__field=nested_value",
                 "--transport",
                 "http",
+                "--env",
+                "MCP_PORT=8762",
             ],
         )
 
@@ -185,9 +191,8 @@ class TestCLIOverrideOptions:
         # Verify deployment manager was called
         mock_manager.deploy_template.assert_called_once()
         call_args = mock_manager.deploy_template.call_args
-
         # Check that config contains overrides
-        config = call_args[1]["config"]
+        config = call_args[0][1]["OVERRIDE_config_key"]
         assert config is not None
 
     def test_override_processing_with_nested_keys(self):
@@ -199,11 +204,11 @@ class TestCLIOverrideOptions:
             "nested": {"deep": {"value": "original"}},
         }
 
-        overrides = [
-            "config__field=overridden",
-            "nested__deep__value=new_value",
-            "new_field=added",
-        ]
+        overrides = {
+            "config__field": "overridden",
+            "nested__deep__value": "new_value",
+            "new_field": "added",
+        }
 
         result = processor._apply_template_overrides(template_data, overrides)
 
@@ -218,25 +223,26 @@ class TestDeploymentResultHandling:
     def test_deployment_result_attributes(self):
         """Test DeploymentResult has correct attributes."""
         result = DeploymentResult(
-            success=True, deployment_id="test-123", endpoint="http://localhost:8000"
+            success=True, deployment_id="test-123", endpoint="http://localhost:8125"
         )
 
         assert result.success is True
         assert result.deployment_id == "test-123"
-        assert result.endpoint == "http://localhost:8000"
+        assert result.endpoint == "http://localhost:8125"
 
     @patch("mcp_template.typer_cli.DeploymentManager")
-    def test_cli_uses_deployment_result_attributes(self, mock_deployment_manager):
+    def test_cli_uses_deployment_result_attributes(
+        self, mock_deployment_manager, clear_cache
+    ):
         """Test CLI uses DeploymentResult attributes, not get() method."""
         mock_manager = Mock()
         mock_manager.deploy_template.return_value = DeploymentResult(
-            success=True, deployment_id="test-123", endpoint="http://localhost:8000"
+            success=True, deployment_id="test-123", endpoint="http://localhost:8128"
         )
         mock_deployment_manager.return_value = mock_manager
 
         runner = CliRunner()
         result = runner.invoke(app, ["deploy", "demo"])
-
         # Should complete successfully without AttributeError
         assert result.exit_code == 0
         assert "test-123" in result.output or "Successfully deployed" in result.output
@@ -249,13 +255,11 @@ class TestConfigProcessorEnhancements:
         """Test that override prefix is correctly applied."""
         processor = ConfigProcessor()
 
-        overrides = ["key1=value1", "key2=value2"]
-        env_vars = processor._convert_overrides_to_env_vars(
-            overrides, prefix="OVERRIDE_"
-        )
+        overrides = {"key1": "value1", "key2": "value2"}
+        env_vars = processor._convert_overrides_to_env_vars(overrides)
 
-        assert env_vars["OVERRIDE_KEY1"] == "value1"
-        assert env_vars["OVERRIDE_KEY2"] == "value2"
+        assert env_vars["OVERRIDE_key1"] == "value1"
+        assert env_vars["OVERRIDE_key2"] == "value2"
 
     def test_transport_configuration(self):
         """Test transport configuration processing."""
@@ -279,7 +283,7 @@ class TestConfigProcessorEnhancements:
             ]
         }
 
-        overrides = ["tools__0__config__param=modified"]
+        overrides = {"tools__0__config__param": "modified"}
         result = processor._apply_template_overrides(template_data, overrides)
 
         assert result["tools"][0]["config"]["param"] == "modified"
