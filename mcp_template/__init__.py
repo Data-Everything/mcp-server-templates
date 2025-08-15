@@ -20,34 +20,19 @@ Key Features:
 - Comprehensive error handling and logging
 """
 
-import argparse
 import logging
-import sys
 
 from mcp_template.backends.docker import DockerDeploymentService
-
-# Import unified CLI for improved command handling
-# Import enhanced CLI modules
-from mcp_template.cli import (
-    CLI,
-    EnhancedCLI,
-    add_enhanced_cli_args,
-    handle_enhanced_cli_commands,
-)
-
-# Import the new MCP Client for programmatic access
+from mcp_template.cli import EnhancedCLI
 from mcp_template.client import MCPClient
-
-# Import common modules for shared functionality
 from mcp_template.core import ConfigManager
 from mcp_template.core import DeploymentManager as CommonDeploymentManager
 from mcp_template.core import OutputFormatter, TemplateManager, ToolManager
 from mcp_template.core.deployment_manager import DeploymentManager
 from mcp_template.deployer import MCPDeployer
 from mcp_template.template.utils.creation import TemplateCreator
-
-# Import core classes that are used in CI and the CLI
 from mcp_template.template.utils.discovery import TemplateDiscovery
+from mcp_template.typer_cli import app
 
 # Export the classes for external use (CI compatibility)
 __all__ = [
@@ -56,8 +41,7 @@ __all__ = [
     "DeploymentManager",
     "MCPDeployer",
     "TemplateCreator",
-    "MCPClient",  # New MCP Client API
-    # Common modules
+    "MCPClient",
     "TemplateManager",
     "CommonDeploymentManager",
     "ConfigManager",
@@ -112,7 +96,6 @@ def main():
     Main entry point for the MCP deployer CLI.
     Uses Typer-based CLI with autocomplete and enhanced features.
     """
-    from mcp_template.typer_cli import app
 
     app()
 
