@@ -223,6 +223,17 @@ Backend Selection:
         action="store_true",
         help="Skip pulling Docker image (use local image)",
     )
+    
+    # Kubernetes-specific configuration arguments
+    deploy_parser.add_argument(
+        "--k8s-config",
+        action="append",
+        help="Kubernetes-specific configuration (KEY=VALUE) - e.g., replicas=3, service_type=LoadBalancer",
+    )
+    deploy_parser.add_argument(
+        "--k8s-config-file",
+        help="Path to Kubernetes configuration file (JSON/YAML)",
+    )
 
     # Stop command
     stop_parser = subparsers.add_parser("stop", help="Stop a deployed template")

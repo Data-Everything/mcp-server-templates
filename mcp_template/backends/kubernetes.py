@@ -37,8 +37,18 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         """
         self.namespace = namespace
         self.kubeconfig_path = kubeconfig_path
+        self._k8s_config = {}  # Store Kubernetes-specific configuration
         self._ensure_kubernetes_available()
         self._ensure_namespace_exists()
+
+    def set_k8s_config(self, k8s_config: Dict[str, Any]) -> None:
+        """Set Kubernetes-specific configuration for deployments.
+        
+        Args:
+            k8s_config: Dictionary containing Kubernetes configuration like
+                       replicas, service_type, resources, etc.
+        """
+        self._k8s_config = k8s_config or {}
 
     def _ensure_kubernetes_available(self):
         """Check if Kubernetes API is available and configure the client."""
@@ -96,8 +106,8 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         return f"{safe_name}-{suffix}"
 
     def _create_helm_values(self, template_id: str, config: Dict[str, Any], 
-                           template_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create Helm values from template configuration."""
+                           template_data: Dict[str, Any], k8s_config: Dict[str, Any]) -> Dict[str, Any]:
+        """Create Helm values from template configuration and Kubernetes configuration."""
         # Extract image information
         image_repo = template_data.get("image", template_id)
         image_tag = template_data.get("tag", "latest")
@@ -113,26 +123,26 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         elif "http" in template_data.get("transport", []):
             port = template_data.get("port", 8080)
 
-        # Build Helm values
+        # Build Helm values with defaults and Kubernetes configuration overrides
         values = {
             "image": {
                 "repository": image_repo,
                 "tag": image_tag,
                 "pullPolicy": "IfNotPresent" if not template_data.get("pull_image", True) else "Always"
             },
-            "replicaCount": config.get("replicas", 1),
+            "replicaCount": k8s_config.get("replicas", 1),
             "mcp": {
                 "type": server_type,
                 "port": port,
                 "command": command,
-                "env": config.get("env", {}),
-                "config": config.get("config", {})
+                "env": config.get("env", {}),  # Template environment variables
+                "config": config  # Template configuration (will be passed as env vars)
             },
             "service": {
-                "type": config.get("service_type", "ClusterIP"),
+                "type": k8s_config.get("service_type", "ClusterIP"),
                 "port": port
             },
-            "resources": config.get("resources", {
+            "resources": k8s_config.get("resources", {
                 "requests": {"cpu": "100m", "memory": "128Mi"},
                 "limits": {"cpu": "500m", "memory": "512Mi"}
             })
@@ -314,19 +324,19 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         
         Args:
             template_id: Unique identifier for the template
-            config: Configuration parameters for the deployment
+            config: Template configuration parameters (passed as env vars to container)
             template_data: Template metadata and configuration
             pull_image: Whether to pull the container image before deployment
             
         Returns:
             Dict containing deployment information
         """
-        try:
+        try:            
             deployment_name = self._generate_deployment_name(template_id)
             logger.info(f"Deploying template {template_id} as {deployment_name}")
 
-            # Create Helm values
-            values = self._create_helm_values(template_id, config, template_data)
+            # Create Helm values using both template config and Kubernetes config
+            values = self._create_helm_values(template_id, config, template_data, self._k8s_config)
             values["image"]["pullPolicy"] = "Always" if pull_image else "IfNotPresent"
 
             # Render manifests
