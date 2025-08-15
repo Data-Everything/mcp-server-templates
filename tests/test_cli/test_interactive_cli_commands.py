@@ -192,7 +192,13 @@ class TestInteractiveCLICommands:
                 },
             }
         }
-        cli.tool_manager.list_tools = MagicMock(return_value=[{"name": "repo_tool"}])
+        cli.tool_manager.list_tools = MagicMock(
+            return_value={
+                "tools": [{"name": "repo_tool"}],
+                "discovery_method": "auto",
+                "metadata": {},
+            }
+        )
         cli.template_manager.get_template_info = MagicMock(
             return_value={
                 "config_schema": {
@@ -215,7 +221,7 @@ class TestInteractiveCLICommands:
 
             # Verify beautify_tools_list was called with the tools
             cli.beautifier.beautify_tools_list.assert_called_once_with(
-                [{"name": "repo_tool"}], "Template: github"
+                [{"name": "repo_tool"}], "Template: github (discovery: auto)"
             )
 
     def test_do_config_no_args(self, cli):

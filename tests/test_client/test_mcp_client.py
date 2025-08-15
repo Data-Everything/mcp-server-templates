@@ -243,7 +243,11 @@ class TestMCPClient:
             {"name": "greet", "description": "Greet someone"},
         ]
 
-        mock_managers["tool_manager"].list_tools.return_value = expected_tools
+        mock_managers["tool_manager"].list_tools.return_value = {
+            "tools": expected_tools,
+            "discovery_method": "auto",
+            "metadata": {},
+        }
 
         result = client.list_tools("demo")
         assert result == expected_tools
@@ -260,7 +264,11 @@ class TestMCPClient:
             {"name": "greet", "description": "Greet someone"},
         ]
 
-        mock_managers["tool_manager"].list_tools.return_value = expected_tools
+        mock_managers["tool_manager"].list_tools.return_value = {
+            "tools": expected_tools,
+            "discovery_method": "auto",
+            "metadata": {},
+        }
 
         result = client.list_tools("demo", force_refresh=True)
 

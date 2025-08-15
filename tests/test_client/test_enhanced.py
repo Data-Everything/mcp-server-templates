@@ -79,7 +79,11 @@ class TestMCPClient:
                 {"name": "say_hello", "description": "Say hello"},
                 {"name": "echo_message", "description": "Echo a message"},
             ]
-            mock_list_tools.return_value = mock_tools
+            mock_list_tools.return_value = {
+                "tools": mock_tools,
+                "discovery_method": "auto",
+                "metadata": {},
+            }
 
             tools = self.client.list_tools("demo")
 

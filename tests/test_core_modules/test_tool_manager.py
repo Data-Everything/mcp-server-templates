@@ -489,7 +489,7 @@ class TestToolManagerIntegration:
         assert "tools" in result
         assert isinstance(result["tools"], list)
 
-    def test_tool_normalization_integration(self):
+    def test_tool_normalization_integration(self, clear_cache):
         """Test tool normalization in integration context."""
         tool_manager = ToolManager(backend_type="mock")
 
