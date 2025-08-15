@@ -227,6 +227,11 @@ class CLI:
                 "override_values": self._parse_key_value_args(
                     getattr(args, "override", None) or []
                 ),
+                # Kubernetes-specific configuration
+                "k8s_config_file": getattr(args, "k8s_config_file", None),
+                "k8s_config_values": self._parse_key_value_args(
+                    getattr(args, "k8s_config", None) or []
+                ),
             }
 
             deployment_options = DeploymentOptions(

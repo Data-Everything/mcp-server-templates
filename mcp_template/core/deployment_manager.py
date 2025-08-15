@@ -158,6 +158,17 @@ class DeploymentManager:
                 template_config=template_info, **config_sources
             )
 
+            # Process Kubernetes-specific configuration if backend is Kubernetes
+            k8s_config = {}
+            if self.backend_type == "kubernetes":
+                k8s_config = self.config_manager.merge_k8s_config_sources(
+                    k8s_config_file=config_sources.get("k8s_config_file"),
+                    k8s_config_values=config_sources.get("k8s_config_values"),
+                )
+                # Set the Kubernetes configuration on the backend
+                if hasattr(self.backend, 'set_k8s_config'):
+                    self.backend.set_k8s_config(k8s_config)
+
             # Apply config value mapping (e.g., log_level -> MCP_LOG_LEVEL)
             if config_sources.get("config_values"):
                 config_processor = ConfigProcessor()
