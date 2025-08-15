@@ -102,10 +102,8 @@ class CacheManager:
         cache_file = self._get_cache_file(key)
 
         try:
-            # Ensure timestamp is included
-            cache_data = data.copy()
-            cache_data["timestamp"] = time.time()
-            cache_data["cache_key"] = key
+            # Separate data from metadata to avoid contamination
+            cache_data = {"data": data, "timestamp": time.time(), "cache_key": key}
 
             # Write to temporary file first, then rename for atomicity
             temp_file = cache_file.with_suffix(f"{cache_file.suffix}.tmp")

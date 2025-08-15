@@ -1,4 +1,4 @@
-# MCP Server Templates - Zero-Config Deployment for Model Context Protocol Servers
+# MCP Server Templates
 
 [![Version](https://img.shields.io/pypi/v/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
@@ -7,108 +7,84 @@
 
 <div align="center">
 
-**[📚 Documentation](https://data-everything.github.io/mcp-server-templates/)** • **[💬 Discord Community](https://discord.gg/55Cfxe9gnr)** • **[🚀 Quick Start](#-installation)**
+**[📚 Documentation](https://data-everything.github.io/mcp-server-templates/)** • **[💬 Discord Community](https://discord.gg/55Cfxe9gnr)** • **[🚀 Quick Start](#-quick-start)**
 
 </div>
 
-> **Production-ready **MCP (Model Context Protocol)** server templates with one-click Docker or Kubernetes deployment, robust tool discovery, and flexible configuration.**
+> **Deploy Model Context Protocol (MCP) servers in seconds, not hours.**
 
-Deploy, manage, and scale MCP servers instantly with Docker containers, comprehensive CLI tools, and flexible configuration options. Built for developers who want to focus on AI integration, not infrastructure setup.
+Zero-configuration deployment of production-ready MCP servers with Docker containers, comprehensive CLI tools, and intelligent caching. Focus on AI integration, not infrastructure setup.
 
-## 📢 Announcements
-- **� Enhanced Client Architecture**: New unified `MCPClient` with shared tool calling infrastructure between CLI and client components for consistent behavior and structured responses.
-- **�🔧 CLI Shorthand Alias**: Introducing new `mcpt` alias for faster access to all CLI commands with full backward compatibility.
-- **🗂️ New Filesystem Template**: Secure local filesystem access with 14 comprehensive tools and Docker volume auto-configuration.
-- **🎯 Enhanced Interactive CLI**: Advanced argument parsing with quote support, session configuration, and parameter validation.
-- **⚡ Unified Tool Calling**: Shared ToolCaller infrastructure ensures consistent stdio and HTTP transport handling across all components.
+---
 
-## 🌟 Why MCP Server Templates?
-Integrating LLMs with external tools is often tedious—every service needs its own setup. MCP is the protocol that fixes this.
+## 🚀 Quick Start
+
+```bash
+# Install MCP Templates
+pip install mcp-templates
+
+# List available templates
+mcpt list
+
+# Deploy instantly
+mcpt deploy demo
+
+# View deployment
+mcpt logs demo
+```
+
+**That's it!** Your MCP server is running at `http://localhost:8080`
+
+---
+
+## ⚡ Why MCP Templates?
 
 | Traditional MCP Setup | With MCP Templates |
 |----------------------|-------------------|
-| ❌ Complex server configuration | ✅ One-command deployment |
-| ❌ Docker knowledge required | ✅ Zero configuration needed |
-| ❌ Manual tool discovery | ✅ Automatic tool detection |
-| ❌ Environment setup headaches | ✅ Pre-built, tested containers |
-| ❌ No deployment management | ✅ Full lifecycle management |
+| ❌ Complex configuration | ✅ One-command deployment |
+| ❌ Docker expertise required | ✅ Zero configuration needed |
+| ❌ Manual tool discovery | ✅ Automatic detection |
+| ❌ Environment setup headaches | ✅ Pre-built containers |
 
-**Perfect for:** AI developers, data scientists, DevOps teams, and anyone building with MCP who wants infrastructure that "just works".
-
-## ⚡ Features
-
-Get ready to supercharge your MCP journey! The MCP Platform is packed with electrifying features that make server deployment a thrill ride:
-
-### 🚀 Current Features
-
-- **🖱️ One-Click Docker Deployment**: Launch MCP servers instantly with pre-built templates—no hassle, just pure speed.
-- **🔎 Smart Tool Discovery**: Automatically finds and showcases every tool your server can offer. No more guesswork!
-- **💻 Slick CLI Management**: Command-line magic for easy, powerful control over all deployments.
-- **🤝 Bring Your Own MCP Server**: Plug in your own MCP server and run it on our network — with limited features!
-- **🐳 Effortless Docker Image Integration**: Add any existing MCP Docker image to the templates library with minimal setup and unlock all the platform’s cool benefits.
-- **⚡ Boilerplate Template Generator**: Instantly create new MCP server projects with a CLI-powered generator—kickstart your next big idea!
-- **🛠️ Multiple Ways to Set Configuration**: Flex your setup with config via JSON, YAML, environment variables, CLI config, or CLI override options—total flexibility for every workflow!
-- **🔧 Comprehensive CLI Tools**: From deployment to tool execution, manage everything with a single command-line interface.
-- **📦 Template Library**: Access a growing library of ready-to-use templates for common use cases.
-
-### 🌈 Planned Features
-
-- **🦸 MCP Sidekick (Coming Soon)**: Your friendly AI companion, making every MCP server compatible with any AI tool or framework.
-- **🛸 Kubernetes Support**: Deploy to Kubernetes clusters with ease, scaling your MCP servers effortlessly.
-
-**Release Timeline:** All this and more dropping mid-August 2025—don’t miss out!
-
-Want the full scoop? [Check out the docs for more features & details!](https://data-everything.github.io/mcp-server-templates/)
+**Perfect for:** AI developers, data scientists, DevOps teams building with MCP.
 
 ---
 
-## 🚀 How It Works
+## 🌟 Key Features
 
-**Architecture Overview:**
+### 🖱️ **One-Click Deployment**
+Deploy MCP servers instantly with pre-built templates—no Docker knowledge required.
 
-```
-┌────────────┐      ┌────────────────────┐      ┌────────────────────────────┐
-│  CLI Tool  │──▶──▶│ DeploymentManager  │──▶──▶│ Backend (Docker/K8s/Mock)  │
-└────────────┘      └────────────────────┘      └────────────────────────────┘
-      │                    │                           │
-      ▼                    ▼                           ▼
-  TemplateDiscovery   Template Config           Container/Pod/Mock
-      │                    │
-      ▼                    ▼
-  ConfigMapping      Environment Variables
-```
+### 🔍 **Smart Tool Discovery**
+Automatically finds and showcases every tool your server offers.
 
-**Configuration Flow:**
-1. **Template Defaults** → 2. **Config File** → 3. **CLI Options** → 4. **Environment Variables**
+### 🧠 **Intelligent Caching**
+6-hour template caching with automatic invalidation for lightning-fast operations.
 
-- **CLI Tool**: `mcp-template` or `mcpt` with comprehensive config support
-- **DeploymentManager**: Unified interface for Docker, Kubernetes, or Mock backends
-- **TemplateDiscovery**: Auto-discovers templates with config schema validation
-- **ConfigMapping**: Generic mapping system supporting nested JSON/YAML configs
-- **Multi-source Configuration**: File-based, CLI options, and environment variables
+### 💻 **Powerful CLI**
+Comprehensive command-line interface for deployment, management, and tool execution.
+
+### 🛠️ **Flexible Configuration**
+Configure via JSON, YAML, environment variables, CLI options, or override parameters.
+
+### 📦 **Growing Template Library**
+Ready-to-use templates for common use cases: filesystem, databases, APIs, and more.
 
 ---
+
 ## 📚 Installation
-There are many ways to install the MCP Server Templates CLI tool:
 
-### PyPI Package
-Install the MCP Server Templates CLI tool via PyPI:
-
+### PyPI (Recommended)
 ```bash
 pip install mcp-templates
 ```
 
-### Docker Image
-Run the MCP Server Templates CLI tool using Docker:
-
+### Docker
 ```bash
-docker run --privileged -it dataeverything/mcp-server-templates:latest deploy demo --transport http
-# This requires --privileged to access as it runs podman as alaias to docker. Check https://hub.docker.com/r/mgoltzsche/podman for more details.
+docker run --privileged -it dataeverything/mcp-server-templates:latest deploy demo
 ```
 
-### Source Code
-Clone the repository and install dependencies:
-
+### From Source
 ```bash
 git clone https://github.com/DataEverything/mcp-server-templates.git
 cd mcp-server-templates
@@ -116,1048 +92,172 @@ pip install -r requirements.txt
 ```
 
 ---
-## 📦 Template Structure & Configuration
 
-Each template must include:
+## 🎯 Common Use Cases
 
-- `template.json` — **Template metadata and configuration schema** with MCP-specific properties
-- `Dockerfile` — Container build instructions
-- `README.md` — Usage and description
-- (Optional) `USAGE.md`, `requirements.txt`, `src/`, `tests/`, `config/`
-
-### Template.json Configuration
-
-The `template.json` file is the heart of every MCP template, defining how it behaves, deploys, and integrates with the platform. It includes powerful MCP-specific properties for Docker volume mounting, command argument injection, and transport configuration.
-
-**📖 [Complete Template.json Reference](https://data-everything.github.io/mcp-server-templates/templates/template-json-reference/)** - Comprehensive guide to all properties and patterns
-
-#### Essential Properties
-
-| Property | Purpose | Example |
-|----------|---------|---------|
-| `volume_mount: true` | Auto-create Docker volumes from paths | User input → Docker volumes |
-| `command_arg: true` | Inject config as command arguments | `--config-file=/path` |
-| `sensitive: true` | Mark sensitive data (API keys, passwords) | Masked in logs/UI |
-| `env_mapping` | Map config to environment variables | `"API_KEY"` |
-| `transport` | Communication protocol configuration | `stdio`, `http`, `sse` |
-
-#### Quick Example
-
-**Basic filesystem template:**
-```json
-{
-  "name": "Filesystem MCP Server",
-  "description": "Secure local filesystem access with configurable allowed paths",
-  "version": "1.0.0",
-  "author": "Data Everything",
-  "category": "File System",
-  "tags": ["filesystem", "files", "security"],
-  "docker_image": "dataeverything/mcp-filesystem",
-  "docker_tag": "latest",
-  "transport": {
-    "default": "stdio",
-    "supported": ["stdio", "http"]
-  },
-  "config_schema": {
-    "type": "object",
-    "properties": {
-      "allowed_dirs": {
-        "type": "string",
-        "title": "Allowed Directories",
-        "description": "Space-separated allowed directories for file access",
-        "env_mapping": "ALLOWED_DIRS",
-        "volume_mount": true,
-        "command_arg": true
-      },
-      "api_key": {
-        "type": "string",
-        "title": "API Key",
-        "description": "Authentication key for external service",
-        "env_mapping": "API_KEY",
-        "sensitive": true
-      },
-      "log_level": {
-        "type": "string",
-        "title": "Log Level",
-        "description": "Logging verbosity level",
-        "enum": ["DEBUG", "INFO", "WARNING", "ERROR"],
-        "default": "INFO",
-        "env_mapping": "LOG_LEVEL"
-      }
-    },
-    "required": ["allowed_dirs"]
-  },
-  "tool_discovery": "dynamic",
-  "has_image": true,
-  "origin": "internal"
-}
-```
-
-#### How MCP Properties Work
-
-**Volume Mount Example:**
-```json
-{
-  "data_directory": {
-    "type": "string",
-    "env_mapping": "DATA_DIR",
-    "volume_mount": true
-  }
-}
-```
-- **User input:** `"/home/user/documents"`
-- **Creates volume:** `-v "/home/user/documents:/data/documents:rw"`
-- **Environment:** `DATA_DIR="/data/documents"`
-
-**Command Argument Example:**
-```json
-{
-  "config_file": {
-    "type": "string",
-    "env_mapping": "CONFIG_FILE",
-    "command_arg": true
-  }
-}
-```
-- **User input:** `"/etc/app/config.json"`
-- **Adds to command:** `--config-file=/etc/app/config.json`
-
-**Transport Configuration:**
-```json
-{
-  "transport": {
-    "default": "stdio",        // Default: direct CLI communication
-    "supported": ["stdio", "http"],  // Also supports HTTP API
-    "port": 8080              // HTTP port if supported
-  }
-}
-```
-
-### Creating Custom Templates
-
-Generate new templates with comprehensive configuration examples:
-
+### Deploy with Custom Configuration
 ```bash
-# Interactive template creation with MCP-specific properties
-mcpt create my-custom-template
+# Basic deployment
+mcpt deploy filesystem --config allowed_dirs="/path/to/data"
 
-# The generator includes examples for:
-# - volume_mount: Auto Docker volume configuration
-# - command_arg: Command-line argument injection
-# - sensitive: Secure handling of API keys/passwords
-# - env_mapping: Environment variable mapping
-# - transport: stdio/HTTP/SSE communication options
+# Advanced overrides
+mcpt deploy demo --override metadata__version=2.0 --transport http
+```
+
+### Manage Deployments
+```bash
+# List all deployments
+mcpt list --deployed
+
+# Stop a deployment
+mcpt stop demo
+
+# View logs
+mcpt logs demo --follow
+```
+
+### Template Development
+```bash
+# Create new template
+mcpt create my-template
+
+# Test locally
+mcpt deploy my-template --backend mock
 ```
 
 ---
-## 🛠️ CLI Usage
 
-The MCP Template CLI provides two interfaces for managing MCP server templates:
+## 🏗️ Architecture
 
-### Command Overview
-
-| Category | Command | Description |
-|----------|---------|-------------|
-| **General** | `mcpt list` | List all available templates |
-| | `mcpt create <template-id>` | Create new template with generator |
-| **Deployment** | `mcpt deploy <template>` | Deploy template with Docker |
-| | `mcpt stop <deployment>` | Stop running deployment |
-| | `mcpt logs <deployment>` | View deployment logs |
-| | `mcpt shell <deployment>` | Open shell in deployment container |
-| | `mcpt cleanup [deployment]` | Clean up deployments |
-| **Configuration** | `mcpt config <template>` | Show template configuration options |
-| **Integration** | `mcpt connect <deployment>` | Show integration examples |
-| | `mcpt run` | Run template with transport options |
-| **Interactive** | `mcpt interactive` | Start interactive CLI mode |
-| **Deprecated** | ~~`mcpt tools`~~ | ❌ Use `interactive` mode instead |
-| | ~~`mcpt discover-tools`~~ | ❌ Use `interactive` mode instead |
-| | ~~`mcpt run-tool`~~ | ❌ Use `interactive` mode with `call` command instead |
-
-### Getting Started with CLI
-
-The MCP Template CLI provides comprehensive tools for deploying and managing MCP server templates:
-
-#### Basic Workflow
-
-```bash
-# 1. List available templates
-mcpt list
-
-# 2. Deploy a template
-mcpt deploy github
-
-# 3. Check deployment logs
-mcpt logs github
-
-# 4. Open interactive shell in deployment
-mcpt shell github
-
-# 5. Use interactive mode for deployment management and tool execution
-mcpt interactive
-# Interactive mode provides:
-# - List and manage deployments
-# - Discover available tools from MCP servers
-# - Execute tools directly from command line
-# - Real-time interaction with deployed servers
-
-# 6. Clean up when done
-mcpt cleanup github
+```
+┌─────────────┐    ┌───────────────────┐    ┌─────────────────────┐
+│  CLI Tool   │───▶│ DeploymentManager │───▶│ Backend (Docker)    │
+│  (mcpt)     │    │                   │    │                     │
+└─────────────┘    └───────────────────┘    └─────────────────────┘
+       │                      │                        │
+       ▼                      ▼                        ▼
+┌─────────────┐    ┌───────────────────┐    ┌─────────────────────┐
+│ Template    │    │ CacheManager      │    │ Container Instance  │
+│ Discovery   │    │ (6hr TTL)         │    │                     │
+└─────────────┘    └───────────────────┘    └─────────────────────┘
 ```
 
-#### Configuration Management
+**Configuration Flow:** Template Defaults → Config File → CLI Options → Environment Variables
 
+---
+
+## 📦 Available Templates
+
+| Template | Description | Transport | Use Case |
+|----------|-------------|-----------|----------|
+| **demo** | Hello world MCP server | HTTP, stdio | Testing & learning |
+| **filesystem** | Secure file operations | stdio | File management |
+| **gitlab** | GitLab API integration | stdio | CI/CD workflows |
+| **github** | GitHub API integration | stdio | Development workflows |
+| **zendesk** | Customer support tools | HTTP, stdio | Support automation |
+
+[View all templates →](https://data-everything.github.io/mcp-server-templates/server-templates/)
+
+---
+
+## 🛠️ Configuration Examples
+
+### Basic Configuration
 ```bash
-# Show template configuration options
-mcpt config github
-
-# Connect to deployed template (show integration examples)
-mcpt connect github
-
-# Use interactive mode for tool discovery and execution
-mcpt interactive
-# In interactive mode:
-# - Discover available tools
-# - Execute tools directly
-# - Configure templates interactively
+mcpt deploy filesystem --config allowed_dirs="/home/user/data"
 ```
 
-#### Advanced Usage
-
+### Advanced Configuration
 ```bash
-# Run template with specific transport
-mcpt run --transport http --port 8080
-
-# Connect to deployed template
-mcpt connect github
-
-# Deploy with cleanup of old instances
-mcpt deploy github --cleanup
-
-# View comprehensive logs with follow
-mcpt logs github --follow
-```
-
-### Template Discovery and Management
-
-**Available Templates:**
-```bash
-# List all available templates
-mcpt list
-# Outputs: demo, github, gitlab, zendesk, filesystem
-
-# Create new template using generator
-mcpt create my-custom-server
-```
-
-**Featured Template - Filesystem:**
-The filesystem template provides secure local file system access with 14 comprehensive tools:
-
-```bash
-# Interactive usage (recommended for stdio templates)
-mcpt interactive
-mcpt> config filesystem allowed_dirs="/tmp /home/user/documents"
-mcpt> tools filesystem
-mcpt> call filesystem list_directory '{"path": "/tmp"}'
-mcpt> call filesystem read_file '{"path": "/tmp/example.txt"}'
-mcpt> call filesystem search_files '{"path": "/tmp", "pattern": "*.txt"}'
-
-# Direct usage with complex path configurations
-mcpt> call -C allowed_dirs="/path with spaces /another/path" filesystem tree '{"path": "/tmp"}'
-```
-
-**Filesystem Tools Available:**
-- File Operations: `read_file`, `write_file`, `copy_file`, `move_file`, `delete_file`, `modify_file`
-- Directory Operations: `list_directory`, `create_directory`, `tree`, `list_allowed_directories`
-- Search & Discovery: `search_files`, `search_within_files`, `get_file_info`
-- Batch Operations: `read_multiple_files`
-
-- **Fallback strategies**: Docker → Static JSON → Template capabilities
-- **Caching**: Caches discovery results for performance
-
-### Configuration Options
-
-**1. Check Template Configuration:**
-```bash
-# View template configuration options
-mcpt config demo
-
-# Shows config schema properties, required fields, defaults
-```
-
-**2. Deploy with Config File:**
-```bash
-# JSON config file
-mcpt deploy demo --config-file ./config.json
-
-# YAML config file
-mcpt deploy demo --config-file ./config.yml
-
-# Advanced filesystem template with volume mounts
-# (paths automatically mounted as Docker volumes)
-echo '{"allowed_dirs": "/home/user/documents /tmp/workspace"}' > filesystem-config.json
-mcpt run-tool filesystem list_directory \
-  --config-file filesystem-config.json \
-  '{"path": "/tmp"}'
-```
-
-**3. Deploy with CLI Configuration Options:**
-
-There are **two types** of CLI configuration:
-
-- **`--config`**: For `config_schema` properties (becomes environment variables and Docker volume mounts)
-- **`--override`**: For template data modifications (modifies template structure directly)
-
-```bash
-# Configuration schema properties (recommended for server settings)
-mcpt deploy demo \
+mcpt deploy gitlab \
+  --config gitlab_token="$GITLAB_TOKEN" \
   --config read_only_mode=true \
-  --config max_file_size=50 \
-  --config log_level=debug
-
-# Advanced volume mount configuration (automatic Docker volume handling)
-mcpt run-tool filesystem list_directory \
-  --config allowed_dirs="/home/user/docs /tmp/workspace" \
-  '{"path": "/tmp"}'
-# This automatically creates: -v "/home/user/docs:/data/docs" -v "/tmp/workspace:/data/workspace"
-
-# Template overrides (modifies template structure)
-mcpt deploy demo \
-  --override name="Custom File Server" \
-  --override description="My custom file server"
+  --override metadata__version=1.2.0 \
+  --transport stdio
 ```
 
-**4. Enhanced Configuration Processing:**
-
-New features include automatic volume mount handling and command argument processing:
+### Configuration File
+```json
+{
+  "allowed_dirs": "/home/user/projects",
+  "log_level": "DEBUG",
+  "security": {
+    "read_only": false,
+    "max_file_size": "100MB"
+  }
+}
+```
 
 ```bash
-# Space-separated paths in configuration (quoted for safety)
-mcpt run-tool filesystem tree \
-  --config allowed_dirs="/path with spaces /another/path" \
-  '{"path": "/tmp"}'
-
-# Multiple configuration sources with precedence
-mcpt run-tool filesystem list_directory \
-  --config-file base-config.json \
-  --config allowed_dirs="/override/path" \
-  --env LOG_LEVEL=DEBUG \
-  '{"path": "/tmp"}'
-# Precedence: CLI --config > --config-file > environment > template defaults
-```
-
-### Interactive CLI Mode
-
-The interactive CLI provides comprehensive deployment management and MCP server interaction with **enhanced argument parsing** for complex configurations:
-
-```bash
-# Start interactive CLI
-mcpt interactive
-```
-
-**Key Features:**
-- **Deployment Management**: List, monitor, and manage running deployments
-- **Tool Discovery**: Discover available tools from deployed MCP servers
-- **Advanced Tool Execution**: Execute tools with complex argument parsing
-- **Configuration Management**: Configure templates with multiple methods
-- **Enhanced Argument Parsing**: Support for quoted space-separated values and complex JSON
-- **Real-time Interaction**: Interactive session with deployed servers
-
-**Enhanced Configuration Support:**
-```bash
-# In interactive mode - multiple configuration methods
-mcpt> config filesystem allowed_dirs="/home/user/docs /tmp/workspace"
-mcpt> call --config-file config.json filesystem list_directory '{"path": "/tmp"}'
-mcpt> call --env API_KEY=xyz --config timeout=30 github search_repositories '{"query": "python"}'
-
-# Advanced argument parsing with quotes for space-separated values
-mcpt> call -C allowed_dirs="/path1 /path2" filesystem list_directory '{"path": "/tmp"}'
-
-# Complex JSON arguments with proper parsing
-mcpt> call filesystem search_within_files '{"path": "/tmp", "pattern": "error log", "file_pattern": "*.log"}'
-```
-
-**Configuration Methods in Interactive Mode:**
-```bash
-# 1. Session configuration (persistent during session)
-mcpt> config template_name key=value key2=value2
-
-# 2. Inline configuration flags
-mcpt> call --config key=value --env VAR=value template tool '{"args": "here"}'
-
-# 3. Configuration files
-mcpt> call --config-file /path/to/config.json template tool '{"args": "here"}'
-
-# 4. Environment variables
-mcpt> call --env API_KEY=token --env DEBUG=true template tool '{"args": "here"}'
-
-# 5. No-pull option for faster execution
-mcpt> call --no-pull template tool '{"args": "here"}'
-```
-
-**Use Cases:**
-- Manage multiple deployments from a single interface
-- Test complex file path configurations with spaces
-- Execute MCP server tools with advanced parameter validation
-- Debug and test MCP server functionality interactively
-- Work with stdio-based templates like filesystem efficiently
-
-**Benefits:**
-- **Enhanced Parsing**: Handles quoted arguments with spaces correctly
-- **Parameter Validation**: Automatic validation and prompting for required parameters
-- **Multiple Config Sources**: File, CLI, environment, and session configuration support
-- **Session Persistence**: Maintain configuration context across multiple operations
-- **Tool Discovery**: Automatic tool discovery with fallback mechanisms
-
-### Advanced Usage & Examples
-
-**1. Tool Discovery Workflows (Updated Commands):**
-```bash
-# Interactive mode (recommended approach)
-mcpt interactive
-mcpt> tools github
-mcpt> call github search_repositories '{"query": "python"}'
-
-# Legacy commands (still available but deprecated)
-# Use interactive mode for better experience
-mcpt tools github  # ⚠️  Consider using interactive mode
-mcpt discover-tools  # ⚠️  Use interactive mode instead
-mcpt run-tool filesystem list_directory '{"path": "/tmp"}'  # ⚠️  Use interactive mode
-
-# Stdio templates (filesystem) - interactive mode recommended
-mcpt interactive
-mcpt> config filesystem allowed_dirs="/tmp /home/user/docs"
-mcpt> tools filesystem
-mcpt> call filesystem list_directory '{"path": "/tmp"}'
-```
-
-**2. Complex Configuration Scenarios:**
-```bash
-# Interactive mode with complex configurations
-mcpt interactive
-mcpt> call --config-file ./zendesk-config.yaml \
-     --config subdomain=mycompany \
-     --config email=admin@company.com \
-     --env ZENDESK_API_TOKEN=xyz123 \
-     zendesk search_tickets '{"query": "urgent"}'
-
-# Direct usage with space-separated paths (enhanced parsing)
-mcpt> call -C allowed_dirs="/path with spaces /another path" \
-     filesystem search_files '{"path": "/tmp", "pattern": "*.log"}'
-
-# Multiple configuration sources with enhanced precedence handling
-mcpt> call --config-file base-config.json \
-     --config allowed_dirs="/override/path" \
-     --env LOG_LEVEL=DEBUG \
-     filesystem tree '{"path": "/tmp", "max_depth": 3}'
-```
-
-**3. Enhanced Features in Latest Version:**
-```bash
-# Volume mount auto-configuration (filesystem template)
-mcpt> call -C allowed_dirs="/home/user/documents /tmp/workspace" \
-     filesystem list_directory '{"path": "/tmp"}'
-# Automatically creates Docker volume mounts:
-# -v "/home/user/documents:/data/documents" -v "/tmp/workspace:/data/workspace"
-
-# Hybrid argument parsing for complex quoted values
-mcpt> call -C config_path="/path with spaces/config.json" \
-     -C debug_mode="true" \
-     custom_template process_data '{"input": "complex data"}'
-
-# No-pull option for faster development cycles
-mcpt> call --no-pull filesystem read_file '{"path": "/tmp/test.txt"}'
-```
-
-## 🐍 Unified Python MCP Client
-
-For programmatic access to MCP servers, use the unified Python client built on the new core architecture with shared business logic between CLI and client components:
-
-### Architecture Overview
-
-The refactored architecture provides clean separation of concerns:
-- **Core Business Logic** (`mcp_template.core`): Shared modules for template management, deployments, configuration, and tools
-- **CLI Interface**: Command-line specific logic (argument parsing, output formatting)  
-- **Python Client**: Programmatic interface that delegates to the same core business logic
-- **Infrastructure**: MCP connections, server management, and tool execution
-
-This ensures both CLI and client provide identical functionality and behavior.
-
-### Quick Start
-
-```python
-from mcp_template.client import MCPClient
-
-# Initialize client (uses core business logic)
-client = MCPClient()
-
-# Discover available templates
-templates = client.list_templates()
-print("Available templates:", list(templates.keys()))
-
-# Get template information
-demo_info = client.get_template_info("demo")
-print(f"Demo template transport: {demo_info['transport']}")
-
-# List tools for a template
-tools = client.list_tools("demo")
-for tool in tools:
-    print(f"Tool: {tool['name']} - {tool.get('description', 'No description')}")
-
-# Call a tool directly (unified stdio/http interface)
-result = client.call_tool(
-    template_name="demo",
-    tool_name="say_hello",
-    arguments={"name": "World"}
-)
-
-if result["success"]:
-    print("Tool result:", result["result"])
-    # Access structured content
-    if "content" in result["result"]:
-        for item in result["result"]["content"]:
-            if item["type"] == "text":
-                print("Response:", item["text"])
-else:
-    print("Error:", result["error_message"])
-```
-
-### Server Management
-
-```python
-# Start a server deployment
-deployment = client.start_server(
-    template_name="demo",
-    config={"name": "my-demo-server"}
-)
-
-if deployment["success"]:
-    server_name = deployment["deployment_name"]
-    print(f"Server started: {server_name}")
-
-    # List running servers
-    servers = client.list_servers()
-    print("Running servers:", [s["name"] for s in servers])
-
-    # Stop the server when done
-    stop_result = client.stop_server(server_name)
-    print("Server stopped:", stop_result["success"])
-```
-
-### Key Features
-
-**Unified Tool Calling Interface:**
-- **Automatic Transport Detection**: Seamlessly works with stdio and HTTP transports
-- **Structured Responses**: Consistent response format with success/error handling
-- **Shared Infrastructure**: Uses the same tool calling backend as the CLI for consistency
-
-**Template Management:**
-```python
-from mcp_template.client import MCPClient
-
-client = MCPClient()
-
-# List all available templates with full configuration
-templates = client.list_templates()
-for name, config in templates.items():
-    print(f"Template: {name}")
-    print(f"  Description: {config.get('description', 'No description')}")
-    print(f"  Transport: {config.get('transport', {}).get('default', 'Unknown')}")
-
-# Get detailed template information
-template_info = client.get_template_info("filesystem")
-print(f"Filesystem template tools: {len(client.list_tools('filesystem'))}")
-```
-
-**Server Lifecycle:**
-```python
-# Start server with configuration
-server = client.start_server("github", {
-    "github_token": "your-token-here",
-    "default_repo": "owner/repo"
-})
-
-# List running servers
-servers = client.list_servers()
-
-# Stop server
-stopped = client.stop_server(server["id"])
-```
-
-**Tool Discovery and Execution:**
-```python
-# Discover tools from template (without running server)
-tools = client.list_tools("filesystem")
-
-# Connect to running server for direct tool calls
-connection_id = await client.connect_stdio("filesystem", server_id)
-
-# Execute tools via connection
-result = await client.call_tool_from_connection(
-    connection_id,
-    "list_directory",
-    {"path": "/tmp"}
-)
-```
-
-**Connection Management:**
-```python
-# Multiple connections
-conn1 = await client.connect_stdio("demo", server1_id)
-conn2 = await client.connect_stdio("github", server2_id)
-
-# Check connection status
-if client.is_connected(conn1):
-    tools = await client.list_tools_from_connection(conn1)
-
-# Cleanup
-await client.disconnect(conn1)
-await client.cleanup()  # Disconnect all
-```
-
-### Configuration Options
-
-```python
-# Custom backend and timeout
-client = MCPClient(backend_type="mock", timeout=60)
-
-# With different deployment backends
-client = MCPClient(backend_type="kubernetes")  # For k8s deployments
-client = MCPClient(backend_type="docker")      # For Docker (default)
-client = MCPClient(backend_type="mock")        # For testing
-```
-
-### Error Handling
-
-```python
-try:
-    # Start server
-    result = client.start_server("nonexistent-template")
-except ValueError as e:
-    print(f"Template error: {e}")
-
-try:
-    # Connect to server
-    conn_id = await client.connect_stdio("demo", "invalid-server-id")
-except ConnectionError as e:
-    print(f"Connection failed: {e}")
-```
-
-### Integration Example
-
-```python
-"""
-Example: GitHub repository analysis workflow
-"""
-async def analyze_repository(repo_url: str):
-    async with MCPClient() as client:
-        # Start GitHub server
-        server = client.start_server("github", {
-            "github_token": os.getenv("GITHUB_TOKEN"),
-            "default_repo": repo_url
-        })
-
-        # Connect and discover tools
-        conn = await client.connect_stdio("github", server["id"])
-        tools = await client.list_tools_from_connection(conn)
-
-        # Get repository info
-        repo_info = await client.call_tool_from_connection(
-            conn, "get_repository_info", {}
-        )
-
-        # Search for Python files
-        python_files = await client.call_tool_from_connection(
-            conn, "search_code", {"query": "*.py"}
-        )
-
-        return {
-            "repository": repo_info,
-            "python_files": python_files
-        }
-
-# Usage
-result = await analyze_repository("owner/repo")
+mcpt deploy filesystem --config-file myconfig.json
 ```
 
 ---
-## 🔧 Development
 
-### Building from Source
-
-```bash
-git clone https://github.com/Data-Everything/mcp-server-templates.git
-cd mcp-server-templates
-pip install -r requirements.txt
-pip install -e .
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-make test
-
-# Run with coverage
-make test-coverage
-
-# Lint code
-make lint
-
-# Format code
-make format
-```
+## 🔧 Template Development
 
 ### Creating Templates
 
-```bash
-# Use the interactive template generator
-mcpt create my-custom-server
+1. **Use the generator**:
+   ```bash
+   mcpt create my-template
+   ```
 
-# Or manually create template structure:
-mkdir templates/my-server
-cd templates/my-server
-# Create template.json, Dockerfile, README.md
-```
+2. **Define template.json**:
+   ```json
+   {
+     "name": "My Template",
+     "description": "Custom MCP server",
+     "docker_image": "my-org/my-mcp-server",
+     "transport": {
+       "default": "stdio",
+       "supported": ["stdio", "http"]
+     },
+     "config_schema": {
+       "type": "object",
+       "properties": {
+         "api_key": {
+           "type": "string",
+           "env_mapping": "API_KEY",
+           "sensitive": true
+         }
+       }
+     }
+   }
+   ```
 
----
-## 📚 Documentation
+3. **Test and deploy**:
+   ```bash
+   mcpt deploy my-template --backend mock
+   ```
 
-### Core Documentation
-
-### Stdio Tool Execution
-
-For stdio transport MCP servers, use the `run-tool` command to execute individual tools:
-
-**1. List Available Tools:**
-```bash
-# Show all tools available in a template
-mcpt interactive
-mcpt> tools github
-mcpt> tools filesystem
-mcpt> tools --image custom/mcp-server:latest
-
-# List tools with configuration
-mcpt> tools github --config github_token=your_token
-```
-
-**2. Run Individual Tools:**
-```bash
-# Basic tool execution
-mcpt run-tool github search_repositories \
-  --args '{"query": "mcp server", "per_page": 5}'
-
-# Tool execution with authentication
-mcpt run-tool github create_issue \
-  --args '{"owner": "user", "repo": "test", "title": "Bug report", "body": "Description"}' \
-  --env GITHUB_PERSONAL_ACCESS_TOKEN=your_token
-
-# Tool execution with configuration
-mcpt run-tool filesystem read_file \
-  --args '{"path": "/data/example.txt"}' \
-  --config allowed_directories='["/data", "/workspace"]' \
-  --config read_only=true
-```
-
-**3. Complex Tool Arguments:**
-```bash
-# JSON arguments for complex data structures
-mcpt run-tool github create_pull_request \
-  --args '{
-    "owner": "user",
-    "repo": "project",
-    "title": "Feature: Add new functionality",
-    "head": "feature-branch",
-    "base": "main",
-    "body": "This PR adds amazing new features:\n- Feature 1\n- Feature 2"
-  }' \
-  --env GITHUB_PERSONAL_ACCESS_TOKEN=your_token
-
-# Multiple configuration options
-mcpt run-tool database query \
-  --args '{"sql": "SELECT * FROM users LIMIT 10"}' \
-  --config connection_string="postgresql://localhost:5432/mydb" \
-  --config timeout=30 \
-  --env DB_PASSWORD=secret
-```
-
-**4. Working with Different Templates:**
-```bash
-# GitHub API tools
-mcpt run-tool github search_users --args '{"q": "mcp"}'
-mcpt run-tool github get_file_contents --args '{"owner": "user", "repo": "project", "path": "README.md"}'
-
-# Filesystem tools
-mcpt run-tool filesystem list_directory --args '{"path": "/data"}'
-mcpt run-tool filesystem create_file --args '{"path": "/data/test.txt", "content": "Hello World"}'
-
-# Custom MCP servers
-mcpt run-tool my-custom-server my_tool --args '{"param": "value"}'
-```
-
-### Configuration File Examples
-
-**JSON Configuration (`config.json`):**
-```json
-{
-  "security": {
-    "allowedDirs": ["/data", "/workspace"],
-    "readOnly": false,
-    "maxFileSize": 100,
-    "excludePatterns": ["**/.git/**", "**/node_modules/**"]
-  },
-  "logging": {
-    "level": "info",
-    "enableAudit": true
-  },
-  "performance": {
-    "maxConcurrentOperations": 10,
-    "timeoutMs": 30000
-  }
-}
-```
-
-**YAML Configuration (`config.yml`):**
-```yaml
-security:
-  allowedDirs:
-    - "/data"
-    - "/workspace"
-  readOnly: false
-  maxFileSize: 100
-  excludePatterns:
-    - "**/.git/**"
-    - "**/node_modules/**"
-
-logging:
-  level: info
-  enableAudit: true
-
-performance:
-  maxConcurrentOperations: 10
-  timeoutMs: 30000
-```
+[Full template development guide →](https://data-everything.github.io/mcp-server-templates/templates/creating/)
 
 ---
-## 🐳 Docker Images & Backends
 
-### Supported Backends
+## 📖 Documentation
 
-- **Docker** (default): Uses local Docker daemon or nerdctl/containerd
-- **Kubernetes**: Coming soon - will deploy to K8s clusters
-- **Mock**: For testing and development
-
-### Image Management
-
-Templates automatically build and tag images as:
-- Format: `dataeverything/mcp-{template-name}:latest`
-- Custom images: Specify in `template.json` with `docker_image` field
-- Auto-pull: Images are pulled automatically during deployment
+- **[Getting Started](https://data-everything.github.io/mcp-server-templates/getting-started/)** - Installation and first deployment
+- **[CLI Reference](https://data-everything.github.io/mcp-server-templates/cli/)** - Complete command documentation
+- **[Template Guide](https://data-everything.github.io/mcp-server-templates/templates/)** - Creating and configuring templates
+- **[User Guide](https://data-everything.github.io/mcp-server-templates/user-guide/)** - Advanced usage and best practices
 
 ---
-## 🏗️ Architecture & Extensibility
 
-### Core Components
+## 🤝 Community
 
-- **Backend Abstraction**: Easily extend with Kubernetes, cloud providers
-- **CLI + Library**: Use as command-line tool or import as Python library
-- **Platform Integration Ready**: Same codebase powers MCP Platform commercial UI
-- **Configuration System**: Generic mapping supporting any template structure
-- **Type Conversion**: Automatic conversion based on JSON schema types
-
-### Adding New Templates
-
-1. Create `templates/{name}/` directory
-2. Add `template.json` with config schema and environment mappings
-3. Add `Dockerfile` for container build
-4. Test with `mcpt {name} --show-config`
-
-### Adding New Backends
-
-1. Inherit from base deployment service interface
-2. Implement `deploy_template()`, `list_deployments()`, etc.
-3. Register in `DeploymentManager._get_deployment_backend()`
+- **[Discord Server](https://discord.gg/55Cfxe9gnr)** - Get help and discuss features
+- **[GitHub Issues](https://github.com/DataEverything/mcp-server-templates/issues)** - Report bugs and request features
+- **[Discussions](https://github.com/DataEverything/mcp-server-templates/discussions)** - Share templates and use cases
 
 ---
-## 🧪 Testing & Development
 
-### Running Tests
+## 📝 License
 
-```bash
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Run all tests
-pytest
-
-# Run specific test categories
-pytest tests/test_configuration.py  # Configuration system tests
-pytest tests/test_deployment_*.py   # Deployment tests
-pytest tests/test_all_templates.py  # Template validation tests
-```
-
-### Test Configuration Files
-
-Sample configuration files are available in `examples/config/`:
-- `demo-config.json`: Example demo configuration
-- Additional template configs as they're added
-
-### Development Setup
-
-```bash
-# Clone and setup
-git clone <repo-url>
-cd mcp-server-templates
-pip install -e .
-
-# Run in development mode
-mcpt list
-```
-
-### Testing
-
-```bash
-# Run all tests
-make test
-
-# Run tests for all templates
-make test-templates
-
-# Run tests for a specific template
-make test-template TEMPLATE=demo
-
-# Run unit tests only
-make test-unit
-
-# Run integration tests
-make test-integration
-```
-
-### Documentation
-
-```bash
-# Build documentation
-make docs
-
-# Serve documentation locally
-make docs-serve
-
-# Clean documentation build
-make docs-clean
-```
+This project is licensed under the [Elastic License 2.0](LICENSE).
 
 ---
-## 📚 Documentation Hub
 
-### Core Documentation
+## 🙏 Acknowledgments
 
-- **[Documentation Index](https://data-everything.github.io/mcp-server-templates/)**: Central hub for all documentation
-- **[Configuration Strategy](docs/CONFIGURATION_FINAL_RECOMMENDATIONS.md)**: Configuration design decisions
-- **[Template Development Guide](docs/template-development-guide.md)**: Creating new templates
-- **[Testing Guide](docs/TESTING.md)**: Testing strategies and tools
-
-### Template-Specific Docs
-
-Each template includes:
-- `README.md`: Overview and basic usage
-- `USAGE.md`: Detailed configuration and examples
-- `tests/`: Template-specific test suites
-
----
-## 🚀 Getting Started
-
-### Quick Start
-
-```bash
-# 1. Install from PyPI
-pip install mcp-templates
-
-# 2. List available templates
-mcpt list
-
-# 3. Deploy a template with defaults
-mcpt deploy github
-
-# 4. View deployment logs
-mcpt logs github
-
-# 5. Use interactive mode for tool execution
-mcpt interactive
-
-# 6. Clean up when done
-mcpt cleanup github
-```
-
-### Template Discovery
-
-```bash
-# List all available templates
-mcpt create --help
-
-# Create new template interactively
-mcpt create my-custom-template
-```
-
----
-## License
-
-This project is licensed under the **Elastic License 2.0**.
-
-You may use, deploy, and modify it freely in your organization or personal projects.
-You **may not** resell, rehost, or offer it as a commercial SaaS product without a commercial license.
-
-See [LICENSE](./LICENSE) and [ATTRIBUTION](./ATTRIBUTION.md) for details.
-
----
-## 📋 Changelog
-
-### Version 0.4.0 (Latest - August 2025)
-**Major Features:**
-- **🗂️ Filesystem Template**: Complete filesystem access with 14 tools (read, write, search, etc.)
-- **🎯 Enhanced Interactive CLI**: Advanced argument parsing with quote support for space-separated values
-- **📦 Volume Mount Auto-configuration**: Automatic Docker volume creation from configuration paths
-- **🔧 Enhanced Configuration Processor**: Space-separated path handling with Docker integration
-- **🧪 Comprehensive Testing**: 58 tests covering all new functionality with focused test suites
-
-**Enhancements:**
-- Hybrid argument parsing (shlex + cmd2) for complex quoted arguments
-- Session-based configuration in interactive mode
-- Parameter validation with automatic prompting for missing required parameters
-- Container path translation for Docker volume mounts
-- Command argument injection for containerized execution
-- Enhanced error handling and user-friendly messages
-
-**Templates:**
-- **New**: Filesystem template with secure directory access controls
-- **Updated**: Demo template with enhanced configuration examples
-- **Enhanced**: All templates now support volume mount auto-configuration
-
-**Developer Experience:**
-- Interactive CLI with persistent session configuration
-- Rich console output with tables, panels, and progress indicators
-- Comprehensive test coverage for CLI parsing and configuration processing
-- Enhanced documentation with real-world examples
-
-### Version 0.3.0
-- Initial MCP server template system
-- Docker and Kubernetes deployment support
-- Basic CLI interface and template discovery
-- GitHub, GitLab, and Zendesk templates
-
----
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
-
----
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/Data-Everything/mcp-server-templates/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Data-Everything/mcp-server-templates/discussions)
-- **Discord Community**: [Join our Discord server](https://discord.gg/55Cfxe9gnr)
-- **Documentation**: [Read the Docs](https://data-everything.github.io/mcp-server-templates/)
+Built with ❤️ for the MCP community. Thanks to all contributors and template creators!

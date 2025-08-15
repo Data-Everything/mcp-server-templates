@@ -55,9 +55,8 @@ class TemplateManager:
             cached_templates = self.cache_manager.get(cache_key)
 
             if cached_templates is not None:
-                templates = cached_templates.get(
-                    "data", cached_templates
-                )  # Handle both formats
+                # Extract data from cache structure
+                templates = cached_templates.get("data", cached_templates)
             elif not self._cache_valid:
                 templates = self.template_discovery.discover_templates()
                 self._template_cache = templates

@@ -5,9 +5,10 @@ Tests the template discovery, validation, and metadata operations
 provided by the TemplateManager common module.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 from mcp_template.core.template_manager import TemplateManager
 
@@ -19,6 +20,9 @@ class TestTemplateManager:
     def setup_method(self):
         """Set up test fixtures."""
         self.template_manager = TemplateManager(backend_type="mock")
+        # Clear cache before each test to avoid interference
+        self.template_manager._cache_valid = False
+        self.template_manager.cache_manager.clear_all()
 
     def test_list_templates_basic(self):
         """Test basic template listing."""
@@ -234,15 +238,27 @@ class TestTemplateManager:
             "discover_templates",
             return_value=mock_templates,
         ):
+            # Clear both in-memory and persistent cache
+            self.template_manager._cache_valid = False
+            self.template_manager.cache_manager.clear_all()
+
             # Search by name
             results = self.template_manager.search_templates("demo")
             assert len(results) == 1
             assert "demo" in results
 
+            # Clear cache again
+            self.template_manager._cache_valid = False
+            self.template_manager.cache_manager.clear_all()
+
             # Search by description
             results = self.template_manager.search_templates("file")
             assert len(results) == 1
             assert "filesystem" in results
+
+            # Clear cache again
+            self.template_manager._cache_valid = False
+            self.template_manager.cache_manager.clear_all()
 
             # Search by tag
             results = self.template_manager.search_templates("sql")
