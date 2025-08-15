@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-templates"
-version = "0.0.0"
+dynamic = ["version"]
 description = "MCP-Server-Templates: Easy, zero-config deployment for Model Context Protocol servers"
 readme = "README.md"
 authors = [
