@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 MCP_DEFAULT_CACHE_MAX_AGE_HOURS = os.getenv("MCP_DEFAULT_CACHE_MAX_AGE_HOURS", 24.0)
 if isinstance(MCP_DEFAULT_CACHE_MAX_AGE_HOURS, str):
     try:
-        ç = float(MCP_DEFAULT_CACHE_MAX_AGE_HOURS)
+        MCP_DEFAULT_CACHE_MAX_AGE_HOURS = float(MCP_DEFAULT_CACHE_MAX_AGE_HOURS)
     except ValueError:
         logger.warning(
             "Value %s is not a valid integer or float value. Setting cache to default 24 hours"
