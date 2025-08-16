@@ -5,6 +5,8 @@
 [![License](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/discord/XXXXX?color=7289da&logo=discord&logoColor=white)](https://discord.gg/55Cfxe9gnr)
 
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/Data-Everything/mcp-server-templates)](https://archestra.ai/mcp-catalog/data-everything__mcp-server-templates)
+
 <div align="center">
 
 **[📚 Documentation](https://data-everything.github.io/mcp-server-templates/)** • **[💬 Discord Community](https://discord.gg/55Cfxe9gnr)** • **[🚀 Quick Start](#-quick-start)**
