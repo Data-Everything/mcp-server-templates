@@ -63,7 +63,20 @@ __all__ = [
     "ConfigManager",
     "ToolManager",
     "OutputFormatter",
+    # Gateway components (optional)
+    "ServerRegistry",
+    "LoadBalancer", 
+    "MCPGateway",
 ]
+
+# Import gateway components if available
+try:
+    from mcp_template.gateway.registry import ServerRegistry
+    from mcp_template.gateway.load_balancer import LoadBalancer
+    from mcp_template.gateway.server import MCPGateway
+    GATEWAY_AVAILABLE = True
+except ImportError:
+    GATEWAY_AVAILABLE = False
 
 # Constants
 DEFAULT_CONFIG_PATH = "/config"
