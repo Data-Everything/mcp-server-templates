@@ -98,7 +98,7 @@ class TestKubernetesDeploymentService:
             service = KubernetesDeploymentService()
 
             template_data = {
-                "image": "test-image",
+                "docker_image": "test-image",
                 "tag": "v1.0",
                 "transport": ["http"],
                 "port": 9000,
@@ -112,7 +112,7 @@ class TestKubernetesDeploymentService:
                 "test", config, template_data, k8s_config
             )
 
-            assert values["image"]["repository"] == "test-image"
+            assert values["image"]["repository"] == "docker.io/test-image"
             assert values["image"]["tag"] == "v1.0"
             assert values["replicaCount"] == 3
             assert values["mcp"]["type"] == "http"

@@ -10,9 +10,10 @@ This test file addresses specific issues found during manual CLI testing:
 
 import json
 import os
+import re
 import tempfile
 import unittest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 from typer.testing import CliRunner
@@ -20,6 +21,8 @@ from typer.testing import CliRunner
 from mcp_template.core.tool_manager import ToolManager
 from mcp_template.tools.docker_probe import DockerProbe
 from mcp_template.typer_cli import app
+
+pytestmarker = pytest.mark.unit
 
 
 class TestDockerTimeoutIssues(unittest.TestCase):
@@ -142,8 +145,9 @@ class TestDuplicateToolsIssue(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
 
-        # Parse JSON output
-        output_data = json.loads(result.stdout)
+        # Parse JSON output. Keep only everything between first { and last }
+        output = re.search(r"\{.*\}", result.stdout, re.DOTALL).group(0)
+        output_data = json.loads(output)
         tools = output_data.get("tools", [])
 
         # Check for duplicates in the raw output

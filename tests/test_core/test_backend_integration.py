@@ -6,7 +6,9 @@ import os
 import unittest
 from unittest.mock import Mock, patch
 
-from mcp_template.typer_cli import cli_state
+import pytest
+
+pytestmark = pytest.mark.integration
 
 
 class TestBackendSelection(unittest.TestCase):
@@ -187,7 +189,7 @@ class TestToolManagerBackendIntegration(unittest.TestCase):
 
             tool_manager = ToolManager(backend_type="docker")
 
-            self.assertEqual(tool_manager.backend_type, "docker")
+            self.assertEqual(tool_manager.backend, "docker")
             mock_get_backend.assert_called_once_with("docker")
 
     @patch("mcp_template.tools.docker_probe.DockerProbe")
