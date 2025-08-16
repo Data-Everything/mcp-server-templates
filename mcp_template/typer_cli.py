@@ -29,6 +29,17 @@ from mcp_template.core import (
     ToolManager,
 )
 from mcp_template.core.deployment_manager import DeploymentOptions
+from mcp_template.core.multi_backend_manager import MultiBackendManager
+from mcp_template.core.response_formatter import (
+    ResponseFormatter,
+    console,
+    format_deployment_summary,
+    get_backend_indicator,
+    render_backend_health_status,
+    render_deployments_grouped_by_backend,
+    render_deployments_unified_table,
+    render_tools_with_sources,
+)
 
 # Create the main Typer app
 app = typer.Typer(
@@ -312,7 +323,15 @@ def deploy(
 
 @app.command()
 def list_tools(
-    template: Annotated[str, typer.Argument(help="Template name or deployment ID")],
+    template: Annotated[
+        Optional[str],
+        typer.Argument(
+            help="Template name or deployment ID (optional for multi-backend view)"
+        ),
+    ] = None,
+    backend: Annotated[
+        Optional[str], typer.Option("--backend", help="Show specific backend only")
+    ] = None,
     discovery_method: Annotated[
         str, typer.Option("--method", help="Discovery method")
     ] = "auto",
@@ -322,43 +341,112 @@ def list_tools(
     output_format: Annotated[
         str, typer.Option("--format", help="Output format (table, json)")
     ] = "table",
+    include_static: Annotated[
+        bool, typer.Option("--static/--no-static", help="Include static template tools")
+    ] = True,
+    include_dynamic: Annotated[
+        bool,
+        typer.Option(
+            "--dynamic/--no-dynamic", help="Include tools from running deployments"
+        ),
+    ] = True,
 ):
     """
-    List available tools from a template or deployment.
+    List available tools from templates and deployments across all backends.
 
-    This command discovers and displays tools available from MCP servers.
-    The discovery method indicates how the tools were found.
+    Without arguments, shows all tools from all templates and running deployments.
+    Specify a template name to filter to that template across all backends.
+    Use --backend to limit to a specific backend.
 
     Examples:
-        mcpt list-tools github
-        mcpt list-tools demo-12345 --force-refresh
-        mcpt list-tools filesystem --method static --format json
+        mcpt list-tools                    # All tools from all backends
+        mcpt list-tools github             # GitHub template tools from all backends
+        mcpt list-tools --backend docker   # All tools from docker backend only
+        mcpt list-tools demo-12345         # Tools from specific deployment
     """
     try:
-        tool_manager = ToolManager(cli_state["backend_type"])
+        # Single backend mode
+        if backend or (
+            template and len(template) > 20
+        ):  # Deployment IDs are typically longer
+            backend_type = backend or cli_state["backend_type"]
+            tool_manager = ToolManager(backend_type)
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console,
+            ) as progress:
+                task = progress.add_task("Discovering tools...", total=None)
+
+                # Get tools with metadata
+                result = tool_manager.list_tools(
+                    template_or_id=template or "",
+                    discovery_method=discovery_method,
+                    force_refresh=force_refresh,
+                )
+
+            if output_format == "json":
+                console.print(json.dumps(result, indent=2))
+            else:
+                display_tools_with_metadata(result, template or "")
+            return
+
+        # Multi-backend mode
+        multi_manager = MultiBackendManager()
+        available_backends = multi_manager.get_available_backends()
+
+        if not available_backends:
+            console.print("[red]❌ No backends available[/red]")
+            return
 
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Discovering tools...", total=None)
+            task = progress.add_task("Discovering tools across backends...", total=None)
 
-            # Get tools with metadata
-            result = tool_manager.list_tools(
-                template_or_id=template,
+            # Get all tools from all sources
+            all_tools = multi_manager.get_all_tools(
+                template_name=template,
                 discovery_method=discovery_method,
                 force_refresh=force_refresh,
             )
 
+        # Filter by include options
+        if not include_static:
+            all_tools["static_tools"] = {}
+        if not include_dynamic:
+            all_tools["dynamic_tools"] = {}
+            all_tools["backend_summary"] = {}
+
         if output_format == "json":
-            console.print(json.dumps(result, indent=2))
+            console.print(json.dumps(all_tools, indent=2))
         else:
-            display_tools_with_metadata(result, template)
+            render_tools_with_sources(all_tools)
+
+        # Show discovery hints
+        template_filter = f" for template '{template}'" if template else ""
+        static_text = "static" if include_static else ""
+        dynamic_text = "dynamic" if include_dynamic else ""
+        sources = [s for s in [static_text, dynamic_text] if s]
+        sources_text = (
+            " and ".join(sources)
+            if len(sources) > 1
+            else (sources[0] if sources else "no")
+        )
+
+        console.print(f"\n💡 [dim]Showing {sources_text} tools{template_filter}[/dim]")
+        if template:
+            console.print(
+                "💡 [dim]Use 'mcpt list-tools' without arguments to see all tools[/dim]"
+            )
+        console.print("💡 [dim]Use --backend <name> for single-backend discovery[/dim]")
 
     except Exception as e:
         console.print(f"[red]❌ Error listing tools: {e}[/red]")
-        if cli_state["verbose"]:
+        if cli_state.get("verbose"):
             console.print_exception()
         raise typer.Exit(1)
 
@@ -368,31 +456,114 @@ def list(
     deployed_only: Annotated[
         bool, typer.Option("--deployed", help="Show only deployed templates")
     ] = False,
+    backend: Annotated[
+        Optional[str], typer.Option("--backend", help="Show specific backend only")
+    ] = None,
+    output_format: Annotated[
+        str, typer.Option("--format", help="Output format: table, json, yaml")
+    ] = "table",
+    unified: Annotated[
+        bool, typer.Option("--unified", help="Show all backends in single table")
+    ] = False,
 ):
     """
-    List available MCP server templates with deployment status.
+    List available MCP server templates with deployment status across all backends.
 
-    This command shows all templates that can be deployed, along with their
-    current deployment status and running instance count.
+    By default, shows templates and their deployment status across all available backends.
+    Use --backend to limit to a specific backend, or --unified for a single table view.
     """
     try:
-        template_manager = TemplateManager(cli_state["backend_type"])
-        deployment_manager = DeploymentManager(cli_state["backend_type"])
+        # Single backend mode (backward compatibility)
+        if backend:
+            template_manager = TemplateManager(backend)
+            deployment_manager = DeploymentManager(backend)
 
-        # Get templates with deployment status
+            # Get templates with deployment status
+            templates = template_manager.list_templates()
+            deployments = deployment_manager.list_deployments()
+
+            if not templates:
+                console.print("[yellow]No templates found[/yellow]")
+                return
+
+            # Count running instances per template
+            running_counts = {}
+            for deployment in deployments:
+                if deployment.get("status") == "running":
+                    template_name = deployment.get("template", "unknown")
+                    running_counts[template_name] = (
+                        running_counts.get(template_name, 0) + 1
+                    )
+
+            # Filter if deployed_only is requested
+            if deployed_only:
+                templates = {k: v for k, v in templates.items() if k in running_counts}
+                if not templates:
+                    console.print("[yellow]No deployed templates found[/yellow]")
+                    return
+
+            table = Table(
+                title=f"Available MCP Server Templates ({backend})",
+                show_header=True,
+                header_style="bold blue",
+            )
+            table.add_column("Name", style="cyan", no_wrap=True)
+            table.add_column("Description", style="white")
+            table.add_column("Version", style="green")
+            table.add_column("Running", style="yellow", justify="center")
+            table.add_column("Image", style="dim")
+
+            for name, info in templates.items():
+                running_count = running_counts.get(name, 0)
+                running_text = str(running_count) if running_count > 0 else "-"
+
+                table.add_row(
+                    name,
+                    info.get("description", "No description"),
+                    info.get("version", "latest"),
+                    running_text,
+                    info.get("docker_image", "N/A"),
+                )
+
+            console.print(table)
+            console.print(
+                "\n💡 [dim]Use 'mcpt deploy <template>' to deploy a template[/dim]"
+            )
+            return
+
+        # Multi-backend mode
+        multi_manager = MultiBackendManager()
+        available_backends = multi_manager.get_available_backends()
+
+        if not available_backends:
+            console.print("[red]❌ No backends available[/red]")
+            return
+
+        # Get templates (backend-agnostic)
+        template_manager = TemplateManager(
+            available_backends[0]
+        )  # Use any backend for template listing
         templates = template_manager.list_templates()
-        deployments = deployment_manager.list_deployments()
 
         if not templates:
             console.print("[yellow]No templates found[/yellow]")
             return
 
-        # Count running instances per template
+        # Get all deployments across backends
+        all_deployments = multi_manager.get_all_deployments()
+
+        # Count running instances per template per backend
         running_counts = {}
-        for deployment in deployments:
+        for deployment in all_deployments:
             if deployment.get("status") == "running":
                 template_name = deployment.get("template", "unknown")
-                running_counts[template_name] = running_counts.get(template_name, 0) + 1
+                backend_type = deployment.get("backend_type", "unknown")
+
+                if template_name not in running_counts:
+                    running_counts[template_name] = {}
+                running_counts[template_name][backend_type] = (
+                    running_counts[template_name].get(backend_type, 0) + 1
+                )
 
         # Filter if deployed_only is requested
         if deployed_only:
@@ -401,33 +572,81 @@ def list(
                 console.print("[yellow]No deployed templates found[/yellow]")
                 return
 
+        # Output format handling
+        if output_format == "json":
+            output_data = {
+                "templates": templates,
+                "deployments": all_deployments,
+                "running_counts": running_counts,
+                "available_backends": available_backends,
+            }
+            console.print(json.dumps(output_data, indent=2))
+            return
+        elif output_format == "yaml":
+            import yaml
+
+            output_data = {
+                "templates": templates,
+                "deployments": all_deployments,
+                "running_counts": running_counts,
+                "available_backends": available_backends,
+            }
+            console.print(yaml.dump(output_data, default_flow_style=False))
+            return
+
+        # Table output with multi-backend view
         table = Table(
-            title="Available MCP Server Templates",
+            title="Available MCP Server Templates (All Backends)",
             show_header=True,
             header_style="bold blue",
         )
         table.add_column("Name", style="cyan", no_wrap=True)
         table.add_column("Description", style="white")
         table.add_column("Version", style="green")
-        table.add_column("Running", style="yellow", justify="center")
+
+        # Add columns for each available backend
+        for backend_type in available_backends:
+            backend_header = get_backend_indicator(backend_type, include_icon=False)
+            table.add_column(backend_header, style="yellow", justify="center")
+
         table.add_column("Image", style="dim")
 
         for name, info in templates.items():
-            running_count = running_counts.get(name, 0)
-            running_text = str(running_count) if running_count > 0 else "-"
-
-            table.add_row(
+            row_data = [
                 name,
                 info.get("description", "No description"),
                 info.get("version", "latest"),
-                running_text,
-                info.get("docker_image", "N/A"),
-            )
+            ]
+
+            # Add running counts for each backend
+            template_counts = running_counts.get(name, {})
+            for backend_type in available_backends:
+                count = template_counts.get(backend_type, 0)
+                row_data.append(str(count) if count > 0 else "-")
+
+            row_data.append(info.get("docker_image", "N/A"))
+            table.add_row(*row_data)
 
         console.print(table)
-        console.print(
-            "\n💡 [dim]Use 'mcpt deploy <template>' to deploy a template[/dim]"
+
+        # Show backend summary
+        total_running = sum(
+            sum(backend_counts.values()) for backend_counts in running_counts.values()
         )
+        backend_summary = ", ".join(available_backends)
+        console.print(
+            f"\n📊 [dim]Backends: {backend_summary} | Total running: {total_running}[/dim]"
+        )
+        console.print("💡 [dim]Use 'mcpt deploy <template>' to deploy a template[/dim]")
+        console.print(
+            "💡 [dim]Use 'mcpt list --backend <name>' for single-backend view[/dim]"
+        )
+
+    except Exception as e:
+        console.print(f"[red]❌ Error listing templates: {e}[/red]")
+        if cli_state.get("verbose"):
+            console.print_exception()
+        raise typer.Exit(1)
 
     except Exception as e:
         console.print(f"[red]❌ Error listing templates: {e}[/red]")
@@ -475,59 +694,179 @@ def list_templates():
 
 
 @app.command()
-def list_deployments():
+def list_deployments(
+    template: Annotated[
+        Optional[str], typer.Option("--template", help="Filter by template name")
+    ] = None,
+    backend: Annotated[
+        Optional[str], typer.Option("--backend", help="Show specific backend only")
+    ] = None,
+    status: Annotated[
+        Optional[str],
+        typer.Option("--status", help="Filter by status (running, stopped, etc.)"),
+    ] = None,
+    output_format: Annotated[
+        str, typer.Option("--format", help="Output format: table, grouped, json, yaml")
+    ] = "grouped",
+    all_statuses: Annotated[
+        bool, typer.Option("--all", help="Show deployments with all statuses")
+    ] = False,
+):
     """
-    List running MCP server deployments.
+    List MCP server deployments across all backends.
 
-    This command shows all currently running MCP servers.
+    By default, shows running deployments grouped by backend. Use --backend to limit
+    to a specific backend, or --all to include deployments with all statuses.
     """
     try:
-        deployment_manager = DeploymentManager(cli_state["backend_type"])
-        all_deployments = deployment_manager.list_deployments()
+        # Single backend mode (backward compatibility)
+        if backend:
+            deployment_manager = DeploymentManager(backend)
+            all_deployments = deployment_manager.list_deployments()
 
-        # Filter to only show running deployments
-        deployments = [d for d in all_deployments if d.get("status") == "running"]
+            # Apply filters
+            deployments = all_deployments
+            if not all_statuses:
+                deployments = [d for d in deployments if d.get("status") == "running"]
+            if status:
+                deployments = [d for d in deployments if d.get("status") == status]
+            if template:
+                deployments = [d for d in deployments if d.get("template") == template]
 
-        if not deployments:
-            console.print("[yellow]No running deployments found[/yellow]")
+            if not deployments:
+                status_text = f" with status '{status}'" if status else ""
+                template_text = f" for template '{template}'" if template else ""
+                console.print(
+                    f"[yellow]No deployments found{status_text}{template_text}[/yellow]"
+                )
+                return
+
+            table = Table(
+                title=f"MCP Server Deployments ({backend})",
+                show_header=True,
+                header_style="bold blue",
+            )
+            table.add_column("ID", style="cyan", no_wrap=True)
+            table.add_column("Template", style="white")
+            table.add_column("Status", style="green")
+            table.add_column("Created", style="dim")
+            table.add_column("Endpoint", style="dim")
+
+            for deployment in deployments:
+                status_val = deployment.get("status", "unknown")
+                status_color = (
+                    "green"
+                    if status_val == "running"
+                    else "red" if status_val == "stopped" else "yellow"
+                )
+
+                table.add_row(
+                    deployment.get("id", "unknown")[:12],
+                    deployment.get("template", "unknown"),
+                    f"[{status_color}]{status_val}[/]",
+                    (
+                        deployment.get("created_at", "N/A")[:19]
+                        if deployment.get("created_at")
+                        else "N/A"
+                    ),
+                    deployment.get("endpoint", "N/A"),
+                )
+
+            console.print(table)
             return
 
-        table = Table(
-            title="Running MCP Server Deployments",
-            show_header=True,
-            header_style="bold blue",
-        )
-        table.add_column("ID", style="cyan", no_wrap=True)
-        table.add_column("Template", style="white")
-        table.add_column("Status", style="green")
-        table.add_column("Endpoint", style="dim")
+        # Multi-backend mode
+        multi_manager = MultiBackendManager()
+        available_backends = multi_manager.get_available_backends()
 
+        if not available_backends:
+            console.print("[red]❌ No backends available[/red]")
+            return
+
+        # Get all deployments across backends
+        all_deployments = multi_manager.get_all_deployments(template_name=template)
+
+        # Apply filters
+        deployments = all_deployments
+        if not all_statuses:
+            deployments = [d for d in deployments if d.get("status") == "running"]
+        if status:
+            deployments = [d for d in deployments if d.get("status") == status]
+
+        if not deployments:
+            filter_parts = []
+            if status:
+                filter_parts.append(f"status '{status}'")
+            elif not all_statuses:
+                filter_parts.append("status 'running'")
+            if template:
+                filter_parts.append(f"template '{template}'")
+
+            filter_text = f" with {' and '.join(filter_parts)}" if filter_parts else ""
+            console.print(f"[yellow]No deployments found{filter_text}[/yellow]")
+            return
+
+        # Output format handling
+        if output_format == "json":
+            console.print(json.dumps(deployments, indent=2))
+            return
+        elif output_format == "yaml":
+            import yaml
+
+            console.print(yaml.dump(deployments, default_flow_style=False))
+            return
+
+        # Group deployments by backend for visual organization
+        grouped_deployments = {}
         for deployment in deployments:
-            table.add_row(
-                deployment.get("id", "unknown"),
-                deployment.get("template", "unknown"),
-                f"[green]{deployment.get('status', 'unknown')}[/green]",
-                deployment.get("endpoint", "N/A"),
-            )
+            backend_type = deployment.get("backend_type", "unknown")
+            if backend_type not in grouped_deployments:
+                grouped_deployments[backend_type] = []
+            grouped_deployments[backend_type].append(deployment)
 
-        console.print(table)
+        if output_format == "table":
+            # Single unified table
+            render_deployments_unified_table(deployments)
+        else:
+            # Grouped by backend (default)
+            render_deployments_grouped_by_backend(grouped_deployments, show_empty=True)
+
+        # Show summary
+        summary = format_deployment_summary(deployments)
+        console.print(f"\n📊 [dim]{summary}[/dim]")
+
+        if not all_statuses:
+            console.print(
+                "💡 [dim]Use --all to show deployments with all statuses[/dim]"
+            )
+        console.print("💡 [dim]Use --backend <name> for single-backend view[/dim]")
 
     except Exception as e:
         console.print(f"[red]❌ Error listing deployments: {e}[/red]")
+        if cli_state.get("verbose"):
+            console.print_exception()
         raise typer.Exit(1)
 
 
 @app.command()
 def stop(
     deployment_id: Annotated[str, typer.Argument(help="Deployment ID to stop")],
+    backend: Annotated[
+        Optional[str],
+        typer.Option("--backend", help="Specify backend if auto-detection fails"),
+    ] = None,
     dry_run: Annotated[
         bool, typer.Option("--dry-run", help="Show what would be stopped")
     ] = False,
+    timeout: Annotated[
+        int, typer.Option("--timeout", help="Stop timeout in seconds")
+    ] = 30,
 ):
     """
     Stop a running MCP server deployment.
 
-    This command stops and removes the specified deployment.
+    This command auto-detects the backend for the deployment and stops it.
+    Use --backend to specify the backend if auto-detection fails.
     Use --dry-run to preview what would be stopped.
     """
     if dry_run:
@@ -535,31 +874,83 @@ def stop(
             "[yellow]🔍 DRY RUN MODE - No actual stopping will occur[/yellow]"
         )
         console.print(f"Would stop deployment: {deployment_id}")
+
+        # Show backend detection in dry-run mode
+        if not backend:
+            try:
+                multi_manager = MultiBackendManager()
+                detected_backend = multi_manager.detect_backend_for_deployment(
+                    deployment_id
+                )
+                if detected_backend:
+                    console.print(f"Auto-detected backend: {detected_backend}")
+                else:
+                    console.print("Backend auto-detection would fail - use --backend")
+            except Exception as e:
+                console.print(f"Backend detection error: {e}")
+        else:
+            console.print(f"Using specified backend: {backend}")
         return
 
     try:
-        deployment_manager = DeploymentManager(cli_state["backend_type"])
+        # Use multi-backend manager for auto-detection or single backend
+        if backend:
+            # Single backend mode
+            deployment_manager = DeploymentManager(backend)
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            task = progress.add_task("Stopping deployment...", total=None)
-
-            result = deployment_manager.stop_deployment(deployment_id)
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console,
+            ) as progress:
+                task = progress.add_task(
+                    f"Stopping deployment on {backend}...", total=None
+                )
+                result = deployment_manager.stop_deployment(deployment_id, timeout)
 
             if result.get("success"):
                 console.print(
-                    f"[green]✅ Successfully stopped deployment '{deployment_id}'[/green]"
+                    f"[green]✅ Successfully stopped deployment '{deployment_id}' on {backend}[/green]"
                 )
             else:
                 error = result.get("error", "Unknown error")
                 console.print(f"[red]❌ Failed to stop deployment: {error}[/red]")
                 raise typer.Exit(1)
+        else:
+            # Multi-backend auto-detection mode
+            multi_manager = MultiBackendManager()
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console,
+            ) as progress:
+                task = progress.add_task(
+                    "Auto-detecting backend and stopping deployment...", total=None
+                )
+                result = multi_manager.stop_deployment(deployment_id, timeout)
+
+            if result.get("success"):
+                backend_type = result.get("backend_type", "unknown")
+                backend_indicator = get_backend_indicator(backend_type)
+                console.print(
+                    f"[green]✅ Successfully stopped deployment '{deployment_id}' on {backend_indicator}[/green]"
+                )
+            else:
+                error = result.get("error", "Unknown error")
+                console.print(f"[red]❌ Failed to stop deployment: {error}[/red]")
+
+                # Suggest using --backend flag if auto-detection failed
+                if "not found" in error.lower():
+                    console.print(
+                        "💡 [dim]Try using --backend <name> to specify the backend explicitly[/dim]"
+                    )
+                raise typer.Exit(1)
 
     except Exception as e:
         console.print(f"[red]❌ Error stopping deployment: {e}[/red]")
+        if cli_state.get("verbose"):
+            console.print_exception()
         raise typer.Exit(1)
 
 
@@ -736,6 +1127,205 @@ def install_completion():
 
     except Exception as e:
         console.print(f"[red]Error setting up completion: {e}[/red]")
+
+
+@app.command()
+def logs(
+    deployment_id: Annotated[
+        str, typer.Argument(help="Deployment ID to get logs from")
+    ],
+    backend: Annotated[
+        Optional[str],
+        typer.Option("--backend", help="Specify backend if auto-detection fails"),
+    ] = None,
+    lines: Annotated[
+        int, typer.Option("--lines", "-n", help="Number of log lines to retrieve")
+    ] = 100,
+    follow: Annotated[
+        bool, typer.Option("--follow", "-f", help="Follow log output")
+    ] = False,
+):
+    """
+    Get logs from a running MCP server deployment.
+
+    This command auto-detects the backend for the deployment and retrieves logs.
+    Use --backend to specify the backend if auto-detection fails.
+    Use --follow to stream logs in real-time.
+    """
+    try:
+        # Use multi-backend manager for auto-detection or single backend
+        if backend:
+            # Single backend mode
+            deployment_manager = DeploymentManager(backend)
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console,
+            ) as progress:
+                task = progress.add_task(f"Getting logs from {backend}...", total=None)
+                result = deployment_manager.get_deployment_logs(
+                    deployment_id, lines=lines, follow=follow
+                )
+
+            if result.get("success"):
+                logs = result.get("logs", "No logs available")
+                console.print(
+                    f"[bold]Logs for deployment '{deployment_id}' on {backend}:[/bold]\n"
+                )
+                console.print(logs)
+            else:
+                error = result.get("error", "Unknown error")
+                console.print(f"[red]❌ Failed to get logs: {error}[/red]")
+                raise typer.Exit(1)
+        else:
+            # Multi-backend auto-detection mode
+            multi_manager = MultiBackendManager()
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console,
+            ) as progress:
+                task = progress.add_task(
+                    "Auto-detecting backend and getting logs...", total=None
+                )
+                result = multi_manager.get_deployment_logs(
+                    deployment_id, lines=lines, follow=follow
+                )
+
+            if result.get("success"):
+                backend_type = result.get("backend_type", "unknown")
+                logs = result.get("logs", "No logs available")
+
+                backend_indicator = get_backend_indicator(backend_type)
+
+                console.print(
+                    f"[bold]Logs for deployment '{deployment_id}' on {backend_indicator}:[/bold]\n"
+                )
+                console.print(logs)
+            else:
+                error = result.get("error", "Unknown error")
+                console.print(f"[red]❌ Failed to get logs: {error}[/red]")
+
+                # Suggest using --backend flag if auto-detection failed
+                if "not found" in error.lower():
+                    console.print(
+                        "💡 [dim]Try using --backend <name> to specify the backend explicitly[/dim]"
+                    )
+                raise typer.Exit(1)
+
+    except Exception as e:
+        console.print(f"[red]❌ Error getting logs: {e}[/red]")
+        if cli_state.get("verbose"):
+            console.print_exception()
+        raise typer.Exit(1)
+
+
+@app.command()
+def status(
+    output_format: Annotated[
+        str, typer.Option("--format", help="Output format: table, json, yaml")
+    ] = "table",
+):
+    """
+    Show backend health status and deployment summary.
+
+    This command shows the health status of all available backends
+    along with a summary of deployments on each backend.
+    """
+    try:
+        multi_manager = MultiBackendManager()
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Checking backend health...", total=None)
+
+            health_data = multi_manager.get_backend_health()
+            all_deployments = multi_manager.get_all_deployments()
+
+        if output_format == "json":
+            output_data = {
+                "backend_health": health_data,
+                "deployments": all_deployments,
+                "summary": {
+                    "total_backends": len(health_data),
+                    "healthy_backends": sum(
+                        1 for h in health_data.values() if h.get("status") == "healthy"
+                    ),
+                    "total_deployments": len(all_deployments),
+                    "running_deployments": len(
+                        [d for d in all_deployments if d.get("status") == "running"]
+                    ),
+                },
+            }
+            console.print(json.dumps(output_data, indent=2))
+            return
+        elif output_format == "yaml":
+            import yaml
+
+            output_data = {
+                "backend_health": health_data,
+                "deployments": all_deployments,
+                "summary": {
+                    "total_backends": len(health_data),
+                    "healthy_backends": sum(
+                        1 for h in health_data.values() if h.get("status") == "healthy"
+                    ),
+                    "total_deployments": len(all_deployments),
+                    "running_deployments": len(
+                        [d for d in all_deployments if d.get("status") == "running"]
+                    ),
+                },
+            }
+            console.print(yaml.dump(output_data, default_flow_style=False))
+            return
+
+        # Table format
+        render_backend_health_status(health_data)
+
+        # Show deployment summary
+        total_deployments = len(all_deployments)
+        running_deployments = len(
+            [d for d in all_deployments if d.get("status") == "running"]
+        )
+
+        console.print("\n📊 [bold]Deployment Summary[/bold]")
+        console.print(f"Total deployments: {total_deployments}")
+        console.print(f"Running deployments: {running_deployments}")
+
+        if total_deployments > 0:
+            # Group by backend for summary
+            backend_counts = {}
+            for deployment in all_deployments:
+                backend_type = deployment.get("backend_type", "unknown")
+                status = deployment.get("status", "unknown")
+
+                if backend_type not in backend_counts:
+                    backend_counts[backend_type] = {}
+                backend_counts[backend_type][status] = (
+                    backend_counts[backend_type].get(status, 0) + 1
+                )
+
+            console.print("\nPer-backend breakdown:")
+            for backend_type, status_counts in backend_counts.items():
+                backend_indicator = get_backend_indicator(backend_type)
+                total = sum(status_counts.values())
+                running = status_counts.get("running", 0)
+                console.print(f"  {backend_indicator}: {running}/{total} running")
+
+        console.print(
+            "\n💡 [dim]Use 'mcpt list-deployments' for detailed deployment information[/dim]"
+        )
+
+    except Exception as e:
+        console.print(f"[red]❌ Error checking status: {e}[/red]")
+        if cli_state.get("verbose"):
+            console.print_exception()
+        raise typer.Exit(1)
 
 
 @app.command(name="install-completion")

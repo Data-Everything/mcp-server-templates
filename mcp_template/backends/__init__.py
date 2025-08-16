@@ -16,12 +16,13 @@ __all__ = [
 ]
 
 
-def get_backend(backend_type: str = "docker") -> BaseDeploymentBackend:
+def get_backend(backend_type: str = "docker", **kwargs) -> BaseDeploymentBackend:
     """
     Get a deployment backend instance based on type.
 
     Args:
         backend_type: Type of backend ('docker', 'kubernetes', 'mock')
+        **kwargs: Additional arguments for backend initialization
 
     Returns:
         Backend instance
@@ -32,7 +33,11 @@ def get_backend(backend_type: str = "docker") -> BaseDeploymentBackend:
     if backend_type == "docker":
         return DockerDeploymentService()
     elif backend_type == "kubernetes":
-        return KubernetesDeploymentService()
+        namespace = kwargs.get("namespace", "mcp-servers")
+        kubeconfig_path = kwargs.get("kubeconfig_path")
+        return KubernetesDeploymentService(
+            namespace=namespace, kubeconfig_path=kubeconfig_path
+        )
     elif backend_type == "mock":
         return MockDeploymentService()
     else:

@@ -7,7 +7,7 @@ consolidating functionality from CLI and MCPClient for deployment operations.
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 from mcp_template.backends import get_backend
 from mcp_template.core.config_manager import ConfigManager
@@ -99,9 +99,9 @@ class DeploymentManager:
     shared between CLI and MCPClient implementations.
     """
 
-    def __init__(self, backend_type: str = "docker"):
+    def __init__(self, backend_type: str = "docker", **backend_kwargs):
         """Initialize the deployment manager."""
-        self.backend = get_backend(backend_type)
+        self.backend = get_backend(backend_type, **backend_kwargs)
         self.template_manager = TemplateManager(backend_type)
         self.config_manager = ConfigManager()
 
@@ -157,6 +157,17 @@ class DeploymentManager:
             final_config = self.config_manager.merge_config_sources(
                 template_config=template_info, **config_sources
             )
+
+            # Process Kubernetes-specific configuration if backend is Kubernetes
+            k8s_config = {}
+            if self.backend == "kubernetes":
+                k8s_config = self.config_manager.merge_k8s_config_sources(
+                    k8s_config_file=config_sources.get("k8s_config_file"),
+                    k8s_config_values=config_sources.get("k8s_config_values"),
+                )
+                # Set the Kubernetes configuration on the backend
+                if hasattr(self.backend, "set_k8s_config"):
+                    self.backend.set_k8s_config(k8s_config)
 
             # Apply config value mapping (e.g., log_level -> MCP_LOG_LEVEL)
             if config_sources.get("config_values"):

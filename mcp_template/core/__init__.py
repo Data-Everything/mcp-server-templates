@@ -24,6 +24,7 @@ from .deployment_manager import DeploymentManager
 
 # Infrastructure Components (legacy components, kept for compatibility)
 from .mcp_connection import MCPConnection
+from .multi_backend_manager import MultiBackendManager
 from .output_formatter import OutputFormatter
 from .server_manager import ServerManager
 from .template_manager import TemplateManager

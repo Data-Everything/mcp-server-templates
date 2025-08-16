@@ -8,9 +8,10 @@ and merging, consolidating functionality from CLI and MCPClient.
 import json
 import logging
 import os
-import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,8 @@ class ConfigManager:
         env_vars: Optional[Dict[str, str]] = None,
         config_values: Optional[Dict[str, str]] = None,
         override_values: Optional[Dict[str, str]] = None,
+        k8s_config_file: Optional[str] = None,
+        k8s_config_values: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Merge all configuration sources with proper precedence.
@@ -431,3 +434,70 @@ class ConfigManager:
                 errors.append(f"Field '{field_name}' is too large (maximum {maximum})")
 
         return errors
+
+    def merge_k8s_config_sources(
+        self,
+        k8s_config_file: Optional[str] = None,
+        k8s_config_values: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Merge Kubernetes-specific configuration sources.
+
+        Args:
+            k8s_config_file: Path to Kubernetes configuration file
+            k8s_config_values: Kubernetes configuration values from CLI
+
+        Returns:
+            Merged Kubernetes configuration dictionary
+        """
+        merged_config = {}
+
+        # Start with file-based configuration if provided
+        if k8s_config_file:
+            try:
+                file_config = self._load_config_file(k8s_config_file)
+                merged_config.update(file_config)
+                logger.debug(f"Loaded Kubernetes config from file: {k8s_config_file}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to load Kubernetes config file {k8s_config_file}: {e}"
+                )
+
+        # Override with CLI values
+        if k8s_config_values:
+            # Process special values that need type conversion
+            processed_values = {}
+            for key, value in k8s_config_values.items():
+                processed_values[key] = self._convert_config_value(value)
+
+            merged_config.update(processed_values)
+            logger.debug(
+                f"Applied Kubernetes config values: {list(k8s_config_values.keys())}"
+            )
+
+        return merged_config
+
+    def _convert_config_value(self, value: str) -> Any:
+        """Convert string configuration value to appropriate type."""
+        # Handle boolean values
+        if value.lower() in ("true", "false"):
+            return value.lower() == "true"
+
+        # Handle numeric values
+        try:
+            if "." in value:
+                return float(value)
+            else:
+                return int(value)
+        except ValueError:
+            pass
+
+        # Handle JSON objects/arrays
+        if value.startswith(("{", "[")):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                pass
+
+        # Return as string
+        return value

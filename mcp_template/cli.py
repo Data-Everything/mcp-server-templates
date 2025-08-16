@@ -38,12 +38,12 @@ class CLI:
     - CLI-specific features like progress indicators
     """
 
-    def __init__(self, backend_type: str = "docker"):
+    def __init__(self, backend_type: str = "docker", **backend_kwargs):
         """Initialize the CLI."""
         self.console = Console()
         self.formatter = OutputFormatter(self.console)
         self.template_manager = TemplateManager(backend_type)
-        self.deployment_manager = DeploymentManager(backend_type)
+        self.deployment_manager = DeploymentManager(backend_type, **backend_kwargs)
         self.config_manager = ConfigManager()
         self.tool_manager = ToolManager(backend_type)
 
@@ -226,6 +226,11 @@ class CLI:
                 ),
                 "override_values": self._parse_key_value_args(
                     getattr(args, "override", None) or []
+                ),
+                # Kubernetes-specific configuration
+                "k8s_config_file": getattr(args, "k8s_config_file", None),
+                "k8s_config_values": self._parse_key_value_args(
+                    getattr(args, "k8s_config", None) or []
                 ),
             }
 

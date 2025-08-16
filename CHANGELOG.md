@@ -131,8 +131,6 @@ The refactored demo template showcases:
 2. **Week 2**: 📋 Comprehensive testing, documentation updates, template scaling
 
 #### Future Releases
-- Migration of remaining templates (file-server, github, database) to FastMCP
-- Kubernetes deployment backend
 - Web dashboard for non-technical users
 - Template marketplace integration
 
