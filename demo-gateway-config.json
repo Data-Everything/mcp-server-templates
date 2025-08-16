@@ -1,0 +1,57 @@
+{
+  "servers": {
+    "demo": {
+      "type": "template",
+      "template_name": "demo",
+      "instances": 1,
+      "config": {
+        "hello_from": "Gateway"
+      }
+    },
+    "github-prod": {
+      "type": "http",
+      "instances": [
+        {
+          "endpoint": "http://github-server-1:8080"
+        },
+        {
+          "endpoint": "http://github-server-2:8080"
+        },
+        {
+          "endpoint": "http://github-server-3:8080"
+        }
+      ],
+      "load_balancing": "round_robin",
+      "health_check": "/health"
+    },
+    "filesystem-pool": {
+      "type": "stdio",
+      "command": [
+        "python",
+        "-m",
+        "mcp_filesystem"
+      ],
+      "pool_size": 5,
+      "working_dir": "/data",
+      "env_vars": {
+        "LOG_LEVEL": "info",
+        "MAX_FILE_SIZE": "10MB"
+      }
+    },
+    "ai-assistant": {
+      "type": "template",
+      "template_name": "demo",
+      "instances": 2,
+      "config": {
+        "hello_from": "Production Gateway",
+        "log_level": "info"
+      }
+    }
+  },
+  "gateway": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "reload_registry": true,
+    "health_check_interval": 30
+  }
+}

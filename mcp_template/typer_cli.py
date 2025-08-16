@@ -30,6 +30,13 @@ from mcp_template.core import (
 )
 from mcp_template.core.deployment_manager import DeploymentOptions
 
+# Import gateway CLI commands if available
+try:
+    from mcp_template.gateway.cli import gateway_app
+    GATEWAY_AVAILABLE = True
+except ImportError:
+    GATEWAY_AVAILABLE = False
+
 # Create the main Typer app
 app = typer.Typer(
     name="mcpt",
@@ -38,6 +45,10 @@ app = typer.Typer(
     rich_markup_mode="rich",
     add_completion=True,
 )
+
+# Add gateway sub-app if available
+if GATEWAY_AVAILABLE:
+    app.add_typer(gateway_app, name="gateway", help="MCP Gateway server commands")
 
 # Console for rich output
 console = Console()

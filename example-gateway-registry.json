@@ -1,0 +1,42 @@
+{
+  "servers": {
+    "demo": {
+      "type": "template",
+      "template_name": "demo",
+      "instances": 1,
+      "config": {
+        "hello_from": "Gateway"
+      }
+    },
+    "github": {
+      "type": "template", 
+      "template_name": "github",
+      "instances": 1,
+      "config": {}
+    },
+    "example-http": {
+      "type": "http",
+      "instances": [
+        {"endpoint": "http://localhost:8080"},
+        {"endpoint": "http://localhost:8081"}
+      ],
+      "load_balancing": "round_robin",
+      "health_check": "/health"
+    },
+    "example-stdio": {
+      "type": "stdio",
+      "command": ["python", "-m", "my_mcp_server"],
+      "pool_size": 3,
+      "working_dir": "/app",
+      "env_vars": {
+        "LOG_LEVEL": "info"
+      }
+    }
+  },
+  "gateway": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "reload_registry": true,
+    "health_check_interval": 30
+  }
+}
