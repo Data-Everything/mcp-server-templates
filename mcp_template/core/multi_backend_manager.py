@@ -1,0 +1,406 @@
+"""
+Multi-Backend Manager - Centralized operations across multiple deployment backends.
+
+This module provides a unified interface for operations that span multiple backends,
+enabling CLI commands to show aggregate views and auto-detect backend contexts.
+"""
+
+import logging
+from typing import Any, Dict, List, Optional, Union
+
+from mcp_template.backends import BaseDeploymentBackend, get_backend
+
+logger = logging.getLogger(__name__)
+
+
+class MultiBackendManager:
+    """
+    Manages operations across multiple deployment backends.
+
+    This class provides a unified interface for operations that need to work
+    across multiple backends (Docker, Kubernetes, Mock) simultaneously,
+    such as listing all deployments or discovering tools from all active servers.
+    """
+
+    def __init__(self, enabled_backends: List[str] = None):
+        """
+        Initialize multi-backend manager.
+
+        Args:
+            enabled_backends: List of backend types to enable.
+                            Defaults to ["docker", "kubernetes"] (production backends only)
+        """
+        # Import here to avoid circular imports
+        from mcp_template.core.deployment_manager import DeploymentManager
+        from mcp_template.core.tool_manager import ToolManager
+
+        self.enabled_backends = enabled_backends or ["docker", "kubernetes"]
+        self.backends: Dict[str, BaseDeploymentBackend] = {}
+        self.deployment_managers: Dict[str, Any] = {}
+        self.tool_managers: Dict[str, Any] = {}
+
+        # Initialize available backends
+        for backend_type in self.enabled_backends:
+            try:
+                backend = get_backend(backend_type)
+                self.backends[backend_type] = backend
+                self.deployment_managers[backend_type] = DeploymentManager(backend_type)
+                self.tool_managers[backend_type] = ToolManager(backend_type)
+                logger.debug(f"Initialized {backend_type} backend successfully")
+            except Exception as e:
+                logger.warning(f"Failed to initialize {backend_type} backend: {e}")
+                # Continue with other backends
+
+    def get_available_backends(self) -> List[str]:
+        """Get list of successfully initialized backends."""
+        return list(self.backends.keys())
+
+    def get_all_deployments(
+        self, template_name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get deployments from all backends with backend information.
+
+        Args:
+            template_name: Optional filter by template name
+
+        Returns:
+            List of deployment dictionaries with backend_type field added
+        """
+        all_deployments = []
+
+        for backend_type, deployment_manager in self.deployment_managers.items():
+            try:
+                deployments = deployment_manager.find_deployments_by_criteria(
+                    template_name=template_name
+                )
+
+                # Add backend information to each deployment
+                for deployment in deployments:
+                    deployment_with_backend = deployment.copy()
+                    deployment_with_backend["backend_type"] = backend_type
+                    all_deployments.append(deployment_with_backend)
+
+            except Exception as e:
+                logger.warning(f"Failed to get deployments from {backend_type}: {e}")
+                continue
+
+        return all_deployments
+
+    def detect_backend_for_deployment(self, deployment_id: str) -> Optional[str]:
+        """
+        Auto-detect which backend owns a deployment ID.
+
+        Args:
+            deployment_id: The deployment ID to search for
+
+        Returns:
+            Backend type that owns the deployment, or None if not found
+        """
+        for backend_type, deployment_manager in self.deployment_managers.items():
+            try:
+                deployments = deployment_manager.find_deployments_by_criteria(
+                    deployment_id=deployment_id
+                )
+                if deployments:
+                    return backend_type
+            except Exception as e:
+                logger.debug(
+                    f"Error searching {backend_type} for deployment {deployment_id}: {e}"
+                )
+                continue
+
+        return None
+
+    def get_deployment_by_id(self, deployment_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Find a deployment by ID across all backends.
+
+        Args:
+            deployment_id: The deployment ID to find
+
+        Returns:
+            Deployment information with backend_type, or None if not found
+        """
+        backend_type = self.detect_backend_for_deployment(deployment_id)
+        if not backend_type:
+            return None
+
+        try:
+            deployment_manager = self.deployment_managers[backend_type]
+            deployments = deployment_manager.find_deployments_by_criteria(
+                deployment_id=deployment_id
+            )
+            if deployments:
+                deployment = deployments[0].copy()
+                deployment["backend_type"] = backend_type
+                return deployment
+        except Exception as e:
+            logger.error(
+                f"Failed to get deployment {deployment_id} from {backend_type}: {e}"
+            )
+
+        return None
+
+    def execute_on_backend(
+        self, backend_type: str, manager_type: str, method_name: str, *args, **kwargs
+    ) -> Any:
+        """
+        Execute a method on a specific backend manager.
+
+        Args:
+            backend_type: Backend to execute on
+            manager_type: Type of manager ('deployment', 'tool')
+            method_name: Method name to call
+            *args: Positional arguments for the method
+            **kwargs: Keyword arguments for the method
+
+        Returns:
+            Result of the method call
+
+        Raises:
+            ValueError: If backend or manager type is invalid
+            AttributeError: If method doesn't exist
+        """
+        if backend_type not in self.backends:
+            raise ValueError(f"Backend {backend_type} not available")
+
+        if manager_type == "deployment":
+            manager = self.deployment_managers[backend_type]
+        elif manager_type == "tool":
+            manager = self.tool_managers[backend_type]
+        else:
+            raise ValueError(f"Invalid manager type: {manager_type}")
+
+        if not hasattr(manager, method_name):
+            raise AttributeError(f"Manager {manager_type} has no method {method_name}")
+
+        method = getattr(manager, method_name)
+        return method(*args, **kwargs)
+
+    def get_all_tools(
+        self,
+        template_name: Optional[str] = None,
+        discovery_method: str = "auto",
+        force_refresh: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Get tools from all backends and templates.
+
+        Args:
+            template_name: Optional filter by template name
+            discovery_method: Tool discovery method
+            force_refresh: Force refresh of tool cache
+
+        Returns:
+            Dictionary with tools organized by source
+        """
+        all_tools = {
+            "static_tools": {},  # Tools from template definitions
+            "dynamic_tools": {},  # Tools from running deployments
+            "backend_summary": {},  # Summary by backend
+        }
+
+        # Get static tools from templates (backend-agnostic)
+        try:
+            from mcp_template.core.template_manager import TemplateManager
+            from mcp_template.core.tool_manager import ToolManager
+
+            template_manager = TemplateManager(
+                "docker"
+            )  # Backend doesn't matter for templates
+            templates = template_manager.list_templates()
+
+            if template_name:
+                templates = {k: v for k, v in templates.items() if k == template_name}
+
+            for template_id, template_info in templates.items():
+                tool_manager = ToolManager(
+                    "docker"
+                )  # Use any backend for static discovery
+                try:
+                    result = tool_manager.list_tools(
+                        template_id,
+                        discovery_method="static",
+                        force_refresh=force_refresh,
+                    )
+                    tools = result.get("tools", [])
+                    if tools:
+                        all_tools["static_tools"][template_id] = {
+                            "tools": tools,
+                            "source": "template_definition",
+                        }
+                except Exception as e:
+                    logger.debug(f"Failed to get static tools for {template_id}: {e}")
+
+        except Exception as e:
+            logger.warning(f"Failed to get template tools: {e}")
+
+        # Get dynamic tools from running deployments
+        for backend_type, tool_manager in self.tool_managers.items():
+            try:
+                # Get deployments for this backend
+                deployments = self.deployment_managers[
+                    backend_type
+                ].find_deployments_by_criteria(template_name=template_name)
+
+                backend_tools = []
+                for deployment in deployments:
+                    try:
+                        template_id = deployment.get("template", "unknown")
+                        result = tool_manager.list_tools(
+                            template_id,
+                            discovery_method=discovery_method,
+                            force_refresh=force_refresh,
+                        )
+                        tools = result.get("tools", [])
+                        if tools:
+                            backend_tools.extend(
+                                [
+                                    {
+                                        **tool,
+                                        "deployment_id": deployment.get("id"),
+                                        "template": template_id,
+                                        "backend": backend_type,
+                                    }
+                                    for tool in tools
+                                ]
+                            )
+                    except Exception as e:
+                        logger.debug(
+                            f"Failed to get tools from deployment {deployment.get('id')}: {e}"
+                        )
+
+                if backend_tools:
+                    all_tools["dynamic_tools"][backend_type] = backend_tools
+                    all_tools["backend_summary"][backend_type] = {
+                        "tool_count": len(backend_tools),
+                        "deployment_count": len(deployments),
+                    }
+
+            except Exception as e:
+                logger.warning(f"Failed to get tools from {backend_type}: {e}")
+
+        return all_tools
+
+    def stop_deployment(self, deployment_id: str, timeout: int = 30) -> Dict[str, Any]:
+        """
+        Stop a deployment by auto-detecting its backend.
+
+        Args:
+            deployment_id: ID of deployment to stop
+            timeout: Timeout for stop operation
+
+        Returns:
+            Result of stop operation
+        """
+        backend_type = self.detect_backend_for_deployment(deployment_id)
+        if not backend_type:
+            return {
+                "success": False,
+                "error": f"Deployment {deployment_id} not found in any backend",
+            }
+
+        try:
+            deployment_manager = self.deployment_managers[backend_type]
+            result = deployment_manager.stop_deployment(deployment_id, timeout)
+            result["backend_type"] = backend_type
+            return result
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to stop deployment {deployment_id}: {e}",
+                "backend_type": backend_type,
+            }
+
+    def get_deployment_logs(
+        self, deployment_id: str, lines: int = 100, follow: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Get logs from a deployment by auto-detecting its backend.
+
+        Args:
+            deployment_id: ID of deployment
+            lines: Number of log lines to retrieve
+            follow: Whether to follow logs
+
+        Returns:
+            Log result with backend information
+        """
+        backend_type = self.detect_backend_for_deployment(deployment_id)
+        if not backend_type:
+            return {
+                "success": False,
+                "error": f"Deployment {deployment_id} not found in any backend",
+            }
+
+        try:
+            deployment_manager = self.deployment_managers[backend_type]
+            result = deployment_manager.get_deployment_logs(
+                deployment_id, lines=lines, follow=follow
+            )
+            result["backend_type"] = backend_type
+            return result
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to get logs for deployment {deployment_id}: {e}",
+                "backend_type": backend_type,
+            }
+
+    def cleanup_all_backends(self, force: bool = False) -> Dict[str, Any]:
+        """
+        Run cleanup operations on all backends.
+
+        Args:
+            force: Whether to force cleanup
+
+        Returns:
+            Summary of cleanup operations by backend
+        """
+        results = {}
+
+        for backend_type, deployment_manager in self.deployment_managers.items():
+            try:
+                result = deployment_manager.cleanup_deployments(force=force)
+                results[backend_type] = result
+            except Exception as e:
+                results[backend_type] = {"success": False, "error": str(e)}
+
+        # Summary
+        total_success = sum(1 for r in results.values() if r.get("success", False))
+        results["summary"] = {
+            "total_backends": len(self.deployment_managers),
+            "successful_cleanups": total_success,
+            "failed_cleanups": len(self.deployment_managers) - total_success,
+        }
+
+        return results
+
+    def get_backend_health(self) -> Dict[str, Any]:
+        """
+        Check health status of all backends.
+
+        Returns:
+            Health status information for each backend
+        """
+        health = {}
+
+        for backend_type, backend in self.backends.items():
+            try:
+                # Try a simple operation to test backend health
+                deployment_manager = self.deployment_managers[backend_type]
+                deployments = deployment_manager.find_deployments_by_criteria()
+                health[backend_type] = {
+                    "status": "healthy",
+                    "deployment_count": len(deployments),
+                    "error": None,
+                }
+            except Exception as e:
+                health[backend_type] = {
+                    "status": "unhealthy",
+                    "deployment_count": 0,
+                    "error": str(e),
+                }
+
+        return health

@@ -134,6 +134,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
 
         # Build Helm values with defaults and Kubernetes configuration overrides
         values = {
+            "template_id": template_id,  # Add template ID for labeling
             "image": {
                 "repository": image_repo,
                 "tag": image_tag,
@@ -211,6 +212,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         values = context["Values"]
         name = context["Release"]["Name"]
         namespace = context["Release"]["Namespace"]
+        template_id = values.get("template_id", "unknown")
 
         # Create deployment specification
         deployment = {
@@ -223,6 +225,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                     "app.kubernetes.io/name": name,
                     "app.kubernetes.io/instance": name,
                     "app.kubernetes.io/managed-by": "mcp-templates",
+                    "mcp-template.io/template-name": template_id,
                 },
             },
             "spec": {
@@ -581,6 +584,11 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                 name=deployment_name, namespace=self.namespace
             )
 
+            # Extract template name from labels
+            template_name = deployment.metadata.labels.get(
+                "mcp-template.io/template-name", "unknown"
+            )
+
             # Try to get service endpoint
             endpoint = None
             try:
@@ -595,19 +603,26 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             except ApiException:
                 pass
 
+            # Determine transport type from endpoint
+            transport = "http" if endpoint else "stdio"
+
             return {
+                "id": deployment.metadata.name,
                 "name": deployment.metadata.name,
+                "template": template_name,
                 "namespace": deployment.metadata.namespace,
                 "replicas": deployment.spec.replicas,
                 "ready_replicas": deployment.status.ready_replicas or 0,
                 "available_replicas": deployment.status.available_replicas or 0,
                 "status": "running" if deployment.status.ready_replicas else "pending",
                 "endpoint": endpoint,
+                "transport": transport,
                 "created": (
                     deployment.metadata.creation_timestamp.isoformat()
                     if deployment.metadata.creation_timestamp
                     else None
                 ),
+                "backend_type": "kubernetes",
             }
         except ApiException as e:
             return {"error": str(e)}

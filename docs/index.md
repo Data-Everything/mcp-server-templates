@@ -105,9 +105,6 @@ Welcome to the MCP Platform—where server deployment meets pure excitement! Her
 #### 🌈 Planned Features
 
 - **🦸 MCP Sidekick (Coming Soon)**: Your friendly AI companion, making every MCP server compatible with any AI tool or framework.
-- **🛸 Kubernetes Support**: Deploy to Kubernetes clusters with ease, scaling your MCP servers effortlessly.
-
-**Release Timeline:** All this and more dropping mid-August 2025—don’t miss out!
 
 Ready to dive in? Check out our [Getting Started Guide](getting-started/quickstart.md)!
 

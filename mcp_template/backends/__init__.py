@@ -35,7 +35,9 @@ def get_backend(backend_type: str = "docker", **kwargs) -> BaseDeploymentBackend
     elif backend_type == "kubernetes":
         namespace = kwargs.get("namespace", "mcp-servers")
         kubeconfig_path = kwargs.get("kubeconfig_path")
-        return KubernetesDeploymentService(namespace=namespace, kubeconfig_path=kubeconfig_path)
+        return KubernetesDeploymentService(
+            namespace=namespace, kubeconfig_path=kubeconfig_path
+        )
     elif backend_type == "mock":
         return MockDeploymentService()
     else:

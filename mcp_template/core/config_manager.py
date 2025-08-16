@@ -8,9 +8,10 @@ and merging, consolidating functionality from CLI and MCPClient.
 import json
 import logging
 import os
-import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -458,7 +459,9 @@ class ConfigManager:
                 merged_config.update(file_config)
                 logger.debug(f"Loaded Kubernetes config from file: {k8s_config_file}")
             except Exception as e:
-                logger.warning(f"Failed to load Kubernetes config file {k8s_config_file}: {e}")
+                logger.warning(
+                    f"Failed to load Kubernetes config file {k8s_config_file}: {e}"
+                )
 
         # Override with CLI values
         if k8s_config_values:
@@ -466,9 +469,11 @@ class ConfigManager:
             processed_values = {}
             for key, value in k8s_config_values.items():
                 processed_values[key] = self._convert_config_value(value)
-            
+
             merged_config.update(processed_values)
-            logger.debug(f"Applied Kubernetes config values: {list(k8s_config_values.keys())}")
+            logger.debug(
+                f"Applied Kubernetes config values: {list(k8s_config_values.keys())}"
+            )
 
         return merged_config
 
@@ -477,7 +482,7 @@ class ConfigManager:
         # Handle boolean values
         if value.lower() in ("true", "false"):
             return value.lower() == "true"
-        
+
         # Handle numeric values
         try:
             if "." in value:
@@ -486,13 +491,13 @@ class ConfigManager:
                 return int(value)
         except ValueError:
             pass
-        
+
         # Handle JSON objects/arrays
         if value.startswith(("{", "[")):
             try:
                 return json.loads(value)
             except json.JSONDecodeError:
                 pass
-        
+
         # Return as string
         return value
