@@ -101,6 +101,7 @@ class DeploymentManager:
 
     def __init__(self, backend_type: str = "docker", **backend_kwargs):
         """Initialize the deployment manager."""
+        self.backend_type = backend_type
         self.backend = get_backend(backend_type, **backend_kwargs)
         self.template_manager = TemplateManager(backend_type)
         self.config_manager = ConfigManager()

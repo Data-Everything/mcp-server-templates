@@ -103,6 +103,7 @@ def sample_tools():
     }
 
 
+@pytest.mark.unit
 class TestMultiBackendListDeployments:
     """Test multi-backend list deployments command."""
 
@@ -234,6 +235,7 @@ class TestMultiBackendListDeployments:
         assert "No deployments found" in result.stdout
 
 
+@pytest.mark.unit
 class TestMultiBackendListTools:
     """Test multi-backend list tools command."""
 
@@ -356,6 +358,7 @@ class TestMultiBackendListTools:
         assert "backend_summary" in output_data
 
 
+@pytest.mark.unit
 class TestMultiBackendStop:
     """Test multi-backend stop command with auto-detection."""
 
@@ -446,6 +449,7 @@ class TestMultiBackendStop:
         )
 
 
+@pytest.mark.unit
 class TestMultiBackendLogs:
     """Test multi-backend logs command with auto-detection."""
 
@@ -518,6 +522,7 @@ class TestMultiBackendLogs:
         )
 
 
+@pytest.mark.unit
 class TestMultiBackendStatus:
     """Test multi-backend status command."""
 
@@ -576,6 +581,7 @@ class TestMultiBackendStatus:
         assert output_data["summary"]["total_deployments"] == 1
 
 
+@pytest.mark.unit
 class TestBackwardCompatibility:
     """Test that existing single-backend behavior is preserved."""
 
@@ -624,6 +630,7 @@ class TestBackwardCompatibility:
             mock_dm_class.assert_called_once_with("kubernetes")
 
 
+@pytest.mark.unit
 class TestErrorHandling:
     """Test error handling in multi-backend operations."""
 

@@ -11,6 +11,8 @@ from kubernetes.client.rest import ApiException
 
 from mcp_template.tools.kubernetes_probe import KubernetesProbe
 
+pytestmark = pytest.mark.unit
+
 
 class TestKubernetesProbe(unittest.TestCase):
     """Test Kubernetes probe functionality."""

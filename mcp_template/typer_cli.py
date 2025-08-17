@@ -31,7 +31,6 @@ from mcp_template.core import (
 from mcp_template.core.deployment_manager import DeploymentOptions
 from mcp_template.core.multi_backend_manager import MultiBackendManager
 from mcp_template.core.response_formatter import (
-    ResponseFormatter,
     console,
     format_deployment_summary,
     get_backend_indicator,
@@ -56,9 +55,9 @@ logger = logging.getLogger(__name__)
 
 # Global CLI state
 cli_state = {
-    "backend_type": "docker",
-    "verbose": False,
-    "dry_run": False,
+    "backend_type": os.getenv("MCP_BACKEND", "docker"),
+    "verbose": os.getenv("MCP_VERBOSE", "false").lower() == "true",
+    "dry_run": os.getenv("MCP_DRY_RUN", "false").lower() == "true",
 }
 
 
@@ -850,10 +849,22 @@ def list_deployments(
 
 @app.command()
 def stop(
-    deployment_id: Annotated[str, typer.Argument(help="Deployment ID to stop")],
+    target: Annotated[
+        Optional[str],
+        typer.Argument(
+            help="Deployment ID, template name, or 'all' to stop deployments"
+        ),
+    ] = None,
     backend: Annotated[
         Optional[str],
         typer.Option("--backend", help="Specify backend if auto-detection fails"),
+    ] = None,
+    all: Annotated[
+        bool, typer.Option("--all", help="Stop all running deployments")
+    ] = False,
+    template: Annotated[
+        Optional[str],
+        typer.Option("--template", help="Stop all deployments for a specific template"),
     ] = None,
     dry_run: Annotated[
         bool, typer.Option("--dry-run", help="Show what would be stopped")
@@ -861,192 +872,479 @@ def stop(
     timeout: Annotated[
         int, typer.Option("--timeout", help="Stop timeout in seconds")
     ] = 30,
+    force: Annotated[
+        bool, typer.Option("--force", help="Force stop without confirmation")
+    ] = False,
 ):
     """
-    Stop a running MCP server deployment.
+    Stop MCP server deployments.
 
-    This command auto-detects the backend for the deployment and stops it.
-    Use --backend to specify the backend if auto-detection fails.
+    This command can stop deployments in several ways:
+    1. Stop specific deployment by ID: mcpt stop <deployment-id>
+    2. Stop all deployments: mcpt stop --all
+    3. Stop all deployments for a template: mcpt stop --template <template-name>
+    4. Stop with positional argument: mcpt stop all, mcpt stop <template-name>
+
+    Use --backend to limit operations to a specific backend.
     Use --dry-run to preview what would be stopped.
     """
+
+    template_manager = TemplateManager(
+        backend or cli_state.get("backend_type", "docker")
+    )
+    all_templates = [key for key in template_manager.list_templates().keys()]
+    # Validate arguments
+    targets_specified = sum([bool(target), all, bool(template)])
+    if targets_specified == 0:
+        console.print(
+            "[red]❌ Please specify what to stop: deployment ID, --all, or --template <name>[/red]"
+        )
+        console.print("Examples:")
+        console.print("  mcpt stop <deployment-id>")
+        console.print("  mcpt stop --all")
+        console.print("  mcpt stop --template demo")
+        console.print("  mcpt stop all")
+        raise typer.Exit(1)
+
+    if targets_specified > 1:
+        console.print(
+            "[red]❌ Please specify only one target: deployment ID, --all, or --template[/red]"
+        )
+        raise typer.Exit(1)
+
+    # Handle positional argument shortcuts
+    if target:
+        if target.lower() == "all":
+            all = True
+            target = None
+        elif target in all_templates:
+            template = target
+            target = None
+
     if dry_run:
         console.print(
             "[yellow]🔍 DRY RUN MODE - No actual stopping will occur[/yellow]"
         )
-        console.print(f"Would stop deployment: {deployment_id}")
-
-        # Show backend detection in dry-run mode
-        if not backend:
-            try:
-                multi_manager = MultiBackendManager()
-                detected_backend = multi_manager.detect_backend_for_deployment(
-                    deployment_id
-                )
-                if detected_backend:
-                    console.print(f"Auto-detected backend: {detected_backend}")
-                else:
-                    console.print("Backend auto-detection would fail - use --backend")
-            except Exception as e:
-                console.print(f"Backend detection error: {e}")
-        else:
-            console.print(f"Using specified backend: {backend}")
-        return
 
     try:
-        # Use multi-backend manager for auto-detection or single backend
-        if backend:
-            # Single backend mode
-            deployment_manager = DeploymentManager(backend)
+        # Handle different stop scenarios
+        if all:
+            # Stop all deployments
+            if dry_run:
+                console.print("Would stop all running deployments")
+                if backend:
+                    console.print(f"Limited to backend: {backend}")
+                else:
+                    console.print("Across all backends")
+                return
 
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                task = progress.add_task(
-                    f"Stopping deployment on {backend}...", total=None
-                )
-                result = deployment_manager.stop_deployment(deployment_id, timeout)
+            _stop_all_deployments(backend, timeout, force)
 
-            if result.get("success"):
-                console.print(
-                    f"[green]✅ Successfully stopped deployment '{deployment_id}' on {backend}[/green]"
-                )
-            else:
-                error = result.get("error", "Unknown error")
-                console.print(f"[red]❌ Failed to stop deployment: {error}[/red]")
-                raise typer.Exit(1)
+        elif template:
+            # Stop all deployments for a specific template
+            if dry_run:
+                console.print(f"Would stop all deployments for template: {template}")
+                if backend:
+                    console.print(f"Limited to backend: {backend}")
+                else:
+                    console.print("Across all backends")
+                return
+
+            _stop_template_deployments(template, backend, timeout, force)
+
         else:
-            # Multi-backend auto-detection mode
-            multi_manager = MultiBackendManager()
+            # Stop specific deployment by ID
+            deployment_id = target
+            if dry_run:
+                console.print(f"Would stop deployment: {deployment_id}")
 
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                task = progress.add_task(
-                    "Auto-detecting backend and stopping deployment...", total=None
-                )
-                result = multi_manager.stop_deployment(deployment_id, timeout)
+                # Show backend detection in dry-run mode
+                if not backend:
+                    try:
+                        multi_manager = MultiBackendManager()
+                        detected_backend = multi_manager.detect_backend_for_deployment(
+                            deployment_id
+                        )
+                        if detected_backend:
+                            console.print(f"Auto-detected backend: {detected_backend}")
+                        else:
+                            console.print(
+                                "Backend auto-detection would fail - use --backend"
+                            )
+                    except Exception as e:
+                        console.print(f"Backend detection error: {e}")
+                else:
+                    console.print(f"Using specified backend: {backend}")
+                return
 
-            if result.get("success"):
-                backend_type = result.get("backend_type", "unknown")
-                backend_indicator = get_backend_indicator(backend_type)
-                console.print(
-                    f"[green]✅ Successfully stopped deployment '{deployment_id}' on {backend_indicator}[/green]"
-                )
-            else:
-                error = result.get("error", "Unknown error")
-                console.print(f"[red]❌ Failed to stop deployment: {error}[/red]")
-
-                # Suggest using --backend flag if auto-detection failed
-                if "not found" in error.lower():
-                    console.print(
-                        "💡 [dim]Try using --backend <name> to specify the backend explicitly[/dim]"
-                    )
-                raise typer.Exit(1)
+            _stop_single_deployment(deployment_id, backend, timeout)
 
     except Exception as e:
-        console.print(f"[red]❌ Error stopping deployment: {e}[/red]")
+        console.print(f"[red]❌ Error stopping deployment(s): {e}[/red]")
         if cli_state.get("verbose"):
             console.print_exception()
         raise typer.Exit(1)
 
 
-@app.command()
-def cleanup(
-    template: Annotated[
-        Optional[str],
-        typer.Argument(help="Template to cleanup (or all if not specified)"),
-    ] = None,
-    dry_run: Annotated[
-        bool, typer.Option("--dry-run", help="Show what would be cleaned up")
-    ] = False,
-    force: Annotated[
-        bool, typer.Option("--force", help="Force cleanup without confirmation")
-    ] = False,
-):
-    """
-    Clean up stopped containers and unused resources.
+def _stop_single_deployment(deployment_id: str, backend: Optional[str], timeout: int):
+    """Stop a single deployment by ID."""
+    # Use multi-backend manager for auto-detection or single backend
+    if backend:
+        # Single backend mode
+        deployment_manager = DeploymentManager(backend)
 
-    This command removes stopped containers and cleans up resources.
-    Use --dry-run to preview what would be cleaned up.
-    """
-    if dry_run:
-        console.print("[yellow]🔍 DRY RUN MODE - No actual cleanup will occur[/yellow]")
-
-    try:
-        deployment_manager = DeploymentManager(cli_state["backend_type"])
-
-        # List what would be cleaned up
-        deployments = deployment_manager.list_deployments()
-        stopped_deployments = [d for d in deployments if d.get("status") != "running"]
-
-        if template:
-            stopped_deployments = [
-                d for d in stopped_deployments if d.get("template") == template
-            ]
-
-        if not stopped_deployments:
-            console.print("[green]✅ No stopped deployments to clean up[/green]")
-            return
-
-        # Show cleanup plan
-        table = Table(
-            title="Cleanup Plan", show_header=True, header_style="bold yellow"
-        )
-        table.add_column("ID", style="cyan")
-        table.add_column("Template", style="white")
-        table.add_column("Status", style="red")
-
-        for deployment in stopped_deployments:
-            table.add_row(
-                deployment.get("id", "unknown"),
-                deployment.get("template", "unknown"),
-                deployment.get("status", "unknown"),
-            )
-
-        console.print(table)
-
-        if dry_run:
-            console.print(
-                "\n[yellow]✅ Dry run complete - cleanup plan shown above[/yellow]"
-            )
-            return
-
-        # Confirm cleanup
-        if not force:
-            confirmed = typer.confirm(
-                f"Clean up {len(stopped_deployments)} stopped deployment(s)?"
-            )
-            if not confirmed:
-                console.print("[yellow]Cleanup cancelled[/yellow]")
-                return
-
-        # Perform cleanup
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Cleaning up deployments...", total=None)
+            task = progress.add_task(f"Stopping deployment on {backend}...", total=None)
+            result = deployment_manager.stop_deployment(deployment_id, timeout)
 
-            result = deployment_manager.cleanup_deployments(template)
+        if result.get("success"):
+            console.print(
+                f"[green]✅ Successfully stopped deployment '{deployment_id}' on {backend}[/green]"
+            )
+        else:
+            error = result.get("error", "Unknown error")
+            console.print(f"[red]❌ Failed to stop deployment: {error}[/red]")
+            raise typer.Exit(1)
+    else:
+        # Multi-backend auto-detection mode
+        multi_manager = MultiBackendManager()
 
-            if result.get("success"):
-                cleaned = result.get("cleaned_count", 0)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(
+                "Auto-detecting backend and stopping deployment...", total=None
+            )
+            result = multi_manager.stop_deployment(deployment_id, timeout)
+
+        if result.get("success"):
+            backend_type = result.get("backend_type", "unknown")
+            backend_indicator = get_backend_indicator(backend_type)
+            console.print(
+                f"[green]✅ Successfully stopped deployment '{deployment_id}' on {backend_indicator}[/green]"
+            )
+        else:
+            error = result.get("error", "Unknown error")
+            console.print(f"[red]❌ Failed to stop deployment: {error}[/red]")
+
+            # Suggest using --backend flag if auto-detection failed
+            if "not found" in error.lower():
                 console.print(
-                    f"[green]✅ Successfully cleaned up {cleaned} deployment(s)[/green]"
+                    "💡 [dim]Try using --backend <name> to specify the backend explicitly[/dim]"
                 )
-            else:
-                error = result.get("error", "Unknown error")
-                console.print(f"[red]❌ Cleanup failed: {error}[/red]")
-                raise typer.Exit(1)
+            raise typer.Exit(1)
 
-    except Exception as e:
-        console.print(f"[red]❌ Error during cleanup: {e}[/red]")
-        raise typer.Exit(1)
+
+def _stop_all_deployments(backend: Optional[str], timeout: int, force: bool):
+    """Stop all running deployments."""
+    if backend:
+        # Single backend mode
+        deployment_manager = DeploymentManager(backend)
+        deployments = deployment_manager.list_deployments()
+        running_deployments = [d for d in deployments if d.get("status") == "running"]
+
+        if not running_deployments:
+            console.print(
+                f"[green]✅ No running deployments found on {backend}[/green]"
+            )
+            return
+
+        # Show what will be stopped
+        _show_stop_plan(running_deployments, f"Running deployments on {backend}")
+
+        # Confirm if not forced
+        if not force:
+            confirmed = typer.confirm(
+                f"Stop {len(running_deployments)} running deployment(s) on {backend}?"
+            )
+            if not confirmed:
+                console.print("[yellow]Stop cancelled[/yellow]")
+                return
+
+        # Stop deployments
+        stopped_count = 0
+        failed_count = 0
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(
+                f"Stopping deployments on {backend}...", total=None
+            )
+
+            for deployment in running_deployments:
+                deployment_id = deployment.get("id", "unknown")
+                try:
+                    result = deployment_manager.stop_deployment(deployment_id, timeout)
+                    if result.get("success"):
+                        stopped_count += 1
+                    else:
+                        failed_count += 1
+                        console.print(
+                            f"[yellow]⚠️ Failed to stop {deployment_id}: {result.get('error', 'Unknown error')}[/yellow]"
+                        )
+                except Exception as e:
+                    failed_count += 1
+                    console.print(
+                        f"[yellow]⚠️ Failed to stop {deployment_id}: {e}[/yellow]"
+                    )
+
+        console.print(
+            f"[green]✅ Stopped {stopped_count} deployment(s) on {backend}[/green]"
+        )
+        if failed_count > 0:
+            console.print(
+                f"[yellow]⚠️ Failed to stop {failed_count} deployment(s)[/yellow]"
+            )
+
+    else:
+        # Multi-backend mode
+        multi_manager = MultiBackendManager()
+        available_backends = multi_manager.get_available_backends()
+
+        if not available_backends:
+            console.print("[red]❌ No backends available[/red]")
+            return
+
+        # Get all running deployments across backends
+        all_deployments = multi_manager.get_all_deployments()
+        running_deployments = [
+            d for d in all_deployments if d.get("status") == "running"
+        ]
+
+        if not running_deployments:
+            console.print(
+                "[green]✅ No running deployments found across all backends[/green]"
+            )
+            return
+
+        # Show what will be stopped
+        _show_stop_plan(running_deployments, "Running deployments across all backends")
+
+        # Confirm if not forced
+        if not force:
+            confirmed = typer.confirm(
+                f"Stop {len(running_deployments)} running deployment(s) across all backends?"
+            )
+            if not confirmed:
+                console.print("[yellow]Stop cancelled[/yellow]")
+                return
+
+        # Stop deployments using multi-backend manager
+        stopped_count = 0
+        failed_count = 0
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(
+                "Stopping deployments across backends...", total=None
+            )
+
+            for deployment in running_deployments:
+                deployment_id = deployment.get("id", "unknown")
+                try:
+                    result = multi_manager.stop_deployment(deployment_id, timeout)
+                    if result.get("success"):
+                        stopped_count += 1
+                    else:
+                        failed_count += 1
+                        console.print(
+                            f"[yellow]⚠️ Failed to stop {deployment_id}: {result.get('error', 'Unknown error')}[/yellow]"
+                        )
+                except Exception as e:
+                    failed_count += 1
+                    console.print(
+                        f"[yellow]⚠️ Failed to stop {deployment_id}: {e}[/yellow]"
+                    )
+
+        console.print(
+            f"[green]✅ Stopped {stopped_count} deployment(s) across all backends[/green]"
+        )
+        if failed_count > 0:
+            console.print(
+                f"[yellow]⚠️ Failed to stop {failed_count} deployment(s)[/yellow]"
+            )
+
+
+def _stop_template_deployments(
+    template_name: str, backend: Optional[str], timeout: int, force: bool
+):
+    """Stop all deployments for a specific template."""
+    if backend:
+        # Single backend mode
+        deployment_manager = DeploymentManager(backend)
+        deployments = deployment_manager.list_deployments()
+        template_deployments = [
+            d
+            for d in deployments
+            if d.get("status") == "running" and d.get("template") == template_name
+        ]
+
+        if not template_deployments:
+            console.print(
+                f"[green]✅ No running deployments found for template '{template_name}' on {backend}[/green]"
+            )
+            return
+
+        # Show what will be stopped
+        _show_stop_plan(
+            template_deployments,
+            f"Running deployments for template '{template_name}' on {backend}",
+        )
+
+        # Confirm if not forced
+        if not force:
+            confirmed = typer.confirm(
+                f"Stop {len(template_deployments)} running deployment(s) for template '{template_name}' on {backend}?"
+            )
+            if not confirmed:
+                console.print("[yellow]Stop cancelled[/yellow]")
+                return
+
+        # Stop deployments
+        stopped_count = 0
+        failed_count = 0
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(
+                f"Stopping {template_name} deployments on {backend}...", total=None
+            )
+
+            for deployment in template_deployments:
+                deployment_id = deployment.get("id", "unknown")
+                try:
+                    result = deployment_manager.stop_deployment(deployment_id, timeout)
+                    if result.get("success"):
+                        stopped_count += 1
+                    else:
+                        failed_count += 1
+                        console.print(
+                            f"[yellow]⚠️ Failed to stop {deployment_id}: {result.get('error', 'Unknown error')}[/yellow]"
+                        )
+                except Exception as e:
+                    failed_count += 1
+                    console.print(
+                        f"[yellow]⚠️ Failed to stop {deployment_id}: {e}[/yellow]"
+                    )
+
+        console.print(
+            f"[green]✅ Stopped {stopped_count} '{template_name}' deployment(s) on {backend}[/green]"
+        )
+        if failed_count > 0:
+            console.print(
+                f"[yellow]⚠️ Failed to stop {failed_count} deployment(s)[/yellow]"
+            )
+
+    else:
+        # Multi-backend mode
+        multi_manager = MultiBackendManager()
+        available_backends = multi_manager.get_available_backends()
+
+        if not available_backends:
+            console.print("[red]❌ No backends available[/red]")
+            return
+
+        # Get all running deployments for the template across backends
+        all_deployments = multi_manager.get_all_deployments(template_name=template_name)
+        template_deployments = [
+            d for d in all_deployments if d.get("status") == "running"
+        ]
+
+        if not template_deployments:
+            console.print(
+                f"[green]✅ No running deployments found for template '{template_name}' across all backends[/green]"
+            )
+            return
+
+        # Show what will be stopped
+        _show_stop_plan(
+            template_deployments,
+            f"Running deployments for template '{template_name}' across all backends",
+        )
+
+        # Confirm if not forced
+        if not force:
+            confirmed = typer.confirm(
+                f"Stop {len(template_deployments)} running deployment(s) for template '{template_name}' across all backends?"
+            )
+            if not confirmed:
+                console.print("[yellow]Stop cancelled[/yellow]")
+                return
+
+        # Stop deployments using multi-backend manager
+        stopped_count = 0
+        failed_count = 0
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(
+                f"Stopping {template_name} deployments across backends...", total=None
+            )
+
+            for deployment in template_deployments:
+                deployment_id = deployment.get("id", "unknown")
+                try:
+                    result = multi_manager.stop_deployment(deployment_id, timeout)
+                    if result.get("success"):
+                        stopped_count += 1
+                    else:
+                        failed_count += 1
+                        console.print(
+                            f"[yellow]⚠️ Failed to stop {deployment_id}: {result.get('error', 'Unknown error')}[/yellow]"
+                        )
+                except Exception as e:
+                    failed_count += 1
+                    console.print(
+                        f"[yellow]⚠️ Failed to stop {deployment_id}: {e}[/yellow]"
+                    )
+
+        console.print(
+            f"[green]✅ Stopped {stopped_count} '{template_name}' deployment(s) across all backends[/green]"
+        )
+        if failed_count > 0:
+            console.print(
+                f"[yellow]⚠️ Failed to stop {failed_count} deployment(s)[/yellow]"
+            )
+
+
+def _show_stop_plan(deployments: List[Dict[str, Any]], title: str):
+    """Show a table of deployments that will be stopped."""
+    table = Table(title=title, show_header=True, header_style="bold yellow")
+    table.add_column("ID", style="cyan", no_wrap=True)
+    table.add_column("Template", style="white")
+    table.add_column("Backend", style="green")
+    table.add_column("Status", style="yellow")
+
+    for deployment in deployments:
+        backend_type = deployment.get("backend_type", "unknown")
+        backend_indicator = get_backend_indicator(backend_type, include_icon=False)
+
+        table.add_row(
+            deployment.get("id", "unknown")[:12],
+            deployment.get("template", "unknown"),
+            backend_indicator,
+            deployment.get("status", "unknown"),
+        )
+
+    console.print(table)
 
 
 @app.command()

@@ -16,6 +16,7 @@ from mcp_template.template.utils.discovery import TemplateDiscovery
 pytestmark = pytest.mark.unit
 
 
+@pytest.mark.unit
 class TestVolumeMountFunctionality:
     """Tests for volume mount functionality."""
 
@@ -119,6 +120,7 @@ class TestVolumeMountFunctionality:
         assert template["volumes"]["/absolute/path"] == "/mnt/absolute/path"
 
 
+@pytest.mark.unit
 class TestCommandArgumentFunctionality:
     """Tests for command argument functionality."""
 
@@ -175,6 +177,7 @@ class TestCommandArgumentFunctionality:
         assert "REGULAR_CONFIG" in updated_config  # Regular config should remain
 
 
+@pytest.mark.unit
 class TestCombinedVolumeMountAndCommandArg:
     """Tests for properties that are both volume mounts and command arguments."""
 
@@ -224,6 +227,7 @@ class TestCombinedVolumeMountAndCommandArg:
         assert "DATA_PATH" not in updated_config
 
 
+@pytest.mark.unit
 class TestVolumeAndCommandIntegrationWithDeployer:
     """Integration tests with the full deployer workflow."""
 
@@ -303,6 +307,7 @@ class TestVolumeAndCommandIntegrationWithDeployer:
             mock_handler.assert_called_once()
 
 
+@pytest.mark.unit
 class TestEdgeCasesAndErrorHandling:
     """Tests for edge cases and error handling."""
 

@@ -5,6 +5,7 @@ These tests focus specifically on testing the argument parsing logic
 without running the full CLI execution flow.
 """
 
+import argparse
 import shlex
 
 import pytest
@@ -90,6 +91,7 @@ class TestCallParserArgumentHandling:
         assert args.json_args == ['{"path": "/tmp"}']
 
 
+@pytest.mark.unit
 class TestShlexQuoteHandling:
     """Test shlex handling of quoted arguments - the core fix."""
 
@@ -174,6 +176,7 @@ class TestShlexQuoteHandling:
         assert args.json_args == ["{path: /tmp}"]
 
 
+@pytest.mark.unit
 class TestCompleteWorkflow:
     """Test the complete parsing workflow end-to-end."""
 
@@ -246,6 +249,7 @@ class TestCompleteWorkflow:
         assert args.config is not None and len(args.config) > 0
 
 
+@pytest.mark.unit
 class TestErrorCases:
     """Test error handling for malformed commands."""
 
@@ -261,12 +265,12 @@ class TestErrorCases:
     def test_empty_command_handling(self):
         """Test handling of empty or minimal commands."""
         with pytest.raises(
-            Exception
+            (SystemExit, argparse.ArgumentError)
         ):  # argparse raises ArgumentError with exit_on_error=False
             call_parser.parse_args([])
 
         with pytest.raises(
-            Exception
+            (SystemExit, argparse.ArgumentError)
         ):  # argparse raises ArgumentError with exit_on_error=False
             call_parser.parse_args(["filesystem"])
 

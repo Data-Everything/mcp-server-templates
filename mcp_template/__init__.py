@@ -23,7 +23,7 @@ Key Features:
 import logging
 
 from mcp_template.backends.docker import DockerDeploymentService
-from mcp_template.cli import EnhancedCLI
+from mcp_template.cli import CLI, EnhancedCLI
 from mcp_template.client import MCPClient
 from mcp_template.core import ConfigManager
 from mcp_template.core import DeploymentManager as CommonDeploymentManager
@@ -47,6 +47,8 @@ __all__ = [
     "ConfigManager",
     "ToolManager",
     "OutputFormatter",
+    "CLI",
+    "EnhancedCLI",
 ]
 
 # Constants
