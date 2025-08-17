@@ -6,12 +6,16 @@ import os
 import unittest
 from unittest.mock import patch
 
+import pytest
+
 from mcp_template.utils.image_utils import (
     get_default_registry,
     get_image_registry,
     is_local_image,
     normalize_image_name,
 )
+
+pytestmark = pytest.mark.unit
 
 
 class TestImageUtils(unittest.TestCase):

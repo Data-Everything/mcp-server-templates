@@ -5,15 +5,18 @@ Tests the deployment lifecycle management and coordination
 provided by the DeploymentManager common module.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
+import pytest
+
+from mcp_template.core.config_manager import ValidationResult
 from mcp_template.core.deployment_manager import (
     DeploymentManager,
     DeploymentOptions,
     DeploymentResult,
 )
-from mcp_template.core.config_manager import ValidationResult
+
+pytestmark = pytest.mark.unit
 
 
 class TestDeploymentManager:

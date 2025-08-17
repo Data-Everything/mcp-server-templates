@@ -40,6 +40,7 @@ class TestMCPClientInitialization:
             MCPClient(backend_type="nonexistent")
 
 
+@pytest.mark.unit
 class TestMCPClientTemplates:
     """Test template management methods."""
 

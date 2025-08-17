@@ -10,6 +10,7 @@ from mcp_template.client import MCPClient
 pytestmark = pytest.mark.integration
 
 
+@pytest.mark.integration
 class TestMCPClientIntegration:
     """Integration test cases for the MCPClient."""
 

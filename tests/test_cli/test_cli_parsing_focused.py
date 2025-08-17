@@ -90,6 +90,7 @@ class TestCallParserArgumentHandling:
         assert args.json_args == ['{"path": "/tmp"}']
 
 
+@pytest.mark.unit
 class TestShlexQuoteHandling:
     """Test shlex handling of quoted arguments - the core fix."""
 
@@ -174,6 +175,7 @@ class TestShlexQuoteHandling:
         assert args.json_args == ["{path: /tmp}"]
 
 
+@pytest.mark.unit
 class TestCompleteWorkflow:
     """Test the complete parsing workflow end-to-end."""
 
@@ -246,6 +248,7 @@ class TestCompleteWorkflow:
         assert args.config is not None and len(args.config) > 0
 
 
+@pytest.mark.unit
 class TestErrorCases:
     """Test error handling for malformed commands."""
 
