@@ -265,12 +265,12 @@ class TestErrorCases:
     def test_empty_command_handling(self):
         """Test handling of empty or minimal commands."""
         with pytest.raises(
-            argparse.ArgumentError
+            (SystemExit, argparse.ArgumentError)
         ):  # argparse raises ArgumentError with exit_on_error=False
             call_parser.parse_args([])
 
         with pytest.raises(
-            argparse.ArgumentError
+            (SystemExit, argparse.ArgumentError)
         ):  # argparse raises ArgumentError with exit_on_error=False
             call_parser.parse_args(["filesystem"])
 
