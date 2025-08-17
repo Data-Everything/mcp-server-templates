@@ -275,7 +275,9 @@ class TestCLIInterface:
         )
 
         assert result.returncode == 0, f"Help command failed: {result.stderr}"
-        assert "cleanup" in result.stdout, "Help should mention cleanup command"
+        assert (
+            "stop" in result.stdout
+        ), "Help should mention stop command (which includes cleanup functionality)"
         assert "deploy" in result.stdout, "Help should mention deploy command"
         assert "list" in result.stdout, "Help should mention list command"
 

@@ -3,14 +3,14 @@ Rich-based help formatter for beautiful CLI help output.
 """
 
 import argparse
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
+from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
-from rich.tree import Tree
 from rich.table import Table
 from rich.text import Text
-from rich.columns import Columns
+from rich.tree import Tree
 
 
 class RichHelpFormatter:
@@ -65,10 +65,7 @@ class RichHelpFormatter:
             "list": "List available templates",
             "deploy": "Deploy a template",
             "create": "Create a new template",
-            "stop": "Stop a deployed template",
-            "logs": "Show template logs",
-            "shell": "Open shell in template",
-            "cleanup": "Clean up stopped/failed deployments",
+            "stop": "Stop deployments or cleanup stopped containers",
             "config": "Show configuration options for a template",
             "tools": "List available tools [Deprecated - Use mcpt interactive shell instead]",
             "discover-tools": "Discover tools from Docker image [Deprecated - Use mcpt interactive shell instead]",
@@ -79,7 +76,7 @@ class RichHelpFormatter:
 
         categories = {
             "🏗️  Template Management": ["list", "deploy", "create"],
-            "🔧 Server Operations": ["stop", "logs", "shell", "cleanup"],
+            "🔧 Server Operations": ["stop", "logs", "shell"],
             "⚙️  Configuration & Tools": [
                 "config",
                 "tools",

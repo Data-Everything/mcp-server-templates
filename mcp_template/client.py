@@ -37,7 +37,6 @@ Example usage:
 
 import asyncio
 import logging
-import weakref
 from typing import Any, Dict, List, Optional, Union
 
 from mcp_template.core import (
