@@ -761,14 +761,19 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             )
 
             cleaned_up = []
+            total = len(deployments.items)
             for deployment in deployments.items:
                 if deployment.spec.replicas == 0:
                     if self.delete_deployment(deployment.metadata.name):
                         cleaned_up.append(deployment.metadata.name)
 
-            return {"cleaned_up": cleaned_up, "count": len(cleaned_up)}
+            return {
+                "success": total == len(cleaned_up),
+                "cleaned_up": cleaned_up,
+                "count": len(cleaned_up),
+            }
         except Exception as e:
-            return {"error": str(e)}
+            return {"success": False, "error": str(e)}
 
     def cleanup_dangling_images(self) -> Dict[str, Any]:
         """Clean up dangling images (not applicable for Kubernetes)."""
