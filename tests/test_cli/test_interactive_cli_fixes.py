@@ -8,12 +8,12 @@ These tests ensure that the specific issues reported by the user are resolved:
 """
 
 import json
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
+from mcp_template.core.config_processor import ConfigProcessor
 from mcp_template.interactive_cli import InteractiveCLI
-from mcp_template.utils.config_processor import ConfigProcessor
 
 
 @pytest.mark.integration

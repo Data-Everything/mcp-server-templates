@@ -14,10 +14,10 @@ import pytest
 from typer.testing import CliRunner
 
 from mcp_template.core.cache import CacheManager
+from mcp_template.core.config_processor import ConfigProcessor
 from mcp_template.core.deployment_manager import DeploymentResult
 from mcp_template.core.template_manager import TemplateManager
 from mcp_template.typer_cli import app
-from mcp_template.utils.config_processor import ConfigProcessor
 
 
 class TestCacheSystemEnhancements:

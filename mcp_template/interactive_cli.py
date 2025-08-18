@@ -25,8 +25,8 @@ from rich.tree import Tree
 
 from mcp_template.core import DeploymentManager, TemplateManager, ToolManager
 from mcp_template.core.cache import CacheManager
+from mcp_template.core.config_processor import ConfigProcessor
 from mcp_template.core.tool_caller import ToolCaller
-from mcp_template.utils.config_processor import ConfigProcessor
 
 console = Console()
 logger = logging.getLogger(__name__)

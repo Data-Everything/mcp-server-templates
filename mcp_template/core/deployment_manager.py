@@ -10,8 +10,8 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 
 from mcp_template.backends import get_backend
+from mcp_template.core.config_processor import ConfigProcessor
 from mcp_template.core.template_manager import TemplateManager
-from mcp_template.utils.config_processor import ConfigProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -501,7 +501,7 @@ class DeploymentManager:
             options = deployment_spec["options"]
 
             # Apply deployment options to config using RESERVED_ENV_VARS mapping
-            from mcp_template.utils.config_processor import RESERVED_ENV_VARS
+            from mcp_template.core.config_processor import RESERVED_ENV_VARS
 
             # Add deployment options as environment variables
             for option_key, env_var_key in RESERVED_ENV_VARS.items():

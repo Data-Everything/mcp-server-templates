@@ -2,8 +2,10 @@
 Integration tests for new CLI commands.
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
+
 from mcp_template.core.deployment_manager import DeploymentManager
 
 

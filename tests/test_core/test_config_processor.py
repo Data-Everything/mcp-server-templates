@@ -6,15 +6,12 @@ merging configuration from multiple sources and processing volume mounts and com
 """
 
 import json
-import tempfile
-from pathlib import Path
-from typing import Any, Dict
 from unittest.mock import mock_open, patch
 
 import pytest
 import yaml
 
-from mcp_template.utils.config_processor import ConfigProcessor
+from mcp_template.core.config_processor import ConfigProcessor
 
 
 @pytest.mark.unit

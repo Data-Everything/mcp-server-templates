@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from mcp_template.core.config_manager import ValidationResult
+from mcp_template.core.config_processor import ValidationResult
 from mcp_template.core.deployment_manager import (
     DeploymentManager,
     DeploymentOptions,

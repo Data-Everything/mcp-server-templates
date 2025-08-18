@@ -61,7 +61,7 @@ class ToolCaller:
 
         # Import here to avoid circular imports
         from mcp_template.backends.docker import DockerDeploymentService
-        from mcp_template.utils.config_processor import ConfigProcessor
+        from mcp_template.core.config_processor import ConfigProcessor
 
         self.config_processor = ConfigProcessor()
 
