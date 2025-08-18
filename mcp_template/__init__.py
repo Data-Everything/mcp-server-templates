@@ -29,7 +29,6 @@ from mcp_template.core import ConfigManager
 from mcp_template.core import DeploymentManager as CommonDeploymentManager
 from mcp_template.core import OutputFormatter, TemplateManager, ToolManager
 from mcp_template.core.deployment_manager import DeploymentManager
-from mcp_template.deployer import MCPDeployer
 from mcp_template.template.utils.creation import TemplateCreator
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.typer_cli import app
@@ -39,7 +38,6 @@ __all__ = [
     "TemplateDiscovery",
     "DockerDeploymentService",
     "DeploymentManager",
-    "MCPDeployer",
     "TemplateCreator",
     "MCPClient",
     "TemplateManager",

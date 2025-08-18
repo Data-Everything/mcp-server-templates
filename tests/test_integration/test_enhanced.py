@@ -31,7 +31,6 @@ class TestIntegration:
         """Test that client initializes properly."""
         assert client is not None
         assert hasattr(client, "tool_caller")
-        assert hasattr(client, "server_manager")
         assert hasattr(client, "tool_manager")
 
     def test_template_discovery(self, client):
@@ -93,37 +92,6 @@ class TestIntegration:
             if "structuredContent" in result["result"]:
                 structured = result["result"]["structuredContent"]
                 assert "IntegrationTest" in str(structured)
-
-        except Exception as e:
-            pytest.skip(f"Docker not available or demo template not working: {e}")
-
-    def test_tool_caller_direct(self, tool_caller):
-        """Test ToolCaller directly."""
-        # Get demo template config
-        from mcp_template.core.server_manager import ServerManager
-
-        server_manager = ServerManager()
-
-        demo_config = server_manager.get_template_info("demo")
-        if not demo_config:
-            pytest.skip("Demo template not available")
-
-        # Validate stdio support
-        supports_stdio = tool_caller.validate_template_stdio_support(demo_config)
-        assert supports_stdio, "Demo template should support stdio"
-
-        try:
-            # Test tool call
-            result = tool_caller.call_tool_stdio(
-                template_name="demo",
-                tool_name="say_hello",
-                arguments={"name": "ToolCallerTest"},
-                template_config=demo_config,
-            )
-
-            assert result.success
-            assert not result.is_error
-            assert result.result is not None
 
         except Exception as e:
             pytest.skip(f"Docker not available or demo template not working: {e}")

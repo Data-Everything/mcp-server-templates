@@ -142,42 +142,6 @@ def temp_template_dir():
         yield template_dir
 
 
-@pytest.fixture(autouse=True)
-def use_local_images_for_deploy_tests(request, built_internal_images):
-    """Automatically configure deployment tests to use local images."""
-    # Only apply to tests that involve deployment
-    if any(
-        marker in [m.name for m in request.node.iter_markers()]
-        for marker in ["docker", "integration", "e2e"]
-    ):
-        # Patch the deploy methods to use pull_image=False by default
-        from mcp_template.backends.docker import DockerDeploymentService
-        from mcp_template.deployer import MCPDeployer
-
-        original_deploy = MCPDeployer.deploy
-        original_docker_deploy = DockerDeploymentService.deploy_template
-
-        def patched_mcp_deploy(self, template_name, **kwargs):
-            kwargs.setdefault("pull_image", False)
-            return original_deploy(self, template_name, **kwargs)
-
-        def patched_docker_deploy(self, template_id, config, template_data, **kwargs):
-            kwargs.setdefault("pull_image", False)
-            return original_docker_deploy(
-                self, template_id, config, template_data, **kwargs
-            )
-
-        with (
-            patch.object(MCPDeployer, "deploy", patched_mcp_deploy),
-            patch.object(
-                DockerDeploymentService, "deploy_template", patched_docker_deploy
-            ),
-        ):
-            yield
-    else:
-        yield
-
-
 @pytest.fixture
 def mock_template_config():
     """Mock template configuration."""

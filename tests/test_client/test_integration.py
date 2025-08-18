@@ -20,17 +20,14 @@ class TestMCPClientIntegration:
         # This test mocks the deployment backend to avoid Docker dependencies
 
         with (
-            patch("mcp_template.client.ServerManager") as mock_server_manager,
             patch("mcp_template.client.ToolManager") as mock_tool_manager,
             patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
         ):
 
             # Setup mock managers
-            mock_server_mgr = MagicMock()
             mock_tool_mgr = MagicMock()
             mock_template_disc = MagicMock()
 
-            mock_server_manager.return_value = mock_server_mgr
             mock_tool_manager.return_value = mock_tool_mgr
             mock_template_discovery.return_value = mock_template_disc
 
@@ -43,11 +40,6 @@ class TestMCPClientIntegration:
                 "transport": {"default": "stdio", "supported": ["stdio"]},
                 "template_dir": "/path/to/demo",
             }
-
-            mock_server_mgr.list_available_templates.return_value = {
-                "demo": demo_template
-            }
-            mock_server_mgr.get_template_info.return_value = demo_template
 
             # Mock tools
             demo_tools = [
@@ -104,41 +96,15 @@ class TestMCPClientIntegration:
         """Test complete server lifecycle with client."""
 
         with (
-            patch("mcp_template.client.ServerManager") as mock_server_manager,
             patch("mcp_template.client.ToolManager") as mock_tool_manager,
             patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
         ):
 
-            # Setup mocks
-            mock_server_mgr = MagicMock()
             mock_tool_mgr = MagicMock()
             mock_template_disc = MagicMock()
 
-            mock_server_manager.return_value = mock_server_mgr
             mock_tool_manager.return_value = mock_tool_mgr
             mock_template_discovery.return_value = mock_template_disc
-
-            # Mock server lifecycle responses
-            mock_server_mgr.start_server.return_value = {
-                "id": "demo-test-1",
-                "name": "demo-test-1",
-                "status": "running",
-                "success": True,
-            }
-
-            mock_server_mgr.list_running_servers.return_value = [
-                {"id": "demo-test-1", "template": "demo", "status": "running"}
-            ]
-
-            mock_server_mgr.get_server_info.return_value = {
-                "id": "demo-test-1",
-                "template": "demo",
-                "status": "running",
-                "transport": {"default": "stdio", "supported": ["stdio"]},
-            }
-
-            mock_server_mgr.get_server_logs.return_value = "Server started successfully"
-            mock_server_mgr.stop_server.return_value = True
 
             client = MCPClient(backend_type="mock")
 
@@ -172,7 +138,6 @@ class TestMCPClientIntegration:
 
         with (
             patch("mcp_template.client.MCPConnection") as mock_connection_class,
-            patch("mcp_template.client.ServerManager"),
             patch("mcp_template.client.ToolManager"),
             patch("mcp_template.client.TemplateDiscovery"),
         ):
@@ -224,24 +189,18 @@ class TestMCPClientIntegration:
         """Test client error handling scenarios."""
 
         with (
-            patch("mcp_template.client.ServerManager") as mock_server_manager,
             patch("mcp_template.client.ToolManager") as mock_tool_manager,
             patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
         ):
 
             # Setup mocks with failures
-            mock_server_mgr = MagicMock()
             mock_tool_mgr = MagicMock()
             mock_template_disc = MagicMock()
 
-            mock_server_manager.return_value = mock_server_mgr
             mock_tool_manager.return_value = mock_tool_mgr
             mock_template_discovery.return_value = mock_template_disc
 
             # Mock failures
-            mock_server_mgr.get_template_info.return_value = None
-            mock_server_mgr.start_server.return_value = None
-            mock_server_mgr.stop_server.return_value = False
             mock_tool_mgr.list_discovered_tools.return_value = None
             mock_tool_mgr.list_tools.return_value = []
 
@@ -264,17 +223,14 @@ class TestMCPClientIntegration:
         """Test client handling of concurrent operations."""
 
         with (
-            patch("mcp_template.client.ServerManager") as mock_server_manager,
             patch("mcp_template.client.ToolManager") as mock_tool_manager,
             patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
         ):
 
             # Setup mocks
-            mock_server_mgr = MagicMock()
             mock_tool_mgr = MagicMock()
             mock_template_disc = MagicMock()
 
-            mock_server_manager.return_value = mock_server_mgr
             mock_tool_manager.return_value = mock_tool_mgr
             mock_template_discovery.return_value = mock_template_disc
 
@@ -293,8 +249,6 @@ class TestMCPClientIntegration:
                     "transport": transport,
                     "port": port,
                 }
-
-            mock_server_mgr.start_server.side_effect = delayed_start_server
 
             client = MCPClient()
 
@@ -322,7 +276,6 @@ class TestMCPClientIntegration:
 
         with (
             patch("mcp_template.client.MCPConnection") as mock_connection_class,
-            patch("mcp_template.client.ServerManager"),
             patch("mcp_template.client.ToolManager"),
             patch("mcp_template.client.TemplateDiscovery"),
         ):

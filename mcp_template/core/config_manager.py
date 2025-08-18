@@ -50,8 +50,6 @@ class ConfigManager:
         env_vars: Optional[Dict[str, str]] = None,
         config_values: Optional[Dict[str, str]] = None,
         override_values: Optional[Dict[str, str]] = None,
-        k8s_config_file: Optional[str] = None,
-        k8s_config_values: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Merge all configuration sources with proper precedence.
@@ -335,13 +333,12 @@ class ConfigManager:
     def _process_config_values(self, config_values: Dict[str, str]) -> Dict[str, Any]:
         """Process config values into proper types."""
         config = {}
-
         for key, value in config_values.items():
             # Try to convert to appropriate type
             try:
                 # Try JSON parsing first
                 config[key] = json.loads(value)
-            except (json.JSONDecodeError, ValueError):
+            except (json.decoder.JSONDecodeError, json.JSONDecodeError, ValueError):
                 # Fall back to string
                 config[key] = value
 

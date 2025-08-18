@@ -43,7 +43,6 @@ from mcp_template.core import (
     ConfigManager,
     DeploymentManager,
     MCPConnection,
-    ServerManager,
     TemplateManager,
     ToolCaller,
     ToolManager,
@@ -90,7 +89,6 @@ class MCPClient:
 
         # Initialize other components
         self.template_discovery = TemplateDiscovery()
-        self.server_manager = ServerManager(backend_type)
         self.tool_caller = ToolCaller(backend_type)
 
     # Template Management
@@ -672,7 +670,6 @@ class MCPClient:
             self.template_manager = TemplateManager(backend_type)
             self.deployment_manager = DeploymentManager(backend_type)
             self.tool_manager = ToolManager(backend_type)
-            self.server_manager = ServerManager(backend_type)
             self.tool_caller = ToolCaller(backend_type)
         except Exception as e:
             logger.error(f"Failed to set backend type to {backend_type}: {e}")

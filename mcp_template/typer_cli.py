@@ -23,12 +23,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from mcp_template.core import (
-    ConfigManager,
-    DeploymentManager,
-    TemplateManager,
-    ToolManager,
-)
+from mcp_template.core import DeploymentManager, TemplateManager, ToolManager
 from mcp_template.core.deployment_manager import DeploymentOptions
 from mcp_template.core.multi_backend_manager import MultiBackendManager
 from mcp_template.core.response_formatter import (
@@ -238,46 +233,52 @@ def deploy(
         # Initialize managers
         template_manager = TemplateManager(cli_state["backend_type"])
         deployment_manager = DeploymentManager(cli_state["backend_type"])
-        config_manager = ConfigManager()
 
         # Process configuration with correct precedence order
-        # Order: Template defaults < Config file < CLI config < Environment variables
-        config_dict = {}
+        # Separate different config sources for proper merging
+        config_file_path = None
+        env_vars = {}
+        config_values = {}
+        override_values = {}
 
-        # 1. Config file (lowest precedence after template defaults)
+        # 1. Config file (will be handled by deployment manager)
         if config_file:
-            config_dict.update(config_manager._load_config_file(str(config_file)))
+            config_file_path = str(config_file)
 
         # 2. CLI config key=value pairs
         if config:
             for config_item in config:
                 if "=" in config_item:
                     key, value = config_item.split("=", 1)
-                    config_dict[key] = value
+                    config_values[key] = value
 
-        # 3. Environment variables (highest precedence)
+        # 3. Environment variables
         if env:
             for env_var in env:
                 if "=" in env_var:
                     key, value = env_var.split("=", 1)
-                    config_dict[key] = value
+                    env_vars[key] = value
 
-        # Handle other config types (maintain existing behavior)
+        # 4. Config overrides (--set)
         if config_overrides:
             for override_item in config_overrides:
                 if "=" in override_item:
                     key, value = override_item.split("=", 1)
-                    config_dict[key] = value
+                    config_values[key] = value
 
+        # 5. Template overrides (--override)
         if override:
             for override_item in override:
                 if "=" in override_item:
                     key, value = override_item.split("=", 1)
-                    # Add OVERRIDE_ prefix to distinguish from regular config
-                    config_dict[f"OVERRIDE_{key}"] = value
+                    override_values[key] = value
 
-        # Process volumes
-        volume_config = {}
+        # Handle transport
+        if transport:
+            config_values["MCP_TRANSPORT"] = transport
+
+        # Process volumes and add to config_values
+        volume_config = None
         if volumes:
             try:
                 volume_data = json.loads(volumes)
@@ -290,19 +291,22 @@ def deploy(
                     volume_config = {path: path for path in volume_data}
                 else:
                     console.print(
-                        "[red]❌ Invalid volume format. Expected JSON object or array[/red]"
+                        "[red]❌ Invalid volume format. Volume mounts must be a JSON object or array[/red]"
                     )
                     raise typer.Exit(1)
 
-                # Add volume config to main config
-                config_dict["VOLUMES"] = volume_config
-
             except json.JSONDecodeError as e:
-                console.print(f"[red]❌ Invalid JSON in volumes: {e}[/red]")
+                console.print(f"[red]❌ Invalid JSON format in volumes: {e}[/red]")
                 raise typer.Exit(1)
 
-        if transport:
-            config_dict["MCP_TRANSPORT"] = transport
+        # Structure config sources for deployment manager
+        config_sources = {
+            "config_file": config_file_path,
+            "env_vars": env_vars if env_vars else None,
+            "config_values": config_values if config_values else None,
+            "override_values": override_values if override_values else None,
+            "volume_config": volume_config,
+        }
 
         # Get template info
         template_info = template_manager.get_template_info(template)
@@ -328,9 +332,10 @@ def deploy(
                 "Stdio MCP servers run interactively and cannot be deployed as persistent containers."
             )
 
-            if config_dict:
+            if config_values or env_vars or override_values:
                 console.print("\n[cyan]✅ Configuration validated successfully:[/cyan]")
-                for key, value in config_dict.items():
+                all_config = {**config_values, **env_vars, **override_values}
+                for key, value in all_config.items():
                     # Mask sensitive values
                     display_value = (
                         "***"
@@ -346,6 +351,12 @@ def deploy(
             console.print(f"  mcpt list-tools {template}     # List available tools")
             console.print("  mcpt interactive               # Start interactive shell")
             raise typer.Exit(1)
+        elif actual_transport not in supported_transports:
+            console.print(
+                f"[red]❌ Unsupported transport '{actual_transport}' for template '{template}'[/red]"
+            )
+            console.print(f"Supported transports: {', '.join(supported_transports)}")
+            raise typer.Exit(1)
 
         # Show deployment plan
         console.print(f"[cyan]📋 Deployment Plan for '{template}'[/cyan]")
@@ -359,8 +370,9 @@ def deploy(
         plan_table.add_row("Image", template_info.get("docker_image", "unknown"))
         plan_table.add_row("Pull Image", "No" if no_pull else "Yes")
 
-        if config_dict:
-            plan_table.add_row("Config Keys", ", ".join(config_dict.keys()))
+        if config_values or env_vars or override_values:
+            all_config = {**config_values, **env_vars, **override_values}
+            plan_table.add_row("Config Keys", ", ".join(all_config.keys()))
 
         console.print(plan_table)
 
@@ -381,8 +393,9 @@ def deploy(
             options = DeploymentOptions(
                 pull_image=not no_pull,
             )
-
-            result = deployment_manager.deploy_template(template, config_dict, options)
+            result = deployment_manager.deploy_template(
+                template, config_sources, options
+            )
 
             if result.success:
                 deployment_id = result.deployment_id

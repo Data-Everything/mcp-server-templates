@@ -10,9 +10,8 @@ This module provides server lifecycle management including:
 import logging
 from typing import Any, Dict, List, Literal, Optional
 
-from mcp_template.deployer import MCPDeployer
-from mcp_template.exceptions import StdIoTransportDeploymentError
 from mcp_template.core.deployment_manager import DeploymentManager
+from mcp_template.exceptions import StdIoTransportDeploymentError
 from mcp_template.template.utils.discovery import TemplateDiscovery
 from mcp_template.tools.docker_probe import DockerProbe
 from mcp_template.utils.config_processor import ConfigProcessor
@@ -88,6 +87,56 @@ class ServerManager:
             logger.error("Failed to get server info for %s: %s", deployment_id, e)
             return None
 
+    @staticmethod
+    def list_missing_properties(
+        template: Dict[str, Any], config: Dict[str, Any]
+    ) -> List[str]:
+        """Check for missing required properties in the configuration."""
+
+        missing_properties = []
+        required_properties = template.get("config_schema", {}).get("required", [])
+        required_properties_env_vars = {
+            prop: template["config_schema"]["properties"][prop].get("env_mapping")
+            for prop in required_properties
+            if prop in template.get("config_schema", {}).get("properties", {})
+            and template["config_schema"]["properties"][prop].get("env_mapping")
+        }
+        for prop in required_properties:
+            if (
+                prop not in config
+                and required_properties_env_vars.get(prop) not in config
+            ):
+                missing_properties.append(prop)
+        return missing_properties
+
+    @staticmethod
+    def append_volume_mounts_to_template(
+        template: Dict[str, Any],
+        data_dir: Optional[str] = None,
+        config_dir: Optional[str] = None,
+    ) -> List[Dict[str, str]]:
+        """Get volume mounts from the template and configuration."""
+
+        template_copy = template.copy()
+        if data_dir or config_dir:
+            template_copy["volumes"] = template["volumes"].copy()
+
+            if data_dir:
+                for key in template_copy["volumes"]:
+                    if "/data" in template_copy["volumes"][key]:
+                        template_copy["volumes"][key] = template_copy["volumes"][
+                            key
+                        ].replace("/data", data_dir)
+
+            if config_dir:
+                for key in template_copy["volumes"]:
+                    if "/config" in template_copy["volumes"][key]:
+                        template_copy["volumes"][key] = template_copy["volumes"][
+                            key
+                        ].replace("/config", config_dir)
+
+        return template_copy
+
     def generate_run_config(
         self,
         template_data: Dict[str, Any],
@@ -154,8 +203,8 @@ class ServerManager:
             config_file=config_file,
             config_values=config,
         )
-        missing_properties = MCPDeployer.list_missing_properties(template_data, config)
-        template_copy = MCPDeployer.append_volume_mounts_to_template(
+        missing_properties = self.list_missing_properties(template_data, config)
+        template_copy = self.append_volume_mounts_to_template(
             template=template_data,
             data_dir=data_dir,
             config_dir=config_dir,

@@ -18,7 +18,6 @@ class TestMCPClient:
     def setup_method(self):
         """Set up test fixtures."""
         with (
-            patch("mcp_template.client.ServerManager"),
             patch("mcp_template.client.ToolManager"),
             patch("mcp_template.client.ToolCaller"),
         ):
@@ -27,7 +26,6 @@ class TestMCPClient:
     def test_initialization(self):
         """Test MCPClient initialization."""
         with (
-            patch("mcp_template.client.ServerManager"),
             patch("mcp_template.client.ToolManager"),
             patch("mcp_template.client.ToolCaller"),
         ):

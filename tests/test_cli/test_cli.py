@@ -7,11 +7,11 @@ command dispatch, and error handling.
 
 import os
 import sys
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
-from mcp_template import MCPDeployer, main
+from mcp_template import main
 
 
 @pytest.mark.unit
@@ -87,102 +87,3 @@ class TestMainCLI:
 
     # Note: These tests are also outdated since the CLI structure has changed.
     # Keeping them for reference but updating expectations.
-
-
-@pytest.mark.unit
-class TestMCPDeployer:
-    """Test MCPDeployer class functionality."""
-
-    @patch("mcp_template.deployer.TemplateDiscovery")
-    @patch("mcp_template.deployer.DeploymentManager")
-    def test_init(self, mock_manager_class, mock_discovery_class):
-        """Test MCPDeployer initialization."""
-
-        mock_discovery = Mock()
-        mock_discovery.discover_templates.return_value = {"demo": {"name": "Demo"}}
-        mock_discovery_class.return_value = mock_discovery
-
-        mock_manager = Mock()
-        mock_manager_class.return_value = mock_manager
-
-        deployer = MCPDeployer()
-        assert deployer.templates == {"demo": {"name": "Demo"}}
-
-    @patch("mcp_template.deployer.TemplateDiscovery")
-    @patch("mcp_template.deployer.DeploymentManager")
-    def test_list_templates(self, mock_manager_class, mock_discovery_class):
-        """Test template listing."""
-
-        mock_discovery = Mock()
-        mock_discovery.discover_templates.return_value = {
-            "demo": {"name": "Demo Template", "description": "Test demo"}
-        }
-        mock_discovery_class.return_value = mock_discovery
-
-        mock_manager = Mock()
-        mock_manager_class.return_value = mock_manager
-
-        deployer = MCPDeployer()
-
-        with patch("mcp_template.console"):
-            deployer.list_templates()
-
-    @patch("mcp_template.deployer.TemplateDiscovery")
-    @patch("mcp_template.deployer.DeploymentManager")
-    @patch("mcp_template.deployer.Progress")
-    def test_deploy_template(
-        self, mock_progress, mock_manager_class, mock_discovery_class
-    ):
-        """Test template deployment."""
-        # Mock progress bar to avoid timestamp comparison issues
-        mock_progress_instance = Mock()
-        mock_progress.return_value.__enter__.return_value = mock_progress_instance
-
-        mock_discovery = Mock()
-        mock_discovery.discover_templates.return_value = {
-            "demo": {
-                "name": "Demo Template",
-                "image": "demo:latest",
-                "transport": {"supported": ["http"], "default": "http"},
-            }
-        }
-        mock_discovery_class.return_value = mock_discovery
-
-        mock_manager = Mock()
-        # Mock the deploy_template to return a proper DeploymentResult-like object
-        mock_result = Mock()
-        mock_result.success = True
-        mock_result.deployment_id = "demo-123"
-        mock_result.status = "deployed"
-        mock_result.image = "demo:latest"
-        mock_result.error = None
-        mock_manager.deploy_template.return_value = mock_result
-        mock_manager_class.return_value = mock_manager
-
-        deployer = MCPDeployer()
-
-        with patch("mcp_template.console"):
-            result = deployer.deploy("demo")
-
-        # The test should succeed and return True
-        assert result is True
-        mock_manager.deploy_template.assert_called_once()
-
-    @patch("mcp_template.template.utils.discovery.TemplateDiscovery")
-    @patch("mcp_template.core.deployment_manager.DeploymentManager")
-    def test_deploy_nonexistent_template(
-        self, mock_manager_class, mock_discovery_class
-    ):
-        """Test deployment of non-existent template."""
-        mock_discovery = Mock()
-        mock_discovery.discover_templates.return_value = {}
-        mock_discovery_class.return_value = mock_discovery
-
-        mock_manager = Mock()
-        mock_manager_class.return_value = mock_manager
-
-        deployer = MCPDeployer()
-
-        with patch("mcp_template.console"):
-            result = deployer.deploy("nonexistent")
-            assert result is False

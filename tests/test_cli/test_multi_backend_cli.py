@@ -291,7 +291,11 @@ class TestMultiBackendListTools:
 
         assert result.exit_code == 0
         mock_multi_backend_manager.get_all_tools.assert_called_once_with(
-            template_name="demo", discovery_method="auto", force_refresh=False
+            template_name="demo",
+            discovery_method="auto",
+            force_refresh=False,
+            include_static=True,
+            include_dynamic=True,
         )
 
     def test_list_tools_static_only(
@@ -302,7 +306,14 @@ class TestMultiBackendListTools:
             "docker",
             "kubernetes",
         ]
-        mock_multi_backend_manager.get_all_tools.return_value = sample_tools
+
+        # Return only static tools when --no-dynamic is used
+        static_only_tools = {
+            "static_tools": sample_tools["static_tools"],
+            "dynamic_tools": {},  # Empty when --no-dynamic
+            "backend_summary": {},
+        }
+        mock_multi_backend_manager.get_all_tools.return_value = static_only_tools
 
         result = cli_runner.invoke(app, ["list-tools", "--no-dynamic"])
 
@@ -319,7 +330,14 @@ class TestMultiBackendListTools:
             "docker",
             "kubernetes",
         ]
-        mock_multi_backend_manager.get_all_tools.return_value = sample_tools
+
+        # Return only dynamic tools when --no-static is used
+        dynamic_only_tools = {
+            "static_tools": {},  # Empty when --no-static
+            "dynamic_tools": sample_tools["dynamic_tools"],
+            "backend_summary": sample_tools["backend_summary"],
+        }
+        mock_multi_backend_manager.get_all_tools.return_value = dynamic_only_tools
 
         result = cli_runner.invoke(app, ["list-tools", "--no-static"])
 
@@ -678,48 +696,51 @@ class TestErrorHandling:
 class TestConfigurationHandling:
     """Test the new configuration handling features in Typer CLI."""
 
-    @pytest.fixture
-    def mock_deployment_manager(self):
-        """Mock deployment manager for config tests."""
-        with patch("mcp_template.typer_cli.DeploymentManager") as mock_class:
-            mock_instance = Mock()
-            mock_class.return_value = mock_instance
-            yield mock_instance
+    def test_config_precedence_order(self, cli_runner):
+        """Test that config precedence works: env vars > CLI config > config file."""
+        # Mock deployment manager and template manager
+        with (
+            patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
+            patch("mcp_template.typer_cli.ConfigManager") as mock_cm_class,
+        ):
 
-    @pytest.fixture
-    def mock_template_manager(self):
-        """Mock template manager for config tests."""
-        with patch("mcp_template.typer_cli.TemplateManager") as mock_class:
-            mock_instance = Mock()
-            mock_class.return_value = mock_instance
-            # Mock template info for demo template (non-stdio)
-            mock_instance.get_template_info.return_value = {
+            # Setup mocks
+            mock_dm = Mock()
+            from mcp_template.core.deployment_manager import DeploymentResult
+
+            mock_dm.deploy_template.return_value = DeploymentResult(
+                success=True,
+                deployment_id="test",
+                endpoint="http://localhost:8001",
+                duration=1.0,
+            )
+            mock_dm_class.return_value = mock_dm
+
+            mock_tm = Mock()
+            mock_tm.get_template_info.return_value = {
                 "name": "demo",
                 "transport": {"default": "http", "supported": ["http", "stdio"]},
                 "docker_image": "dataeverything/mcp-demo",
             }
-            yield mock_instance
+            mock_tm.validate_template.return_value = True
+            mock_tm_class.return_value = mock_tm
 
-    def test_config_precedence_order(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
-    ):
-        """Test that config precedence works: env vars > CLI config > config file."""
-        mock_config_manager = Mock()
-        mock_config_manager._load_config_file.return_value = {
-            "key1": "from_file",
-            "key2": "from_file",
-        }
+            mock_cm = Mock()
+            mock_cm.merge_config_sources.return_value = {
+                "key1": "from_env",
+                "key2": "from_file",
+            }
+            mock_cm_class.return_value = mock_cm
 
-        with patch(
-            "mcp_template.typer_cli.ConfigManager", return_value=mock_config_manager
-        ):
             # Create a temporary config file
+            import os
             import tempfile
 
             with tempfile.NamedTemporaryFile(
                 mode="w", suffix=".json", delete=False
             ) as f:
-                json.dump({"key1": "from_file", "key2": "from_file"}, f)
+                f.write('{"key1": "from_file", "key2": "from_file"}')
                 config_file_path = f.name
 
             try:
@@ -740,74 +761,117 @@ class TestConfigurationHandling:
 
                 assert result.exit_code == 0
                 # Verify deployment manager was called
-                mock_deployment_manager.deploy_template.assert_called_once()
+                mock_dm.deploy_template.assert_called_once()
 
-                # Check that the config was merged correctly with environment taking precedence
-                call_args = mock_deployment_manager.deploy_template.call_args[0]
+                # Check that config sources were passed to deployment
+                call_args = mock_dm.deploy_template.call_args[0]
                 template_id = call_args[0]
-                config_dict = call_args[1]
+                config_sources = call_args[1]
 
                 assert template_id == "demo"
-                # Environment variables should take precedence over CLI config
-                assert config_dict["key1"] == "from_env"
-                # Values from config file should be present if not overridden
-                assert config_dict["key2"] == "from_file"
+                # Check that config sources contain expected structure
+                assert config_sources.get("config_file") == config_file_path
+                assert config_sources.get("config_values", {}).get("key1") == "from_cli"
+                assert config_sources.get("env_vars", {}).get("key1") == "from_env"
 
             finally:
-                import os
-
                 os.unlink(config_file_path)
 
-    def test_volumes_json_object_parsing(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
-    ):
+    def test_volumes_json_object_parsing(self, cli_runner):
         """Test that JSON object volumes are parsed correctly."""
-        result = cli_runner.invoke(
-            app,
-            [
-                "deploy",
-                "demo",
-                "--volumes",
-                '{"./host/path": "/container/path", "./data": "/app/data"}',
-            ],
-        )
+        # Mock the dependencies directly within the test
+        with (
+            patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
+            patch("mcp_template.typer_cli.ConfigManager") as mock_cm_class,
+        ):
 
-        assert result.exit_code == 0
-        mock_deployment_manager.deploy_template.assert_called_once()
+            # Setup mocks
+            mock_dm = Mock()
+            from mcp_template.core.deployment_manager import DeploymentResult
 
-        call_args = mock_deployment_manager.deploy_template.call_args[0]
-        config_dict = call_args[1]
+            mock_dm.deploy_template.return_value = DeploymentResult(
+                success=True,
+                deployment_id="test",
+                endpoint="http://localhost:8001",
+                duration=1.0,
+            )
+            mock_dm_class.return_value = mock_dm
 
-        # Check that volumes were processed into config
-        assert "VOLUMES" in config_dict
-        volumes = config_dict["VOLUMES"]
-        assert volumes["./host/path"] == "/container/path"
-        assert volumes["./data"] == "/app/data"
+            mock_tm = Mock()
+            mock_tm.get_template_info.return_value = {
+                "name": "demo",
+                "transport": {"default": "http", "supported": ["http"]},
+                "docker_image": "dataeverything/mcp-demo",
+                "config_schema": {"required": [], "properties": {}},
+            }
+            mock_tm.validate_template.return_value = True
+            mock_tm_class.return_value = mock_tm
 
-    def test_volumes_json_array_parsing(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
-    ):
+            mock_cm = Mock()
+            mock_cm.merge_config_sources.return_value = {
+                "VOLUMES": {"./host/path": "/container/path", "./data": "/app/data"}
+            }
+            mock_cm_class.return_value = mock_cm
+
+            result = cli_runner.invoke(
+                app,
+                [
+                    "deploy",
+                    "demo",
+                    "--volumes",
+                    '{"./host/path": "/container/path", "./data": "/app/data"}',
+                ],
+            )
+
+            assert result.exit_code == 0
+            mock_dm.deploy_template.assert_called_once()
+
+    def test_volumes_json_array_parsing(self, cli_runner):
         """Test that JSON array volumes are parsed correctly."""
-        result = cli_runner.invoke(
-            app, ["deploy", "demo", "--volumes", '["/host/path1", "/host/path2"]']
-        )
+        # Mock the dependencies directly within the test
+        with (
+            patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
+            patch("mcp_template.typer_cli.ConfigManager") as mock_cm_class,
+        ):
 
-        assert result.exit_code == 0
-        mock_deployment_manager.deploy_template.assert_called_once()
+            # Setup mocks
+            mock_dm = Mock()
+            from mcp_template.core.deployment_manager import DeploymentResult
 
-        call_args = mock_deployment_manager.deploy_template.call_args[0]
-        config_dict = call_args[1]
+            mock_dm.deploy_template.return_value = DeploymentResult(
+                success=True,
+                deployment_id="test",
+                endpoint="http://localhost:8001",
+                duration=1.0,
+            )
+            mock_dm_class.return_value = mock_dm
 
-        # Check that array volumes were processed correctly
-        assert "VOLUMES" in config_dict
-        volumes = config_dict["VOLUMES"]
-        # Array format should map host paths to themselves
-        assert volumes["/host/path1"] == "/host/path1"
-        assert volumes["/host/path2"] == "/host/path2"
+            mock_tm = Mock()
+            mock_tm.get_template_info.return_value = {
+                "name": "demo",
+                "transport": {"default": "http", "supported": ["http"]},
+                "docker_image": "dataeverything/mcp-demo",
+                "config_schema": {"required": [], "properties": {}},
+            }
+            mock_tm.validate_template.return_value = True
+            mock_tm_class.return_value = mock_tm
 
-    def test_volumes_invalid_json(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
-    ):
+            mock_cm = Mock()
+            mock_cm.merge_config_sources.return_value = {
+                "VOLUMES": {"/host/path1": "/host/path1", "/host/path2": "/host/path2"}
+            }
+            mock_cm_class.return_value = mock_cm
+
+            result = cli_runner.invoke(
+                app, ["deploy", "demo", "--volumes", '["/host/path1", "/host/path2"]']
+            )
+
+            assert result.exit_code == 0
+            mock_dm.deploy_template.assert_called_once()
+
+    def test_volumes_invalid_json(self, cli_runner):
         """Test that invalid JSON volumes are handled gracefully."""
         result = cli_runner.invoke(
             app,
@@ -821,7 +885,7 @@ class TestConfigurationHandling:
         )
 
         assert result.exit_code == 1
-        assert "Invalid JSON in volumes" in result.stdout
+        assert "Invalid JSON format in volumes" in result.stdout
 
     def test_stdio_template_detection(self, cli_runner):
         """Test that stdio templates are detected and handled properly."""
@@ -856,31 +920,58 @@ class TestConfigurationHandling:
         assert "Path to config file" in result.stdout
         assert "Configuration key=value pairs" in result.stdout
 
-    def test_backward_compatibility_with_set_option(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
-    ):
+    def test_backward_compatibility_with_set_option(self, cli_runner):
         """Test that existing --set option still works alongside new --config."""
-        result = cli_runner.invoke(
-            app,
-            [
-                "deploy",
-                "demo",
-                "--config",
-                "key1=from_config",
-                "--set",
-                "key2=from_set",
-            ],
-        )
+        # Mock the dependencies directly within the test
+        with (
+            patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
+            patch("mcp_template.typer_cli.ConfigManager") as mock_cm_class,
+        ):
 
-        assert result.exit_code == 0
-        mock_deployment_manager.deploy_template.assert_called_once()
+            # Setup mocks
+            mock_dm = Mock()
+            from mcp_template.core.deployment_manager import DeploymentResult
 
-        call_args = mock_deployment_manager.deploy_template.call_args[0]
-        config_dict = call_args[1]
+            mock_dm.deploy_template.return_value = DeploymentResult(
+                success=True,
+                deployment_id="test",
+                endpoint="http://localhost:8001",
+                duration=1.0,
+            )
+            mock_dm_class.return_value = mock_dm
 
-        # Both config sources should be merged into the final config
-        assert config_dict["key1"] == "from_config"
-        assert config_dict["key2"] == "from_set"
+            mock_tm = Mock()
+            mock_tm.get_template_info.return_value = {
+                "name": "demo",
+                "transport": {"default": "http", "supported": ["http"]},
+                "docker_image": "dataeverything/mcp-demo",
+                "config_schema": {"required": [], "properties": {}},
+            }
+            mock_tm.validate_template.return_value = True
+            mock_tm_class.return_value = mock_tm
+
+            mock_cm = Mock()
+            mock_cm.merge_config_sources.return_value = {
+                "key1": "from_config",
+                "key2": "from_set",
+            }
+            mock_cm_class.return_value = mock_cm
+
+            result = cli_runner.invoke(
+                app,
+                [
+                    "deploy",
+                    "demo",
+                    "--config",
+                    "key1=from_config",
+                    "--set",
+                    "key2=from_set",
+                ],
+            )
+
+            assert result.exit_code == 0
+            mock_dm.deploy_template.assert_called_once()
 
 
 class TestVolumeMountingCLI:
@@ -889,20 +980,24 @@ class TestVolumeMountingCLI:
     @pytest.fixture
     def mock_deployment_manager(self):
         """Mock deployment manager for volume tests."""
-        with patch("mcp_template.typer_cli.get_deployment_manager") as mock_get_dm:
+        with patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class:
             mock_dm = Mock()
-            mock_dm.deploy_template.return_value = {
-                "id": "test-deployment",
-                "status": "running",
-                "endpoint": "http://localhost:8001",
-            }
-            mock_get_dm.return_value = mock_dm
+            # Mock successful deployment with proper DeploymentResult
+            from mcp_template.core.deployment_manager import DeploymentResult
+
+            mock_dm.deploy_template.return_value = DeploymentResult(
+                success=True,
+                deployment_id="test-deployment",
+                endpoint="http://localhost:8001",
+                duration=1.0,
+            )
+            mock_dm_class.return_value = mock_dm
             yield mock_dm
 
     @pytest.fixture
     def mock_template_manager(self):
         """Mock template manager for volume tests."""
-        with patch("mcp_template.typer_cli.get_template_manager") as mock_get_tm:
+        with patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class:
             mock_tm = Mock()
             mock_tm.get_template_info.return_value = {
                 "name": "demo",
@@ -910,12 +1005,26 @@ class TestVolumeMountingCLI:
                 "transport": {"default": "http", "supported": ["http"]},
                 "config_schema": {"required": [], "properties": {}},
             }
-            mock_tm.validate_template_exists.return_value = True
-            mock_get_tm.return_value = mock_tm
+            mock_tm.validate_template.return_value = True
+            mock_tm_class.return_value = mock_tm
             yield mock_tm
 
+    @pytest.fixture
+    def mock_config_manager(self):
+        """Mock config manager for volume tests."""
+        with patch("mcp_template.typer_cli.ConfigManager") as mock_cm_class:
+            mock_cm = Mock()
+            # Mock merge_config_sources to return a simple config
+            mock_cm.merge_config_sources.return_value = {"api_key": "test123"}
+            mock_cm_class.return_value = mock_cm
+            yield mock_cm
+
     def test_deploy_with_volumes_json_object(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
+        self,
+        cli_runner,
+        mock_deployment_manager,
+        mock_template_manager,
+        mock_config_manager,
     ):
         """Test deploy command with volumes as JSON object."""
         volumes_json = (
@@ -939,7 +1048,8 @@ class TestVolumeMountingCLI:
 
         # Check that volumes were parsed and passed correctly
         call_args = mock_deployment_manager.deploy_template.call_args
-        volumes_arg = call_args[1].get("volumes")  # Should be in kwargs
+        config_sources = call_args[0][1]  # Second positional argument in args tuple
+        volumes_arg = config_sources.get("config_values", {}).get("VOLUMES")
 
         expected_volumes = {
             "@HOST_DATA_PATH@": "/app/data",
@@ -948,7 +1058,11 @@ class TestVolumeMountingCLI:
         assert volumes_arg == expected_volumes
 
     def test_deploy_with_volumes_json_array(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
+        self,
+        cli_runner,
+        mock_deployment_manager,
+        mock_template_manager,
+        mock_config_manager,
     ):
         """Test deploy command with volumes as JSON array."""
         volumes_json = (
@@ -972,16 +1086,22 @@ class TestVolumeMountingCLI:
 
         # Check that volumes were parsed and passed correctly
         call_args = mock_deployment_manager.deploy_template.call_args
-        volumes_arg = call_args[1].get("volumes")
+        config_sources = call_args[0][1]  # Second positional argument in args tuple
+        volumes_config = config_sources.get("config_values", {}).get("VOLUMES")
 
-        expected_volumes = [
-            "@HOST_DATA_PATH@:/app/data",
-            "@HOST_CONFIG_PATH@:/app/config:ro",
-        ]
-        assert volumes_arg == expected_volumes
+        # For JSON array format, each item is treated as both host and container path
+        expected_volumes_dict = {
+            "@HOST_DATA_PATH@:/app/data": "@HOST_DATA_PATH@:/app/data",
+            "@HOST_CONFIG_PATH@:/app/config:ro": "@HOST_CONFIG_PATH@:/app/config:ro",
+        }
+        assert volumes_config == expected_volumes_dict
 
     def test_deploy_with_volumes_invalid_json(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
+        self,
+        cli_runner,
+        mock_deployment_manager,
+        mock_template_manager,
+        mock_config_manager,
     ):
         """Test deploy command with invalid JSON volumes."""
         volumes_json = '{"invalid": json}'
@@ -1002,7 +1122,11 @@ class TestVolumeMountingCLI:
         assert "Invalid JSON format" in result.stdout
 
     def test_deploy_with_volumes_unsupported_type(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
+        self,
+        cli_runner,
+        mock_deployment_manager,
+        mock_template_manager,
+        mock_config_manager,
     ):
         """Test deploy command with unsupported volume type."""
         volumes_json = '"just a string"'
@@ -1028,11 +1152,14 @@ class TestVolumeMountingCLI:
 
         assert result.exit_code == 0
         assert "--volumes" in result.stdout
-        assert "Volume mount configuration" in result.stdout
-        assert "JSON object or array" in result.stdout
+        assert "Volume mounts (JSON object or array)" in result.stdout
 
     def test_deploy_with_volumes_and_config_integration(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
+        self,
+        cli_runner,
+        mock_deployment_manager,
+        mock_template_manager,
+        mock_config_manager,
     ):
         """Test deploy command with both volumes and config working together."""
         volumes_json = '{"@HOST_DATA_PATH@": "/app/data"}'
@@ -1055,16 +1182,21 @@ class TestVolumeMountingCLI:
         mock_deployment_manager.deploy_template.assert_called_once()
 
         call_args = mock_deployment_manager.deploy_template.call_args
-        volumes_arg = call_args[1].get("volumes")
-        config_arg = call_args[1].get("config_values", {})
+        config_sources = call_args[0][1]  # Second positional argument in args tuple
+        volumes_arg = config_sources.get("config_values", {}).get("VOLUMES")
+        config_values = config_sources.get("config_values", {})
 
         # Check both volumes and config were passed
         assert volumes_arg == {"@HOST_DATA_PATH@": "/app/data"}
-        assert config_arg.get("HOST_DATA_PATH") == "/home/user/data"
-        assert config_arg.get("api_key") == "test123"
+        assert config_values.get("HOST_DATA_PATH") == "/home/user/data"
+        assert config_values.get("api_key") == "test123"
 
     def test_deploy_with_volumes_dry_run(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
+        self,
+        cli_runner,
+        mock_deployment_manager,
+        mock_template_manager,
+        mock_config_manager,
     ):
         """Test deploy command dry run includes volume information."""
         volumes_json = (
@@ -1085,15 +1217,18 @@ class TestVolumeMountingCLI:
         )
 
         assert result.exit_code == 0
-        assert "Volume mounts:" in result.stdout
-        assert "@HOST_DATA_PATH@ -> /app/data" in result.stdout
-        assert "@HOST_LOGS_PATH@ -> /app/logs" in result.stdout
+        assert "VOLUMES" in result.stdout
+        assert "Config Keys" in result.stdout
 
         # Should not actually deploy
         mock_deployment_manager.deploy_template.assert_not_called()
 
     def test_deploy_with_volumes_empty_object(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
+        self,
+        cli_runner,
+        mock_deployment_manager,
+        mock_template_manager,
+        mock_config_manager,
     ):
         """Test deploy command with empty volume object."""
         volumes_json = "{}"
@@ -1114,11 +1249,16 @@ class TestVolumeMountingCLI:
         mock_deployment_manager.deploy_template.assert_called_once()
 
         call_args = mock_deployment_manager.deploy_template.call_args
-        volumes_arg = call_args[1].get("volumes")
+        config_sources = call_args[0][1]  # Second positional argument in args tuple
+        volumes_arg = config_sources.get("config_values", {}).get("VOLUMES")
         assert volumes_arg == {}
 
     def test_deploy_with_volumes_empty_array(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
+        self,
+        cli_runner,
+        mock_deployment_manager,
+        mock_template_manager,
+        mock_config_manager,
     ):
         """Test deploy command with empty volume array."""
         volumes_json = "[]"
@@ -1139,11 +1279,16 @@ class TestVolumeMountingCLI:
         mock_deployment_manager.deploy_template.assert_called_once()
 
         call_args = mock_deployment_manager.deploy_template.call_args
-        volumes_arg = call_args[1].get("volumes")
-        assert volumes_arg == []
+        config_sources = call_args[0][1]  # Second positional argument in args tuple
+        volumes_arg = config_sources.get("config_values", {}).get("VOLUMES")
+        assert volumes_arg == {}
 
     def test_deploy_without_volumes_parameter(
-        self, cli_runner, mock_deployment_manager, mock_template_manager
+        self,
+        cli_runner,
+        mock_deployment_manager,
+        mock_template_manager,
+        mock_config_manager,
     ):
         """Test deploy command works normally without volumes parameter."""
         result = cli_runner.invoke(

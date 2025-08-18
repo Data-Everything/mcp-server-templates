@@ -7,7 +7,7 @@ consolidating functionality from CLI and MCPClient for deployment operations.
 
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from mcp_template.backends import get_backend
 from mcp_template.core.config_manager import ConfigManager
@@ -154,11 +154,11 @@ class DeploymentManager:
                     duration=time.time() - start_time,
                 )
 
+            volume_config = config_sources.pop("volume_config", None)
             # Process and merge configuration
             final_config = self.config_manager.merge_config_sources(
                 template_config=template_info, **config_sources
             )
-
             # Process Kubernetes-specific configuration if backend is Kubernetes
             k8s_config = {}
             if self.backend == "kubernetes":
@@ -193,7 +193,11 @@ class DeploymentManager:
 
             # Prepare deployment specification
             deployment_spec = self._prepare_deployment_spec(
-                template_id, template_info, final_config, deployment_options
+                template_id,
+                template_info,
+                final_config,
+                volume_config,
+                deployment_options,
             )
 
             # Execute deployment
@@ -473,6 +477,7 @@ class DeploymentManager:
         template_id: str,
         template_info: Dict[str, Any],
         config: Dict[str, Any],
+        volumes: Union[Dict[str, str], List, None],
         options: DeploymentOptions,
     ) -> Dict[str, Any]:
         """Prepare deployment specification for backend."""
@@ -480,6 +485,7 @@ class DeploymentManager:
             "template_id": template_id,
             "template_info": template_info,
             "config": config,
+            "volumes": volumes if volumes is not None else {},
             "options": options.__dict__,
         }
 
@@ -490,6 +496,7 @@ class DeploymentManager:
             template_id = deployment_spec["template_id"]
             template_info = deployment_spec["template_info"]
             config = deployment_spec["config"]
+            volumes = deployment_spec.get("volumes", {})
             options = deployment_spec["options"]
 
             # Apply deployment options to config using RESERVED_ENV_VARS mapping

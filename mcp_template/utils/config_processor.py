@@ -7,6 +7,7 @@ and handle special properties like volume mounts and command arguments.
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -307,6 +308,26 @@ class ConfigProcessor:
 
         # Make a copy to avoid modifying during iteration
         config_copy = config.copy()
+        # Handle special VOLUMES configuration key from CLI --volumes parameter
+        if "VOLUMES" in config_copy:
+            try:
+                volumes_config = config_copy["VOLUMES"]
+                if isinstance(volumes_config, dict):
+                    # Process each volume mount from the --volumes JSON
+                    for host_path, container_path in volumes_config.items():
+                        # Expand tilde in host paths
+                        expanded_host_path = os.path.expanduser(host_path)
+                        # Convert relative paths to absolute paths
+                        if not os.path.isabs(expanded_host_path):
+                            expanded_host_path = os.path.abspath(expanded_host_path)
+                        volumes[expanded_host_path] = container_path
+
+                # Remove VOLUMES from config as it's processed
+                config_copy.pop("VOLUMES", None)
+                config.pop("VOLUMES", None)  # Also remove from original config
+
+            except Exception as e:
+                logger.warning("Error processing VOLUMES configuration: %s", e)
 
         for prop_key, prop_value in config_properties.items():
             delete_key = False
@@ -601,6 +622,12 @@ class ConfigProcessor:
         properties = config_schema.get("properties", {})
 
         for key, value in config_values.items():
+            # Special handling for VOLUMES key from CLI --volumes parameter
+            if key == "VOLUMES":
+                # Keep VOLUMES as-is (dict) for later processing
+                converted_config[key] = value
+                continue
+
             # Handle nested CLI config using double underscore notation
             if "__" in key:
                 nested_key = self._handle_nested_cli_config(key, value, properties)

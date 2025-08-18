@@ -5,14 +5,12 @@ Tests the volume mounting features added to both the Python client API
 and CLI deploy command, including dict/list formats and validation.
 """
 
-import json
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from mcp_template.client import MCPClient
-from mcp_template.core.deployment_manager import DeploymentManager
+from mcp_template.core.deployment_manager import DeploymentManager, DeploymentResult
 
 
 class TestVolumeMounting:
@@ -31,44 +29,17 @@ class TestVolumeMounting:
         volumes = {"/host/data": "/container/data", "/host/config": "/container/config"}
 
         with patch.object(client.deployment_manager, "deploy_template") as mock_deploy:
-            mock_deploy.return_value = {
-                "id": "test-deployment",
-                "status": "running",
-                "ports": "8080->8080",
-            }
-
-            result = client.start_server(
-                "test-template",
-                volumes=volumes,
-                config_values={"test_key": "test_value"},
+            mock_deploy.return_value = DeploymentResult(
+                success=True,
+                deployment_id="test-deployment",
+                status="running",
+                ports={"8080": 8080},
             )
 
-            # Verify deployment was called with volumes
-            mock_deploy.assert_called_once()
-            call_args = mock_deploy.call_args
-
-            # Check that volumes were passed correctly in the first positional argument (template_name)
-            # and volumes should be in the config values or as a separate argument
-            # Let's check if volumes were passed in any form
-            assert mock_deploy.called
-
-    def test_client_volume_mounting_list_format(self):
-        """Test client API volume mounting with list format."""
-        client = MCPClient()
-
-        volumes = ["/host/data:/container/data", "/host/config:/container/config:ro"]
-
-        with patch.object(client.deployment_manager, "deploy") as mock_deploy:
-            mock_deploy.return_value = {
-                "id": "test-deployment",
-                "status": "running",
-                "ports": "8080->8080",
-            }
-
             result = client.start_server(
                 "test-template",
                 volumes=volumes,
-                config_values={"test_key": "test_value"},
+                configuration={"test_key": "test_value"},
             )
 
             # Verify deployment was called with volumes
@@ -76,16 +47,56 @@ class TestVolumeMounting:
             call_args = mock_deploy.call_args
 
             # Check that volumes were passed correctly
-            deploy_config = call_args[1]
-            assert "volumes" in deploy_config
-            assert deploy_config["volumes"] == volumes
+            # The deploy_template method is called with (template_id, config_sources, deployment_options)
+            # Volumes should be in config_sources["config_values"]["VOLUMES"]
+            template_id, config_sources, deployment_options = call_args[0]
+            assert "config_values" in config_sources
+            assert "VOLUMES" in config_sources["config_values"]
+            assert config_sources["config_values"]["VOLUMES"] == volumes
+
+    def test_client_volume_mounting_list_format(self):
+        """Test client API volume mounting with list format."""
+        client = MCPClient()
+
+        volumes = ["/host/data:/container/data", "/host/config:/container/config:ro"]
+
+        with patch.object(client.deployment_manager, "deploy_template") as mock_deploy:
+            mock_deploy.return_value = DeploymentResult(
+                success=True,
+                deployment_id="test-deployment",
+                status="running",
+                ports={"8080": 8080},
+            )
+
+            result = client.start_server(
+                "test-template",
+                volumes=volumes,
+                configuration={"test_key": "test_value"},
+            )
+
+            # Verify deployment was called with volumes
+            mock_deploy.assert_called_once()
+            call_args = mock_deploy.call_args
+
+            # Check that volumes were passed correctly
+            # The deploy_template method is called with (template_id, config_sources, deployment_options)
+            # Volumes should be in config_sources["config_values"]["VOLUMES"]
+            template_id, config_sources, deployment_options = call_args[0]
+            assert "config_values" in config_sources
+            assert "VOLUMES" in config_sources["config_values"]
+            assert config_sources["config_values"]["VOLUMES"] == {
+                "/host/data:/container/data": "/host/data:/container/data",
+                "/host/config:/container/config:ro": "/host/config:/container/config:ro",
+            }
 
     def test_client_volume_mounting_empty_volumes(self):
         """Test client API handles empty volumes correctly."""
         client = MCPClient()
 
-        with patch.object(client.deployment_manager, "deploy") as mock_deploy:
-            mock_deploy.return_value = {"id": "test-deployment", "status": "running"}
+        with patch.object(client.deployment_manager, "deploy_template") as mock_deploy:
+            mock_deploy.return_value = DeploymentResult(
+                success=True, deployment_id="test-deployment", status="running"
+            )
 
             # Test with None
             result = client.start_server("test-template", volumes=None)
@@ -289,7 +300,7 @@ class TestVolumeMounting:
                 result = client.start_server(
                     "test-template",
                     volumes=volumes,
-                    config_values={"api_key": "test-key"},
+                    configuration={"api_key": "test-key"},
                 )
 
                 # Verify docker run was called with volume arguments
@@ -324,8 +335,10 @@ class TestVolumeMounting:
         # For now, just ensure these don't crash the system
         client = MCPClient()
 
-        with patch.object(client.deployment_manager, "deploy") as mock_deploy:
-            mock_deploy.return_value = {"id": "test", "status": "running"}
+        with patch.object(client.deployment_manager, "deploy_template") as mock_deploy:
+            mock_deploy.return_value = DeploymentResult(
+                success=True, deployment_id="test", status="running"
+            )
 
             # Should not raise exceptions (but might in future with validation)
             try:
@@ -343,23 +356,30 @@ class TestVolumeMounting:
         # Volumes with placeholder values that should be resolved by template
         volumes = {"@HOST_DATA_PATH@": "/app/data", "@HOST_CONFIG_PATH@": "/app/config"}
 
-        config_values = {
+        configuration = {
             "HOST_DATA_PATH": "/home/user/project/data",
             "HOST_CONFIG_PATH": "/home/user/project/config",
         }
 
-        with patch.object(client.deployment_manager, "deploy") as mock_deploy:
-            mock_deploy.return_value = {"id": "test-deployment", "status": "running"}
+        with patch.object(client.deployment_manager, "deploy_template") as mock_deploy:
+            mock_deploy.return_value = DeploymentResult(
+                success=True, deployment_id="test-deployment", status="running"
+            )
 
             result = client.start_server(
-                "test-template", volumes=volumes, config_values=config_values
+                "test-template", volumes=volumes, configuration=configuration
             )
 
             # Verify deployment was called with both volumes and config
             mock_deploy.assert_called_once()
-            call_args = mock_deploy.call_args[1]
+            call_args = mock_deploy.call_args
 
-            assert "volumes" in call_args
-            assert "config_values" in call_args
-            assert call_args["volumes"] == volumes
-            assert call_args["config_values"] == config_values
+            # Check arguments passed to deploy_template
+            template_id, config_sources, deployment_options = call_args[0]
+            assert "config_values" in config_sources
+            assert "VOLUMES" in config_sources["config_values"]
+            # Volumes should contain the original placeholder values
+            assert config_sources["config_values"]["VOLUMES"] == volumes
+            # Configuration should be merged in config_values too
+            for key, value in configuration.items():
+                assert config_sources["config_values"][key] == value
