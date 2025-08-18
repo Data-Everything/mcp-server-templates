@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 import pytest
 from typer.testing import CliRunner
 
-from mcp_template.typer_cli import app
+from mcp_template.cli import app
 
 pytestmark = pytest.mark.unit
 

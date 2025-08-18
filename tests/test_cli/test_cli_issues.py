@@ -18,9 +18,9 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
+from mcp_template.cli import app
 from mcp_template.core.tool_manager import ToolManager
 from mcp_template.tools.docker_probe import DockerProbe
-from mcp_template.typer_cli import app
 
 pytestmarker = pytest.mark.unit
 
@@ -162,7 +162,7 @@ class TestDuplicateToolsIssue(unittest.TestCase):
     def test_table_output_deduplication(self):
         """Test that table output properly deduplicates tools."""
         # This tests the display_tools_with_metadata function logic
-        from mcp_template.typer_cli import display_tools_with_metadata
+        from mcp_template.cli import display_tools_with_metadata
 
         tools_result = {
             "tools": [

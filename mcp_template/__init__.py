@@ -23,13 +23,13 @@ Key Features:
 import logging
 
 from mcp_template.backends.docker import DockerDeploymentService
+from mcp_template.cli import app
 from mcp_template.client import MCPClient
 from mcp_template.core import DeploymentManager as CommonDeploymentManager
 from mcp_template.core import TemplateManager, ToolManager
 from mcp_template.core.deployment_manager import DeploymentManager
 from mcp_template.template.utils.creation import TemplateCreator
 from mcp_template.template.utils.discovery import TemplateDiscovery
-from mcp_template.typer_cli import app
 
 # Export the classes for external use (CI compatibility)
 __all__ = [

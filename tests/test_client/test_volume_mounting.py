@@ -228,7 +228,7 @@ class TestVolumeMounting:
 
     def test_cli_volume_argument_parsing_json_object(self):
         """Test CLI volume argument parsing for JSON object format."""
-        from mcp_template.typer_cli import parse_volumes_argument
+        from mcp_template.cli import parse_volumes_argument
 
         # Test JSON object format
         json_volumes = (
@@ -244,7 +244,7 @@ class TestVolumeMounting:
 
     def test_cli_volume_argument_parsing_json_array(self):
         """Test CLI volume argument parsing for JSON array format."""
-        from mcp_template.typer_cli import parse_volumes_argument
+        from mcp_template.cli import parse_volumes_argument
 
         # Test JSON array format
         json_volumes = (
@@ -257,7 +257,7 @@ class TestVolumeMounting:
 
     def test_cli_volume_argument_parsing_invalid_json(self):
         """Test CLI volume argument parsing handles invalid JSON gracefully."""
-        from mcp_template.typer_cli import parse_volumes_argument
+        from mcp_template.cli import parse_volumes_argument
 
         # Test invalid JSON
         with pytest.raises(ValueError, match="Invalid JSON format"):
@@ -265,7 +265,7 @@ class TestVolumeMounting:
 
     def test_cli_volume_argument_parsing_unsupported_type(self):
         """Test CLI volume argument parsing rejects unsupported types."""
-        from mcp_template.typer_cli import parse_volumes_argument
+        from mcp_template.cli import parse_volumes_argument
 
         # Test unsupported type (string)
         with pytest.raises(ValueError, match="must be a JSON object or array"):
