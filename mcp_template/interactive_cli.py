@@ -15,7 +15,6 @@ import traceback
 from typing import Any, Dict, List, Union
 
 import cmd2
-from cmd2 import with_argparser
 from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
@@ -24,12 +23,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
 
-from mcp_template.core import (
-    DeploymentManager,
-    OutputFormatter,
-    TemplateManager,
-    ToolManager,
-)
+from mcp_template.core import DeploymentManager, TemplateManager, ToolManager
 from mcp_template.core.cache import CacheManager
 from mcp_template.core.tool_caller import ToolCaller
 from mcp_template.utils.config_processor import ConfigProcessor
@@ -996,7 +990,6 @@ class InteractiveCLI(cmd2.Cmd):
         self.template_manager = TemplateManager()
         self.deployment_manager = DeploymentManager()
         self.tool_manager = ToolManager()
-        self.formatter = OutputFormatter()
 
         # Keep utility components
         self.cache = CacheManager()

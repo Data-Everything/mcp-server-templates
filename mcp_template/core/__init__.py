@@ -23,7 +23,6 @@ from .mcp_connection import MCPConnection
 
 # Infrastructure Components (legacy components, kept for compatibility)
 from .multi_backend_manager import MultiBackendManager
-from .output_formatter import OutputFormatter
 from .template_manager import TemplateManager
 from .tool_caller import ToolCaller
 from .tool_manager import ToolManager
@@ -34,7 +33,6 @@ __all__ = [
     "TemplateManager",
     "DeploymentManager",
     "ToolManager",
-    "OutputFormatter",
     # Infrastructure
     "MCPConnection",
     "MultiBackendManager",
