@@ -2,12 +2,10 @@
 Integration tests for Docker tool discovery functionality.
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
-from mcp_template.cli import EnhancedCLI
 from mcp_template.core.tool_manager import ToolManager
 from mcp_template.tools.docker_probe import DockerProbe
 from mcp_template.tools.mcp_client_probe import MCPClientProbe
@@ -23,7 +21,6 @@ class TestDockerDiscoveryIntegration:
         self.tool_manager = ToolManager(backend_type="docker")
         self.docker_probe = DockerProbe()
         self.mcp_client = MCPClientProbe()
-        self.cli = EnhancedCLI()
 
     @patch("mcp_template.tools.docker_probe.DockerProbe.discover_tools_from_image")
     def test_template_discovery_uses_docker_for_dynamic_templates(

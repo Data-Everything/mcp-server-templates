@@ -23,7 +23,6 @@ Key Features:
 import logging
 
 from mcp_template.backends.docker import DockerDeploymentService
-from mcp_template.cli import CLI, EnhancedCLI
 from mcp_template.client import MCPClient
 from mcp_template.core import DeploymentManager as CommonDeploymentManager
 from mcp_template.core import TemplateManager, ToolManager
@@ -43,8 +42,6 @@ __all__ = [
     "CommonDeploymentManager",
     "ToolManager",
     "OutputFormatter",
-    "CLI",
-    "EnhancedCLI",
 ]
 
 # Constants
@@ -65,14 +62,6 @@ def get_console():
 
         console = Console()
     return console
-
-
-def get_enhanced_cli():
-    """Get enhanced CLI instance."""
-    global enhanced_cli
-    if enhanced_cli is None:
-        enhanced_cli = EnhancedCLI()
-    return enhanced_cli
 
 
 def split_command_args(args):
