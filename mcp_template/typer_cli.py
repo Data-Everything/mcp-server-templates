@@ -222,6 +222,7 @@ def deploy(
         mcpt deploy filesystem --config allowed_dirs=/tmp --dry-run
         mcpt deploy demo --config hello_from="Custom Server" --volumes '{"./data": "/app/data"}'
     """
+
     cli_state["dry_run"] = dry_run
 
     if dry_run:

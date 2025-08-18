@@ -9,6 +9,8 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 from mcp_template.backends import BaseDeploymentBackend, get_backend
+from mcp_template.core.deployment_manager import DeploymentManager
+from mcp_template.core.tool_manager import ToolManager
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +33,6 @@ class MultiBackendManager:
                             Defaults to ["docker", "kubernetes"] (production backends only)
         """
         # Import here to avoid circular imports
-        from mcp_template.core.deployment_manager import DeploymentManager
-        from mcp_template.core.tool_manager import ToolManager
 
         self.enabled_backends = enabled_backends or ["docker", "kubernetes"]
         self.backends: Dict[str, BaseDeploymentBackend] = {}
