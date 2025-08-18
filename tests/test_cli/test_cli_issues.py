@@ -111,7 +111,7 @@ class TestDuplicateToolsIssue(unittest.TestCase):
             {"name": "tool2", "description": "Another duplicate tool2"},  # Duplicate
         ]
 
-        # Simulate the deduplication logic from typer_cli.py
+        # Simulate the deduplication logic from cli.py
         seen_tools = set()
         unique_tools = []
         for tool in duplicate_tools:
@@ -175,7 +175,7 @@ class TestDuplicateToolsIssue(unittest.TestCase):
         }
 
         # Capture output (this would normally go to console)
-        with patch("mcp_template.typer_cli.console") as mock_console:
+        with patch("mcp_template.cli.console") as mock_console:
             display_tools_with_metadata(tools_result, "test-template")
 
             # Verify that the table was created and printed

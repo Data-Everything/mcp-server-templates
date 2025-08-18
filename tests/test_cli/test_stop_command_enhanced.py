@@ -1,5 +1,5 @@
 """
-Tests for the enhanced stop command functionality in typer_cli.py.
+Tests for the enhanced stop command functionality in cli.py.
 """
 
 from unittest.mock import MagicMock, Mock, patch
@@ -75,7 +75,7 @@ class TestStopCommandEnhanced:
         """Test stop with deployment ID in dry-run mode."""
         deployment_id = "abcdef123456789012345678"  # Longer than 20 chars
 
-        with patch("mcp_template.typer_cli.MultiBackendManager") as mock_multi:
+        with patch("mcp_template.cli.MultiBackendManager") as mock_multi:
             mock_manager = Mock()
             mock_manager.detect_backend_for_deployment.return_value = "docker"
             mock_multi.return_value = mock_manager
@@ -87,7 +87,7 @@ class TestStopCommandEnhanced:
         assert f"Would stop deployment: {deployment_id}" in result.stdout
         assert "Auto-detected backend: docker" in result.stdout
 
-    @patch("mcp_template.typer_cli.MultiBackendManager")
+    @patch("mcp_template.cli.MultiBackendManager")
     def test_stop_all_deployments_single_backend(self, mock_multi, runner):
         """Test stopping all deployments on a single backend."""
         # Mock deployment manager
@@ -99,7 +99,7 @@ class TestStopCommandEnhanced:
         mock_deployment_manager.stop_deployment.return_value = {"success": True}
 
         with patch(
-            "mcp_template.typer_cli.DeploymentManager",
+            "mcp_template.cli.DeploymentManager",
             return_value=mock_deployment_manager,
         ):
             result = runner.invoke(
@@ -110,7 +110,7 @@ class TestStopCommandEnhanced:
         assert "Stopped 2 deployment(s)" in result.stdout
         assert mock_deployment_manager.stop_deployment.call_count == 2
 
-    @patch("mcp_template.typer_cli.MultiBackendManager")
+    @patch("mcp_template.cli.MultiBackendManager")
     def test_stop_template_deployments_single_backend(self, mock_multi, runner):
         """Test stopping template deployments on a single backend."""
         # Mock deployment manager
@@ -122,7 +122,7 @@ class TestStopCommandEnhanced:
         mock_deployment_manager.stop_deployment.return_value = {"success": True}
 
         with patch(
-            "mcp_template.typer_cli.DeploymentManager",
+            "mcp_template.cli.DeploymentManager",
             return_value=mock_deployment_manager,
         ):
             result = runner.invoke(
@@ -133,7 +133,7 @@ class TestStopCommandEnhanced:
         assert "Stopped 1 'demo' deployment(s)" in result.stdout
         assert mock_deployment_manager.stop_deployment.call_count == 1
 
-    @patch("mcp_template.typer_cli.MultiBackendManager")
+    @patch("mcp_template.cli.MultiBackendManager")
     def test_stop_all_deployments_multi_backend(self, mock_multi, runner):
         """Test stopping all deployments across multiple backends."""
         # Mock multi-backend manager
@@ -162,7 +162,7 @@ class TestStopCommandEnhanced:
         assert "Stopped 2 deployment(s)" in result.stdout
         assert mock_manager.stop_deployment.call_count == 2
 
-    @patch("mcp_template.typer_cli.MultiBackendManager")
+    @patch("mcp_template.cli.MultiBackendManager")
     def test_stop_single_deployment_auto_detection(self, mock_multi, runner):
         """Test stopping single deployment with backend auto-detection."""
         deployment_id = "abcdef123456789012345678"
@@ -181,7 +181,7 @@ class TestStopCommandEnhanced:
         assert f"Successfully stopped deployment '{deployment_id}'" in result.stdout
         assert mock_manager.stop_deployment.called
 
-    @patch("mcp_template.typer_cli.DeploymentManager")
+    @patch("mcp_template.cli.DeploymentManager")
     def test_stop_single_deployment_specific_backend(self, mock_deployment_cls, runner):
         """Test stopping single deployment on specific backend."""
         deployment_id = "abcdef123456789012345678"
@@ -203,7 +203,7 @@ class TestStopCommandEnhanced:
         mock_deployment_manager.list_deployments.return_value = []
 
         with patch(
-            "mcp_template.typer_cli.DeploymentManager",
+            "mcp_template.cli.DeploymentManager",
             return_value=mock_deployment_manager,
         ):
             result = runner.invoke(app, ["stop", "--all", "--backend", "docker"])
@@ -211,7 +211,7 @@ class TestStopCommandEnhanced:
         assert result.exit_code == 0
         assert "No running deployments found" in result.stdout
 
-    @patch("mcp_template.typer_cli.MultiBackendManager")
+    @patch("mcp_template.cli.MultiBackendManager")
     def test_stop_deployment_failure(self, mock_multi, runner):
         """Test stop deployment failure handling."""
         deployment_id = "abcdef123456789012345678"
@@ -253,7 +253,7 @@ class TestStopCommandEdgeCases:
         """Test stop command with custom timeout."""
         deployment_id = "abcdef123456789012345678"
 
-        with patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_cls:
+        with patch("mcp_template.cli.DeploymentManager") as mock_dm_cls:
             mock_dm = Mock()
             mock_dm.stop_deployment.return_value = {"success": True}
             mock_dm_cls.return_value = mock_dm
@@ -266,7 +266,7 @@ class TestStopCommandEdgeCases:
             # Verify timeout was passed correctly
             mock_dm.stop_deployment.assert_called_with(deployment_id, 60)
 
-    @patch("mcp_template.typer_cli.MultiBackendManager")
+    @patch("mcp_template.cli.MultiBackendManager")
     def test_stop_partial_failures(self, mock_multi, runner):
         """Test stop command with some deployment failures."""
         # Mock multi-backend manager
@@ -298,7 +298,7 @@ class TestStopCommandEdgeCases:
         ]
 
         with patch(
-            "mcp_template.typer_cli.DeploymentManager",
+            "mcp_template.cli.DeploymentManager",
             return_value=mock_deployment_manager,
         ):
             # Simulate user typing 'n' for no

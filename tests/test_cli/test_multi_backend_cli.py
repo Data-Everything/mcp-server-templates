@@ -26,7 +26,7 @@ def cli_runner():
 @pytest.fixture
 def mock_multi_backend_manager():
     """Fixture for mocked MultiBackendManager."""
-    with patch("mcp_template.typer_cli.MultiBackendManager") as mock_class:
+    with patch("mcp_template.cli.MultiBackendManager") as mock_class:
         mock_instance = Mock()
         mock_class.return_value = mock_instance
         yield mock_instance
@@ -133,7 +133,7 @@ class TestMultiBackendListDeployments:
 
     def test_list_deployments_single_backend_mode(self, cli_runner):
         """Test list deployments with --backend flag uses single backend."""
-        with patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class:
+        with patch("mcp_template.cli.DeploymentManager") as mock_dm_class:
             mock_dm = Mock()
             mock_dm_class.return_value = mock_dm
             mock_dm.list_deployments.return_value = [
@@ -261,7 +261,7 @@ class TestMultiBackendListTools:
 
     def test_list_tools_single_backend_mode(self, cli_runner):
         """Test list tools with --backend flag uses single backend."""
-        with patch("mcp_template.typer_cli.ToolManager") as mock_tm_class:
+        with patch("mcp_template.cli.ToolManager") as mock_tm_class:
             mock_tm = Mock()
             mock_tm_class.return_value = mock_tm
             mock_tm.list_tools.return_value = {
@@ -411,7 +411,7 @@ class TestMultiBackendStop:
 
     def test_stop_specific_backend(self, cli_runner):
         """Test stop command with specific backend."""
-        with patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class:
+        with patch("mcp_template.cli.DeploymentManager") as mock_dm_class:
             mock_dm = Mock()
             mock_dm_class.return_value = mock_dm
             mock_dm.stop_deployment.return_value = {"success": True}
@@ -503,7 +503,7 @@ class TestMultiBackendLogs:
 
     def test_logs_specific_backend(self, cli_runner):
         """Test logs command with specific backend."""
-        with patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class:
+        with patch("mcp_template.cli.DeploymentManager") as mock_dm_class:
             mock_dm = Mock()
             mock_dm_class.return_value = mock_dm
             mock_dm.get_deployment_logs.return_value = {
@@ -606,8 +606,8 @@ class TestBackwardCompatibility:
     def test_list_with_backend_flag_preserves_behavior(self, cli_runner):
         """Test that --backend flag preserves original single-backend behavior."""
         with (
-            patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
-            patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.TemplateManager") as mock_tm_class,
+            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
         ):
 
             mock_tm = Mock()
@@ -632,7 +632,7 @@ class TestBackwardCompatibility:
         """Test that environment variables work for backend selection."""
         with (
             patch.dict("os.environ", {"MCP_BACKEND": "kubernetes"}),
-            patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
         ):
 
             mock_dm = Mock()
@@ -655,7 +655,7 @@ class TestErrorHandling:
     def test_multi_backend_manager_initialization_failure(self, cli_runner):
         """Test graceful handling when MultiBackendManager fails to initialize."""
         with patch(
-            "mcp_template.typer_cli.MultiBackendManager",
+            "mcp_template.cli.MultiBackendManager",
             side_effect=Exception("Backend init failed"),
         ):
             result = cli_runner.invoke(app, ["list-deployments"])
@@ -682,7 +682,7 @@ class TestErrorHandling:
     def test_verbose_error_output(self, cli_runner):
         """Test that verbose mode shows detailed error information."""
         with patch(
-            "mcp_template.typer_cli.MultiBackendManager",
+            "mcp_template.cli.MultiBackendManager",
             side_effect=Exception("Detailed error"),
         ):
             # Test with verbose flag
@@ -700,8 +700,8 @@ class TestConfigurationHandling:
         """Test that config precedence works: env vars > CLI config > config file."""
         # Mock deployment manager and template manager
         with (
-            patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
+            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.TemplateManager") as mock_tm_class,
         ):
 
             # Setup mocks
@@ -779,8 +779,8 @@ class TestConfigurationHandling:
         """Test that JSON object volumes are parsed correctly."""
         # Mock the dependencies directly within the test
         with (
-            patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
+            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.TemplateManager") as mock_tm_class,
         ):
 
             # Setup mocks
@@ -827,8 +827,8 @@ class TestConfigurationHandling:
         """Test that JSON array volumes are parsed correctly."""
         # Mock the dependencies directly within the test
         with (
-            patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
+            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.TemplateManager") as mock_tm_class,
         ):
 
             # Setup mocks
@@ -884,7 +884,7 @@ class TestConfigurationHandling:
     def test_stdio_template_detection(self, cli_runner):
         """Test that stdio templates are detected and handled properly."""
         # Mock template manager to return stdio template info
-        with patch("mcp_template.typer_cli.TemplateManager") as mock_class:
+        with patch("mcp_template.cli.TemplateManager") as mock_class:
             mock_instance = Mock()
             mock_class.return_value = mock_instance
             mock_instance.get_template_info.return_value = {
@@ -918,8 +918,8 @@ class TestConfigurationHandling:
         """Test that existing --set option still works alongside new --config."""
         # Mock the dependencies directly within the test
         with (
-            patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
+            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.TemplateManager") as mock_tm_class,
         ):
 
             # Setup mocks
@@ -966,7 +966,7 @@ class TestVolumeMountingCLI:
     @pytest.fixture
     def mock_deployment_manager(self):
         """Mock deployment manager for volume tests."""
-        with patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class:
+        with patch("mcp_template.cli.DeploymentManager") as mock_dm_class:
             mock_dm = Mock()
             # Mock successful deployment with proper DeploymentResult
             from mcp_template.core.deployment_manager import DeploymentResult
@@ -983,7 +983,7 @@ class TestVolumeMountingCLI:
     @pytest.fixture
     def mock_template_manager(self):
         """Mock template manager for volume tests."""
-        with patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class:
+        with patch("mcp_template.cli.TemplateManager") as mock_tm_class:
             mock_tm = Mock()
             mock_tm.get_template_info.return_value = {
                 "name": "demo",
