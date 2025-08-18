@@ -23,6 +23,21 @@ RESERVED_ENV_VARS = {
 }
 
 
+class ValidationResult:
+    """Result of configuration validation."""
+
+    def __init__(
+        self, valid: bool = True, errors: List[str] = None, warnings: List[str] = None
+    ):
+        self.valid = valid
+        self.errors = errors or []
+        self.warnings = warnings or []
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary format."""
+        return {"valid": self.valid, "errors": self.errors, "warnings": self.warnings}
+
+
 class ConfigProcessor:
     """Unified configuration processor for MCP templates."""
 
@@ -284,10 +299,104 @@ class ConfigProcessor:
 
         return config
 
+    def merge_k8s_config_sources(
+        self,
+        k8s_config_file: Optional[str] = None,
+        k8s_config_values: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Merge Kubernetes-specific configuration sources.
+
+        TEMORARILY ADDED THIS METHOD FROM CONFIG_MANAGER TO GET RID OF IT
+
+        Args:
+            k8s_config_file: Path to Kubernetes configuration file
+            k8s_config_values: Kubernetes configuration values from CLI
+
+        Returns:
+            Merged Kubernetes configuration dictionary
+        """
+        merged_config = {}
+
+        # Start with file-based configuration if provided
+        if k8s_config_file:
+            try:
+                file_config = self._load_config_file(k8s_config_file)
+                merged_config.update(file_config)
+                logger.debug(f"Loaded Kubernetes config from file: {k8s_config_file}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to load Kubernetes config file {k8s_config_file}: {e}"
+                )
+
+        # Override with CLI values
+        if k8s_config_values:
+            # Process special values that need type conversion
+            processed_values = {}
+            for key, value in k8s_config_values.items():
+                processed_values[key] = self._convert_config_value(value)
+
+            merged_config.update(processed_values)
+            logger.debug(
+                f"Applied Kubernetes config values: {list(k8s_config_values.keys())}"
+            )
+
+        return merged_config
+
+    def validate_config(
+        self, config: Dict[str, Any], schema: Dict[str, Any]
+    ) -> ValidationResult:
+        """
+        Validate configuration against a schema.
+
+        Args:
+            config: Configuration to validate
+            schema: Configuration schema
+
+        Returns:
+            ValidationResult with validation status and messages
+        """
+        try:
+            errors = []
+            warnings = []
+
+            # If no schema provided, assume valid
+            if not schema:
+                return ValidationResult(valid=True)
+
+            # Check required fields
+            required_fields = schema.get("required", [])
+            for field in required_fields:
+                if field not in config:
+                    errors.append(f"Required field '{field}' is missing")
+
+            # Check field types and constraints
+            properties = schema.get("properties", {})
+            for field, value in config.items():
+                if field in properties:
+                    field_schema = properties[field]
+                    field_errors = self._validate_field(field, value, field_schema)
+                    errors.extend(field_errors)
+
+            # Check for unknown fields
+            if schema.get("additionalProperties", True) is False:
+                for field in config:
+                    if field not in properties:
+                        warnings.append(f"Unknown field '{field}' in configuration")
+
+            return ValidationResult(
+                valid=len(errors) == 0, errors=errors, warnings=warnings
+            )
+
+        except Exception as e:
+            logger.error(f"Config validation failed: {e}")
+            return ValidationResult(valid=False, errors=[f"Validation error: {str(e)}"])
+
     def handle_volume_and_args_config_properties(
         self,
         template: Dict[str, Any],
         config: Dict[str, Any],
+        additional_volumes: Union[Dict[str, str], List, None] = None,
         default_mount_path: str = "/mnt",
     ) -> Dict[str, Any]:
         """
@@ -298,6 +407,7 @@ class ConfigProcessor:
             template: Template configuration
             config: Configuration dictionary
             default_mount_path: Default mount path for volumes
+            additional_volumes: Volumes provided by users in the command (if any)
 
         Returns:
             Dictionary with updated template and config
@@ -308,27 +418,6 @@ class ConfigProcessor:
 
         # Make a copy to avoid modifying during iteration
         config_copy = config.copy()
-        # Handle special VOLUMES configuration key from CLI --volumes parameter
-        if "VOLUMES" in config_copy:
-            try:
-                volumes_config = config_copy["VOLUMES"]
-                if isinstance(volumes_config, dict):
-                    # Process each volume mount from the --volumes JSON
-                    for host_path, container_path in volumes_config.items():
-                        # Expand tilde in host paths
-                        expanded_host_path = os.path.expanduser(host_path)
-                        # Convert relative paths to absolute paths
-                        if not os.path.isabs(expanded_host_path):
-                            expanded_host_path = os.path.abspath(expanded_host_path)
-                        volumes[expanded_host_path] = container_path
-
-                # Remove VOLUMES from config as it's processed
-                config_copy.pop("VOLUMES", None)
-                config.pop("VOLUMES", None)  # Also remove from original config
-
-            except Exception as e:
-                logger.warning("Error processing VOLUMES configuration: %s", e)
-
         for prop_key, prop_value in config_properties.items():
             delete_key = False
             env_var_name = prop_value.get("env_mapping", prop_key.upper())
@@ -438,6 +527,17 @@ class ConfigProcessor:
         # Update template with volumes and commands
         if "volumes" not in template or template["volumes"] is None:
             template["volumes"] = {}
+
+        if isinstance(additional_volumes, dict):
+            # Key is local path and value is host path
+            volumes.update(additional_volumes)
+        elif isinstance(additional_volumes, list):
+            additional_volumes = {
+                vol: f"{default_mount_path}/{vol.lstrip('/')}"
+                for vol in additional_volumes
+            }
+            volumes.update(additional_volumes)
+
         template["volumes"].update(volumes)
 
         if "command" not in template or template["command"] is None:

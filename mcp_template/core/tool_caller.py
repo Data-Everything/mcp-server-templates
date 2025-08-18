@@ -7,14 +7,12 @@ the CLI and Client components, ensuring consistent behavior and reducing code du
 
 import json
 import logging
-import requests
 from dataclasses import dataclass
 from typing import Any, Dict, List, Literal, Optional
 
-from mcp_template.backends.docker import DockerDeploymentService
+import requests
+
 from mcp_template.exceptions import ToolCallError
-from mcp_template.core.config_manager import ConfigManager
-from mcp_template.utils.config_processor import ConfigProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +60,8 @@ class ToolCaller:
         self.caller_type = caller_type
 
         # Import here to avoid circular imports
-        from mcp_template.utils.config_processor import ConfigProcessor
         from mcp_template.backends.docker import DockerDeploymentService
+        from mcp_template.utils.config_processor import ConfigProcessor
 
         self.config_processor = ConfigProcessor()
 

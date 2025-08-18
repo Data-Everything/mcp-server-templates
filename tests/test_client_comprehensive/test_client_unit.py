@@ -740,287 +740,211 @@ class TestMCPClientConfigurationHandling:
     """Test the new configuration handling features in MCPClient."""
 
     def setup_method(self):
-        """Set up test client."""
-        self.client = None
+        """Set up test client with mocked dependencies."""
+        self.client = MCPClient(backend_type="mock")
 
-    def test_deploy_template_with_config_precedence(self):
+    @patch("mcp_template.client.DeploymentManager")
+    def test_deploy_template_with_config_precedence(
+        self, mock_deployment_manager_class
+    ):
         """Test that deploy_template handles config precedence correctly."""
-        with (
-            patch("mcp_template.client.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.client.ConfigManager") as mock_cm_class,
-        ):
+        # Setup mocks
+        mock_deployment_manager = Mock()
+        mock_deployment_manager_class.return_value = mock_deployment_manager
 
-            # Setup mocks
-            mock_deployment_manager = Mock()
-            mock_dm_class.return_value = mock_deployment_manager
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.to_dict.return_value = {"deployment_id": "test123", "success": True}
+        mock_deployment_manager.deploy_template.return_value = mock_result
 
-            mock_config_manager = Mock()
-            mock_cm_class.return_value = mock_config_manager
-            mock_config_manager.merge_config_sources.return_value = {"merged": "config"}
+        # Test config precedence
+        result = self.client.deploy_template(
+            template_id="demo",
+            config_file="/path/to/config.json",
+            config={"key1": "from_cli", "key2": "cli_value"},
+            env_vars={"key1": "from_env"},  # Should override CLI config
+        )
 
-            mock_result = Mock()
-            mock_result.success = True
-            mock_result.to_dict.return_value = {
-                "deployment_id": "test123",
-                "success": True,
-            }
-            mock_deployment_manager.deploy_template.return_value = mock_result
+        assert result is not None
+        assert result["success"] is True
 
-            # Create client with mocked dependencies
-            client = MCPClient(backend_type="mock")
+        # Verify deployment manager was called with correct config sources
+        mock_deployment_manager.deploy_template.assert_called_once()
+        call_args = mock_deployment_manager.deploy_template.call_args[0]
 
-            # Test config precedence
-            result = client.deploy_template(
-                template_id="demo",
-                config_file="/path/to/config.json",
-                config={"key1": "from_cli", "key2": "cli_value"},
-                env_vars={"key1": "from_env"},  # Should override CLI config
-            )
+        template_id = call_args[0]
+        config_sources = call_args[1]
 
-            assert result is not None
-            assert result["success"] is True
+        assert template_id == "demo"
+        assert "config_file" in config_sources
+        assert "config_values" in config_sources
+        assert "env_vars" in config_sources
+        assert config_sources["config_file"] == "/path/to/config.json"
+        assert config_sources["config_values"]["key1"] == "from_cli"
+        assert config_sources["env_vars"]["key1"] == "from_env"
 
-            # Verify deployment manager was called with correct config sources
-            mock_deployment_manager.deploy_template.assert_called_once()
-            call_args = mock_deployment_manager.deploy_template.call_args[0]
-
-            template_id = call_args[0]
-            config_sources = call_args[1]
-
-            assert template_id == "demo"
-            assert "config_file" in config_sources
-            assert "config_values" in config_sources
-            assert "env_vars" in config_sources
-            assert config_sources["config_file"] == "/path/to/config.json"
-            assert config_sources["config_values"]["key1"] == "from_cli"
-            assert config_sources["env_vars"]["key1"] == "from_env"
-
-    def test_deploy_template_with_volumes_dict(self):
+    @patch("mcp_template.client.DeploymentManager")
+    def test_deploy_template_with_volumes_dict(self, mock_deployment_manager_class):
         """Test that deploy_template handles volume dict correctly."""
-        with (
-            patch("mcp_template.client.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.client.ConfigManager") as mock_cm_class,
-        ):
+        mock_deployment_manager = Mock()
+        mock_deployment_manager_class.return_value = mock_deployment_manager
 
-            mock_deployment_manager = Mock()
-            mock_dm_class.return_value = mock_deployment_manager
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.to_dict.return_value = {"deployment_id": "test123", "success": True}
+        mock_deployment_manager.deploy_template.return_value = mock_result
 
-            mock_config_manager = Mock()
-            mock_cm_class.return_value = mock_config_manager
-            mock_config_manager.merge_config_sources.return_value = {"merged": "config"}
+        volumes = {"./host/path": "/container/path", "./data": "/app/data"}
 
-            mock_result = Mock()
-            mock_result.success = True
-            mock_result.to_dict.return_value = {
-                "deployment_id": "test123",
-                "success": True,
-            }
-            mock_deployment_manager.deploy_template.return_value = mock_result
+        result = self.client.deploy_template(template_id="demo", volumes=volumes)
 
-            client = MCPClient(backend_type="mock")
-            volumes = {"./host/path": "/container/path", "./data": "/app/data"}
+        assert result is not None
+        mock_deployment_manager.deploy_template.assert_called_once()
 
-            result = client.deploy_template(template_id="demo", volumes=volumes)
+        call_args = mock_deployment_manager.deploy_template.call_args[0]
+        config_sources = call_args[1]
 
-            assert result is not None
-            mock_deployment_manager.deploy_template.assert_called_once()
+        assert "config_values" in config_sources
+        assert "VOLUMES" in config_sources["config_values"]
+        assert config_sources["config_values"]["VOLUMES"] == volumes
 
-            call_args = mock_deployment_manager.deploy_template.call_args[0]
-            config_sources = call_args[1]
-
-            assert "config_values" in config_sources
-            assert "VOLUMES" in config_sources["config_values"]
-            assert config_sources["config_values"]["VOLUMES"] == volumes
-
-    def test_deploy_template_with_volumes_json_object(self):
+    @patch("mcp_template.client.DeploymentManager")
+    def test_deploy_template_with_volumes_json_object(
+        self, mock_deployment_manager_class
+    ):
         """Test that deploy_template handles JSON object volumes correctly."""
-        with (
-            patch("mcp_template.client.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.client.ConfigManager") as mock_cm_class,
-        ):
+        mock_deployment_manager = Mock()
+        mock_deployment_manager_class.return_value = mock_deployment_manager
 
-            mock_deployment_manager = Mock()
-            mock_dm_class.return_value = mock_deployment_manager
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.to_dict.return_value = {"deployment_id": "test123", "success": True}
+        mock_deployment_manager.deploy_template.return_value = mock_result
 
-            mock_config_manager = Mock()
-            mock_cm_class.return_value = mock_config_manager
-            mock_config_manager.merge_config_sources.return_value = {"merged": "config"}
+        volumes_json = '{"./host": "/container", "./data": "/app/data"}'
 
-            mock_result = Mock()
-            mock_result.success = True
-            mock_result.to_dict.return_value = {
-                "deployment_id": "test123",
-                "success": True,
-            }
-            mock_deployment_manager.deploy_template.return_value = mock_result
+        result = self.client.deploy_template(template_id="demo", volumes=volumes_json)
 
-            client = MCPClient(backend_type="mock")
-            volumes_json = '{"./host": "/container", "./data": "/app/data"}'
+        assert result is not None
 
-            result = client.deploy_template(template_id="demo", volumes=volumes_json)
+        call_args = mock_deployment_manager.deploy_template.call_args[0]
+        config_sources = call_args[1]
 
-            assert result is not None
+        assert "config_values" in config_sources
+        assert "VOLUMES" in config_sources["config_values"]
+        volumes = config_sources["config_values"]["VOLUMES"]
+        assert volumes["./host"] == "/container"
+        assert volumes["./data"] == "/app/data"
 
-            call_args = mock_deployment_manager.deploy_template.call_args[0]
-            config_sources = call_args[1]
-
-            assert "config_values" in config_sources
-            assert "VOLUMES" in config_sources["config_values"]
-            volumes = config_sources["config_values"]["VOLUMES"]
-            assert volumes["./host"] == "/container"
-            assert volumes["./data"] == "/app/data"
-
-    def test_deploy_template_with_volumes_json_array(self):
+    @patch("mcp_template.client.DeploymentManager")
+    def test_deploy_template_with_volumes_json_array(
+        self, mock_deployment_manager_class
+    ):
         """Test that deploy_template handles JSON array volumes correctly."""
-        with (
-            patch("mcp_template.client.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.client.ConfigManager") as mock_cm_class,
-        ):
+        mock_deployment_manager = Mock()
+        mock_deployment_manager_class.return_value = mock_deployment_manager
 
-            mock_deployment_manager = Mock()
-            mock_dm_class.return_value = mock_deployment_manager
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.to_dict.return_value = {"deployment_id": "test123", "success": True}
+        mock_deployment_manager.deploy_template.return_value = mock_result
 
-            mock_config_manager = Mock()
-            mock_cm_class.return_value = mock_config_manager
-            mock_config_manager.merge_config_sources.return_value = {"merged": "config"}
+        volumes_json = '["/host/path1", "/host/path2"]'
 
-            mock_result = Mock()
-            mock_result.success = True
-            mock_result.to_dict.return_value = {
-                "deployment_id": "test123",
-                "success": True,
-            }
-            mock_deployment_manager.deploy_template.return_value = mock_result
+        result = self.client.deploy_template(template_id="demo", volumes=volumes_json)
 
-            client = MCPClient(backend_type="mock")
-            volumes_json = '["/host/path1", "/host/path2"]'
+        assert result is not None
 
-            result = client.deploy_template(template_id="demo", volumes=volumes_json)
+        call_args = mock_deployment_manager.deploy_template.call_args[0]
+        config_sources = call_args[1]
 
-            assert result is not None
+        volumes = config_sources["config_values"]["VOLUMES"]
+        # Array format maps paths to themselves
+        assert volumes["/host/path1"] == "/host/path1"
+        assert volumes["/host/path2"] == "/host/path2"
 
-            call_args = mock_deployment_manager.deploy_template.call_args[0]
-            config_sources = call_args[1]
-
-            volumes = config_sources["config_values"]["VOLUMES"]
-            # Array format maps paths to themselves
-            assert volumes["/host/path1"] == "/host/path1"
-            assert volumes["/host/path2"] == "/host/path2"
-
-    def test_deploy_template_with_invalid_volumes_json(self):
+    @patch("mcp_template.client.DeploymentManager")
+    def test_deploy_template_with_invalid_volumes_json(
+        self, mock_deployment_manager_class
+    ):
         """Test that deploy_template handles invalid JSON volumes gracefully."""
-        with (
-            patch("mcp_template.client.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.client.ConfigManager") as mock_cm_class,
-        ):
+        mock_deployment_manager = Mock()
+        mock_deployment_manager_class.return_value = mock_deployment_manager
 
-            mock_deployment_manager = Mock()
-            mock_dm_class.return_value = mock_deployment_manager
+        result = self.client.deploy_template(
+            template_id="demo", volumes='{"invalid": json}'  # Invalid JSON
+        )
 
-            mock_config_manager = Mock()
-            mock_cm_class.return_value = mock_config_manager
+        # Should return None on failure
+        assert result is None
 
-            client = MCPClient(backend_type="mock")
-            result = client.deploy_template(
-                template_id="demo", volumes='{"invalid": json}'  # Invalid JSON
-            )
-
-            # Should return None on failure
-            assert result is None
-
-    def test_start_server_backward_compatibility(self):
+    @patch("mcp_template.client.DeploymentManager")
+    def test_start_server_backward_compatibility(self, mock_deployment_manager_class):
         """Test that start_server maintains backward compatibility."""
-        with (
-            patch("mcp_template.client.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.client.ConfigManager") as mock_cm_class,
-        ):
+        mock_deployment_manager = Mock()
+        mock_deployment_manager_class.return_value = mock_deployment_manager
 
-            mock_deployment_manager = Mock()
-            mock_dm_class.return_value = mock_deployment_manager
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.to_dict.return_value = {"deployment_id": "test123", "success": True}
+        mock_deployment_manager.deploy_template.return_value = mock_result
 
-            mock_config_manager = Mock()
-            mock_cm_class.return_value = mock_config_manager
-            mock_config_manager.merge_config_sources.return_value = {"merged": "config"}
+        # Test old interface still works
+        result = self.client.start_server(
+            template_id="demo",
+            configuration={"key": "value"},
+            pull_image=False,
+            transport="http",
+        )
 
-            mock_result = Mock()
-            mock_result.success = True
-            mock_result.to_dict.return_value = {
-                "deployment_id": "test123",
-                "success": True,
-            }
-            mock_deployment_manager.deploy_template.return_value = mock_result
+        assert result is not None
+        assert result["success"] is True
 
-            client = MCPClient(backend_type="mock")
+        # Verify backward compatibility - old configuration parameter should work
+        call_args = mock_deployment_manager.deploy_template.call_args[0]
+        config_sources = call_args[1]
 
-            # Test old interface still works
-            result = client.start_server(
-                template_id="demo",
-                configuration={"key": "value"},
-                pull_image=False,
-                transport="http",
-            )
+        assert "config_values" in config_sources
+        assert config_sources["config_values"]["key"] == "value"
 
-            assert result is not None
-            assert result["success"] is True
-
-            # Verify backward compatibility - old configuration parameter should work
-            call_args = mock_deployment_manager.deploy_template.call_args[0]
-            config_sources = call_args[1]
-
-            assert "config_values" in config_sources
-            assert config_sources["config_values"]["key"] == "value"
-
-    def test_start_server_with_all_new_features(self):
+    @patch("mcp_template.client.DeploymentManager")
+    def test_start_server_with_all_new_features(self, mock_deployment_manager_class):
         """Test start_server with all new configuration features."""
-        with (
-            patch("mcp_template.client.DeploymentManager") as mock_dm_class,
-            patch("mcp_template.client.ConfigManager") as mock_cm_class,
-        ):
+        mock_deployment_manager = Mock()
+        mock_deployment_manager_class.return_value = mock_deployment_manager
 
-            mock_deployment_manager = Mock()
-            mock_dm_class.return_value = mock_deployment_manager
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.to_dict.return_value = {"deployment_id": "test123", "success": True}
+        mock_deployment_manager.deploy_template.return_value = mock_result
 
-            mock_config_manager = Mock()
-            mock_cm_class.return_value = mock_config_manager
-            mock_config_manager.merge_config_sources.return_value = {"merged": "config"}
+        result = self.client.start_server(
+            template_id="demo",
+            configuration={"cli_key": "cli_value"},
+            config_file="/path/to/config.json",
+            env_vars={"ENV_KEY": "env_value"},
+            volumes={"./host": "/container"},
+            transport="http",
+            pull_image=True,
+            name="custom-deployment",
+        )
 
-            mock_result = Mock()
-            mock_result.success = True
-            mock_result.to_dict.return_value = {
-                "deployment_id": "test123",
-                "success": True,
-            }
-            mock_deployment_manager.deploy_template.return_value = mock_result
+        assert result is not None
 
-            client = MCPClient(backend_type="mock")
+        call_args = mock_deployment_manager.deploy_template.call_args[0]
+        config_sources = call_args[1]
+        deployment_options = call_args[2]
 
-            result = client.start_server(
-                template_id="demo",
-                configuration={"cli_key": "cli_value"},
-                config_file="/path/to/config.json",
-                env_vars={"ENV_KEY": "env_value"},
-                volumes={"./host": "/container"},
-                transport="http",
-                pull_image=True,
-                name="custom-deployment",
-            )
+        # Verify all config sources are present
+        assert config_sources["config_file"] == "/path/to/config.json"
+        assert config_sources["config_values"]["cli_key"] == "cli_value"
+        assert config_sources["env_vars"]["ENV_KEY"] == "env_value"
+        assert config_sources["config_values"]["VOLUMES"]["./host"] == "/container"
 
-            assert result is not None
-
-            call_args = mock_deployment_manager.deploy_template.call_args[0]
-            config_sources = call_args[1]
-            deployment_options = call_args[2]
-
-            # Verify all config sources are present
-            assert config_sources["config_file"] == "/path/to/config.json"
-            assert config_sources["config_values"]["cli_key"] == "cli_value"
-            assert config_sources["env_vars"]["ENV_KEY"] == "env_value"
-            assert config_sources["config_values"]["VOLUMES"]["./host"] == "/container"
-
-            # Verify deployment options
-            assert deployment_options.name == "custom-deployment"
-            assert deployment_options.transport == "http"
-            assert deployment_options.pull_image is True
+        # Verify deployment options
+        assert deployment_options.name == "custom-deployment"
+        assert deployment_options.transport == "http"
+        assert deployment_options.pull_image is True
 
 
 if __name__ == "__main__":

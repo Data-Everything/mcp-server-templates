@@ -40,7 +40,6 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 from mcp_template.core import (
-    ConfigManager,
     DeploymentManager,
     MCPConnection,
     TemplateManager,
@@ -80,7 +79,6 @@ class MCPClient:
         # Initialize core managers
         self.template_manager = TemplateManager(backend_type)
         self.deployment_manager = DeploymentManager(backend_type)
-        self.config_manager = ConfigManager()
         self.tool_manager = ToolManager(backend_type)
 
         # Connection management for direct MCP connections

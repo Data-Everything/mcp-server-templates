@@ -25,9 +25,8 @@ import logging
 from mcp_template.backends.docker import DockerDeploymentService
 from mcp_template.cli import CLI, EnhancedCLI
 from mcp_template.client import MCPClient
-from mcp_template.core import ConfigManager
 from mcp_template.core import DeploymentManager as CommonDeploymentManager
-from mcp_template.core import OutputFormatter, TemplateManager, ToolManager
+from mcp_template.core import TemplateManager, ToolManager
 from mcp_template.core.deployment_manager import DeploymentManager
 from mcp_template.template.utils.creation import TemplateCreator
 from mcp_template.template.utils.discovery import TemplateDiscovery
@@ -42,7 +41,6 @@ __all__ = [
     "MCPClient",
     "TemplateManager",
     "CommonDeploymentManager",
-    "ConfigManager",
     "ToolManager",
     "OutputFormatter",
     "CLI",

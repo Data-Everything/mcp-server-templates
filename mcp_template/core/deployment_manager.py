@@ -7,10 +7,9 @@ consolidating functionality from CLI and MCPClient for deployment operations.
 
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 from mcp_template.backends import get_backend
-from mcp_template.core.config_manager import ConfigManager
 from mcp_template.core.template_manager import TemplateManager
 from mcp_template.utils.config_processor import ConfigProcessor
 
@@ -104,7 +103,7 @@ class DeploymentManager:
         self.backend_type = backend_type
         self.backend = get_backend(backend_type, **backend_kwargs)
         self.template_manager = TemplateManager(backend_type)
-        self.config_manager = ConfigManager()
+        self.config_processor = ConfigProcessor()
 
     def deploy_template(
         self,
@@ -154,34 +153,39 @@ class DeploymentManager:
                     duration=time.time() - start_time,
                 )
 
-            volume_config = config_sources.pop("volume_config", None)
-            # Process and merge configuration
-            final_config = self.config_manager.merge_config_sources(
-                template_config=template_info, **config_sources
-            )
             # Process Kubernetes-specific configuration if backend is Kubernetes
-            k8s_config = {}
-            if self.backend == "kubernetes":
-                k8s_config = self.config_manager.merge_k8s_config_sources(
-                    k8s_config_file=config_sources.get("k8s_config_file"),
-                    k8s_config_values=config_sources.get("k8s_config_values"),
-                )
-                # Set the Kubernetes configuration on the backend
-                if hasattr(self.backend, "set_k8s_config"):
-                    self.backend.set_k8s_config(k8s_config)
+            # k8s_config = {}
+            # if self.backend == "kubernetes":
+            #    k8s_config = self.config_processor.merge_k8s_config_sources(
+            #        k8s_config_file=config_sources.get("k8s_config_file"),
+            #        k8s_config_values=config_sources.get("k8s_config_values"),
+            #    )
+            # Set the Kubernetes configuration on the backend
+            #    if hasattr(self.backend, "set_k8s_config"):
+            #        self.backend.set_k8s_config(k8s_config)
 
-            # Apply config value mapping (e.g., log_level -> MCP_LOG_LEVEL)
-            if config_sources.get("config_values"):
-                config_processor = ConfigProcessor()
-                mapped_config = config_processor._map_file_config_to_env(
-                    config_sources["config_values"], template_info
+            # Prepare configuration using the unified config processor
+            volume_config = config_sources.pop("volume_config", None)
+            config = self.config_processor.prepare_configuration(
+                template=template_info,
+                config_values=config_sources.get("config_values", {}),
+                env_vars=config_sources.get("env_vars", {}),
+                config_file=config_sources.get("config_file", None),
+                override_values=config_sources.get("override_values", None),
+            )
+
+            # Handle volume mounts and command arguments
+            template_config_dict = (
+                self.config_processor.handle_volume_and_args_config_properties(
+                    template_info, config, volume_config
                 )
-                # Merge the mapped config back into final_config
-                final_config.update(mapped_config)
+            )
+            config = template_config_dict.get("config", config)
+            template_info = template_config_dict.get("template", template_info)
 
             # Validate final configuration
-            validation_result = self.config_manager.validate_config(
-                final_config, template_info.get("config_schema", {})
+            validation_result = self.config_processor.validate_config(
+                config, template_info.get("config_schema", {})
             )
 
             if not validation_result.valid:
@@ -195,8 +199,7 @@ class DeploymentManager:
             deployment_spec = self._prepare_deployment_spec(
                 template_id,
                 template_info,
-                final_config,
-                volume_config,
+                config,
                 deployment_options,
             )
 
@@ -477,7 +480,6 @@ class DeploymentManager:
         template_id: str,
         template_info: Dict[str, Any],
         config: Dict[str, Any],
-        volumes: Union[Dict[str, str], List, None],
         options: DeploymentOptions,
     ) -> Dict[str, Any]:
         """Prepare deployment specification for backend."""
@@ -485,7 +487,6 @@ class DeploymentManager:
             "template_id": template_id,
             "template_info": template_info,
             "config": config,
-            "volumes": volumes if volumes is not None else {},
             "options": options.__dict__,
         }
 

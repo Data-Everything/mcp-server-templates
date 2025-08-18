@@ -14,7 +14,6 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from mcp_template.core import (
-    ConfigManager,
     DeploymentManager,
     OutputFormatter,
     TemplateManager,
@@ -44,7 +43,6 @@ class CLI:
         self.formatter = OutputFormatter(self.console)
         self.template_manager = TemplateManager(backend_type)
         self.deployment_manager = DeploymentManager(backend_type, **backend_kwargs)
-        self.config_manager = ConfigManager()
         self.tool_manager = ToolManager(backend_type)
 
     def handle_list_command(self, args) -> None:

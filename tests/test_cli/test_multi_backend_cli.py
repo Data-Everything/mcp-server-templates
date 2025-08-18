@@ -702,7 +702,6 @@ class TestConfigurationHandling:
         with (
             patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
             patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
-            patch("mcp_template.typer_cli.ConfigManager") as mock_cm_class,
         ):
 
             # Setup mocks
@@ -731,7 +730,6 @@ class TestConfigurationHandling:
                 "key1": "from_env",
                 "key2": "from_file",
             }
-            mock_cm_class.return_value = mock_cm
 
             # Create a temporary config file
             import os
@@ -783,7 +781,6 @@ class TestConfigurationHandling:
         with (
             patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
             patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
-            patch("mcp_template.typer_cli.ConfigManager") as mock_cm_class,
         ):
 
             # Setup mocks
@@ -812,7 +809,6 @@ class TestConfigurationHandling:
             mock_cm.merge_config_sources.return_value = {
                 "VOLUMES": {"./host/path": "/container/path", "./data": "/app/data"}
             }
-            mock_cm_class.return_value = mock_cm
 
             result = cli_runner.invoke(
                 app,
@@ -833,7 +829,6 @@ class TestConfigurationHandling:
         with (
             patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
             patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
-            patch("mcp_template.typer_cli.ConfigManager") as mock_cm_class,
         ):
 
             # Setup mocks
@@ -862,7 +857,6 @@ class TestConfigurationHandling:
             mock_cm.merge_config_sources.return_value = {
                 "VOLUMES": {"/host/path1": "/host/path1", "/host/path2": "/host/path2"}
             }
-            mock_cm_class.return_value = mock_cm
 
             result = cli_runner.invoke(
                 app, ["deploy", "demo", "--volumes", '["/host/path1", "/host/path2"]']
@@ -926,7 +920,6 @@ class TestConfigurationHandling:
         with (
             patch("mcp_template.typer_cli.DeploymentManager") as mock_dm_class,
             patch("mcp_template.typer_cli.TemplateManager") as mock_tm_class,
-            patch("mcp_template.typer_cli.ConfigManager") as mock_cm_class,
         ):
 
             # Setup mocks
@@ -950,13 +943,6 @@ class TestConfigurationHandling:
             }
             mock_tm.validate_template.return_value = True
             mock_tm_class.return_value = mock_tm
-
-            mock_cm = Mock()
-            mock_cm.merge_config_sources.return_value = {
-                "key1": "from_config",
-                "key2": "from_set",
-            }
-            mock_cm_class.return_value = mock_cm
 
             result = cli_runner.invoke(
                 app,
@@ -1009,22 +995,11 @@ class TestVolumeMountingCLI:
             mock_tm_class.return_value = mock_tm
             yield mock_tm
 
-    @pytest.fixture
-    def mock_config_manager(self):
-        """Mock config manager for volume tests."""
-        with patch("mcp_template.typer_cli.ConfigManager") as mock_cm_class:
-            mock_cm = Mock()
-            # Mock merge_config_sources to return a simple config
-            mock_cm.merge_config_sources.return_value = {"api_key": "test123"}
-            mock_cm_class.return_value = mock_cm
-            yield mock_cm
-
     def test_deploy_with_volumes_json_object(
         self,
         cli_runner,
         mock_deployment_manager,
         mock_template_manager,
-        mock_config_manager,
     ):
         """Test deploy command with volumes as JSON object."""
         volumes_json = (
@@ -1062,7 +1037,6 @@ class TestVolumeMountingCLI:
         cli_runner,
         mock_deployment_manager,
         mock_template_manager,
-        mock_config_manager,
     ):
         """Test deploy command with volumes as JSON array."""
         volumes_json = (
@@ -1101,7 +1075,6 @@ class TestVolumeMountingCLI:
         cli_runner,
         mock_deployment_manager,
         mock_template_manager,
-        mock_config_manager,
     ):
         """Test deploy command with invalid JSON volumes."""
         volumes_json = '{"invalid": json}'
@@ -1126,7 +1099,6 @@ class TestVolumeMountingCLI:
         cli_runner,
         mock_deployment_manager,
         mock_template_manager,
-        mock_config_manager,
     ):
         """Test deploy command with unsupported volume type."""
         volumes_json = '"just a string"'
@@ -1159,7 +1131,6 @@ class TestVolumeMountingCLI:
         cli_runner,
         mock_deployment_manager,
         mock_template_manager,
-        mock_config_manager,
     ):
         """Test deploy command with both volumes and config working together."""
         volumes_json = '{"@HOST_DATA_PATH@": "/app/data"}'
@@ -1196,7 +1167,6 @@ class TestVolumeMountingCLI:
         cli_runner,
         mock_deployment_manager,
         mock_template_manager,
-        mock_config_manager,
     ):
         """Test deploy command dry run includes volume information."""
         volumes_json = (
@@ -1228,7 +1198,6 @@ class TestVolumeMountingCLI:
         cli_runner,
         mock_deployment_manager,
         mock_template_manager,
-        mock_config_manager,
     ):
         """Test deploy command with empty volume object."""
         volumes_json = "{}"
@@ -1258,7 +1227,6 @@ class TestVolumeMountingCLI:
         cli_runner,
         mock_deployment_manager,
         mock_template_manager,
-        mock_config_manager,
     ):
         """Test deploy command with empty volume array."""
         volumes_json = "[]"
@@ -1288,7 +1256,6 @@ class TestVolumeMountingCLI:
         cli_runner,
         mock_deployment_manager,
         mock_template_manager,
-        mock_config_manager,
     ):
         """Test deploy command works normally without volumes parameter."""
         result = cli_runner.invoke(
