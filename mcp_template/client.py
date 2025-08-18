@@ -197,6 +197,9 @@ class MCPClient:
         self,
         template_id: str,
         configuration: Optional[Dict[str, Any]] = None,
+        config_file: Optional[str] = None,
+        env_vars: Optional[Dict[str, str]] = None,
+        volumes: Optional[Union[Dict[str, str], List[str]]] = None,
         pull_image: bool = True,
         transport: Optional[str] = None,
         port: Optional[int] = None,
@@ -208,7 +211,10 @@ class MCPClient:
 
         Args:
             template_id: Template to deploy
-            configuration: Configuration for the server
+            configuration: Configuration key-value pairs
+            config_file: Path to configuration file
+            env_vars: Environment variables (highest precedence)
+            volumes: Volume mounts as {host_path: container_path}
             pull_image: Whether to pull the latest image
             transport: Optional transport type (e.g., "http", "stdio")
             port: Optional port for HTTP transport
@@ -219,7 +225,30 @@ class MCPClient:
             Server deployment information or None if failed
         """
         try:
-            config_sources = {"config_values": configuration or {}}
+            # Build config sources with proper precedence
+            config_sources = {}
+
+            if config_file:
+                config_sources["config_file"] = config_file
+
+            if configuration:
+                config_sources["config_values"] = configuration
+
+            if env_vars:
+                config_sources["env_vars"] = env_vars
+
+            # Handle volumes
+            if volumes:
+                if not config_sources.get("config_values"):
+                    config_sources["config_values"] = {}
+
+                # Process volumes: convert list to dict if needed
+                if isinstance(volumes, list):
+                    processed_volumes = {path: path for path in volumes}
+                else:
+                    processed_volumes = volumes
+
+                config_sources["config_values"]["VOLUMES"] = processed_volumes
 
             deployment_options = DeploymentOptions(
                 name=name,
@@ -237,6 +266,63 @@ class MCPClient:
 
         except Exception as e:
             logger.error(f"Failed to start server for {template_id}: {e}")
+            return None
+
+    def deploy_template(
+        self,
+        template_id: str,
+        config_file: Optional[str] = None,
+        config: Optional[Dict[str, str]] = None,
+        env_vars: Optional[Dict[str, str]] = None,
+        volumes: Optional[Union[Dict[str, str], List[str]]] = None,
+        transport: Optional[str] = None,
+        pull_image: bool = True,
+        name: Optional[str] = None,
+        timeout: int = 300,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Deploy a template with CLI-like interface supporting config precedence and volumes.
+
+        Args:
+            template_id: Template to deploy
+            config_file: Path to configuration file
+            config: Configuration key=value pairs
+            env_vars: Environment variables (highest precedence)
+            volumes: Volume mounts - dict {host_path: container_path} or list of paths
+            transport: Transport protocol (http, stdio)
+            pull_image: Whether to pull the latest image
+            name: Custom deployment name
+            timeout: Deployment timeout
+
+        Returns:
+            Server deployment information or None if failed
+        """
+        try:
+            # Process volumes
+            processed_volumes = None
+            if volumes:
+                if isinstance(volumes, dict):
+                    processed_volumes = volumes
+                elif isinstance(volumes, list):
+                    processed_volumes = {path: path for path in volumes}
+                else:
+                    raise ValueError("Invalid volume format. Expected dict or list")
+
+            return self.start_server(
+                template_id=template_id,
+                configuration=config,
+                config_file=config_file,
+                env_vars=env_vars,
+                volumes=processed_volumes,
+                pull_image=pull_image,
+                transport=transport,
+                port=None,
+                name=name,
+                timeout=timeout,
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to deploy template {template_id}: {e}")
             return None
 
     def stop_server(self, deployment_id: str, timeout: int = 30) -> Dict[str, Any]:

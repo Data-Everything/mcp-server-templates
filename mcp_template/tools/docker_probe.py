@@ -4,6 +4,7 @@ Docker probe for discovering MCP server tools from Docker images.
 
 import json
 import logging
+import os
 import random
 import socket
 import subprocess
@@ -11,13 +12,16 @@ import time
 from typing import Any, Dict, List, Optional
 
 import requests
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from .mcp_client_probe import MCPClientProbe
 
 logger = logging.getLogger(__name__)
 
 # Constants
-DISCOVERY_TIMEOUT = 30
+DISCOVERY_TIMEOUT = int(os.environ.get("MCP_DISCOVERY_TIMEOUT", "60"))
+DISCOVERY_RETRIES = int(os.environ.get("MCP_DISCOVERY_RETRIES", "3"))
+DISCOVERY_RETRY_SLEEP = int(os.environ.get("MCP_DISCOVERY_RETRY_SLEEP", "5"))
 CONTAINER_PORT_RANGE = (8000, 9000)
 CONTAINER_HEALTH_CHECK_TIMEOUT = 15
 
@@ -63,6 +67,14 @@ class DockerProbe:
             logger.error("Failed to discover tools from image %s: %s", image_name, e)
             return None
 
+    @retry(
+        stop=stop_after_attempt(DISCOVERY_RETRIES),
+        wait=wait_fixed(DISCOVERY_RETRY_SLEEP),
+        retry=retry_if_exception_type(
+            (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError)
+        ),
+        reraise=True,
+    )
     def _try_mcp_stdio_discovery(
         self,
         image_name: str,
@@ -88,6 +100,14 @@ class DockerProbe:
             logger.debug("MCP stdio discovery failed for %s: %s", image_name, e)
             return None
 
+    @retry(
+        stop=stop_after_attempt(DISCOVERY_RETRIES),
+        wait=wait_fixed(DISCOVERY_RETRY_SLEEP),
+        retry=retry_if_exception_type(
+            (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError)
+        ),
+        reraise=True,
+    )
     def _try_http_discovery(
         self, image_name: str, timeout: int
     ) -> Optional[Dict[str, Any]]:
@@ -207,12 +227,39 @@ class DockerProbe:
                     logger.debug("Container %s is not running", container_name)
                     return False
 
-                # Try to connect to the service
-                response = requests.get(f"http://localhost:{port}/health", timeout=2)
+                # Try different health check endpoints for different server types
+                health_endpoints = ["/health", "/mcp", "/", "/api/health"]
 
-                if response.status_code < 500:  # Any non-server-error response is good
-                    logger.debug("Container %s is ready", container_name)
-                    return True
+                for endpoint in health_endpoints:
+                    try:
+                        response = requests.get(
+                            f"http://localhost:{port}{endpoint}", timeout=2
+                        )
+                        if (
+                            response.status_code < 500
+                        ):  # Any non-server-error response is good
+                            logger.debug(
+                                "Container %s is ready (endpoint: %s)",
+                                container_name,
+                                endpoint,
+                            )
+                            return True
+                    except requests.RequestException:
+                        continue  # Try next endpoint
+
+                # If no endpoint worked, try simple port connectivity check
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(2)
+                    result = sock.connect_ex(("localhost", port))
+                    sock.close()
+                    if result == 0:  # Port is open
+                        logger.debug(
+                            "Container %s port %d is open", container_name, port
+                        )
+                        return True
+                except socket.error:
+                    pass
 
             except requests.RequestException:
                 # Expected during startup, continue waiting

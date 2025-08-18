@@ -10,7 +10,7 @@ MCPClient provides complete server lifecycle management, allowing you to deploy,
 async with MCPClient() as client:
     # Basic server deployment
     result = await client.start_server("demo")
-    
+
     if result["success"]:
         deployment_id = result["deployment_id"]
         print(f"Server started: {deployment_id}")
@@ -30,23 +30,54 @@ async with MCPClient() as client:
         "port": 8080,
         "debug": True
     }
-    
+
     result = await client.start_server("demo", config)
-    
+
     if result["success"]:
         print(f"Configured server started: {result['deployment_id']}")
         print(f"Applied config: {result['config']}")
 ```
 
+### Start with Volume Mounts
+
+```python
+async with MCPClient() as client:
+    # Deploy with volume mounts (dictionary format)
+    volumes = {
+        "./workspace": "/app/workspace",
+        "./data": "/app/data",
+        "./config": "/app/config"
+    }
+
+    result = await client.start_server(
+        template_name="filesystem",
+        config_values={"allowed_dirs": ["/app/workspace", "/app/data"]},
+        volumes=volumes
+    )
+
+    # Deploy with volume mounts (list format - maps to same path)
+    volumes_list = ["/shared/workspace", "/shared/data"]
+
+    result = await client.start_server(
+        template_name="filesystem",
+        volumes=volumes_list
+    )
+```
+
 **Parameters**:
 - `template_name` (str): Name of the template to deploy
 - `config_values` (Dict, optional): Configuration overrides
+- `volumes` (Dict[str, str] or List[str], optional): Volume mounts for containers
 - `pull_image` (bool, optional): Whether to pull latest image (default: True)
+
+**Volume Formats**:
+- **Dict format**: `{"./host/path": "/container/path"}` - Maps host paths to container paths
+- **List format**: `["/path1", "/path2"]` - Maps paths to same location in container
 
 **Returns**: `Dict` containing:
 - `success` (bool): Whether deployment succeeded
 - `deployment_id` (str): Unique identifier for the deployment
-- `container_id` (str): Container identifier  
+- `container_id` (str): Container identifier
 - `status` (str): Current status ("running", "failed", etc.)
 - `port` (int): Assigned port number
 - `config` (Dict): Applied configuration
@@ -64,14 +95,14 @@ async with MCPClient() as client:
         config_values={"env": "development"},
         pull_image=False
     )
-    
+
     # Deploy with environment-specific configuration
     env_config = {
         "api_endpoint": "https://staging-api.example.com",
         "log_level": "DEBUG",
         "timeout": 30
     }
-    
+
     staging_server = await client.start_server("github", env_config)
 ```
 
@@ -82,7 +113,7 @@ async with MCPClient() as client:
 ```python
 async with MCPClient() as client:
     servers = client.list_servers()
-    
+
     print(f"Found {len(servers)} servers:")
     for server in servers:
         print(f"  {server['name']} ({server['template']})")
@@ -107,9 +138,9 @@ async with MCPClient() as client:
 ```python
 async with MCPClient() as client:
     deployment_id = "demo-123"
-    
+
     info = client.get_server_info(deployment_id)
-    
+
     print(f"Server Details for {deployment_id}:")
     print(f"  Name: {info['name']}")
     print(f"  Template: {info['template']}")
@@ -133,12 +164,12 @@ async with MCPClient() as client:
 async with MCPClient() as client:
     # Monitor server health
     servers = client.list_servers()
-    
+
     healthy_servers = [s for s in servers if s['status'] == 'running']
     failed_servers = [s for s in servers if s['status'] == 'failed']
-    
+
     print(f"Healthy: {len(healthy_servers)}, Failed: {len(failed_servers)}")
-    
+
     # Check specific server health
     for server in failed_servers:
         logs = client.get_server_logs(server['id'], lines=50)
@@ -153,9 +184,9 @@ async with MCPClient() as client:
 ```python
 async with MCPClient() as client:
     deployment_id = "demo-123"
-    
+
     success = await client.stop_server(deployment_id)
-    
+
     if success:
         print(f"Server {deployment_id} stopped successfully")
     else:
@@ -174,15 +205,15 @@ async with MCPClient() as client:
 ```python
 async with MCPClient() as client:
     deployment_id = "demo-123"
-    
+
     # Stop the server
     await client.stop_server(deployment_id)
-    
+
     # Get original configuration
     server_info = client.get_server_info(deployment_id)
     template_name = server_info['template']
     config = server_info['config']
-    
+
     # Start a new instance with the same configuration
     result = await client.start_server(template_name, config)
     print(f"Restarted as: {result['deployment_id']}")
@@ -195,11 +226,11 @@ async with MCPClient() as client:
     # Stop all servers of a specific template
     servers = client.list_servers()
     demo_servers = [s for s in servers if s['template'] == 'demo']
-    
+
     for server in demo_servers:
         await client.stop_server(server['id'])
         print(f"Stopped {server['name']}")
-    
+
     # Stop all failed servers
     failed_servers = [s for s in servers if s['status'] == 'failed']
     for server in failed_servers:
@@ -214,7 +245,7 @@ async with MCPClient() as client:
 ```python
 async with MCPClient() as client:
     deployment_id = "demo-123"
-    
+
     # Get last 100 lines
     logs = client.get_server_logs(deployment_id, lines=100)
     print(f"Recent logs for {deployment_id}:")
@@ -229,21 +260,21 @@ import asyncio
 async def monitor_server_logs(client, deployment_id, interval=5):
     """Monitor server logs with periodic updates"""
     last_lines = 0
-    
+
     while True:
         try:
             logs = client.get_server_logs(deployment_id, lines=50)
             current_lines = len(logs.split('\n'))
-            
+
             if current_lines > last_lines:
                 # New log entries
                 new_logs = '\n'.join(logs.split('\n')[last_lines:])
                 print(f"New logs for {deployment_id}:")
                 print(new_logs)
                 last_lines = current_lines
-            
+
             await asyncio.sleep(interval)
-            
+
         except KeyboardInterrupt:
             print("Log monitoring stopped")
             break
@@ -273,25 +304,25 @@ async def deploy_test_cleanup_workflow():
     async with MCPClient() as client:
         # Deploy
         result = await client.start_server("demo", {"test_mode": True})
-        
+
         if not result["success"]:
             raise Exception(f"Deployment failed: {result['error']}")
-        
+
         deployment_id = result["deployment_id"]
-        
+
         try:
             # Test
             tools = await client.list_tools("demo")
             assert len(tools) > 0, "No tools found"
-            
+
             # Execute a test tool
             test_result = await client.call_tool("demo", "echo", {
                 "message": "test"
             })
             assert test_result["success"], "Tool execution failed"
-            
+
             print("✅ All tests passed")
-            
+
         finally:
             # Cleanup
             await client.stop_server(deployment_id)
@@ -312,18 +343,18 @@ async def rolling_deployment(template_name, new_config):
             s for s in client.list_servers()
             if s['template'] == template_name and s['status'] == 'running'
         ]
-        
+
         # Deploy new instance
         new_server = await client.start_server(template_name, new_config)
-        
+
         if not new_server["success"]:
             raise Exception(f"New deployment failed: {new_server['error']}")
-        
+
         print(f"✅ New server deployed: {new_server['deployment_id']}")
-        
+
         # Wait for new server to be ready
         await asyncio.sleep(5)
-        
+
         # Verify new server is working
         try:
             tools = await client.list_tools(template_name)
@@ -332,12 +363,12 @@ async def rolling_deployment(template_name, new_config):
             # Rollback
             await client.stop_server(new_server['deployment_id'])
             raise Exception(f"New server failed health check: {e}")
-        
+
         # Stop old servers
         for server in current_servers:
             await client.stop_server(server['id'])
             print(f"🔄 Stopped old server: {server['name']}")
-        
+
         print("🎉 Rolling deployment complete")
 
 # Example usage
@@ -355,23 +386,23 @@ async def setup_development_environment():
             ("filesystem", {"allowed_dirs": ["/tmp/dev"]}),
             ("github", {"api_endpoint": "https://api.github.com"})
         ]
-        
+
         deployed_services = []
-        
+
         try:
             for template, config in services:
                 result = await client.start_server(template, config)
-                
+
                 if result["success"]:
                     deployed_services.append(result["deployment_id"])
                     print(f"✅ Deployed {template}: {result['deployment_id']}")
                 else:
                     print(f"❌ Failed to deploy {template}: {result['error']}")
                     raise Exception(f"Environment setup failed at {template}")
-            
+
             print(f"🎉 Development environment ready with {len(deployed_services)} services")
             return deployed_services
-            
+
         except Exception as e:
             # Cleanup on failure
             for deployment_id in deployed_services:
@@ -402,7 +433,7 @@ async with MCPClient() as client:
         print(f"Configuration error: {e}")
     except DeploymentError as e:
         print(f"Deployment failed: {e}")
-    
+
     try:
         # Server not found
         info = client.get_server_info("nonexistent-server")
@@ -419,20 +450,20 @@ async def robust_deployment(template_name, config, max_retries=3):
         for attempt in range(max_retries):
             try:
                 result = await client.start_server(template_name, config)
-                
+
                 if result["success"]:
                     return result
                 else:
                     print(f"Attempt {attempt + 1} failed: {result['error']}")
                     if attempt < max_retries - 1:
                         await asyncio.sleep(2 ** attempt)  # Exponential backoff
-                    
+
             except Exception as e:
                 print(f"Attempt {attempt + 1} error: {e}")
                 if attempt < max_retries - 1:
                     await asyncio.sleep(2 ** attempt)
                 else:
                     raise
-        
+
         raise Exception(f"Failed to deploy {template_name} after {max_retries} attempts")
 ```

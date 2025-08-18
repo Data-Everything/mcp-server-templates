@@ -10,6 +10,7 @@ that provides:
 - Rich formatting and consistent output
 """
 
+import builtins
 import json
 import logging
 import os
@@ -177,7 +178,11 @@ def main(
 def deploy(
     template: Annotated[str, typer.Argument(help="Template name to deploy")],
     config_file: Annotated[
-        Optional[Path], typer.Option("--config", "-c", help="Path to config file")
+        Optional[Path], typer.Option("--config-file", "-f", help="Path to config file")
+    ] = None,
+    config: Annotated[
+        Optional[List[str]],
+        typer.Option("--config", "-c", help="Configuration key=value pairs"),
     ] = None,
     env: Annotated[
         Optional[List[str]],
@@ -192,6 +197,10 @@ def deploy(
             "--override",
             help="Template data overrides. Override configuration values (key=value). supports double underscore notation for nested fields, e.g., tools__0__custom_field=value",
         ),
+    ] = None,
+    volumes: Annotated[
+        Optional[str],
+        typer.Option("--volumes", help="Volume mounts (JSON object or array)"),
     ] = None,
     transport: Annotated[
         Optional[str],
@@ -214,8 +223,9 @@ def deploy(
     Use --dry-run to preview what would be deployed.
 
     Examples:
-        mcpt deploy github --config github-config.json
-        mcpt deploy filesystem --set allowed_dirs=/tmp --dry-run
+        mcpt deploy github --config-file github-config.json
+        mcpt deploy filesystem --config allowed_dirs=/tmp --dry-run
+        mcpt deploy demo --config hello_from="Custom Server" --volumes '{"./data": "/app/data"}'
     """
     cli_state["dry_run"] = dry_run
 
@@ -230,17 +240,29 @@ def deploy(
         deployment_manager = DeploymentManager(cli_state["backend_type"])
         config_manager = ConfigManager()
 
-        # Process configuration
+        # Process configuration with correct precedence order
+        # Order: Template defaults < Config file < CLI config < Environment variables
         config_dict = {}
+
+        # 1. Config file (lowest precedence after template defaults)
         if config_file:
             config_dict.update(config_manager._load_config_file(str(config_file)))
 
+        # 2. CLI config key=value pairs
+        if config:
+            for config_item in config:
+                if "=" in config_item:
+                    key, value = config_item.split("=", 1)
+                    config_dict[key] = value
+
+        # 3. Environment variables (highest precedence)
         if env:
             for env_var in env:
                 if "=" in env_var:
                     key, value = env_var.split("=", 1)
                     config_dict[key] = value
 
+        # Handle other config types (maintain existing behavior)
         if config_overrides:
             for override_item in config_overrides:
                 if "=" in override_item:
@@ -254,6 +276,31 @@ def deploy(
                     # Add OVERRIDE_ prefix to distinguish from regular config
                     config_dict[f"OVERRIDE_{key}"] = value
 
+        # Process volumes
+        volume_config = {}
+        if volumes:
+            try:
+                volume_data = json.loads(volumes)
+                if isinstance(volume_data, dict):
+                    # JSON object format: {"host_path": "container_path"}
+                    volume_config = volume_data
+                elif isinstance(volume_data, builtins.list):
+                    # JSON array format: ["/host/path1", "/host/path2"]
+                    # Convert to dict with same host and container paths
+                    volume_config = {path: path for path in volume_data}
+                else:
+                    console.print(
+                        "[red]❌ Invalid volume format. Expected JSON object or array[/red]"
+                    )
+                    raise typer.Exit(1)
+
+                # Add volume config to main config
+                config_dict["VOLUMES"] = volume_config
+
+            except json.JSONDecodeError as e:
+                console.print(f"[red]❌ Invalid JSON in volumes: {e}[/red]")
+                raise typer.Exit(1)
+
         if transport:
             config_dict["MCP_TRANSPORT"] = transport
 
@@ -261,6 +308,43 @@ def deploy(
         template_info = template_manager.get_template_info(template)
         if not template_info:
             console.print(f"[red]❌ Template '{template}' not found[/red]")
+            raise typer.Exit(1)
+
+        # Check if this is a stdio template
+        transport_info = template_info.get("transport", {})
+        default_transport = transport_info.get("default", "http")
+        supported_transports = transport_info.get("supported", ["http"])
+
+        # If transport is explicitly set via CLI, use that
+        actual_transport = transport or default_transport
+
+        # Handle stdio template deployment validation
+        if actual_transport == "stdio":
+            console.print("[red]❌ Cannot deploy stdio transport MCP servers[/red]")
+            console.print(
+                f"\nThe template '{template}' uses stdio transport, which doesn't require deployment."
+            )
+            console.print(
+                "Stdio MCP servers run interactively and cannot be deployed as persistent containers."
+            )
+
+            if config_dict:
+                console.print("\n[cyan]✅ Configuration validated successfully:[/cyan]")
+                for key, value in config_dict.items():
+                    # Mask sensitive values
+                    display_value = (
+                        "***"
+                        if any(
+                            sensitive in key.lower()
+                            for sensitive in ["token", "key", "secret", "password"]
+                        )
+                        else value
+                    )
+                    console.print(f"  {key}: {display_value}")
+
+            console.print("\nTo use this template, run tools directly:")
+            console.print(f"  mcpt list-tools {template}     # List available tools")
+            console.print("  mcpt interactive               # Start interactive shell")
             raise typer.Exit(1)
 
         # Show deployment plan
@@ -378,12 +462,38 @@ def list_tools(
             ) as progress:
                 task = progress.add_task("Discovering tools...", total=None)
 
+                # Adjust discovery method based on include flags
+                actual_discovery_method = discovery_method
+                if not include_static and include_dynamic:
+                    # Force dynamic discovery when --no-static is used
+                    actual_discovery_method = "auto"  # Will try dynamic methods first
+                elif include_static and not include_dynamic:
+                    # Force static discovery when --no-dynamic is used
+                    actual_discovery_method = "static"
+
                 # Get tools with metadata
                 result = tool_manager.list_tools(
                     template_or_id=template or "",
-                    discovery_method=discovery_method,
+                    discovery_method=actual_discovery_method,
                     force_refresh=force_refresh,
                 )
+
+            # Filter results based on include flags
+            if result.get("tools"):
+                discovery_used = result.get("discovery_method", "unknown")
+                tools = result.get("tools", [])
+
+                # Filter tools based on flags
+                if not include_static and discovery_used == "static":
+                    # If --no-static and result is static, show empty
+                    result["tools"] = []
+                elif not include_dynamic and discovery_used in [
+                    "stdio",
+                    "http",
+                    "dynamic",
+                ]:
+                    # If --no-dynamic and result is dynamic, show empty
+                    result["tools"] = []
 
             if output_format == "json":
                 console.print(json.dumps(result, indent=2))
@@ -411,14 +521,9 @@ def list_tools(
                 template_name=template,
                 discovery_method=discovery_method,
                 force_refresh=force_refresh,
+                include_static=include_static,
+                include_dynamic=include_dynamic,
             )
-
-        # Filter by include options
-        if not include_static:
-            all_tools["static_tools"] = {}
-        if not include_dynamic:
-            all_tools["dynamic_tools"] = {}
-            all_tools["backend_summary"] = {}
 
         if output_format == "json":
             console.print(json.dumps(all_tools, indent=2))

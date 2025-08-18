@@ -183,6 +183,8 @@ class MultiBackendManager:
         template_name: Optional[str] = None,
         discovery_method: str = "auto",
         force_refresh: bool = False,
+        include_static: bool = True,
+        include_dynamic: bool = True,
     ) -> Dict[str, Any]:
         """
         Get tools from all backends and templates.
@@ -191,6 +193,8 @@ class MultiBackendManager:
             template_name: Optional filter by template name
             discovery_method: Tool discovery method
             force_refresh: Force refresh of tool cache
+            include_static: Include static tools from template definitions
+            include_dynamic: Include dynamic tools from running deployments
 
         Returns:
             Dictionary with tools organized by source
@@ -201,85 +205,138 @@ class MultiBackendManager:
             "backend_summary": {},  # Summary by backend
         }
 
-        # Get static tools from templates (backend-agnostic)
-        try:
-            from mcp_template.core.template_manager import TemplateManager
-            from mcp_template.core.tool_manager import ToolManager
-
-            template_manager = TemplateManager(
-                "docker"
-            )  # Backend doesn't matter for templates
-            templates = template_manager.list_templates()
-
-            if template_name:
-                templates = {k: v for k, v in templates.items() if k == template_name}
-
-            for template_id, template_info in templates.items():
-                tool_manager = ToolManager(
-                    "docker"
-                )  # Use any backend for static discovery
-                try:
-                    result = tool_manager.list_tools(
-                        template_id,
-                        discovery_method="static",
-                        force_refresh=force_refresh,
-                    )
-                    tools = result.get("tools", [])
-                    if tools:
-                        all_tools["static_tools"][template_id] = {
-                            "tools": tools,
-                            "source": "template_definition",
-                        }
-                except Exception as e:
-                    logger.debug(f"Failed to get static tools for {template_id}: {e}")
-
-        except Exception as e:
-            logger.warning(f"Failed to get template tools: {e}")
-
-        # Get dynamic tools from running deployments
-        for backend_type, tool_manager in self.tool_managers.items():
+        # Get static tools from templates (backend-agnostic) if requested
+        if include_static:
             try:
-                # Get deployments for this backend
-                deployments = self.deployment_managers[
-                    backend_type
-                ].find_deployments_by_criteria(template_name=template_name)
+                from mcp_template.core.template_manager import TemplateManager
+                from mcp_template.core.tool_manager import ToolManager
 
-                backend_tools = []
-                for deployment in deployments:
+                template_manager = TemplateManager(
+                    "docker"
+                )  # Backend doesn't matter for templates
+                templates = template_manager.list_templates()
+
+                if template_name:
+                    templates = {
+                        k: v for k, v in templates.items() if k == template_name
+                    }
+
+                for template_id, template_info in templates.items():
+                    tool_manager = ToolManager(
+                        "docker"
+                    )  # Use any backend for static discovery
                     try:
-                        template_id = deployment.get("template", "unknown")
                         result = tool_manager.list_tools(
                             template_id,
-                            discovery_method=discovery_method,
+                            discovery_method="static",
                             force_refresh=force_refresh,
                         )
                         tools = result.get("tools", [])
                         if tools:
-                            backend_tools.extend(
-                                [
+                            all_tools["static_tools"][template_id] = {
+                                "tools": tools,
+                                "source": "template_definition",
+                            }
+                    except Exception as e:
+                        logger.debug(
+                            f"Failed to get static tools for {template_id}: {e}"
+                        )
+
+            except Exception as e:
+                logger.warning(f"Failed to get template tools: {e}")
+
+        # Get dynamic tools from running deployments if requested
+        if include_dynamic:
+            deployments_found = False
+
+            for backend_type, tool_manager in self.tool_managers.items():
+                try:
+                    # Get deployments for this backend
+                    deployments = self.deployment_managers[
+                        backend_type
+                    ].find_deployments_by_criteria(template_name=template_name)
+
+                    backend_tools = []
+                    for deployment in deployments:
+                        try:
+                            template_id = deployment.get("template", "unknown")
+                            result = tool_manager.list_tools(
+                                template_id,
+                                discovery_method=discovery_method,
+                                force_refresh=force_refresh,
+                            )
+                            tools = result.get("tools", [])
+                            if tools:
+                                backend_tools.extend(
+                                    [
+                                        {
+                                            **tool,
+                                            "deployment_id": deployment.get("id"),
+                                            "template": template_id,
+                                            "backend": backend_type,
+                                        }
+                                        for tool in tools
+                                    ]
+                                )
+                        except Exception as e:
+                            logger.debug(
+                                f"Failed to get tools from deployment {deployment.get('id')}: {e}"
+                            )
+
+                    if backend_tools:
+                        deployments_found = True
+                        all_tools["dynamic_tools"][backend_type] = backend_tools
+                        all_tools["backend_summary"][backend_type] = {
+                            "tool_count": len(backend_tools),
+                            "deployment_count": len(deployments),
+                        }
+
+                except Exception as e:
+                    logger.warning(f"Failed to get tools from {backend_type}: {e}")
+
+            # If no running deployments found and a specific template is requested,
+            # try dynamic discovery by creating a temporary container
+            if not deployments_found and template_name and not include_static:
+                logger.info(
+                    f"No running deployments found for {template_name}, attempting dynamic discovery"
+                )
+                try:
+                    from mcp_template.core.template_manager import TemplateManager
+
+                    template_manager = TemplateManager("docker")
+
+                    # Check if template exists and supports dynamic discovery
+                    template_info = template_manager.get_template_info(template_name)
+                    if template_info:
+                        # Use docker backend for dynamic discovery
+                        tool_manager = self.tool_managers.get("docker")
+                        if tool_manager:
+                            result = tool_manager.list_tools(
+                                template_name,
+                                discovery_method="auto",  # Let it choose stdio/http
+                                force_refresh=force_refresh,
+                            )
+                            tools = result.get("tools", [])
+                            if tools:
+                                all_tools["dynamic_tools"]["docker"] = [
                                     {
                                         **tool,
-                                        "deployment_id": deployment.get("id"),
-                                        "template": template_id,
-                                        "backend": backend_type,
+                                        "deployment_id": "temporary_discovery",
+                                        "template": template_name,
+                                        "backend": "docker",
                                     }
                                     for tool in tools
                                 ]
-                            )
-                    except Exception as e:
-                        logger.debug(
-                            f"Failed to get tools from deployment {deployment.get('id')}: {e}"
-                        )
+                                all_tools["backend_summary"]["docker"] = {
+                                    "tool_count": len(tools),
+                                    "deployment_count": 0,  # No permanent deployment
+                                }
+                                logger.info(
+                                    f"Dynamic discovery found {len(tools)} tools for {template_name}"
+                                )
 
-                if backend_tools:
-                    all_tools["dynamic_tools"][backend_type] = backend_tools
-                    all_tools["backend_summary"][backend_type] = {
-                        "tool_count": len(backend_tools),
-                        "deployment_count": len(deployments),
-                    }
-
-            except Exception as e:
-                logger.warning(f"Failed to get tools from {backend_type}: {e}")
+                except Exception as e:
+                    logger.warning(f"Dynamic discovery failed for {template_name}: {e}")
 
         return all_tools
 

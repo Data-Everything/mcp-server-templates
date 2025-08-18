@@ -4,19 +4,23 @@ Kubernetes probe for discovering MCP server tools from Kubernetes pods.
 
 import json
 import logging
+import os
 import time
 from typing import Any, Dict, List, Optional
 
 import requests
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from .mcp_client_probe import MCPClientProbe
 
 logger = logging.getLogger(__name__)
 
 # Constants
-DISCOVERY_TIMEOUT = 15  # Keep consistent with docker_probe.py
+DISCOVERY_TIMEOUT = int(os.environ.get("MCP_DISCOVERY_TIMEOUT", "60"))
+DISCOVERY_RETRIES = int(os.environ.get("MCP_DISCOVERY_RETRIES", "3"))
+DISCOVERY_RETRY_SLEEP = int(os.environ.get("MCP_DISCOVERY_RETRY_SLEEP", "5"))
 POD_READY_TIMEOUT = 60
 SERVICE_PORT_RANGE = (8000, 9000)
 
@@ -95,6 +99,12 @@ class KubernetesProbe:
                 )
             return None
 
+    @retry(
+        stop=stop_after_attempt(DISCOVERY_RETRIES),
+        wait=wait_fixed(DISCOVERY_RETRY_SLEEP),
+        retry=retry_if_exception_type((ApiException, OSError, Exception)),
+        reraise=True,
+    )
     def _try_mcp_stdio_discovery(
         self,
         image_name: str,
@@ -140,6 +150,12 @@ class KubernetesProbe:
             logger.debug("MCP stdio discovery failed for %s: %s", image_name, e)
             return None
 
+    @retry(
+        stop=stop_after_attempt(DISCOVERY_RETRIES),
+        wait=wait_fixed(DISCOVERY_RETRY_SLEEP),
+        retry=retry_if_exception_type((ApiException, OSError, Exception)),
+        reraise=True,
+    )
     def _try_http_discovery(
         self, image_name: str, timeout: int, env_vars: Optional[Dict[str, str]] = None
     ) -> Optional[Dict[str, Any]]:

@@ -84,6 +84,11 @@ class ConfigManager:
                 if "default" in prop_config:
                     merged_config[prop_name] = prop_config["default"]
 
+            # Merge system environment variables (lowest precedence after defaults)
+            system_env_config = self._load_system_env_vars(template_config)
+            if system_env_config:
+                merged_config = self._deep_merge(merged_config, system_env_config)
+
             # Load and merge config file
             if config_file and os.path.exists(config_file):
                 file_config = self._load_config_file(config_file)
@@ -501,3 +506,29 @@ class ConfigManager:
 
         # Return as string
         return value
+
+    def _load_system_env_vars(self, template_config: Dict[str, Any]) -> Dict[str, Any]:
+        """Load system environment variables that match template config properties.
+
+        Looks for environment variables that exactly match config property names.
+        Uses template's config schema to determine which env vars to look for.
+
+        Args:
+            template_config: Template configuration with config_schema
+
+        Returns:
+            Dictionary of matching environment variables
+        """
+        import os
+
+        system_env_config = {}
+        config_schema = template_config.get("config_schema", {})
+        properties = config_schema.get("properties", {})
+
+        # Check for environment variables that exactly match config property names
+        for prop_name, prop_config in properties.items():
+            env_value = os.environ.get(prop_name)
+            if env_value is not None:
+                system_env_config[prop_name] = self._convert_config_value(env_value)
+
+        return system_env_config
