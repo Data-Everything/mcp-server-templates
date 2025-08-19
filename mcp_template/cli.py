@@ -631,9 +631,6 @@ def list(
     output_format: Annotated[
         str, typer.Option("--format", help="Output format: table, json, yaml")
     ] = "table",
-    unified: Annotated[
-        bool, typer.Option("--unified", help="Show all backends in single table")
-    ] = False,
 ):
     """
     List available MCP server templates with deployment status across all backends.
@@ -641,6 +638,17 @@ def list(
     By default, shows templates and their deployment status across all available backends.
     Use --backend to limit to a specific backend, or --unified for a single table view.
     """
+
+    if deployed_only:
+        list_deployments(
+            backend=backend,
+            output_format=output_format,
+        )
+        console.print(
+            "💡 [dim]Use `mcp list-deployments` for addtitional format options[/dim]"
+        )
+        return
+
     try:
         # Single backend mode (backward compatibility)
         if backend:
@@ -663,13 +671,6 @@ def list(
                     running_counts[template_name] = (
                         running_counts.get(template_name, 0) + 1
                     )
-
-            # Filter if deployed_only is requested
-            if deployed_only:
-                templates = {k: v for k, v in templates.items() if k in running_counts}
-                if not templates:
-                    console.print("[yellow]No deployed templates found[/yellow]")
-                    return
 
             table = Table(
                 title=f"Available MCP Server Templates ({backend})",
@@ -733,13 +734,6 @@ def list(
                 running_counts[template_name][backend_type] = (
                     running_counts[template_name].get(backend_type, 0) + 1
                 )
-
-        # Filter if deployed_only is requested
-        if deployed_only:
-            templates = {k: v for k, v in templates.items() if k in running_counts}
-            if not templates:
-                console.print("[yellow]No deployed templates found[/yellow]")
-                return
 
         # Output format handling
         if output_format == "json":
@@ -1006,7 +1000,7 @@ def list_deployments(
 
         if not all_statuses:
             console.print(
-                "💡 [dim]Use --all to show deployments with all statuses[/dim]"
+                "\n💡 [dim]Use --all to show deployments with all statuses[/dim]"
             )
         console.print("💡 [dim]Use --backend <name> for single-backend view[/dim]")
 
