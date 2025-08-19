@@ -21,6 +21,7 @@ class MockDeploymentService(BaseDeploymentBackend):
 
     def __init__(self):
         """Initialize mock service."""
+        super().__init__()
         self.deployments = {}
         self.backend_type = "mock"
 

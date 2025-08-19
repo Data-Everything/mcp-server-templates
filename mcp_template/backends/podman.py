@@ -51,6 +51,7 @@ class PodmanDeploymentService(BaseDeploymentBackend):
             RuntimeError: If Podman is not available or not running.
         """
         self._ensure_podman_available()
+        super().__init__()
 
     def _run_command(
         self, command: List[str], check: bool = True

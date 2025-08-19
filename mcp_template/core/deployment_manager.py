@@ -193,12 +193,7 @@ class DeploymentManager:
                 )
 
             # Prepare deployment specification
-            deployment_spec = self._prepare_deployment_spec(
-                template_id,
-                template_info,
-                config,
-                deployment_options,
-            )
+
             deployment_spec = {
                 "template_id": template_id,
                 "template_info": template_info,
@@ -493,6 +488,7 @@ class DeploymentManager:
                 if option_key in options and options[option_key] is not None:
                     config[env_var_key] = options[option_key]
 
+            self.backend.set_config(backend_config)
             # Call the correct backend method
             result = self.backend.deploy_template(
                 template_id=template_id,

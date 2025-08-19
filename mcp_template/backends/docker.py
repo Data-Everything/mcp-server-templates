@@ -45,6 +45,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
 
     def __init__(self):
         """Initialize Docker service and verify Docker is available."""
+        super().__init__()
         self._ensure_docker_available()
 
     # Docker Infrastructure Methods
@@ -132,6 +133,10 @@ class DockerDeploymentService(BaseDeploymentBackend):
         Raises:
             Exception: If deployment fails for any reason
         """
+
+        if backend_config:
+            raise ValueError("Docker backend configuration is not supported")
+
         # Prepare deployment configuration
         env_vars = self._prepare_environment_variables(config, template_data)
 

@@ -13,6 +13,13 @@ class BaseDeploymentBackend(ABC):
     ensuring consistency across Docker, Kubernetes, and other deployment targets.
     """
 
+    def __init__(self):
+        """
+        Initialize
+        """
+
+        self._config = {}
+
     @abstractmethod
     def deploy_template(
         self,
@@ -124,3 +131,15 @@ class BaseDeploymentBackend(ABC):
             Dict with cleanup results
         """
         pass
+
+    def set_config(self, config: Dict[str, Any]) -> None:
+        """SSet backend config.
+
+        All backend can configure this should they need to
+
+        Args:
+            k8s_config: Dictionary containing Kubernetes configuration like
+                       replicas, service_type, resources, etc.
+        """
+
+        self._config = config

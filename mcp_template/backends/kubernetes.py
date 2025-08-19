@@ -34,20 +34,12 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             namespace: Kubernetes namespace for deployments
             kubeconfig_path: Path to kubeconfig file (optional)
         """
+
+        super().__init__()
         self.namespace = namespace
         self.kubeconfig_path = kubeconfig_path
-        self._k8s_config = {}  # Store Kubernetes-specific configuration
         self._ensure_kubernetes_available()
         self._ensure_namespace_exists()
-
-    def set_k8s_config(self, k8s_config: Dict[str, Any]) -> None:
-        """Set Kubernetes-specific configuration for deployments.
-
-        Args:
-            k8s_config: Dictionary containing Kubernetes configuration like
-                       replicas, service_type, resources, etc.
-        """
-        self._k8s_config = k8s_config or {}
 
     def _ensure_kubernetes_available(self):
         """Check if Kubernetes API is available and configure the client."""
@@ -378,7 +370,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
 
             # Create Helm values using both template config and Kubernetes config
             values = self._create_helm_values(
-                template_id, config, template_data, self._k8s_config
+                template_id, config, template_data, self._config
             )
             values["image"]["pullPolicy"] = "Always" if pull_image else "IfNotPresent"
 
