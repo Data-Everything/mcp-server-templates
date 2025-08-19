@@ -1484,7 +1484,7 @@ def _show_stop_plan(deployments: List[Dict[str, Any]], title: str):
 
 @app.command(
     "interactive/i",
-    help="Start the intreactive shell for intraction with MCP servers. You can also use 'mcpt i'.",
+    help="Start the intreactive shell for intraction with MCP servers",
 )
 def interactive():
     """
