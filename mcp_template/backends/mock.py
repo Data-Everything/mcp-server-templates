@@ -29,6 +29,7 @@ class MockDeploymentService(BaseDeploymentBackend):
         template_id: str,
         config: Dict[str, Any],
         template_data: Dict[str, Any],
+        backend_config: Dict[str, Any],
         pull_image: bool = True,
         dry_run: bool = False,
     ) -> Dict[str, Any]:

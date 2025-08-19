@@ -7,9 +7,10 @@ and handle special properties like volume mounts and command arguments.
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -549,10 +550,10 @@ class ConfigProcessor:
             "config": config,
         }
 
-    def _load_config_file(
-        self, config_file: str, template: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _load_json_yaml_config_file(self, config_file: str) -> Dict[str, Any]:
         """Load configuration from JSON/YAML file and map to environment variables."""
+        file_config = {}
+
         try:
             config_path = Path(config_file)
             if not config_path.exists():
@@ -560,7 +561,6 @@ class ConfigProcessor:
 
             # Load based on extension
             if config_path.suffix.lower() in [".yaml", ".yml"]:
-                import yaml
 
                 with open(config_path, "r") as f:
                     file_config = yaml.safe_load(f)
@@ -568,7 +568,18 @@ class ConfigProcessor:
                 with open(config_path, "r") as f:
                     file_config = json.load(f)
 
-            # Map file config to environment variables
+        except Exception as e:
+            logger.error(f"Failed to load config file {config_file}: {e}")
+            raise
+
+        return file_config
+
+    def _load_config_file(
+        self, config_file: str, template: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Load configuration from JSON/YAML file and map to environment variables."""
+        try:
+            file_config = self._load_json_yaml_config_file(config_file)
             return self._map_file_config_to_env(file_config, template)
 
         except Exception as e:

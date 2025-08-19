@@ -155,17 +155,6 @@ class DeploymentManager:
                     duration=time.time() - start_time,
                 )
 
-            # Process Kubernetes-specific configuration if backend is Kubernetes
-            # k8s_config = {}
-            # if self.backend == "kubernetes":
-            #    k8s_config = self.config_processor.merge_k8s_config_sources(
-            #        k8s_config_file=config_sources.get("k8s_config_file"),
-            #        k8s_config_values=config_sources.get("k8s_config_values"),
-            #    )
-            # Set the Kubernetes configuration on the backend
-            #    if hasattr(self.backend, "set_k8s_config"):
-            #        self.backend.set_k8s_config(k8s_config)
-
             # Prepare configuration using the unified config processor
             volume_config = config_sources.pop("volume_config", None)
             config = self.config_processor.prepare_configuration(
@@ -175,6 +164,12 @@ class DeploymentManager:
                 config_file=config_sources.get("config_file", None),
                 override_values=config_sources.get("override_values", None),
             )
+
+            backend_config = config_sources.get("backend_config", None)
+            if not backend_config and config_sources.get("backend_config_file"):
+                backend_config = self.config_processor._load_json_yaml_config_file(
+                    config_sources.get("backend_config_file")
+                )
 
             # Handle volume mounts and command arguments
             template_config_dict = (
@@ -204,7 +199,13 @@ class DeploymentManager:
                 config,
                 deployment_options,
             )
-
+            deployment_spec = {
+                "template_id": template_id,
+                "template_info": template_info,
+                "config": config,
+                "backend_config": backend_config or {},
+                "options": vars(deployment_options),
+            }
             # Execute deployment
             deployment_result = self._execute_deployment(deployment_spec)
             deployment_result.duration = time.time() - start_time
@@ -477,29 +478,15 @@ class DeploymentManager:
         # Return the first matching deployment
         return deployments[0].get("id")
 
-    def _prepare_deployment_spec(
-        self,
-        template_id: str,
-        template_info: Dict[str, Any],
-        config: Dict[str, Any],
-        options: DeploymentOptions,
-    ) -> Dict[str, Any]:
-        """Prepare deployment specification for backend."""
-        return {
-            "template_id": template_id,
-            "template_info": template_info,
-            "config": config,
-            "options": options.__dict__,
-        }
-
     def _execute_deployment(self, deployment_spec: Dict[str, Any]) -> DeploymentResult:
         """Execute the actual deployment using the backend."""
         try:
             # Extract the spec components for the backend interface
             template_id = deployment_spec["template_id"]
-            template_info = deployment_spec["template_info"]
-            config = deployment_spec["config"]
-            options = deployment_spec["options"]
+            template_info = deployment_spec.get("template_info", {})
+            config = deployment_spec.get("config", {})
+            backend_config = deployment_spec.get("backend_config", {})
+            options = deployment_spec.get("options", {})
 
             # Apply deployment options to config using RESERVED_ENV_VARS mapping
             for option_key, env_var_key in RESERVED_ENV_VARS.items():
@@ -511,6 +498,7 @@ class DeploymentManager:
                 template_id=template_id,
                 config=config,
                 template_data=template_info,
+                backend_config=backend_config,
                 pull_image=options.get("pull_image", True),
                 dry_run=options.get("dry_run", False),
             )

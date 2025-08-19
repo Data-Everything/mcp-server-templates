@@ -218,6 +218,12 @@ def deploy(
             "--backend-config", "-bc", help="Backend-specific configuration (KEY=VALUE)"
         ),
     ] = None,
+    backend_config_file: Annotated[
+        Optional[str],
+        typer.Option(
+            "--backend-config-file", "-bf", help="Backend-specific configuration file"
+        ),
+    ] = None,
     volumes: Annotated[
         Optional[str],
         typer.Option("--volumes", "-v", help="Volume mounts (JSON object or array)"),
@@ -274,6 +280,7 @@ def deploy(
         override_values = {}
         volume_config = None
         backend_config_values = {}
+        backend_config_file_path = None
 
         # 1. Config file (will be handled by deployment manager)
         if config_file:
@@ -313,6 +320,9 @@ def deploy(
                     key, value = backend_item.split("=", 1)
                     backend_config_values[key] = value
 
+        if backend_config_file:
+            backend_config_file_path = str(backend_config_file)
+
         # Handle transport
         if transport:
             config_values["MCP_TRANSPORT"] = transport
@@ -349,6 +359,7 @@ def deploy(
             "override_values": override_values if override_values else None,
             "volume_config": volume_config,
             "backend_config": backend_config_values if backend_config_values else None,
+            "backend_config_file": backend_config_file_path,
         }
 
         # Get template info

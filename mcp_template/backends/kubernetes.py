@@ -355,6 +355,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         template_id: str,
         config: Dict[str, Any],
         template_data: Dict[str, Any],
+        backend_config: Dict[str, Any],
         pull_image: bool = True,
         dry_run: bool = False,
     ) -> Dict[str, Any]:
@@ -364,6 +365,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             template_id: Unique identifier for the template
             config: Template configuration parameters (passed as env vars to container)
             template_data: Template metadata and configuration
+            backend_config: Any banckend specific configuration
             pull_image: Whether to pull the container image before deployment
             dry_run: Whether to performm actual depolyment. False means yes, True means No
 
