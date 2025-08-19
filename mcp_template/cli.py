@@ -14,6 +14,7 @@ import builtins
 import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 from typing import Annotated, Any, Dict, List, Optional
@@ -36,9 +37,26 @@ from mcp_template.core.response_formatter import (
     render_tools_with_sources,
 )
 
+
+class AliasGroup(typer.core.TyperGroup):
+
+    _CMD_SPLIT_P = re.compile(r"[,/] ?")
+
+    def get_command(self, ctx, cmd_name):
+        cmd_name = self._group_cmd_name(cmd_name)
+        return super().get_command(ctx, cmd_name)
+
+    def _group_cmd_name(self, default_name):
+        for cmd in self.commands.values():
+            if cmd.name and default_name in self._CMD_SPLIT_P.split(cmd.name):
+                return cmd.name
+        return default_name
+
+
 # Create the main Typer app
 app = typer.Typer(
     name="mcpt",
+    cls=AliasGroup,
     help="MCP Template CLI - Deploy and manage Model Context Protocol servers",
     epilog="Run 'mcpt COMMAND --help' for more information on a command.",
     rich_markup_mode="rich",
@@ -377,12 +395,6 @@ def deploy(
 
         console.print(plan_table)
 
-        if dry_run:
-            console.print(
-                "\n[yellow]✅ Dry run complete - deployment plan shown above[/yellow]"
-            )
-            return
-
         # Actual deployment
         with Progress(
             SpinnerColumn(),
@@ -391,9 +403,7 @@ def deploy(
         ) as progress:
             task = progress.add_task("Deploying template...", total=None)
 
-            options = DeploymentOptions(
-                pull_image=not no_pull,
-            )
+            options = DeploymentOptions(pull_image=not no_pull, dry_run=dry_run)
             result = deployment_manager.deploy_template(
                 template, config_sources, options
             )
@@ -410,6 +420,12 @@ def deploy(
                 error = result.error or "Unknown error"
                 console.print(f"[red]❌ Deployment failed: {error}[/red]")
                 raise typer.Exit(1)
+
+        if dry_run:
+            console.print(
+                "\n[yellow]✅ Dry run complete - deployment plan shown above[/yellow]"
+            )
+            return
 
     except Exception as e:
         console.print(f"[red]❌ Error during deployment: {e}[/red]")
@@ -1466,7 +1482,10 @@ def _show_stop_plan(deployments: List[Dict[str, Any]], title: str):
     console.print(table)
 
 
-@app.command()
+@app.command(
+    "interactive/i",
+    help="Start the intreactive shell for intraction with MCP servers. You can also use 'mcpt i'.",
+)
 def interactive():
     """
     Start the interactive CLI mode.

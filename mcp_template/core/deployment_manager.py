@@ -28,6 +28,7 @@ class DeploymentOptions:
         config_dir: Optional[str] = None,
         pull_image: bool = True,
         timeout: int = 300,
+        dry_run: bool = False,
     ):
         self.name = name
         self.transport = transport
@@ -36,6 +37,7 @@ class DeploymentOptions:
         self.config_dir = config_dir
         self.pull_image = pull_image
         self.timeout = timeout
+        self.dry_run = dry_run
 
 
 class DeploymentResult:
@@ -514,6 +516,7 @@ class DeploymentManager:
                 config=config,
                 template_data=template_info,
                 pull_image=options.get("pull_image", True),
+                dry_run=options.get("dry_run", False),
             )
 
             # If deployment returned a result without exception, consider it successful

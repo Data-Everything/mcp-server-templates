@@ -30,6 +30,7 @@ class MockDeploymentService(BaseDeploymentBackend):
         config: Dict[str, Any],
         template_data: Dict[str, Any],
         pull_image: bool = True,
+        dry_run: bool = False,
     ) -> Dict[str, Any]:
         """Mock template deployment."""
         # Validate template_data has required fields

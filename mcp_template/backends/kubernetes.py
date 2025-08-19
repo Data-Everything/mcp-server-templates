@@ -76,9 +76,12 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             logger.error(f"Failed to connect to Kubernetes API: {e}")
             raise RuntimeError(f"Kubernetes backend unavailable: {e}")
 
-    def _ensure_namespace_exists(self):
+    def _ensure_namespace_exists(self, dry_run: bool = False):
         """Ensure the target namespace exists."""
         try:
+            if dry_run:
+                logger.info(f"[DRY RUN] Would check/create namespace {self.namespace}")
+                return
             self.core_v1.read_namespace(name=self.namespace)
             logger.debug(f"Namespace {self.namespace} exists")
         except ApiException as e:
@@ -90,8 +93,11 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                         labels={"app.kubernetes.io/managed-by": "mcp-templates"},
                     )
                 )
-                self.core_v1.create_namespace(body=namespace_body)
-                logger.info(f"Created namespace {self.namespace}")
+                if dry_run:
+                    logger.info(f"[DRY RUN] Would create namespace {self.namespace}")
+                else:
+                    self.core_v1.create_namespace(body=namespace_body)
+                    logger.info(f"Created namespace {self.namespace}")
             else:
                 raise
 
@@ -350,6 +356,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         config: Dict[str, Any],
         template_data: Dict[str, Any],
         pull_image: bool = True,
+        dry_run: bool = False,
     ) -> Dict[str, Any]:
         """Deploy a template to Kubernetes.
 
@@ -358,6 +365,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             config: Template configuration parameters (passed as env vars to container)
             template_data: Template metadata and configuration
             pull_image: Whether to pull the container image before deployment
+            dry_run: Whether to performm actual depolyment. False means yes, True means No
 
         Returns:
             Dict containing deployment information
@@ -378,6 +386,14 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             created_resources = []
             for manifest in manifests:
                 try:
+                    if dry_run:
+                        logger.info(
+                            f"[DRY RUN] Would create {manifest['kind']} {manifest['metadata']['name']} in namespace {manifest['metadata']['namespace']}"
+                        )
+                        created_resources.append(
+                            (manifest["kind"], manifest["metadata"]["name"])
+                        )
+                        continue
                     if manifest["kind"] == "Deployment":
                         # Convert manifest dict to proper Kubernetes object
                         deployment_obj = client.V1Deployment(
@@ -501,11 +517,14 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                     self._cleanup_resources(created_resources)
                     raise
 
-            # Wait for deployment to be ready
-            self._wait_for_deployment_ready(deployment_name)
+            if not dry_run:
+                # Wait for deployment to be ready
+                self._wait_for_deployment_ready(deployment_name)
 
-            # Get deployment info
-            deployment_info = self._get_deployment_details(deployment_name)
+                # Get deployment info
+                deployment_info = self._get_deployment_details(deployment_name)
+            else:
+                deployment_info = {"endpoint": None}
 
             return {
                 "success": True,
@@ -513,7 +532,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                 "deployment_name": deployment_name,
                 "deployment_id": deployment_name,
                 "namespace": self.namespace,
-                "status": "deployed",
+                "status": "deployed" if not dry_run else "dry-run",
                 "created_resources": created_resources,
                 "endpoint": deployment_info.get("endpoint"),
                 "replicas": values["replicaCount"],

@@ -20,6 +20,7 @@ class BaseDeploymentBackend(ABC):
         config: Dict[str, Any],
         template_data: Dict[str, Any],
         pull_image: bool = True,
+        dry_run: bool = False,
     ) -> Dict[str, Any]:
         """Deploy a template using the backend.
 
@@ -28,6 +29,7 @@ class BaseDeploymentBackend(ABC):
             config: Configuration parameters for the deployment
             template_data: Template metadata and configuration
             pull_image: Whether to pull the container image before deployment
+            dry_run: Whether to performm actual depolyment. False means yes, True means No
 
         Returns:
             Dict containing deployment information including name, status, etc.
