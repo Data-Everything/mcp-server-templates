@@ -208,24 +208,37 @@ def deploy(
         Optional[List[str]],
         typer.Option(
             "--override",
+            "-o",
             help="Template data overrides. Override configuration values (key=value). supports double underscore notation for nested fields, e.g., tools__0__custom_field=value",
+        ),
+    ] = None,
+    backend_config: Annotated[
+        Optional[List[str]],
+        typer.Option(
+            "--backend-config", "-bc", help="Backend-specific configuration (KEY=VALUE)"
         ),
     ] = None,
     volumes: Annotated[
         Optional[str],
-        typer.Option("--volumes", help="Volume mounts (JSON object or array)"),
+        typer.Option("--volumes", "-v", help="Volume mounts (JSON object or array)"),
     ] = None,
     transport: Annotated[
         Optional[str],
-        typer.Option("--transport", help="Transport protocol (http, stdio)"),
+        typer.Option("--transport", "-t", help="Transport protocol (http, stdio)"),
+    ] = None,
+    port: Annotated[
+        Optional[int],
+        typer.Option("--port", "-p", help="Desired port to run http server on"),
     ] = None,
     no_pull: Annotated[
-        bool, typer.Option("--no-pull", help="Don't pull latest Docker image")
+        bool, typer.Option("--no-pull", "-np", help="Don't pull latest Docker image")
     ] = False,
     dry_run: Annotated[
         bool,
         typer.Option(
-            "--dry-run", help="Show what would be deployed without actually deploying"
+            "--dry-run",
+            "-x",
+            help="Show what would be deployed without actually deploying",
         ),
     ] = False,
 ):
@@ -259,6 +272,8 @@ def deploy(
         env_vars = {}
         config_values = {}
         override_values = {}
+        volume_config = None
+        backend_config_values = {}
 
         # 1. Config file (will be handled by deployment manager)
         if config_file:
@@ -292,12 +307,20 @@ def deploy(
                     key, value = override_item.split("=", 1)
                     override_values[key] = value
 
+        if backend_config:
+            for backend_item in backend_config:
+                if "=" in backend_item:
+                    key, value = backend_item.split("=", 1)
+                    backend_config_values[key] = value
+
         # Handle transport
         if transport:
             config_values["MCP_TRANSPORT"] = transport
 
+        if port:
+            config_values["MCP_PORT"] = str(port)
+
         # Process volumes and add to config_values
-        volume_config = None
         if volumes:
             try:
                 volume_data = json.loads(volumes)
@@ -325,6 +348,7 @@ def deploy(
             "config_values": config_values if config_values else None,
             "override_values": override_values if override_values else None,
             "volume_config": volume_config,
+            "backend_config": backend_config_values if backend_config_values else None,
         }
 
         # Get template info

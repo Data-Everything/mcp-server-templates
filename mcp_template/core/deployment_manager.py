@@ -10,7 +10,7 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 
 from mcp_template.backends import get_backend
-from mcp_template.core.config_processor import ConfigProcessor
+from mcp_template.core.config_processor import RESERVED_ENV_VARS, ConfigProcessor
 from mcp_template.core.template_manager import TemplateManager
 
 logger = logging.getLogger(__name__)
@@ -499,13 +499,9 @@ class DeploymentManager:
             template_id = deployment_spec["template_id"]
             template_info = deployment_spec["template_info"]
             config = deployment_spec["config"]
-            volumes = deployment_spec.get("volumes", {})
             options = deployment_spec["options"]
 
             # Apply deployment options to config using RESERVED_ENV_VARS mapping
-            from mcp_template.core.config_processor import RESERVED_ENV_VARS
-
-            # Add deployment options as environment variables
             for option_key, env_var_key in RESERVED_ENV_VARS.items():
                 if option_key in options and options[option_key] is not None:
                     config[env_var_key] = options[option_key]
