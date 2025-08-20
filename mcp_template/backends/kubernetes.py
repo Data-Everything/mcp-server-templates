@@ -107,10 +107,13 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         template_id: str,
         config: Dict[str, Any],
         template_data: Dict[str, Any],
-        k8s_config: Dict[str, Any],
+        k8s_config: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         """Create Helm values from template configuration and Kubernetes configuration."""
         # Extract image information
+        if not k8s_config:
+            k8s_config = self._config
+
         image_repo = template_data.get("docker_image", template_id)
         image_repo = normalize_image_name(image_repo)
         if image_repo and len(image_repo.split(":")) > 1:

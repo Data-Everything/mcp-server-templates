@@ -138,7 +138,7 @@ class BaseDeploymentBackend(ABC):
         All backend can configure this should they need to
 
         Args:
-            k8s_config: Dictionary containing Kubernetes configuration like
+            config: Dictionary containing Kubernetes configuration like
                        replicas, service_type, resources, etc.
         """
 
