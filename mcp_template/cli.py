@@ -476,7 +476,7 @@ def list_tools(
         typer.Argument(
             help="Template name or deployment ID (optional for multi-backend view)"
         ),
-    ] = None,
+    ],
     backend: Annotated[
         Optional[str], typer.Option("--backend", help="Show specific backend only")
     ] = None,
@@ -512,12 +512,11 @@ def list_tools(
         mcpt list-tools --backend docker   # All tools from docker backend only
         mcpt list-tools demo-12345         # Tools from specific deployment
     """
+
     try:
         # Single backend mode
-        if backend or (
-            template and len(template) > 20
-        ):  # Deployment IDs are typically longer
-            backend_type = backend or cli_state["backend_type"]
+        if backend:
+            backend_type = backend
             tool_manager = ToolManager(backend_type)
 
             with Progress(
