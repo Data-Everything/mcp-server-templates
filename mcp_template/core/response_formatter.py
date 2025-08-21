@@ -19,7 +19,6 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.syntax import Syntax
 from rich.table import Table
-from rich.text import Text
 from rich.tree import Tree
 
 logger = logging.getLogger(__name__)
@@ -268,104 +267,6 @@ def format_deployment_summary(deployments: List[Dict[str, Any]]) -> str:
         summary_parts.append(f"({', '.join(backend_parts)})")
 
     return ", ".join(summary_parts)
-
-
-def render_tools_with_sources(all_tools: Dict[str, Any]) -> None:
-    """
-    Render tools organized by source (static vs dynamic) with backend info.
-
-    Args:
-        all_tools: Tool data organized by source type
-    """
-    static_tools = all_tools.get("static_tools", {})
-    dynamic_tools = all_tools.get("dynamic_tools", {})
-    backend_summary = all_tools.get("backend_summary", {})
-
-    # Summary header
-    static_count = sum(len(data.get("tools", [])) for data in static_tools.values())
-    dynamic_count = sum(len(tools) for tools in dynamic_tools.values())
-
-    console.print("\n[bold]Tool Discovery Summary[/]")
-    console.print(f"Static tools (from templates): {static_count}")
-    console.print(f"Dynamic tools (from deployments): {dynamic_count}")
-    console.print(f"Total tools: {static_count + dynamic_count}")
-
-    # Static tools section
-    if static_tools:
-        console.print(
-            "\n[bold blue]📋 Static Tools[/] [dim](from template definitions)[/]"
-        )
-
-        for template_id, tool_data in static_tools.items():
-            tools = tool_data.get("tools", [])
-            console.print(f"\n  [bold]{template_id}[/] ({len(tools)} tools)")
-
-            if tools:
-                tool_table = Table(box=box.SIMPLE, show_header=True, header_style="dim")
-                tool_table.add_column("Name", style="bold")
-                tool_table.add_column("Description", style="")
-
-                for tool in tools:
-                    description = tool.get("description", "No description")
-                    # Truncate long descriptions
-                    if len(description) > 60:
-                        description = description[:57] + "..."
-
-                    tool_table.add_row(tool.get("name", "unknown"), description)
-
-                console.print("    ", tool_table)
-
-    # Dynamic tools section
-    if dynamic_tools:
-        console.print(
-            "\n[bold green]🚀 Dynamic Tools[/] [dim](from running deployments)[/]"
-        )
-
-        for backend_type, tools in dynamic_tools.items():
-            backend_indicator = get_backend_indicator(backend_type)
-            summary = backend_summary.get(backend_type, {})
-            deployment_count = summary.get("deployment_count", 0)
-
-            console.print(
-                f"\n  {backend_indicator} ({len(tools)} tools from {deployment_count} deployments)"
-            )
-
-            if tools:
-                # Group tools by template for better organization
-                by_template = {}
-                for tool in tools:
-                    template = tool.get("template", "unknown")
-                    if template not in by_template:
-                        by_template[template] = []
-                    by_template[template].append(tool)
-
-                for template, template_tools in by_template.items():
-                    console.print(f"    [bold]{template}[/]")
-
-                    tool_table = Table(
-                        box=box.SIMPLE, show_header=True, header_style="dim"
-                    )
-                    tool_table.add_column("Name", style="bold")
-                    tool_table.add_column("Description", style="")
-                    tool_table.add_column("Deployment", style="dim", width=12)
-
-                    for tool in template_tools:
-                        description = tool.get("description", "No description")
-                        if len(description) > 50:
-                            description = description[:47] + "..."
-
-                        deployment_id = tool.get("deployment_id", "N/A")
-                        if len(deployment_id) > 12:
-                            deployment_id = deployment_id[:12]
-
-                        tool_table.add_row(
-                            tool.get("name", "unknown"), description, deployment_id
-                        )
-
-                    console.print("      ", tool_table)
-
-    if not static_tools and not dynamic_tools:
-        console.print("\n[dim]No tools found.[/]")
 
 
 def render_backend_health_status(health_data: Dict[str, Any]) -> None:
@@ -947,7 +848,7 @@ class ResponseFormatter:
             # Special case: handle tools lists (MCP-specific but common pattern)
             tools = data["tools"]
             if tools and isinstance(tools[0], dict) and "name" in tools[0]:
-                self.beautify_tools_list(tools, "MCP Server Tools")
+                self.beautify_toollist(tools, "MCP Server Tools")
                 return
             # Tools is just names or other simple data - fall through to generic display
 

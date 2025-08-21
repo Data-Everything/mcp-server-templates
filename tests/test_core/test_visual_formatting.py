@@ -21,7 +21,7 @@ from mcp_template.core.response_formatter import (
     render_backend_health_status,
     render_deployments_grouped_by_backend,
     render_deployments_unified_table,
-    render_tools_with_sources,
+    ß,
 )
 
 pytestmark = pytest.mark.unit
@@ -269,62 +269,6 @@ class TestRenderFunctions:
         assert len(no_deployments_calls) > 0
 
     @patch("mcp_template.core.response_formatter.console")
-    def test_render_tools_with_sources(self, mock_console):
-        """Test tools rendering with multiple sources."""
-        tools_data = {
-            "static_tools": {
-                "demo": {
-                    "tools": [
-                        {"name": "echo", "description": "Echo a message"},
-                        {"name": "greet", "description": "Greet someone"},
-                    ],
-                    "source": "template_definition",
-                }
-            },
-            "dynamic_tools": {
-                "docker": [
-                    {
-                        "name": "echo",
-                        "description": "Echo a message",
-                        "deployment_id": "docker-123",
-                        "template": "demo",
-                        "backend": "docker",
-                    }
-                ]
-            },
-            "backend_summary": {"docker": {"tool_count": 1, "deployment_count": 1}},
-        }
-
-        render_tools_with_sources(tools_data)
-
-        # Verify console.print was called multiple times (summary, static, dynamic sections)
-        assert mock_console.print.call_count > 5
-
-        # Check for key sections in output
-        print_calls = [str(call) for call in mock_console.print.call_args_list]
-        summary_calls = [
-            call for call in print_calls if "Tool Discovery Summary" in call
-        ]
-        static_calls = [call for call in print_calls if "Static Tools" in call]
-        dynamic_calls = [call for call in print_calls if "Dynamic Tools" in call]
-
-        assert len(summary_calls) > 0
-        assert len(static_calls) > 0
-        assert len(dynamic_calls) > 0
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_render_tools_with_sources_empty(self, mock_console):
-        """Test tools rendering with no tools."""
-        tools_data = {"static_tools": {}, "dynamic_tools": {}, "backend_summary": {}}
-
-        render_tools_with_sources(tools_data)
-
-        # Should show summary and "No tools found"
-        print_calls = [str(call) for call in mock_console.print.call_args_list]
-        no_tools_calls = [call for call in print_calls if "No tools found" in call]
-        assert len(no_tools_calls) > 0
-
-    @patch("mcp_template.core.response_formatter.console")
     def test_render_backend_health_status(self, mock_console):
         """Test backend health status rendering."""
         health_data = {
@@ -453,30 +397,6 @@ class TestEdgeCases:
         result = format_deployment_summary(deployments)
         assert "3 total" in result
         # Should handle missing fields gracefully
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_render_tools_long_descriptions(self, mock_console):
-        """Test tools rendering with very long descriptions."""
-        tools_data = {
-            "static_tools": {
-                "demo": {
-                    "tools": [
-                        {
-                            "name": "test_tool",
-                            "description": "This is a very long description that should be truncated because it exceeds the reasonable length limit for display in the table",
-                        }
-                    ],
-                    "source": "template_definition",
-                }
-            },
-            "dynamic_tools": {},
-            "backend_summary": {},
-        }
-
-        render_tools_with_sources(tools_data)
-
-        # Should not raise any errors and should call console.print
-        assert mock_console.print.call_count > 0
 
     def test_backend_indicators_case_sensitivity(self):
         """Test that backend indicators work with different cases."""

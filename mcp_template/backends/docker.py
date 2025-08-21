@@ -208,7 +208,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
             image_name = template_data.get("image", f"mcp-{template_id}:latest")
             # Pull image if requested
             if pull_image and not dry_run:
-                self._run_command([BACKEND_TYPE, "pull", image_name], dry_run=dry_run)
+                self._run_command([BACKEND_TYPE, "pull", image_name])
 
             # Deploy the container
             container_id = self._deploy_container(

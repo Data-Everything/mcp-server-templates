@@ -33,7 +33,6 @@ class MultiBackendManager:
             enabled_backends: List of backend types to enable.
                             Defaults to ["docker", "kubernetes"] (production backends only)
         """
-        # Import here to avoid circular imports
 
         self.enabled_backends = enabled_backends or VALID_BACKENDS
         self.backends: Dict[str, BaseDeploymentBackend] = {}
@@ -205,6 +204,10 @@ class MultiBackendManager:
             "dynamic_tools": {},  # Tools from running deployments
             "backend_summary": {},  # Summary by backend
         }
+
+        # Use first available backend for template info (backend agnostic)
+        first_backend = next(iter(self.tool_managers.keys()))
+        template_manager = TemplateManager(first_backend)
         # Get dynamic tools from running deployments if requested
         if include_dynamic:
             deployments_found = False
@@ -263,37 +266,41 @@ class MultiBackendManager:
                     f"No running deployments found for {template_name}, attempting dynamic discovery"
                 )
                 try:
-                    template_manager = TemplateManager("docker")
-
                     # Check if template exists and supports dynamic discovery
                     template_info = template_manager.get_template_info(template_name)
                     if template_info:
-                        # Use docker backend for dynamic discovery
-                        tool_manager = self.tool_managers.get("docker")
-                        if tool_manager:
-                            result = tool_manager.list_tools(
-                                template_name,
-                                discovery_method="auto",  # Let it choose stdio/http
-                                force_refresh=force_refresh,
-                            )
-                            tools = result.get("tools", [])
-                            if tools:
-                                all_tools["dynamic_tools"]["docker"] = [
-                                    {
-                                        **tool,
-                                        "deployment_id": "temporary_discovery",
-                                        "template": template_name,
-                                        "backend": "docker",
-                                    }
-                                    for tool in tools
-                                ]
-                                all_tools["backend_summary"]["docker"] = {
-                                    "tool_count": len(tools),
-                                    "deployment_count": 0,  # No permanent deployment
-                                }
-                                logger.info(
-                                    f"Dynamic discovery found {len(tools)} tools for {template_name}"
+                        # Try dynamic discovery on available backends in order
+                        for backend_type, tool_manager in self.tool_managers.items():
+                            try:
+                                result = tool_manager.list_tools(
+                                    template_name,
+                                    discovery_method="auto",  # Let it choose stdio/http
+                                    force_refresh=force_refresh,
                                 )
+                                tools = result.get("tools", [])
+                                if tools:
+                                    all_tools["dynamic_tools"][backend_type] = [
+                                        {
+                                            **tool,
+                                            "deployment_id": "temporary_discovery",
+                                            "template": template_name,
+                                            "backend": backend_type,
+                                        }
+                                        for tool in tools
+                                    ]
+                                    all_tools["backend_summary"][backend_type] = {
+                                        "tool_count": len(tools),
+                                        "deployment_count": 0,  # No permanent deployment
+                                    }
+                                    logger.info(
+                                        f"Dynamic discovery found {len(tools)} tools for {template_name} on {backend_type}"
+                                    )
+                                    break  # Stop after first successful discovery
+                            except Exception as e:
+                                logger.debug(
+                                    f"Dynamic discovery failed on {backend_type}: {e}"
+                                )
+                                continue
 
                 except Exception as e:
                     logger.warning(f"Dynamic discovery failed for {template_name}: {e}")
@@ -301,9 +308,6 @@ class MultiBackendManager:
         # Get static tools from templates (backend-agnostic) if requested
         if include_static:
             try:
-                template_manager = TemplateManager(
-                    "docker"
-                )  # Backend doesn't matter for templates
                 templates = template_manager.list_templates()
 
                 if template_name:
@@ -312,9 +316,8 @@ class MultiBackendManager:
                     }
 
                 for template_id, template_info in templates.items():
-                    tool_manager = ToolManager(
-                        "docker"
-                    )  # Use any backend for static discovery
+                    # Use first available backend for static discovery
+                    tool_manager = ToolManager(first_backend)
                     try:
                         result = tool_manager.list_tools(
                             template_id,

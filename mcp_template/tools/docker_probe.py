@@ -4,34 +4,91 @@ Docker probe for discovering MCP server tools from Docker images.
 
 import json
 import logging
-import os
 import random
 import socket
 import subprocess
+import threading
 import time
 from typing import Any, Dict, List, Optional
 
 import requests
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from .mcp_client_probe import MCPClientProbe
+from .base_probe import (
+    CONTAINER_PORT_RANGE,
+    DISCOVERY_RETRIES,
+    DISCOVERY_RETRY_SLEEP,
+    DISCOVERY_TIMEOUT,
+    BaseProbe,
+)
 
 logger = logging.getLogger(__name__)
 
-# Constants
-DISCOVERY_TIMEOUT = int(os.environ.get("MCP_DISCOVERY_TIMEOUT", "60"))
-DISCOVERY_RETRIES = int(os.environ.get("MCP_DISCOVERY_RETRIES", "3"))
-DISCOVERY_RETRY_SLEEP = int(os.environ.get("MCP_DISCOVERY_RETRY_SLEEP", "5"))
-CONTAINER_PORT_RANGE = (8000, 9000)
-CONTAINER_HEALTH_CHECK_TIMEOUT = 15
 
-
-class DockerProbe:
+class DockerProbe(BaseProbe):
     """Probe Docker containers to discover MCP server tools."""
 
     def __init__(self):
         """Initialize Docker probe."""
-        self.mcp_client = MCPClientProbe()
+        super().__init__()
+
+    def _cleanup_container(self, container_name: str, timeout: int = 10):
+        """Clean up container with background task if timeout occurs."""
+
+        def cleanup_task():
+            try:
+                logger.debug(f"Starting cleanup for container {container_name}")
+                # Try normal removal first
+                subprocess.run(
+                    ["docker", "rm", "-f", container_name],
+                    capture_output=True,
+                    timeout=timeout,
+                    check=True,
+                )
+                logger.debug(f"Successfully cleaned up container {container_name}")
+            except subprocess.TimeoutExpired:
+                logger.warning(
+                    f"Cleanup timeout for container {container_name}, scheduling background cleanup"
+                )
+                # Schedule background cleanup
+                background_cleanup = threading.Thread(
+                    target=self._background_cleanup, args=(container_name,), daemon=True
+                )
+                background_cleanup.start()
+            except subprocess.CalledProcessError as e:
+                logger.debug(f"Cleanup failed for {container_name}: {e}")
+            except Exception as e:
+                logger.debug(f"Unexpected cleanup error for {container_name}: {e}")
+
+        # Run cleanup in separate thread to not block main discovery
+        cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
+        cleanup_thread.start()
+
+    def _background_cleanup(self, container_name: str, max_retries: int = 3):
+        """Background cleanup with retries."""
+
+        for attempt in range(max_retries):
+            try:
+                time.sleep(2**attempt)  # Exponential backoff: 1s, 2s, 4s
+                subprocess.run(
+                    ["docker", "rm", "-f", container_name],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                )
+                logger.info(
+                    f"Background cleanup successful for {container_name} on attempt {attempt + 1}"
+                )
+                return
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+                logger.debug(
+                    f"Background cleanup attempt {attempt + 1} failed for {container_name}: {e}"
+                )
+                if attempt == max_retries - 1:
+                    logger.error(
+                        f"Background cleanup failed after {max_retries} attempts for {container_name}"
+                    )
 
     def discover_tools_from_image(
         self,
@@ -321,10 +378,6 @@ class DockerProbe:
 
         return None
 
-    def _get_default_endpoints(self) -> List[str]:
-        """Get default endpoints to probe."""
-        return ["/tools", "/api/tools", "/v1/tools", "/mcp/tools", "/.well-known/tools"]
-
     def _is_valid_tools_response(self, data: Any) -> bool:
         """Check if response contains valid tools data."""
         if not isinstance(data, dict):
@@ -370,27 +423,36 @@ class DockerProbe:
         return tools
 
     def _cleanup_container(self, container_name: str) -> None:
-        """Clean up container resources."""
+        """Clean up container synchronously, with background fallback on timeout/error."""
         try:
-            # Stop container
+            # Stop container with short timeout
             subprocess.run(
                 ["docker", "stop", container_name],
                 capture_output=True,
-                timeout=10,
+                timeout=5,  # Reduced timeout
                 check=False,
             )
 
-            # Remove container
+            # Try to remove container synchronously first
             subprocess.run(
-                ["docker", "rm", container_name],
+                ["docker", "rm", "-f", container_name],
                 capture_output=True,
-                timeout=10,
-                check=False,
+                timeout=30,
+                check=True,
             )
-
-            logger.debug("Cleaned up container %s", container_name)
+            logger.debug("Successfully cleaned up container %s", container_name)
 
         except subprocess.TimeoutExpired:
-            logger.warning("Timeout cleaning up container %s", container_name)
+            logger.warning(
+                "Timeout cleaning up container %s, scheduling background cleanup",
+                container_name,
+            )
+            self._background_cleanup(container_name)
         except (subprocess.CalledProcessError, OSError) as e:
-            logger.warning("Error cleaning up container %s: %s", container_name, e)
+            logger.warning(
+                "Error cleaning up container %s: %s, scheduling background cleanup",
+                container_name,
+                e,
+            )
+            # Still try cleanup
+            self._background_cleanup(container_name)

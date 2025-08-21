@@ -4,7 +4,6 @@ Kubernetes probe for discovering MCP server tools from Kubernetes pods.
 
 import json
 import logging
-import os
 import time
 from typing import Any, Dict, List, Optional
 
@@ -13,19 +12,21 @@ from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
-from .mcp_client_probe import MCPClientProbe
+from .base_probe import (
+    DISCOVERY_RETRIES,
+    DISCOVERY_RETRY_SLEEP,
+    DISCOVERY_TIMEOUT,
+    BaseProbe,
+)
 
 logger = logging.getLogger(__name__)
 
-# Constants
-DISCOVERY_TIMEOUT = int(os.environ.get("MCP_DISCOVERY_TIMEOUT", "60"))
-DISCOVERY_RETRIES = int(os.environ.get("MCP_DISCOVERY_RETRIES", "3"))
-DISCOVERY_RETRY_SLEEP = int(os.environ.get("MCP_DISCOVERY_RETRY_SLEEP", "5"))
+# Kubernetes-specific constants
 POD_READY_TIMEOUT = 60
 SERVICE_PORT_RANGE = (8000, 9000)
 
 
-class KubernetesProbe:
+class KubernetesProbe(BaseProbe):
     """Probe Kubernetes pods to discover MCP server tools."""
 
     def __init__(self, namespace: str = "mcp-servers"):
@@ -34,8 +35,8 @@ class KubernetesProbe:
         Args:
             namespace: Kubernetes namespace to use for probe operations
         """
+        super().__init__()
         self.namespace = namespace
-        self.mcp_client = MCPClientProbe()
         self._init_kubernetes_client()
 
     def _init_kubernetes_client(self):
@@ -494,16 +495,6 @@ class KubernetesProbe:
                 continue
 
         return None
-
-    def _get_default_endpoints(self) -> List[str]:
-        """Get default endpoints to probe for MCP tools."""
-        return [
-            "/tools",
-            "/mcp/tools",
-            "/api/tools",
-            "/list-tools",
-            "/health",
-        ]
 
     def _cleanup_job(self, job_name: str):
         """Clean up the discovery job."""

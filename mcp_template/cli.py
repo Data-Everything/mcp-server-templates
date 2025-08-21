@@ -28,14 +28,16 @@ from mcp_template.core import DeploymentManager, TemplateManager, ToolManager
 from mcp_template.core.deployment_manager import DeploymentOptions
 from mcp_template.core.multi_backend_manager import MultiBackendManager
 from mcp_template.core.response_formatter import (
+    ResponseFormatter,
     console,
     format_deployment_summary,
     get_backend_indicator,
     render_backend_health_status,
     render_deployments_grouped_by_backend,
     render_deployments_unified_table,
-    render_tools_with_sources,
 )
+
+response_formatter = ResponseFormatter()
 
 
 class AliasGroup(typer.core.TyperGroup):
@@ -471,58 +473,68 @@ def deploy(
 
 @app.command()
 def list_tools(
-    template: Annotated[
-        Optional[str],
-        typer.Argument(
-            help="Template name or deployment ID (optional for multi-backend view)"
-        ),
-    ],
+    template: Annotated[str, typer.Argument(help="Template name or deployment ID")],
     backend: Annotated[
         Optional[str], typer.Option("--backend", help="Show specific backend only")
     ] = None,
-    discovery_method: Annotated[
-        str, typer.Option("--method", help="Discovery method")
-    ] = "auto",
     force_refresh: Annotated[
         bool, typer.Option("--force-refresh", help="Force refresh cache")
     ] = False,
+    static: Annotated[
+        bool,
+        typer.Option(
+            "--no-static",
+            help="Enable static discovery",
+            is_flag=False,
+            flag_value=True,  # when passed, static=True
+            show_default=True,
+        ),
+    ] = True,
+    dynamic: Annotated[
+        bool,
+        typer.Option(
+            "--no-dynamic",
+            help="Enable dynamic discovery",
+            is_flag=False,
+            flag_value=True,  # when passed, dynamic=True
+            show_default=True,
+        ),
+    ] = True,
     output_format: Annotated[
         str, typer.Option("--format", help="Output format (table, json)")
     ] = "table",
-    include_static: Annotated[
-        bool, typer.Option("--static/--no-static", help="Include static template tools")
-    ] = True,
-    include_dynamic: Annotated[
-        bool,
-        typer.Option(
-            "--dynamic/--no-dynamic", help="Include tools from running deployments"
-        ),
-    ] = True,
 ):
     """
-    List available tools from templates and deployments across all backends.
+    List available tools from a specific template using priority-based discovery.
 
-    Without arguments, shows all tools from all templates and running deployments.
-    Specify a template name to filter to that template across all backends.
-    Use --backend to limit to a specific backend.
+    Discovery Priority: cache → running deployments → stdio → http → static
+
+    The command discovers tools using the first successful method and shows
+    metadata about how the tools were discovered.
 
     Examples:
-        mcpt list-tools                    # All tools from all backends
-        mcpt list-tools github             # GitHub template tools from all backends
-        mcpt list-tools --backend docker   # All tools from docker backend only
-        mcpt list-tools demo-12345         # Tools from specific deployment
+        mcpt list-tools github              # GitHub tools using priority discovery
+        mcpt list-tools demo --backend docker   # Demo tools from docker backend only
+        mcpt list-tools github --method static  # GitHub tools from template definition only
+        mcpt list-tools demo --force-refresh    # Bypass cache and rediscover
     """
 
     try:
-        # Multi-backend mode
-        multi_manager = MultiBackendManager(
-            enabled_backends=[backend] if backend else None
-        )
-        available_backends = multi_manager.get_available_backends()
+        # Always use single-backend approach with priority-based discovery
+        if backend:
+            # User specified backend - use it directly
+            tool_manager = ToolManager(backend)
+            backend_name = backend
+        else:
+            # No backend specified - use first available backend
+            multi_manager = MultiBackendManager()
+            available_backends = multi_manager.get_available_backends()
+            if not available_backends:
+                console.print("[red]❌ No backends available[/red]")
+                raise typer.Exit(1)
 
-        if not available_backends:
-            console.print("[red]❌ No backends available[/red]")
-            return
+            backend_name = available_backends[0]
+            tool_manager = ToolManager(backend_name)
 
         with Progress(
             SpinnerColumn(),
@@ -530,45 +542,45 @@ def list_tools(
             console=console,
         ) as progress:
             task = progress.add_task(
-                (
-                    "Discovering tools across backends..."
-                    if backend
-                    else f"Discovering tools on {backend} backend"
-                ),
-                total=None,
+                f"Discovering tools using {backend_name} backend...", total=None
             )
 
-            # Get all tools from all sources
-            all_tools = multi_manager.get_all_tools(
-                template_name=template,
-                discovery_method=discovery_method,
+            # Get tools using priority-based discovery
+            # Map 'dynamic' to 'auto' to enable full priority-based discovery
+            # since 'dynamic' should include stdio fallback when no deployments exist
+
+            result = tool_manager.list_tools(
+                template,
+                static=static,
+                dynamic=dynamic,
                 force_refresh=force_refresh,
-                include_static=include_static,
-                include_dynamic=include_dynamic,
+                timeout=30,
+                config_values=None,
             )
 
-        if output_format == "json":
-            console.print(json.dumps(all_tools, indent=2))
+        tools = result.get("tools", [])
+        discovery_used = result.get("discovery_method", "unknown")
+        source = result.get("source", "unknown")
+
+        # Show tools - just a simple list, no categories
+        if tools:
+            if output_format == "json":
+                output_data = {
+                    "template": template,
+                    "backend": backend_name,
+                    "discovery_method": discovery_used,
+                    "source": source,
+                    "tool_count": len(tools),
+                    "tools": tools,
+                }
+                console.print(json.dumps(output_data, indent=2))
+            else:
+                response_formatter.beautify_tools_list(tools)
         else:
-            render_tools_with_sources(all_tools)
-
-        # Show discovery hints
-        template_filter = f" for template '{template}'" if template else ""
-        static_text = "static" if include_static else ""
-        dynamic_text = "dynamic" if include_dynamic else ""
-        sources = [s for s in [static_text, dynamic_text] if s]
-        sources_text = (
-            " and ".join(sources)
-            if len(sources) > 1
-            else (sources[0] if sources else "no")
-        )
-
-        console.print(f"\n💡 [dim]Showing {sources_text} tools{template_filter}[/dim]")
-        if template:
-            console.print(
-                "💡 [dim]Use 'mcpt list-tools' without arguments to see all tools[/dim]"
-            )
-        console.print("💡 [dim]Use --backend <name> for single-backend discovery[/dim]")
+            console.print(f"[yellow]No tools found for template '{template}'[/yellow]")
+            if discovery_used == "error":
+                error_msg = result.get("error", "Unknown error")
+                console.print(f"[red]Error: {error_msg}[/red]")
 
     except Exception as e:
         console.print(f"[red]❌ Error listing tools: {e}[/red]")
