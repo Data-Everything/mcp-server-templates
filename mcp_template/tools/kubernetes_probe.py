@@ -2,12 +2,12 @@
 Kubernetes probe for discovering MCP server tools from Kubernetes pods.
 """
 
+import asyncio
 import json
 import logging
 import time
 from typing import Any, Dict, List, Optional
 
-import requests
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
@@ -160,7 +160,7 @@ class KubernetesProbe(BaseProbe):
     def _try_http_discovery(
         self, image_name: str, timeout: int, env_vars: Optional[Dict[str, str]] = None
     ) -> Optional[Dict[str, Any]]:
-        """Try to discover tools using HTTP endpoints (fallback)."""
+        """Try to discover tools using HTTP endpoints with proper MCP protocol."""
         pod_name = None
         service_name = None
 
@@ -187,23 +187,23 @@ class KubernetesProbe(BaseProbe):
             if not self._wait_for_pod_ready(pod_name, timeout):
                 return None
 
-            # Discover tools from running pod via service
+            # Use the BaseProbe's async HTTP discovery with proper MCP protocol
             service_url = self._get_service_url(service_name, port)
-            result = self._probe_endpoints(service_url, self._get_default_endpoints())
+            endpoint = f"{service_url}/mcp"
+            tools = asyncio.run(self._async_discover_via_http(endpoint, timeout))
 
-            if result:
-                result.update(
-                    {
-                        "discovery_method": "kubernetes_http_probe",
-                        "timestamp": time.time(),
-                        "source_image": image_name,
-                        "pod_name": pod_name,
-                        "service_name": service_name,
-                        "port": port,
-                    }
-                )
+            if tools:
+                return {
+                    "tools": self._normalize_mcp_tools(tools),
+                    "discovery_method": "kubernetes_http_probe",
+                    "timestamp": time.time(),
+                    "source_image": image_name,
+                    "pod_name": pod_name,
+                    "service_name": service_name,
+                    "port": port,
+                }
 
-            return result
+            return None
 
         except (ApiException, Exception) as e:
             logger.debug("HTTP discovery failed for %s: %s", image_name, e)
@@ -475,26 +475,6 @@ class KubernetesProbe(BaseProbe):
     def _get_service_url(self, service_name: str, port: int) -> str:
         """Get the URL for accessing the service."""
         return f"http://{service_name}.{self.namespace}.svc.cluster.local:{port}"
-
-    def _probe_endpoints(
-        self, base_url: str, endpoints: List[str]
-    ) -> Optional[Dict[str, Any]]:
-        """Probe service endpoints for tool information."""
-        for endpoint in endpoints:
-            try:
-                url = f"{base_url}{endpoint}"
-                response = requests.get(url, timeout=5)
-
-                if response.status_code == 200:
-                    data = response.json()
-                    if "tools" in data:
-                        return data
-
-            except (requests.RequestException, json.JSONDecodeError, Exception) as e:
-                logger.debug("Failed to probe endpoint %s: %s", endpoint, e)
-                continue
-
-        return None
 
     def _cleanup_job(self, job_name: str):
         """Clean up the discovery job."""

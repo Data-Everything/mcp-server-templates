@@ -2,9 +2,8 @@
 Docker probe for discovering MCP server tools from Docker images.
 """
 
-import json
+import asyncio
 import logging
-import random
 import socket
 import subprocess
 import threading
@@ -168,7 +167,7 @@ class DockerProbe(BaseProbe):
     def _try_http_discovery(
         self, image_name: str, timeout: int
     ) -> Optional[Dict[str, Any]]:
-        """Try to discover tools using HTTP endpoints (fallback)."""
+        """Try to discover tools using HTTP endpoints with proper MCP protocol."""
         container_name = None
         try:
             # Generate unique container name
@@ -188,24 +187,21 @@ class DockerProbe(BaseProbe):
             if not self._wait_for_container_ready(container_name, port, timeout):
                 return None
 
-            # Discover tools from running container
-            base_url = f"http://localhost:{port}"
-            result = self._probe_container_endpoints(
-                base_url, self._get_default_endpoints()
-            )
+            # Use the BaseProbe's async HTTP discovery with proper MCP protocol
+            endpoint = f"http://localhost:{port}/mcp"
+            tools = asyncio.run(self._async_discover_via_http(endpoint, timeout))
 
-            if result:
-                result.update(
-                    {
-                        "discovery_method": "docker_http_probe",
-                        "timestamp": time.time(),
-                        "source_image": image_name,
-                        "container_name": container_name,
-                        "port": port,
-                    }
-                )
+            if tools:
+                return {
+                    "tools": self._normalize_mcp_tools(tools),
+                    "discovery_method": "docker_http_probe",
+                    "timestamp": time.time(),
+                    "source_image": image_name,
+                    "container_name": container_name,
+                    "port": port,
+                }
 
-            return result
+            return None
 
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError) as e:
             logger.debug("HTTP discovery failed for %s: %s", image_name, e)
@@ -216,15 +212,7 @@ class DockerProbe(BaseProbe):
             if container_name:
                 self._cleanup_container(container_name)
 
-    def _generate_container_name(self, image_name: str) -> str:
-        """Generate unique container name."""
-        clean_name = image_name.replace("/", "-").replace(":", "-")
-        timestamp = int(time.time())
-        random_suffix = random.randint(1000, 9999)
-        return f"mcp-tool-discovery-{clean_name}-{timestamp}-{random_suffix}"
-
-    @staticmethod
-    def _find_available_port() -> Optional[int]:
+    def _find_available_port(self) -> Optional[int]:
         """Find an available port for the container."""
         for port in range(CONTAINER_PORT_RANGE[0], CONTAINER_PORT_RANGE[1]):
             try:
@@ -345,82 +333,6 @@ class DockerProbe(BaseProbe):
 
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return False
-
-    def _probe_container_endpoints(
-        self, base_url: str, endpoints: List[str]
-    ) -> Optional[Dict[str, Any]]:
-        """Probe container endpoints for tool information."""
-        for endpoint in endpoints:
-            try:
-                url = f"{base_url.rstrip('/')}{endpoint}"
-                logger.debug("Probing container endpoint: %s", url)
-
-                response = requests.get(
-                    url, timeout=5, headers={"Accept": "application/json"}
-                )
-
-                if response.status_code == 200:
-                    try:
-                        data = response.json()
-                        if self._is_valid_tools_response(data):
-                            return {
-                                "tools": self._normalize_tools(data),
-                                "source_endpoint": url,
-                                "response_data": data,
-                            }
-                    except json.JSONDecodeError:
-                        logger.debug("Non-JSON response from %s", url)
-                        continue
-
-            except requests.RequestException as e:
-                logger.debug("Failed to probe %s: %s", endpoint, e)
-                continue
-
-        return None
-
-    def _is_valid_tools_response(self, data: Any) -> bool:
-        """Check if response contains valid tools data."""
-        if not isinstance(data, dict):
-            return False
-
-        # Check for tools in various formats
-        if "tools" in data and isinstance(data["tools"], list):
-            return True
-
-        if "result" in data and isinstance(data.get("result"), dict):
-            result = data["result"]
-            if "tools" in result and isinstance(result["tools"], list):
-                return True
-
-        return False
-
-    def _normalize_tools(self, data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Normalize tools data to standard format."""
-        tools = []
-
-        # Extract tools from various response formats
-        raw_tools = data.get("tools", [])
-        if not raw_tools and "result" in data:
-            raw_tools = data["result"].get("tools", [])
-
-        for tool in raw_tools:
-            if not isinstance(tool, dict):
-                continue
-
-            normalized_tool = {
-                "name": tool.get("name", tool.get("function_name", "unknown")),
-                "description": tool.get(
-                    "description", tool.get("summary", "No description available")
-                ),
-                "category": tool.get("category", "general"),
-                "parameters": tool.get(
-                    "parameters", tool.get("args", tool.get("inputSchema", {}))
-                ),
-            }
-
-            tools.append(normalized_tool)
-
-        return tools
 
     def _cleanup_container(self, container_name: str) -> None:
         """Clean up container synchronously, with background fallback on timeout/error."""

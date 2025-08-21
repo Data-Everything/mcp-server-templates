@@ -427,10 +427,10 @@ class MCPClient:
     # Tool Discovery and Management
     def list_tools(
         self,
-        template_name: Optional[str] = None,
+        template_name: str,
         force_refresh: bool = False,
-        force_server_discovery: bool = False,
-        discovery_method: str = "auto",
+        static: bool = True,
+        dynamic: bool = True,
         include_metadata: bool = False,
     ) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         """
@@ -439,8 +439,8 @@ class MCPClient:
         Args:
             template_name: Specific template to get tools from
             force_refresh: Force refresh of tool cache
-            force_server_discovery: Force discovery from server if available
-            discovery_method: How to discover tools (static, dynamic, image, auto)
+            static: Allow static discovery
+            dynamic: Allow dynamic discovery
             include_metadata: Whether to return metadata about discovery method
 
         Returns:
@@ -452,8 +452,9 @@ class MCPClient:
                 self.tool_manager.clear_cache(template_name=template_name)
 
             result = self.tool_manager.list_tools(
-                template_name or "",
-                discovery_method=discovery_method,
+                template_name,
+                static=static,
+                dynamic=dynamic,
                 force_refresh=force_refresh,
             )
 

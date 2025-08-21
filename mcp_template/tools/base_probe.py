@@ -5,10 +5,14 @@ This module provides a common interface and shared functionality for probing
 MCP servers across Docker, Kubernetes, and other container platforms.
 """
 
+import asyncio
+import json
 import logging
 import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
+
+import aiohttp
 
 from .mcp_client_probe import MCPClientProbe
 
@@ -144,3 +148,221 @@ class BaseProbe(ABC):
         """Determine if HTTP discovery should be attempted for this image."""
         # Attempt HTTP discovery as fallback for all images
         return True
+
+    async def _async_discover_via_http(self, endpoint: str, timeout: int) -> List[Dict]:
+        """
+        Async MCP JSON-RPC discovery with proper session management.
+
+        This method implements the official MCP protocol handshake:
+        1. initialize request with protocol version and capabilities
+        2. notifications/initialized notification
+        3. tools/list request to get available tools
+
+        Args:
+            endpoint: HTTP endpoint URL for the MCP server
+            timeout: Timeout for the entire discovery process
+
+        Returns:
+            List of discovered tools, empty list if discovery fails
+        """
+        try:
+            # Try multiple MCP connection approaches
+            tools = []
+
+            # Approach 1: Direct tools/list call
+            tools = await self._try_direct_tools_list(endpoint, timeout)
+            if tools:
+                logger.info(f"Discovered {len(tools)} tools via direct tools/list")
+                return tools
+
+            # Approach 2: Full MCP handshake (like VS Code does)
+            tools = await self._try_mcp_handshake(endpoint, timeout)
+            if tools:
+                logger.info(f"Discovered {len(tools)} tools via MCP handshake")
+                return tools
+
+            # Approach 3: WebSocket connection (if HTTP fails)
+            ws_endpoint = endpoint.replace("http://", "ws://").replace(
+                "/mcp", "/mcp/ws"
+            )
+            tools = await self._try_websocket_connection(ws_endpoint, timeout)
+            if tools:
+                logger.info(f"Discovered {len(tools)} tools via WebSocket")
+                return tools
+
+            return []
+
+        except Exception as e:
+            logger.debug(f"Async MCP discovery failed for {endpoint}: {e}")
+            return []
+
+    async def _try_direct_tools_list(self, endpoint: str, timeout: int) -> List[Dict]:
+        """Try direct tools/list MCP call."""
+        try:
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=timeout)
+            ) as session:
+                payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/list",
+                    "params": {},
+                }
+
+                logger.debug(f"Trying direct tools/list call to {endpoint}")
+                async with session.post(
+                    endpoint, json=payload, headers={"Content-Type": "application/json"}
+                ) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        if result.get("result") and "tools" in result["result"]:
+                            return result["result"]["tools"]
+            return []
+        except Exception as e:
+            logger.debug(f"Direct tools/list failed: {e}")
+            return []
+
+    async def _try_mcp_handshake(self, endpoint: str, timeout: int) -> List[Dict]:
+        """Try full MCP handshake like VS Code MCP clients do."""
+        try:
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=timeout)
+            ) as session:
+                # Step 1: Initialize connection
+                init_payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {
+                            "roots": {"listChanged": True},
+                            "sampling": {},
+                        },
+                        "clientInfo": {"name": "mcp-template", "version": "1.0.0"},
+                    },
+                }
+
+                logger.debug(f"Trying MCP handshake to {endpoint}")
+                async with session.post(
+                    endpoint,
+                    json=init_payload,
+                    headers={"Content-Type": "application/json"},
+                ) as response:
+                    if response.status != 200:
+                        return []
+
+                    init_result = await response.json()
+                    if init_result.get("error"):
+                        logger.debug(f"MCP initialize failed: {init_result['error']}")
+                        return []
+
+                # Step 2: Send initialized notification
+                notif_payload = {
+                    "jsonrpc": "2.0",
+                    "method": "notifications/initialized",
+                }
+
+                async with session.post(
+                    endpoint,
+                    json=notif_payload,
+                    headers={"Content-Type": "application/json"},
+                ) as response:
+                    pass  # Notification doesn't need response
+
+                # Step 3: List tools
+                tools_payload = {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/list",
+                    "params": {},
+                }
+
+                async with session.post(
+                    endpoint,
+                    json=tools_payload,
+                    headers={"Content-Type": "application/json"},
+                ) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        if result.get("result") and "tools" in result["result"]:
+                            return result["result"]["tools"]
+
+            return []
+        except Exception as e:
+            logger.debug(f"MCP handshake failed: {e}")
+            return []
+
+    async def _try_websocket_connection(
+        self, ws_endpoint: str, timeout: int
+    ) -> List[Dict]:
+        """Try WebSocket connection for MCP (some servers prefer this)."""
+        try:
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=timeout)
+            ) as session:
+                async with session.ws_connect(ws_endpoint) as ws:
+                    # Send initialize
+                    init_msg = {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {},
+                            "clientInfo": {"name": "mcp-template", "version": "1.0.0"},
+                        },
+                    }
+
+                    await ws.send_str(json.dumps(init_msg))
+
+                    # Wait for initialize response
+                    msg = await ws.receive()
+                    if msg.type != aiohttp.WSMsgType.TEXT:
+                        return []
+
+                    # Send initialized notification
+                    notif_msg = {
+                        "jsonrpc": "2.0",
+                        "method": "notifications/initialized",
+                    }
+                    await ws.send_str(json.dumps(notif_msg))
+
+                    # Request tools
+                    tools_msg = {
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/list",
+                        "params": {},
+                    }
+                    await ws.send_str(json.dumps(tools_msg))
+
+                    # Get tools response
+                    msg = await ws.receive()
+                    if msg.type == aiohttp.WSMsgType.TEXT:
+                        result = json.loads(msg.data)
+                        if result.get("result") and "tools" in result["result"]:
+                            return result["result"]["tools"]
+
+            return []
+        except Exception as e:
+            logger.debug(f"WebSocket connection failed: {e}")
+            return []
+
+    def discover_tools_from_endpoint(
+        self, endpoint: str, timeout: int = 30
+    ) -> List[Dict]:
+        """
+        Discover tools from an existing MCP endpoint.
+
+        This is a convenience method for ToolManager and other components
+        that need to discover tools from already running MCP servers.
+
+        Args:
+            endpoint: HTTP endpoint URL for the MCP server
+            timeout: Timeout for the discovery process
+
+        Returns:
+            List of discovered tools
+        """
+        return asyncio.run(self._async_discover_via_http(endpoint, timeout))
