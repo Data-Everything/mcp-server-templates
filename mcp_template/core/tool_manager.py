@@ -7,10 +7,13 @@ consolidating functionality from CLI and MCPClient.
 
 import json
 import logging
+import re
+import time
 from typing import Any, Dict, List, Optional
 
 from mcp_template.backends import get_backend
 from mcp_template.core.cache import CacheManager
+from mcp_template.core.deployment_manager import DeploymentManager
 from mcp_template.core.template_manager import TemplateManager
 from mcp_template.core.tool_caller import ToolCaller
 
@@ -32,6 +35,13 @@ class ToolManager:
         self.tool_caller = ToolCaller(backend_type=backend_type)
         self.cache_manager = CacheManager(max_age_hours=24.0)  # 24-hour cache
         self._cache = {}  # Keep in-memory cache for session
+
+    def _get_cache_key(self, template: str) -> str:
+        """
+        Get cache key
+        """
+
+        return f"tools_{re.sub(r'[^a-zA-Z0-9_]', '', template)}"
 
     def list_tools(
         self,
@@ -63,67 +73,66 @@ class ToolManager:
                 }
             }
         """
-        import time
+
+        if template_or_id in self.template_manager.list_templates():
+            is_template = True
+        else:
+            is_template = False
 
         try:
             actual_discovery_method = discovery_method
             cached = False
+            tools = []
+            cache_key = self._get_cache_key(template_or_id)
 
-            if discovery_method == "auto":
-                # Use the enhanced discover_tools method that implements user's flow
-                tools = self.discover_tools(
-                    template_or_id,
-                    timeout=timeout,
-                    force_refresh=force_refresh,
-                    config_values=config_values,
-                )
-                # Try to determine the actual discovery method used
-                actual_discovery_method = self._determine_actual_discovery_method(
-                    template_or_id, tools
-                )
-            else:
-                # Handle specific discovery methods
-                cache_key = f"{template_or_id}:{discovery_method}"
+            if not tools:
+                if discovery_method == "auto":
+                    # Use the enhanced discover_tools method that implements user's flow
+                    tools = self.discover_tools(
+                        template_or_id,
+                        timeout=timeout,
+                        force_refresh=force_refresh,
+                        config_values=config_values,
+                        is_template=is_template,
+                    )
+                    # Try to determine the actual discovery method used
+                    actual_discovery_method = self._determine_actual_discovery_method(
+                        template_or_id, tools
+                    )
+                else:
 
-                # Try persistent cache first (24-hour expiry)
-                if not force_refresh:
-                    cached_data = self.cache_manager.get(cache_key)
-                    if cached_data:
-                        tools = cached_data.get("tools", [])
-                        cached = True
-                        actual_discovery_method = cached_data.get(
-                            "discovery_method", discovery_method
-                        )
-                    elif cache_key in self._cache:
-                        # Fallback to in-memory cache
-                        tools = self._cache[cache_key]
-                        cached = True
-                        actual_discovery_method = discovery_method
+                    if not cached:
+                        if discovery_method == "static":
+                            tools = self.discover_tools_static(template_or_id)
+                            actual_discovery_method = "static"
+                        elif discovery_method == "dynamic":
+                            tools = self.discover_tools_dynamic(template_or_id, timeout)
+                            actual_discovery_method = (
+                                "http"  # dynamic usually means HTTP
+                            )
+                        elif discovery_method == "image":
+                            tools = self.discover_tools_from_image(
+                                template_or_id, timeout
+                            )
+                            actual_discovery_method = (
+                                "stdio"  # image discovery uses stdio
+                            )
+                        else:
+                            logger.warning(
+                                f"Unknown discovery method: {discovery_method}"
+                            )
+                            tools = self.discover_tools_static(template_or_id)
+                            actual_discovery_method = "static"
 
-                if not cached:
-                    if discovery_method == "static":
-                        tools = self.discover_tools_static(template_or_id)
-                        actual_discovery_method = "static"
-                    elif discovery_method == "dynamic":
-                        tools = self.discover_tools_dynamic(template_or_id, timeout)
-                        actual_discovery_method = "http"  # dynamic usually means HTTP
-                    elif discovery_method == "image":
-                        tools = self.discover_tools_from_image(template_or_id, timeout)
-                        actual_discovery_method = "stdio"  # image discovery uses stdio
-                    else:
-                        logger.warning(f"Unknown discovery method: {discovery_method}")
-                        tools = self.discover_tools_static(template_or_id)
-                        actual_discovery_method = "static"
-
-                    # Cache the results in both caches
-                    self._cache[cache_key] = tools
-                    if tools:  # Only cache non-empty results in persistent cache
-                        cache_data = {
-                            "tools": tools,
-                            "discovery_method": actual_discovery_method,
-                            "template": template_or_id,
-                        }
-                        self.cache_manager.set(cache_key, cache_data)
+                        # Cache the results in both caches
+                        self._cache[cache_key] = tools
+                        if tools:  # Only cache non-empty results in persistent cache
+                            cache_data = {
+                                "tools": tools,
+                                "discovery_method": actual_discovery_method,
+                                "template": template_or_id,
+                            }
+                            self.cache_manager.set(cache_key, cache_data)
 
             # Normalize tool schemas
             normalized_tools = [
@@ -163,6 +172,7 @@ class ToolManager:
         timeout: int = 30,
         force_refresh: bool = False,
         config_values: Optional[Dict[str, Any]] = None,
+        is_template: bool = True,
     ) -> List[Dict]:
         """
         Discover tools using the best available method with caching.
@@ -183,7 +193,8 @@ class ToolManager:
         Returns:
             List of discovered tools
         """
-        cache_key = f"tools_{template_or_deployment}"
+
+        cache_key = self._get_cache_key(template_or_deployment)
 
         # Check cache first unless force_refresh
         if not force_refresh:
@@ -198,14 +209,13 @@ class ToolManager:
                 self.tool_caller = ToolCaller()
 
             # First try: Check for running server (HTTP)
-            try:
+            if is_template:
                 # Get deployment info
                 deployment_info = self.backend.get_deployment_info(
                     template_or_deployment
                 )
                 if not deployment_info:
                     # Try to find deployment by template name
-                    from mcp_template.core.deployment_manager import DeploymentManager
 
                     deployment_manager = DeploymentManager(
                         "docker"
@@ -249,71 +259,71 @@ class ToolManager:
                             )
                             return tools
 
-            except Exception as e:
-                logger.debug(f"HTTP tool discovery failed, trying stdio: {e}")
+            else:
+                logger.debug("HTTP tool discovery failed, trying stdio")
 
-            # Second try: Use stdio if template supports it
-            try:
-                # Get template info to check stdio support
-                template_info = self.template_manager.get_template_info(
-                    template_or_deployment
-                )
-                if not template_info:
-                    logger.warning(f"Template '{template_or_deployment}' not found")
-                    return []
-
-                # Check if template supports stdio
-                transport_config = template_info.get("transport", {})
-                supported_transports = transport_config.get("supported", ["http"])
-                default_transport = transport_config.get("default", "http")
-
-                if "stdio" in supported_transports or default_transport == "stdio":
-                    logger.info(
-                        f"Discovering tools via stdio for {template_or_deployment}"
+                # Second try: Use stdio if template supports it
+                try:
+                    # Get template info to check stdio support
+                    template_info = self.template_manager.get_template_info(
+                        template_or_deployment
                     )
+                    if not template_info:
+                        logger.warning(f"Template '{template_or_deployment}' not found")
+                        return []
 
-                    # Mock required config values if not provided
-                    if config_values is None:
-                        config_values = {}
+                    # Check if template supports stdio
+                    transport_config = template_info.get("transport", {})
+                    supported_transports = transport_config.get("supported", ["http"])
+                    default_transport = transport_config.get("default", "http")
 
-                    # Auto-generate mock values for required config
-                    config_schema = template_info.get("config_schema", {})
-                    required_props = config_schema.get("required", [])
-                    properties = config_schema.get("properties", {})
+                    if "stdio" in supported_transports or default_transport == "stdio":
+                        logger.info(
+                            f"Discovering tools via stdio for {template_or_deployment}"
+                        )
 
-                    for prop in required_props:
-                        if prop not in config_values:
-                            prop_config = properties.get(prop, {})
-                            # Mock value based on type or use a generic mock
-                            prop_type = prop_config.get("type", "string")
-                            if prop_type == "string":
-                                config_values[prop] = f"mock_{prop}_value"
-                            elif prop_type == "integer":
-                                config_values[prop] = 8080
-                            elif prop_type == "boolean":
-                                config_values[prop] = True
-                            else:
-                                config_values[prop] = f"mock_{prop}_value"
+                        # Mock required config values if not provided
+                        if config_values is None:
+                            config_values = {}
 
-                    # Use the existing discover_tools_from_image method which uses stdio
-                    image = template_info.get("docker_image")
-                    if image:
-                        tools = self.discover_tools_from_image(image, timeout)
-                        if tools:
-                            # Cache the successful result
-                            self._cache[cache_key] = tools
-                            logger.info(
-                                f"Cached {len(tools)} tools from stdio for {template_or_deployment}"
-                            )
-                            return tools
+                        # Auto-generate mock values for required config
+                        config_schema = template_info.get("config_schema", {})
+                        required_props = config_schema.get("required", [])
+                        properties = config_schema.get("properties", {})
 
-                else:
-                    logger.warning(
-                        f"Template '{template_or_deployment}' does not support stdio transport and no running server found"
-                    )
+                        for prop in required_props:
+                            if prop not in config_values:
+                                prop_config = properties.get(prop, {})
+                                # Mock value based on type or use a generic mock
+                                prop_type = prop_config.get("type", "string")
+                                if prop_type == "string":
+                                    config_values[prop] = f"mock_{prop}_value"
+                                elif prop_type == "integer":
+                                    config_values[prop] = 8080
+                                elif prop_type == "boolean":
+                                    config_values[prop] = True
+                                else:
+                                    config_values[prop] = f"mock_{prop}_value"
 
-            except Exception as e:
-                logger.error(f"Stdio tool discovery failed: {e}")
+                        # Use the existing discover_tools_from_image method which uses stdio
+                        image = template_info.get("docker_image")
+                        if image:
+                            tools = self.discover_tools_from_image(image, timeout)
+                            if tools:
+                                # Cache the successful result
+                                self._cache[cache_key] = tools
+                                logger.info(
+                                    f"Cached {len(tools)} tools from stdio for {template_or_deployment}"
+                                )
+                                return tools
+
+                    else:
+                        logger.warning(
+                            f"Template '{template_or_deployment}' does not support stdio transport and no running server found"
+                        )
+
+                except Exception as e:
+                    logger.error(f"Stdio tool discovery failed: {e}")
 
             # Fallback to static discovery
             logger.info(
@@ -789,7 +799,7 @@ class ToolManager:
         Returns:
             Cached tools or None if not cached
         """
-        cache_key = f"{template_or_id}:{discovery_method}"
+        cache_key = self._get_cache_key(template_or_id)
         return self._cache.get(cache_key)
 
     def _determine_actual_discovery_method(
@@ -847,25 +857,3 @@ class ToolManager:
         except Exception as e:
             logger.debug(f"Could not determine discovery method: {e}")
             return "static"  # Default fallback
-
-    def list_tools_legacy(
-        self,
-        template_or_id: str,
-        discovery_method: str = "auto",
-        force_refresh: bool = False,
-        timeout: int = 30,
-        config_values: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
-        """
-        Legacy method that returns just the tools list for backward compatibility.
-
-        This method is deprecated. Use list_tools() instead which returns metadata.
-        """
-        result = self.list_tools(
-            template_or_id=template_or_id,
-            discovery_method=discovery_method,
-            force_refresh=force_refresh,
-            timeout=timeout,
-            config_values=config_values,
-        )
-        return result.get("tools", [])

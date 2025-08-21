@@ -514,59 +514,10 @@ def list_tools(
     """
 
     try:
-        # Single backend mode
-        if backend:
-            backend_type = backend
-            tool_manager = ToolManager(backend_type)
-
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                task = progress.add_task("Discovering tools...", total=None)
-
-                # Adjust discovery method based on include flags
-                actual_discovery_method = discovery_method
-                if not include_static and include_dynamic:
-                    # Force dynamic discovery when --no-static is used
-                    actual_discovery_method = "auto"  # Will try dynamic methods first
-                elif include_static and not include_dynamic:
-                    # Force static discovery when --no-dynamic is used
-                    actual_discovery_method = "static"
-
-                # Get tools with metadata
-                result = tool_manager.list_tools(
-                    template_or_id=template or "",
-                    discovery_method=actual_discovery_method,
-                    force_refresh=force_refresh,
-                )
-
-            # Filter results based on include flags
-            if result.get("tools"):
-                discovery_used = result.get("discovery_method", "unknown")
-                tools = result.get("tools", [])
-
-                # Filter tools based on flags
-                if not include_static and discovery_used == "static":
-                    # If --no-static and result is static, show empty
-                    result["tools"] = []
-                elif not include_dynamic and discovery_used in [
-                    "stdio",
-                    "http",
-                    "dynamic",
-                ]:
-                    # If --no-dynamic and result is dynamic, show empty
-                    result["tools"] = []
-
-            if output_format == "json":
-                console.print(json.dumps(result, indent=2))
-            else:
-                display_tools_with_metadata(result, template or "")
-            return
-
         # Multi-backend mode
-        multi_manager = MultiBackendManager()
+        multi_manager = MultiBackendManager(
+            enabled_backends=[backend] if backend else None
+        )
         available_backends = multi_manager.get_available_backends()
 
         if not available_backends:
@@ -578,7 +529,14 @@ def list_tools(
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Discovering tools across backends...", total=None)
+            task = progress.add_task(
+                (
+                    "Discovering tools across backends..."
+                    if backend
+                    else f"Discovering tools on {backend} backend"
+                ),
+                total=None,
+            )
 
             # Get all tools from all sources
             all_tools = multi_manager.get_all_tools(

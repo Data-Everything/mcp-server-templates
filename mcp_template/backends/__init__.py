@@ -15,6 +15,30 @@ __all__ = [
     "get_backend",
 ]
 
+VALID_BACKENDS = ["docker", "kubernetes"]
+ALL_BACKENDS = VALID_BACKENDS + ["mock"]
+
+
+def get_backend(backend_type: str = "docker", **kwargs) -> BaseDeploymentBackend:
+    """
+    Get a deployment backend instance based on type.
+
+    Args:
+        backend_type: Type of backend ('docker', 'kubernetes', 'mock')
+        **kwargs: Additional arguments for backend initialization
+
+    Returns:
+        Backend instance
+
+    Raises:
+        ValueError: If backend type is not supported
+    """
+
+    if backend_type not in ALL_BACKENDS:
+        raise ValueError(
+            f"Unsupported backend type: {backend_type}. Valid options are: {', '.join(ALL_BACKENDS)}"
+        )
+
 
 def get_backend(backend_type: str = "docker", **kwargs) -> BaseDeploymentBackend:
     """
