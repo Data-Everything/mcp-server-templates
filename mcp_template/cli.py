@@ -96,6 +96,20 @@ def format_discovery_hint(discovery_method: str) -> str:
     return hints.get(discovery_method, "")
 
 
+def split_command_args(args):
+    """
+    Split command line arguments into a list, handling quoted strings.
+    This is useful for parsing command line arguments that may contain spaces.
+    """
+
+    out_vars = {}
+    for var in args:
+        key, value = var.split("=", 1)
+        out_vars[key] = value
+
+    return out_vars
+
+
 @app.callback()
 def main(
     verbose: Annotated[
@@ -132,9 +146,6 @@ def deploy(
     env: Annotated[
         Optional[List[str]],
         typer.Option("--env", "-e", help="Environment variables (KEY=VALUE)"),
-    ] = None,
-    config_overrides: Annotated[
-        Optional[List[str]], typer.Option("--set", help="Config overrides (key=value)")
     ] = None,
     override: Annotated[
         Optional[List[str]],
@@ -223,49 +234,21 @@ def deploy(
 
         # 2. CLI config key=value pairs
         if config:
-            for config_item in config:
-                if "=" in config_item:
-                    key, value = config_item.split("=", 1)
-                    config_values[key] = value
+            config_values = split_command_args(config)
 
         # 3. Environment variables
         if env:
-            for env_var in env:
-                if "=" in env_var:
-                    key, value = env_var.split("=", 1)
-                    env_vars[key] = value
-
-        # 4. Config overrides (--set)
-        if config_overrides:
-            for override_item in config_overrides:
-                if "=" in override_item:
-                    key, value = override_item.split("=", 1)
-                    config_values[key] = value
+            env_vars = split_command_args(env)
 
         # 5. Template overrides (--override)
         if override:
-            for override_item in override:
-                if "=" in override_item:
-                    key, value = override_item.split("=", 1)
-                    override_values[key] = value
+            override_values = split_command_args(override)
 
         if backend_config:
-            for backend_item in backend_config:
-                if "=" in backend_item:
-                    key, value = backend_item.split("=", 1)
-                    backend_config_values[key] = value
+            backend_config_values = split_command_args(backend_config)
 
         if backend_config_file:
             backend_config_file_path = str(backend_config_file)
-
-        if host:
-            config_values["MCP_HOST"] = host
-
-        if transport:
-            config_values["MCP_TRANSPORT"] = transport
-
-        if port:
-            config_values["MCP_PORT"] = str(port)
 
         # Process volumes and add to config_values
         if volumes:
@@ -287,17 +270,6 @@ def deploy(
             except json.JSONDecodeError as e:
                 console.print(f"[red]❌ Invalid JSON format in volumes: {e}[/red]")
                 raise typer.Exit(1)
-
-        # Structure config sources for deployment manager
-        config_sources = {
-            "config_file": config_file_path,
-            "env_vars": env_vars if env_vars else None,
-            "config_values": config_values if config_values else None,
-            "override_values": override_values if override_values else None,
-            "volume_config": volume_config,
-            "backend_config": backend_config_values if backend_config_values else None,
-            "backend_config_file": backend_config_file_path,
-        }
 
         # Get template info
         template_info = client.get_template_info(template)
@@ -339,16 +311,20 @@ def deploy(
                     console.print(f"  {key}: {display_value}")
 
             console.print("\nTo use this template, run tools directly:")
-            console.print(f"  mcpt list-tools {template}     # List available tools")
-            console.print("  mcpt interactive               # Start interactive shell")
+            console.print(
+                f"\n💡[dim]  mcpt list-tools {template}     # List available tools[/dim]"
+            )
+            console.print(
+                f"💡[dim]  echo 'mcpt {template} call <tool> | mcpt interactive               # Start interactive shell[/dim]\n"
+            )
             raise typer.Exit(1)
         elif actual_transport not in supported_transports:
             console.print(
                 f"[red]❌ Unsupported transport '{actual_transport}' for template '{template}'[/red]"
             )
-            console.print(f"Supported transports: {', '.join(supported_transports)}")
+            console.print(f"Supported transports: {', '.join(supported_transports)}\n")
             raise typer.Exit(1)
-
+        console.line(1)
         # Show deployment plan
         console.print(f"[cyan]📋 Deployment Plan for '{template}'[/cyan]")
 
@@ -366,7 +342,6 @@ def deploy(
             plan_table.add_row("Config Keys", ", ".join(all_config.keys()))
 
         console.print(plan_table)
-
         # Actual deployment
         with Progress(
             SpinnerColumn(),
@@ -374,27 +349,31 @@ def deploy(
             console=console,
         ) as progress:
             task = progress.add_task("Deploying template...", total=None)
-
             # Use MCPClient's deploy method
             deployment = client.deploy_template(
                 template_id=template,
                 config_file=config_file_path,
                 config=config_values if config_values else None,
                 env_vars=env_vars if env_vars else None,
+                overrides=override_values,
                 volumes=volume_config,
                 transport=transport,
                 pull_image=not no_pull,
                 timeout=300,
+                host=host,
+                port=port,
+                backend_config=backend_config_values,
+                backend_config_file=backend_config_file_path,
             )
-
-            if deployment and deployment.get("id"):
-                deployment_id = deployment.get("id")
+            if deployment and (deployment.get("id") or deployment.get("deployment_id")):
+                deployment_id = deployment.get("id") or deployment.get("deployment_id")
                 endpoint = deployment.get("endpoint")
 
                 console.print(f"[green]✅ Successfully deployed '{template}'[/green]")
                 console.print(f"[cyan]Deployment ID: {deployment_id}[/cyan]")
                 if endpoint:
                     console.print(f"[cyan]Endpoint: {endpoint}[/cyan]")
+            # Stop task
             else:
                 error = "Deployment failed"
                 console.print(f"[red]❌ Deployment failed: {error}[/red]")
@@ -404,7 +383,8 @@ def deploy(
             console.print(
                 "\n[yellow]✅ Dry run complete - deployment plan shown above[/yellow]"
             )
-            return
+
+        return
 
     except Exception as e:
         console.print(f"[red]❌ Error during deployment: {e}[/red]")

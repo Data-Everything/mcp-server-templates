@@ -196,12 +196,16 @@ class MCPClient:
         configuration: Optional[Dict[str, Any]] = None,
         config_file: Optional[str] = None,
         env_vars: Optional[Dict[str, str]] = None,
+        overrides: Optional[Dict[str, str]] = None,
         volumes: Optional[Union[Dict[str, str], List[str]]] = None,
         pull_image: bool = True,
-        transport: Optional[str] = None,
+        transport: Optional[str] = "http",
+        host: Optional[str] = "0.0.0.0",
         port: Optional[int] = None,
         name: Optional[str] = None,
         timeout: int = 300,
+        backend_config: Optional[Dict[str, Any]] = None,
+        backend_config_file: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Start a new MCP server instance.
@@ -211,28 +215,48 @@ class MCPClient:
             configuration: Configuration key-value pairs
             config_file: Path to configuration file
             env_vars: Environment variables (highest precedence)
+            overrides: Template overrides values
             volumes: Volume mounts as {host_path: container_path}
             pull_image: Whether to pull the latest image
             transport: Optional transport type (e.g., "http", "stdio")
+            host: Optional host
             port: Optional port for HTTP transport
             name: Custom deployment name
             timeout: Deployment timeout
+            backend_config: Backend specific config
+            backend_config_file: Backend config file
 
         Returns:
             Server deployment information or None if failed
         """
+
+        if backend_config or backend_config_file:
+            raise ValueError("Backend config support to be added in future")
+
         try:
-            # Build config sources with proper precedence
-            config_sources = {}
 
-            if config_file:
-                config_sources["config_file"] = config_file
+            if not configuration:
+                configuration = {}
 
-            if configuration:
-                config_sources["config_values"] = configuration
+            if host:
+                configuration["MCP_HOST"] = host
 
-            if env_vars:
-                config_sources["env_vars"] = env_vars
+            if transport:
+                configuration["MCP_TRANSPORT"] = transport
+
+            if port:
+                configuration["MCP_PORT"] = str(port)
+
+            # Structure config sources for deployment manager
+            config_sources = {
+                "config_file": config_file or None,
+                "env_vars": env_vars if env_vars else None,
+                "config_values": configuration,
+                "override_values": overrides if overrides else None,
+                "volume_config": volumes if volumes else None,
+                "backend_config": backend_config if backend_config else None,
+                "backend_config_file": backend_config_file,
+            }
 
             # Handle volumes
             if volumes:
@@ -271,11 +295,16 @@ class MCPClient:
         config_file: Optional[str] = None,
         config: Optional[Dict[str, str]] = None,
         env_vars: Optional[Dict[str, str]] = None,
+        overrides: Optional[Dict[str, str]] = None,
         volumes: Optional[Union[Dict[str, str], List[str]]] = None,
         transport: Optional[str] = None,
         pull_image: bool = True,
         name: Optional[str] = None,
         timeout: int = 300,
+        host: str = "0.0.0.0",
+        port: int = None,
+        backend_config: Optional[Dict[str, Any]] = None,
+        backend_config_file: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Deploy a template with CLI-like interface supporting config precedence and volumes.
@@ -290,6 +319,10 @@ class MCPClient:
             pull_image: Whether to pull the latest image
             name: Custom deployment name
             timeout: Deployment timeout
+            host: Host
+            port: Port
+            backend_config: Backend config
+            backend_config_file: Backend config file
 
         Returns:
             Server deployment information or None if failed
@@ -310,12 +343,16 @@ class MCPClient:
                 configuration=config,
                 config_file=config_file,
                 env_vars=env_vars,
+                overrides=overrides,
                 volumes=processed_volumes,
                 pull_image=pull_image,
                 transport=transport,
-                port=None,
+                host=host,
+                port=str(port) if port else None,
                 name=name,
                 timeout=timeout,
+                backend_config=backend_config,
+                backend_config_file=backend_config_file,
             )
 
         except Exception as e:
