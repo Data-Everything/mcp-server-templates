@@ -5,6 +5,7 @@ This module provides a shared tool calling interface that can be used by both
 the CLI and Client components, ensuring consistent behavior and reducing code duplication.
 """
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 import requests
 
+from mcp_template.core.mcp_connection import MCPConnection
 from mcp_template.exceptions import ToolCallError
 
 logger = logging.getLogger(__name__)
@@ -109,6 +111,62 @@ class ToolCaller:
             logger.error(f"Failed to list tools from {endpoint}: {e}")
             return []
 
+    async def call_tool_mcp_connection(
+        self,
+        base_url: str,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        timeout: Optional[int] = None,
+    ) -> ToolCallResult:
+        """
+        Call a tool using unified MCPConnection with FastMCP support.
+
+        Args:
+            base_url: Base URL of the MCP server (e.g., "http://localhost:7071")
+            tool_name: Name of the tool to call
+            arguments: Arguments to pass to the tool
+            timeout: Timeout for the operation
+
+        Returns:
+            ToolCallResult with the tool response
+        """
+        timeout = timeout or self.timeout
+        connection = MCPConnection(timeout=timeout)
+
+        try:
+            # Connect with smart endpoint discovery
+            success = await connection.connect_http_smart(base_url)
+            if not success:
+                return ToolCallResult(
+                    success=False,
+                    is_error=True,
+                    error_message=f"Failed to connect to MCP server at {base_url}",
+                )
+
+            # Call the tool
+            result = await connection.call_tool(tool_name, arguments)
+
+            if result:
+                return ToolCallResult(
+                    success=True,
+                    result=result,
+                    content=(
+                        result.get("content", []) if isinstance(result, dict) else []
+                    ),
+                )
+            else:
+                return ToolCallResult(
+                    success=False,
+                    is_error=True,
+                    error_message=f"Tool {tool_name} returned no result",
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to call tool {tool_name} via MCP connection: {e}")
+            return ToolCallResult(success=False, is_error=True, error_message=str(e))
+        finally:
+            await connection.disconnect()
+
     def call_tool(
         self,
         endpoint: str,
@@ -120,16 +178,44 @@ class ToolCaller:
         """Call a tool on a running MCP server."""
         try:
             if transport == "http":
-                # Call HTTP tool endpoint
-                tool_url = f"{endpoint.rstrip('/')}/call/{tool_name}"
-                result = self._call_http_api(tool_url, "POST", parameters)
-                if result.get("status") == "success":
-                    return {"success": True, "result": result.get("data")}
-                else:
-                    return {
-                        "success": False,
-                        "error": result.get("error", "Unknown error"),
-                    }
+                # Use MCPConnection for unified HTTP protocol handling
+                try:
+                    from urllib.parse import urlparse
+
+                    parsed = urlparse(endpoint)
+                    base_url = f"{parsed.scheme}://{parsed.netloc}"
+
+                    # Run async method in sync context
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        result = loop.run_until_complete(
+                            self.call_tool_mcp_connection(
+                                base_url, tool_name, parameters, timeout
+                            )
+                        )
+                        return {
+                            "success": result.success,
+                            "result": result.result,
+                            "error": result.error_message if result.is_error else None,
+                        }
+                    finally:
+                        loop.close()
+
+                except Exception as e:
+                    logger.debug(
+                        f"MCPConnection failed, falling back to legacy HTTP: {e}"
+                    )
+                    # Fall back to legacy HTTP method
+                    tool_url = f"{endpoint.rstrip('/')}/call/{tool_name}"
+                    result = self._call_http_api(tool_url, "POST", parameters)
+                    if result.get("status") == "success":
+                        return {"success": True, "result": result.get("data")}
+                    else:
+                        return {
+                            "success": False,
+                            "error": result.get("error", "Unknown error"),
+                        }
             else:
                 # For other transports, use stdio
                 result = self.call_tool_stdio(endpoint, tool_name, parameters, timeout)

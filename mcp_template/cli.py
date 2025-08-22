@@ -15,7 +15,6 @@ import json
 import logging
 import os
 import re
-import time
 from pathlib import Path
 from typing import Annotated, Any, Dict, List, Optional
 
@@ -24,8 +23,8 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from mcp_template.core import DeploymentManager, TemplateManager, ToolManager
-from mcp_template.core.deployment_manager import DeploymentOptions
+from mcp_template.client import MCPClient
+from mcp_template.core import DeploymentManager, TemplateManager
 from mcp_template.core.multi_backend_manager import MultiBackendManager
 from mcp_template.core.response_formatter import (
     ResponseFormatter,
@@ -97,75 +96,6 @@ def format_discovery_hint(discovery_method: str) -> str:
     return hints.get(discovery_method, "")
 
 
-def display_tools_with_metadata(tools_result: Dict[str, Any], template_name: str):
-    """Display tools with discovery method metadata and hints."""
-    tools = tools_result.get("tools", [])
-    discovery_method = tools_result.get("discovery_method", "unknown")
-    metadata = tools_result.get("metadata", {})
-
-    if not tools:
-        console.print(f"[yellow]No tools found for template '{template_name}'[/yellow]")
-        return
-
-    # Deduplicate tools by name (keep the first occurrence)
-    seen_tools = set()
-    unique_tools = []
-    for tool in tools:
-        tool_name = tool.get("name", "Unknown")
-        if tool_name not in seen_tools:
-            seen_tools.add(tool_name)
-            unique_tools.append(tool)
-
-    # Create title with discovery method
-    title = f"Tools from template '{template_name}' (discovery: {discovery_method})"
-
-    # Create table
-    table = Table(title=title, show_header=True, header_style="bold blue")
-    table.add_column("Tool Name", style="cyan", no_wrap=True)
-    table.add_column("Description", style="white")
-    table.add_column("Input Schema", style="dim")
-
-    for tool in unique_tools:
-        name = tool.get("name", "Unknown")
-        description = tool.get("description", "No description")
-        input_schema = tool.get("inputSchema", {})
-
-        # Format input schema with better parameter detection
-        if isinstance(input_schema, dict):
-            properties = input_schema.get("properties", {})
-            if properties:
-                params = list(properties.keys())
-                if len(params) <= 3:
-                    schema_text = f"({', '.join(params)})"
-                else:
-                    schema_text = f"({', '.join(params[:3])}...)"
-            else:
-                # Check if there are any parameters in the tool definition
-                parameters = tool.get("parameters", [])
-                if parameters:
-                    param_names = [p.get("name", "param") for p in parameters[:3]]
-                    schema_text = f"({', '.join(param_names)})"
-                else:
-                    schema_text = "(no params)"
-        else:
-            schema_text = "(no params)" if not input_schema else "(schema available)"
-
-        table.add_row(name, description, schema_text)
-
-    console.print(table)
-
-    # Show discovery hint
-    hint = format_discovery_hint(discovery_method)
-    if hint:
-        console.print(hint)
-
-    # Show metadata if verbose
-    if cli_state.get("verbose") and metadata:
-        metadata_text = f"Cached: {metadata.get('cached', False)} | "
-        metadata_text += f"Timestamp: {time.ctime(metadata.get('timestamp', 0))}"
-        console.print(f"[dim]{metadata_text}[/dim]")
-
-
 @app.callback()
 def main(
     verbose: Annotated[
@@ -230,6 +160,10 @@ def deploy(
         Optional[str],
         typer.Option("--volumes", "-v", help="Volume mounts (JSON object or array)"),
     ] = None,
+    host: Annotated[
+        Optional[str],
+        typer.Option("--host", "-h", help="Host. Defaults to 0.0.0.0"),
+    ] = "0.0.0.0",
     transport: Annotated[
         Optional[str],
         typer.Option("--transport", "-t", help="Transport protocol (http, stdio)"),
@@ -270,9 +204,8 @@ def deploy(
         )
 
     try:
-        # Initialize managers
-        template_manager = TemplateManager(cli_state["backend_type"])
-        deployment_manager = DeploymentManager(cli_state["backend_type"])
+        # Use MCPClient for unified operations
+        client = MCPClient(backend_type=cli_state["backend_type"])
 
         # Process configuration with correct precedence order
         # Separate different config sources for proper merging
@@ -325,7 +258,9 @@ def deploy(
         if backend_config_file:
             backend_config_file_path = str(backend_config_file)
 
-        # Handle transport
+        if host:
+            config_values["MCP_HOST"] = host
+
         if transport:
             config_values["MCP_TRANSPORT"] = transport
 
@@ -365,7 +300,7 @@ def deploy(
         }
 
         # Get template info
-        template_info = template_manager.get_template_info(template)
+        template_info = client.get_template_info(template)
         if not template_info:
             console.print(f"[red]❌ Template '{template}' not found[/red]")
             raise typer.Exit(1)
@@ -440,21 +375,28 @@ def deploy(
         ) as progress:
             task = progress.add_task("Deploying template...", total=None)
 
-            options = DeploymentOptions(pull_image=not no_pull, dry_run=dry_run)
-            result = deployment_manager.deploy_template(
-                template, config_sources, options
+            # Use MCPClient's deploy method
+            deployment = client.deploy_template(
+                template_id=template,
+                config_file=config_file_path,
+                config=config_values if config_values else None,
+                env_vars=env_vars if env_vars else None,
+                volumes=volume_config,
+                transport=transport,
+                pull_image=not no_pull,
+                timeout=300,
             )
 
-            if result.success:
-                deployment_id = result.deployment_id
-                endpoint = result.endpoint
+            if deployment and deployment.get("id"):
+                deployment_id = deployment.get("id")
+                endpoint = deployment.get("endpoint")
 
                 console.print(f"[green]✅ Successfully deployed '{template}'[/green]")
                 console.print(f"[cyan]Deployment ID: {deployment_id}[/cyan]")
                 if endpoint:
                     console.print(f"[cyan]Endpoint: {endpoint}[/cyan]")
             else:
-                error = result.error or "Unknown error"
+                error = "Deployment failed"
                 console.print(f"[red]❌ Deployment failed: {error}[/red]")
                 raise typer.Exit(1)
 
@@ -525,8 +467,8 @@ def list_tools(
         effective_backend = backend or cli_state.get("backend_type")
 
         if effective_backend:
-            # User specified backend (either command-level or global) - use it directly
-            tool_manager = ToolManager(effective_backend)
+            # User specified backend (either command-level or global) - use MCPClient directly
+            client = MCPClient(backend_type=effective_backend)
             backend_name = effective_backend
         else:
             # No backend specified - use first available backend
@@ -537,7 +479,7 @@ def list_tools(
                 raise typer.Exit(1)
 
             backend_name = available_backends[0]
-            tool_manager = ToolManager(backend_name)
+            client = MCPClient(backend_type=backend_name)
 
         with Progress(
             SpinnerColumn(),
@@ -548,17 +490,13 @@ def list_tools(
                 f"Discovering tools using {backend_name} backend...", total=None
             )
 
-            # Get tools using priority-based discovery
-            # Map 'dynamic' to 'auto' to enable full priority-based discovery
-            # since 'dynamic' should include stdio fallback when no deployments exist
-
-            result = tool_manager.list_tools(
+            # Use MCPClient's list_tools method with metadata
+            result = client.list_tools(
                 template,
                 static=static,
                 dynamic=dynamic,
                 force_refresh=force_refresh,
-                timeout=30,
-                config_values=None,
+                include_metadata=True,  # Get full metadata
             )
 
         tools = result.get("tools", [])
@@ -630,25 +568,14 @@ def list(
     try:
         # Single backend mode (backward compatibility)
         if backend:
-            template_manager = TemplateManager(backend)
-            deployment_manager = DeploymentManager(backend)
+            client = MCPClient(backend_type=backend)
 
             # Get templates with deployment status
-            templates = template_manager.list_templates()
-            deployments = deployment_manager.list_deployments()
+            templates = client.list_templates(include_deployed_status=True)
 
             if not templates:
                 console.print("[yellow]No templates found[/yellow]")
                 return
-
-            # Count running instances per template
-            running_counts = {}
-            for deployment in deployments:
-                if deployment.get("status") == "running":
-                    template_name = deployment.get("template", "unknown")
-                    running_counts[template_name] = (
-                        running_counts.get(template_name, 0) + 1
-                    )
 
             table = Table(
                 title=f"Available MCP Server Templates ({backend})",
@@ -662,7 +589,7 @@ def list(
             table.add_column("Image", style="dim")
 
             for name, info in templates.items():
-                running_count = running_counts.get(name, 0)
+                running_count = info.get("running_instances", 0)
                 running_text = str(running_count) if running_count > 0 else "-"
 
                 table.add_row(
@@ -862,8 +789,8 @@ def list_deployments(
     try:
         # Single backend mode (backward compatibility)
         if backend:
-            deployment_manager = DeploymentManager(backend)
-            all_deployments = deployment_manager.list_deployments()
+            client = MCPClient(backend_type=backend)
+            all_deployments = client.list_servers()
 
             # Apply filters
             deployments = all_deployments
@@ -1031,10 +958,10 @@ def stop(
     Use --dry-run to preview what would be stopped.
     """
 
-    template_manager = TemplateManager(
-        backend or cli_state.get("backend_type", "docker")
-    )
-    all_templates = [key for key in template_manager.list_templates().keys()]
+    # Get all available templates for validation
+    client = MCPClient(backend_type=backend or cli_state.get("backend_type", "docker"))
+    all_templates = list(client.list_templates().keys())
+
     # Validate arguments
     targets_specified = sum([bool(target), all, bool(template)])
     if targets_specified == 0:
@@ -1130,10 +1057,10 @@ def stop(
 
 def _stop_single_deployment(deployment_id: str, backend: Optional[str], timeout: int):
     """Stop a single deployment by ID."""
-    # Use multi-backend manager for auto-detection or single backend
+    # Use MCPClient for unified operations
     if backend:
         # Single backend mode
-        deployment_manager = DeploymentManager(backend)
+        client = MCPClient(backend_type=backend)
 
         with Progress(
             SpinnerColumn(),
@@ -1141,7 +1068,7 @@ def _stop_single_deployment(deployment_id: str, backend: Optional[str], timeout:
             console=console,
         ) as progress:
             task = progress.add_task(f"Stopping deployment on {backend}...", total=None)
-            result = deployment_manager.stop_deployment(deployment_id, timeout)
+            result = client.stop_server(deployment_id, timeout)
 
         if result.get("success"):
             console.print(
@@ -1174,8 +1101,6 @@ def _stop_single_deployment(deployment_id: str, backend: Optional[str], timeout:
         else:
             error = result.get("error", "Unknown error")
             console.print(f"[red]❌ Failed to stop deployment: {error}[/red]")
-
-            # Suggest using --backend flag if auto-detection failed
             if "not found" in error.lower():
                 console.print(
                     "💡 [dim]Try using --backend <name> to specify the backend explicitly[/dim]"

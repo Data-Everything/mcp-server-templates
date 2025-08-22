@@ -187,6 +187,7 @@ class MCPClient:
         Returns:
             List of running server information for the specified template
         """
+
         return self.list_servers(template_name=template)
 
     def start_server(

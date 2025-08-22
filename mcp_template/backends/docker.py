@@ -288,6 +288,21 @@ class DockerDeploymentService(BaseDeploymentBackend):
             if key not in env_dict:  # Don't override user config or schema defaults
                 env_dict[key] = str(value)
 
+        # Add transport configuration for HTTP deployment
+        transport_config = template_data.get("transport", {})
+        if isinstance(transport_config, dict):
+            default_transport = transport_config.get("default", "http")
+            transport_port = transport_config.get("port", 8080)
+        else:
+            # Legacy format handling
+            default_transport = "http"
+            transport_port = template_data.get("port", 8080)
+
+        # Set transport environment variables for HTTP deployment
+        if default_transport == "http":
+            env_dict["MCP_TRANSPORT"] = "http"
+            env_dict["MCP_PORT"] = str(transport_port)
+
         # Convert dict to docker --env format
         for key, value in env_dict.items():
             # Properly quote values that contain spaces or special characters

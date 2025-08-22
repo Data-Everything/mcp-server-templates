@@ -220,15 +220,31 @@ class KubernetesProbe(BaseProbe):
             if not self._wait_for_pod_ready(pod_name, timeout):
                 return None
 
-            # Use the BaseProbe's async HTTP discovery with proper MCP protocol
+            # Use MCPConnection for unified HTTP discovery with FastMCP support
             service_url = self._get_service_url(service_name, port)
-            endpoint = f"{service_url}/mcp"
-            tools = asyncio.run(self._async_discover_via_http(endpoint, timeout))
+
+            async def _discover_via_mcp_connection():
+                from mcp_template.core.mcp_connection import MCPConnection
+
+                connection = MCPConnection(timeout=timeout)
+
+                try:
+                    # Use smart endpoint discovery
+                    success = await connection.connect_http_smart(service_url)
+                    if success:
+                        tools = await connection.list_tools()
+                        if tools:
+                            return tools
+                finally:
+                    await connection.disconnect()
+                return None
+
+            tools = asyncio.run(_discover_via_mcp_connection())
 
             if tools:
                 return {
                     "tools": self._normalize_mcp_tools(tools),
-                    "discovery_method": "kubernetes_http_probe",
+                    "discovery_method": "kubernetes_http_mcp",
                     "timestamp": time.time(),
                     "source_image": image_name,
                     "pod_name": pod_name,

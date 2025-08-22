@@ -13,18 +13,18 @@ A comprehensive Zendesk MCP server that provides:
 This server uses FastMCP for modern MCP protocol implementation.
 """
 
+import asyncio
+import json
 import logging
 import os
 import sys
-import json
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass
-import asyncio
-import aiohttp
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
+import aiohttp
 from fastmcp import FastMCP
 
 logging.basicConfig(level=logging.INFO)
@@ -122,6 +122,17 @@ class ZendeskMCPServer:
             name=self.template_data.get("name", "zendesk-server"),
             instructions="Comprehensive Zendesk integration server",
             version=self.template_data.get("version", "1.0.0"),
+            host=os.getenv("MCP_HOST", "0.0.0.0"),
+            port=(
+                int(
+                    os.getenv(
+                        "MCP_PORT",
+                        self.template_data.get("transport", {}).get("port", 7071),
+                    )
+                )
+                if not os.getenv("MCP_TRANSPORT") == "stdio"
+                else None
+            ),
         )
 
         logger.info(

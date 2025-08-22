@@ -122,16 +122,32 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         else:
             image_tag = template_data.get("tag", "latest")
 
-        # Determine MCP server type
-        server_type = "http"  # Default to HTTP
-        port = 8080
-        command = []
-
-        if "stdio" in template_data.get("transport", []):
-            server_type = "stdio"
-            command = template_data.get("command", [])
-        elif "http" in template_data.get("transport", []):
+        # Determine MCP server type from transport configuration
+        transport_config = template_data.get("transport", {})
+        if isinstance(transport_config, dict):
+            # New format: {"default": "http", "supported": [...], "port": 7071}
+            server_type = transport_config.get("default", "http")
+            port = transport_config.get("port", 8080)
+        else:
+            # Legacy format: ["stdio", "http"] or just "http"
+            server_type = "http"  # Default to HTTP
             port = template_data.get("port", 8080)
+            if "stdio" in transport_config:
+                server_type = "stdio"
+            elif "http" in transport_config:
+                port = template_data.get("port", 8080)
+
+        command = template_data.get("command", [])
+
+        # Build environment variables for the deployment
+        env_vars = config.get("env", {}).copy()
+
+        # Add transport-specific environment variables
+        if server_type == "http":
+            env_vars["MCP_TRANSPORT"] = "http"
+            env_vars["MCP_PORT"] = str(port)
+        else:
+            env_vars["MCP_TRANSPORT"] = "stdio"
 
         # Build Helm values with defaults and Kubernetes configuration overrides
         values = {
@@ -150,7 +166,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                 "type": server_type,
                 "port": port,
                 "command": command,
-                "env": config.get("env", {}),  # Template environment variables
+                "env": env_vars,  # Template environment variables with transport config
                 "config": config,  # Template configuration (will be passed as env vars)
             },
             "service": {

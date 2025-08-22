@@ -5,10 +5,8 @@ This module provides a unified interface for tool discovery, management, and ope
 consolidating functionality from CLI and MCPClient.
 """
 
-import asyncio
 import json
 import logging
-import os
 import re
 import time
 from typing import Any, Dict, List, Optional
@@ -288,33 +286,16 @@ class ToolManager:
         self, deployment: Dict, timeout: int
     ) -> List[Dict]:
         """Helper method to discover tools from a running deployment via MCP JSON-RPC."""
-
         try:
-            # Extract port information and construct endpoint
-            ports = deployment.get("ports", "")
-            if not ports:
-                return []
-
-            # Parse port mapping like "7071->7071" or just "7071" to extract external port
-            if "->" in ports:
-                external_port = ports.split("->")[0]
-            else:
-                external_port = ports
-
-            # Get host from environment variable, default to localhost
-            mcp_host = os.getenv("MCP_HOST", "127.0.0.1")
-            endpoint = f"http://{mcp_host}:{external_port}/mcp"
-
             # Use BaseProbe's HTTP discovery methods
-            # Create a temporary probe instance to access the HTTP discovery
             if self.backend_type == "kubernetes":
                 probe = KubernetesProbe()
             elif self.backend_type == "docker":
                 probe = DockerProbe()
             else:
-                raise ValueError("Only docker and kuberenetes backends are supported")
+                raise ValueError("Only docker and kubernetes backends are supported")
 
-            return asyncio.run(probe._async_discover_via_http(endpoint, timeout))
+            return probe.discover_tools_from_deployment(deployment, timeout)
 
         except Exception as e:
             logger.debug(f"Failed to discover from running deployment: {e}")
@@ -490,28 +471,13 @@ class ToolManager:
             # Use the first running deployment
             deployment = deployments[0]
 
-            # Extract port information
-            ports = deployment.get("ports", "")
-            if not ports:
-                return []
-
-            # Parse port mapping like "7071->7071" or just "7071"
-            if "->" in ports:
-                external_port = ports.split("->")[0]
-            else:
-                external_port = ports
-
-            # Get host from environment variable, default to localhost
-            mcp_host = os.getenv("MCP_HOST", "127.0.0.1")
-            endpoint = f"http://{mcp_host}:{external_port}/mcp"
-
             # Use BaseProbe's HTTP discovery methods
             if self.backend_type == "kubernetes":
                 probe = KubernetesProbe()
             else:
                 probe = DockerProbe()
 
-            return asyncio.run(probe._async_discover_via_http(endpoint, timeout))
+            return probe.discover_tools_from_deployment(deployment, timeout)
 
         except Exception as e:
             logger.debug(
@@ -678,15 +644,23 @@ class ToolManager:
             Normalized tool definition
         """
         try:
+            # Convert Pydantic model to dict if needed (from FastMCP client)
+            if hasattr(tool_data, "model_dump"):
+                tool_dict = tool_data.model_dump()
+            elif hasattr(tool_data, "dict"):
+                tool_dict = tool_data.dict()
+            else:
+                tool_dict = tool_data
+
             normalized = {
-                "name": tool_data.get("name", "unknown"),
-                "description": tool_data.get("description", ""),
+                "name": tool_dict.get("name", "unknown"),
+                "description": tool_dict.get("description", ""),
                 "source": source,
             }
 
             # Handle input schema
             input_schema = (
-                tool_data.get("inputSchema") or tool_data.get("input_schema") or {}
+                tool_dict.get("inputSchema") or tool_dict.get("input_schema") or {}
             )
             if input_schema:
                 normalized["inputSchema"] = input_schema
@@ -725,7 +699,7 @@ class ToolManager:
                 normalized["parameters"] = []
 
             # Add any additional metadata
-            for key, value in tool_data.items():
+            for key, value in tool_dict.items():
                 if key not in ["name", "description", "inputSchema", "input_schema"]:
                     normalized[key] = value
 
@@ -733,14 +707,32 @@ class ToolManager:
 
         except Exception as e:
             logger.error(f"Failed to normalize tool schema: {e}")
-            return {
-                "name": tool_data.get("name", "unknown"),
-                "description": tool_data.get("description", ""),
-                "source": source,
-                "inputSchema": {},
-                "parameters": [],
-                "error": str(e),
-            }
+            # Fallback handling for Pydantic objects
+            try:
+                if hasattr(tool_data, "model_dump"):
+                    tool_dict = tool_data.model_dump()
+                elif hasattr(tool_data, "dict"):
+                    tool_dict = tool_data.dict()
+                else:
+                    tool_dict = tool_data
+
+                return {
+                    "name": tool_dict.get("name", "unknown"),
+                    "description": tool_dict.get("description", ""),
+                    "source": source,
+                    "inputSchema": {},
+                    "parameters": [],
+                    "error": str(e),
+                }
+            except:
+                return {
+                    "name": "unknown",
+                    "description": "",
+                    "source": source,
+                    "inputSchema": {},
+                    "parameters": [],
+                    "error": str(e),
+                }
 
     def validate_tool_definition(self, tool: Dict) -> bool:
         """

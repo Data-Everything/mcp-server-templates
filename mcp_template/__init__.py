@@ -53,30 +53,6 @@ logger = logging.getLogger(__name__)
 enhanced_cli = None
 
 
-def get_console():
-    """Get Rich console instance."""
-    global console
-    if console is None:
-        from rich.console import Console
-
-        console = Console()
-    return console
-
-
-def split_command_args(args):
-    """
-    Split command line arguments into a list, handling quoted strings.
-    This is useful for parsing command line arguments that may contain spaces.
-    """
-
-    out_vars = {}
-    for var in args:
-        key, value = var.split("=", 1)
-        out_vars[key] = value
-
-    return out_vars
-
-
 def main():
     """
     Main entry point for the MCP deployer CLI.
