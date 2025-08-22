@@ -575,7 +575,13 @@ def list_tools(
                 }
                 console.print(json.dumps(output_data, indent=2))
             else:
-                response_formatter.beautify_tools_list(tools)
+                response_formatter.beautify_tools_list(
+                    tools=tools,
+                    source=source,
+                    discovery_method=discovery_used,
+                    backend=backend_name,
+                    template_name=template,
+                )
         else:
             console.print(f"[yellow]No tools found for template '{template}'[/yellow]")
             if discovery_used == "error":

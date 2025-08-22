@@ -1107,15 +1107,27 @@ class ResponseFormatter:
                 )
 
     def beautify_tools_list(
-        self, tools: List[Dict[str, Any]], source: str = "Template"
+        self,
+        tools: List[Dict[str, Any]],
+        source: str = "Template",
+        discovery_method: str = "unknown",
+        backend: str = "unknown",
+        template_name: str = "unknown",
     ) -> None:
-        """Beautify tools list display."""
+        """Beautify tools list display with discovery metadata."""
         if not tools:
             self.console.print("[yellow]⚠️  No tools found[/yellow]")
             return
 
-        # Create tools table
-        table = Table(title=f"Available Tools ({len(tools)} found)")
+        # Create discovery metadata display
+        discovery_info = (
+            f"Backend: {backend} | Method: {discovery_method} | Source: {source}"
+        )
+
+        # Create tools table with enhanced title
+        table = Table(
+            title=f"Tools from '{template_name}' ({len(tools)} found) - {discovery_info}"
+        )
         table.add_column("Tool Name", style="cyan", width=20)
         table.add_column("Description", style="white", width=50)
         table.add_column("Parameters", style="yellow", width=50)
@@ -1161,7 +1173,26 @@ class ResponseFormatter:
             )
 
         self.console.print(table)
-        self.console.print(f"[dim]Source: {source}[/dim]")
+
+        # Show detailed discovery information
+        discovery_hints = {
+            "stdio": "🔗 Tools discovered via stdio interface (direct container communication)",
+            "http": "🌐 Tools discovered via HTTP API (from running server)",
+            "static": "📄 Tools discovered from template definition files",
+            "cache": "💾 Tools loaded from cache (use --force-refresh for latest)",
+            "error": "❌ Error occurred during discovery",
+        }
+
+        hint = discovery_hints.get(
+            discovery_method, f"ℹ️  Discovery method: {discovery_method}"
+        )
+        self.console.print(f"[dim]{hint}[/dim]")
+
+        # Show additional metadata
+        if backend != "unknown":
+            self.console.print(
+                f"[dim]💡 Using {backend} backend for container operations[/dim]"
+            )
 
     def beautify_deployed_servers(self, servers: List[Dict[str, Any]]) -> None:
         """Beautify deployed servers list."""

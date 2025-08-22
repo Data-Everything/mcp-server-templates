@@ -101,14 +101,14 @@ class ToolManager:
 
         if not tools:
             try:
-                if static and dynamic:
-                    # Use priority-based discovery
+                if dynamic:
+                    # Use priority-based discovery (full priority chain)
                     discovery_result = self.discover_tools(
                         template_or_id,
                         timeout=timeout,
                         config_values=config_values,
                         is_template=is_template,
-                        force_refresh=True,  # Since we already chcked cached, it does not make sense to try again
+                        force_refresh=True,  # Since we already checked cached, it does not make sense to try again
                     )
 
                     tools = discovery_result.get("tools", [])
@@ -116,6 +116,12 @@ class ToolManager:
                         "discovery_method", "unknown"
                     )
                     source = discovery_result.get("source", "unknown")
+
+                    # If result was static, reject it since --no-static was specified
+                    if discovery_method_used == "static":
+                        tools = []
+                        discovery_method_used = "none"
+                        source = "none"
 
                 else:
                     # Direct method specified - bypass priority system
