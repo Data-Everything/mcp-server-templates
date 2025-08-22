@@ -1126,7 +1126,9 @@ class ResponseFormatter:
 
         # Create tools table with enhanced title
         table = Table(
-            title=f"Tools from '{template_name}' ({len(tools)} found) - {discovery_info}"
+            title=f"Tools from '{template_name}' ({len(tools)} found) - {discovery_info}",
+            header_style="bold cyan",
+            show_lines=True,  # Add lines between rows for spacing
         )
         table.add_column("Tool Name", style="cyan", width=20)
         table.add_column("Description", style="white", width=50)

@@ -521,10 +521,13 @@ def list_tools(
 
     try:
         # Always use single-backend approach with priority-based discovery
-        if backend:
-            # User specified backend - use it directly
-            tool_manager = ToolManager(backend)
-            backend_name = backend
+        # Use command-level backend if specified, otherwise use global backend, otherwise auto-detect
+        effective_backend = backend or cli_state.get("backend_type")
+
+        if effective_backend:
+            # User specified backend (either command-level or global) - use it directly
+            tool_manager = ToolManager(effective_backend)
+            backend_name = effective_backend
         else:
             # No backend specified - use first available backend
             multi_manager = MultiBackendManager()

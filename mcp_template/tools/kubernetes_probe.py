@@ -112,44 +112,77 @@ class KubernetesProbe(BaseProbe):
         server_args: Optional[List[str]],
         env_vars: Optional[Dict[str, str]],
     ) -> Optional[Dict[str, Any]]:
-        """Try to discover tools using MCP stdio protocol via Kubernetes Job."""
+        """Try to discover tools using MCP stdio protocol via Kubernetes Pod."""
         try:
             args = server_args or []
 
-            # Create a temporary Job to run MCP stdio discovery
-            job_name = self._generate_job_name(image_name)
+            # Use the same MCP client as Docker, but through kubectl exec
+            result = self._discover_tools_via_kubernetes_mcp(image_name, args, env_vars)
 
-            # Create job manifest
-            job_manifest = self._create_discovery_job_manifest(
-                job_name, image_name, args, env_vars
-            )
+            if result:
+                logger.info(
+                    "Successfully discovered tools via MCP stdio from %s", image_name
+                )
+                result["discovery_method"] = "kubernetes_mcp_stdio"
 
-            # Create and run the job
-            job = self.k8s_apps_v1.create_namespaced_job(
-                namespace=self.namespace, body=job_manifest
-            )
-
-            try:
-                # Wait for job completion
-                result = self._wait_for_job_completion(job_name, timeout=60)
-
-                if result and "tools" in result:
-                    logger.info(
-                        "Successfully discovered tools via MCP stdio from %s",
-                        image_name,
-                    )
-                    result["discovery_method"] = "kubernetes_mcp_stdio"
-                    return result
-
-            finally:
-                # Cleanup job
-                self._cleanup_job(job_name)
-
-            return None
+            return result
 
         except (ApiException, Exception) as e:
             logger.debug("MCP stdio discovery failed for %s: %s", image_name, e)
             return None
+
+    def _discover_tools_via_kubernetes_mcp(
+        self,
+        image_name: str,
+        args: Optional[List[str]] = None,
+        env_vars: Optional[Dict[str, str]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Discover tools from MCP server running in Kubernetes pod using stdio.
+
+        This method creates a temporary pod and uses kubectl exec to communicate
+        with the MCP server via stdin/stdout, similar to Docker's approach.
+
+        Args:
+            image_name: Container image name
+            args: Additional arguments for the MCP server
+            env_vars: Environment variables to pass to the pod
+
+        Returns:
+            Dictionary containing discovered tools and metadata, or None if failed
+        """
+        pod_name = f"mcp-discovery-{image_name.replace('/', '-').replace(':', '-')}-{int(time.time())}"
+
+        try:
+            # Create pod manifest for stdio discovery
+            pod_manifest = self._create_stdio_pod_manifest(
+                pod_name, image_name, args, env_vars
+            )
+
+            # Create the pod
+            pod = self.k8s_core_v1.create_namespaced_pod(
+                namespace=self.namespace, body=pod_manifest
+            )
+
+            # Wait for pod to be ready
+            if not self._wait_for_pod_ready(pod_name, timeout=60):
+                logger.error(f"Pod {pod_name} did not become ready")
+                return None
+
+            # Use kubectl exec to run the MCP protocol handshake
+            return self._execute_mcp_handshake_via_kubectl(pod_name, args)
+
+        except Exception as e:
+            logger.debug("Kubernetes MCP discovery failed for %s: %s", image_name, e)
+            return None
+        finally:
+            # Cleanup pod
+            try:
+                self.k8s_core_v1.delete_namespaced_pod(
+                    name=pod_name, namespace=self.namespace
+                )
+            except Exception:
+                pass  # Ignore cleanup errors
 
     @retry(
         stop=stop_after_attempt(DISCOVERY_RETRIES),
@@ -505,3 +538,158 @@ class KubernetesProbe(BaseProbe):
             logger.debug("Cleaned up service %s", service_name)
         except ApiException as e:
             logger.debug("Failed to cleanup service %s: %s", service_name, e)
+
+    def _create_stdio_pod_manifest(
+        self,
+        pod_name: str,
+        image_name: str,
+        args: Optional[List[str]],
+        env_vars: Optional[Dict[str, str]],
+    ) -> Dict[str, Any]:
+        """Create a Kubernetes Pod manifest for MCP stdio discovery."""
+        env_list = []
+        if env_vars:
+            env_list = [{"name": k, "value": v} for k, v in env_vars.items()]
+
+        # Add MCP_TRANSPORT=stdio to ensure stdio mode
+        env_list.append({"name": "MCP_TRANSPORT", "value": "stdio"})
+
+        container_spec = {
+            "name": "mcp-stdio-probe",
+            "image": image_name,
+            "env": env_list,
+            "stdin": True,
+            "stdinOnce": True,
+            "tty": False,
+            "resources": {
+                "requests": {"memory": "64Mi", "cpu": "100m"},
+                "limits": {"memory": "256Mi", "cpu": "500m"},
+            },
+        }
+
+        # Add args if provided
+        if args:
+            container_spec["args"] = args
+
+        return {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {
+                "name": pod_name,
+                "namespace": self.namespace,
+                "labels": {"app": "mcp-tool-discovery", "type": "stdio-probe"},
+            },
+            "spec": {
+                "restartPolicy": "Never",
+                "containers": [container_spec],
+            },
+        }
+
+    def _execute_mcp_handshake_via_kubectl(
+        self, pod_name: str, args: Optional[List[str]]
+    ) -> Optional[Dict[str, Any]]:
+        """Execute MCP protocol handshake via kubectl attach to pod's stdin."""
+        try:
+            import json
+            import subprocess
+
+            # Use kubectl attach to connect to the pod's stdin/stdout
+            kubectl_cmd = ["kubectl", "attach", "-i", pod_name, "-n", self.namespace]
+
+            logger.debug(f"kubectl command: {' '.join(kubectl_cmd)}")
+
+            # Create the MCP handshake messages
+            init_request = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {"roots": {"listChanged": True}, "sampling": {}},
+                    "clientInfo": {"name": "ExampleClient", "version": "1.0.0"},
+                },
+            }
+
+            initialized_notification = {
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+            }
+
+            tools_request = {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/list",
+            }
+
+            # Prepare input for the MCP server
+            mcp_input = (
+                json.dumps(init_request)
+                + "\n"
+                + json.dumps(initialized_notification)
+                + "\n"
+                + json.dumps(tools_request)
+                + "\n"
+            )
+
+            logger.debug(f"MCP input: {mcp_input}")
+
+            # Execute kubectl with the MCP input
+            result = subprocess.run(
+                kubectl_cmd, input=mcp_input, capture_output=True, text=True, timeout=30
+            )
+
+            logger.debug(f"kubectl exit code: {result.returncode}")
+            logger.debug(f"kubectl stdout: {result.stdout}")
+            logger.debug(f"kubectl stderr: {result.stderr}")
+
+            if result.returncode != 0:
+                logger.error(f"kubectl exec failed: {result.stderr}")
+                return None
+
+            # Parse the output to extract MCP responses
+            return self._parse_mcp_responses(result.stdout)
+
+        except Exception as e:
+            logger.error(f"Failed to execute MCP handshake via kubectl: {e}")
+            return None
+
+    def _parse_mcp_responses(self, output: str) -> Optional[Dict[str, Any]]:
+        """Parse MCP server responses from kubectl exec output."""
+        try:
+            import json
+
+            lines = output.strip().split("\n")
+            tools = []
+
+            for line in lines:
+                line = line.strip()
+                if not line or not line.startswith("{"):
+                    continue
+
+                try:
+                    response = json.loads(line)
+
+                    # Look for tools/list response
+                    if (
+                        response.get("id") == 2
+                        and "result" in response
+                        and "tools" in response["result"]
+                    ):
+                        tools = response["result"]["tools"]
+                        break
+
+                except json.JSONDecodeError:
+                    continue
+
+            if tools:
+                return {
+                    "discovery_method": "kubernetes_mcp_stdio",
+                    "timestamp": time.time(),
+                    "tools": self._normalize_mcp_tools(tools),
+                }
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to parse MCP responses: {e}")
+            return None

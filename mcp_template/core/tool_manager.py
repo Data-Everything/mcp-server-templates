@@ -13,8 +13,6 @@ import re
 import time
 from typing import Any, Dict, List, Optional
 
-import aiohttp
-
 from mcp_template.backends import get_backend
 from mcp_template.core.cache import CacheManager
 from mcp_template.core.config_processor import ConfigProcessor
