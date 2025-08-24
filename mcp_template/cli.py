@@ -33,9 +33,6 @@ from mcp_template.core.response_formatter import (
     console,
     format_deployment_summary,
     get_backend_indicator,
-    render_backend_health_status,
-    render_deployments_grouped_by_backend,
-    render_deployments_unified_table,
 )
 
 response_formatter = ResponseFormatter()
@@ -750,7 +747,9 @@ def list_deployments(
             response_formatter.beautify_deployed_servers(deployments)
         else:
             # Grouped by backend (default)
-            render_deployments_grouped_by_backend(grouped_deployments, show_empty=True)
+            response_formatter.beautify_deployed_servers_grouped(
+                grouped_deployments, show_empty=True
+            )
 
         # Show summary
         summary = format_deployment_summary(deployments)
@@ -1506,7 +1505,7 @@ def status(
             return
 
         # Table format
-        render_backend_health_status(health_data)
+        response_formatter.render_backend_health_status(health_data)
 
         # Show deployment summary
         total_deployments = len(all_deployments)

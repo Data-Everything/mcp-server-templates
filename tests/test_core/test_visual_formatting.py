@@ -6,22 +6,16 @@ multi-backend information in CLI output.
 """
 
 import datetime
-from unittest.mock import patch
 
 import pytest
 
 from mcp_template.core.response_formatter import (
-    MultiBackendProgressTracker,
     format_deployment_summary,
     format_timestamp,
     get_backend_color,
     get_backend_icon,
     get_backend_indicator,
     get_status_color,
-    render_backend_health_status,
-    render_deployments_grouped_by_backend,
-    render_deployments_unified_table,
-    ß,
 )
 
 pytestmark = pytest.mark.unit
@@ -160,216 +154,6 @@ class TestDeploymentSummary:
         result = format_deployment_summary(deployments)
         assert "3 total" in result
         assert "1 running" in result
-
-
-class TestRenderFunctions:
-    """Test rendering functions (mocked console output)."""
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_render_deployments_grouped_by_backend(self, mock_console):
-        """Test grouped deployments rendering."""
-        deployments = {
-            "docker": [
-                {
-                    "id": "docker-123",
-                    "template": "demo",
-                    "status": "running",
-                    "created_at": "2024-01-01T10:00:00Z",
-                    "transport": "http",
-                }
-            ],
-            "kubernetes": [
-                {
-                    "id": "k8s-456",
-                    "template": "github",
-                    "status": "stopped",
-                    "created_at": "2024-01-01T11:00:00Z",
-                    "transport": "stdio",
-                }
-            ],
-        }
-
-        render_deployments_grouped_by_backend(deployments)
-
-        # Verify console.print was called (indicating rendering occurred)
-        assert mock_console.print.call_count > 0
-
-        # Check that backend indicators were printed
-        print_calls = [
-            call[0][0] for call in mock_console.print.call_args_list if call[0]
-        ]
-        backend_indicators = [
-            call
-            for call in print_calls
-            if "DOCKER" in str(call) or "KUBERNETES" in str(call)
-        ]
-        assert len(backend_indicators) > 0
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_render_deployments_grouped_empty(self, mock_console):
-        """Test grouped rendering with no deployments."""
-        render_deployments_grouped_by_backend({})
-
-        # Should print "No deployments found"
-        print_calls = [str(call) for call in mock_console.print.call_args_list]
-        no_deployments_calls = [
-            call for call in print_calls if "No deployments found" in call
-        ]
-        assert len(no_deployments_calls) > 0
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_render_deployments_grouped_show_empty(self, mock_console):
-        """Test grouped rendering with show_empty=True."""
-        deployments = {"docker": []}
-
-        render_deployments_grouped_by_backend(deployments, show_empty=True)
-
-        # Should show docker backend with no deployments
-        print_calls = [str(call) for call in mock_console.print.call_args_list]
-        docker_calls = [call for call in print_calls if "DOCKER" in call]
-        assert len(docker_calls) > 0
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_render_deployments_unified_table(self, mock_console):
-        """Test unified table rendering."""
-        deployments = [
-            {
-                "id": "docker-123",
-                "template": "demo",
-                "status": "running",
-                "created_at": "2024-01-01T10:00:00Z",
-                "transport": "http",
-                "backend_type": "docker",
-            },
-            {
-                "id": "k8s-456",
-                "template": "github",
-                "status": "stopped",
-                "created_at": "2024-01-01T11:00:00Z",
-                "transport": "stdio",
-                "backend_type": "kubernetes",
-            },
-        ]
-
-        render_deployments_unified_table(deployments)
-
-        # Verify console.print was called with table
-        assert mock_console.print.call_count > 0
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_render_deployments_unified_empty(self, mock_console):
-        """Test unified table rendering with no deployments."""
-        render_deployments_unified_table([])
-
-        # Should print "No deployments found"
-        print_calls = [str(call) for call in mock_console.print.call_args_list]
-        no_deployments_calls = [
-            call for call in print_calls if "No deployments found" in call
-        ]
-        assert len(no_deployments_calls) > 0
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_render_backend_health_status(self, mock_console):
-        """Test backend health status rendering."""
-        health_data = {
-            "docker": {"status": "healthy", "deployment_count": 2, "error": None},
-            "kubernetes": {"status": "healthy", "deployment_count": 1, "error": None},
-            "mock": {
-                "status": "unhealthy",
-                "deployment_count": 0,
-                "error": "Connection failed",
-            },
-        }
-
-        render_backend_health_status(health_data)
-
-        # Verify console.print was called
-        assert mock_console.print.call_count > 0
-
-        # Check for health status header
-        print_calls = [str(call) for call in mock_console.print.call_args_list]
-        header_calls = [call for call in print_calls if "Backend Health Status" in call]
-        assert len(header_calls) > 0
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_render_backend_health_status_empty(self, mock_console):
-        """Test backend health status rendering with no data."""
-        render_backend_health_status({})
-
-        # Should show "No backend health data available"
-        print_calls = [str(call) for call in mock_console.print.call_args_list]
-        no_data_calls = [
-            call for call in print_calls if "No backend health data available" in call
-        ]
-        assert len(no_data_calls) > 0
-
-
-class TestMultiBackendProgressTracker:
-    """Test multi-backend progress tracking."""
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_progress_tracker_basic_flow(self, mock_console):
-        """Test basic progress tracking flow."""
-        tracker = MultiBackendProgressTracker(["docker", "kubernetes"])
-
-        # Start first backend
-        tracker.start_backend("docker")
-
-        # Finish first backend successfully
-        tracker.finish_backend("docker", success=True, message="Completed successfully")
-
-        # Start second backend
-        tracker.start_backend("kubernetes")
-
-        # Finish second backend with failure
-        tracker.finish_backend("kubernetes", success=False, message="Connection failed")
-
-        # Get summary
-        summary = tracker.get_summary()
-
-        # Verify progress messages were printed
-        assert (
-            mock_console.print.call_count >= 4
-        )  # At least start/finish for each backend
-
-        # Check summary content
-        assert "1/2 backends successful" in summary
-        assert "1 failed" in summary
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_progress_tracker_all_success(self, mock_console):
-        """Test progress tracking with all successes."""
-        tracker = MultiBackendProgressTracker(["docker", "kubernetes", "mock"])
-
-        for backend in ["docker", "kubernetes", "mock"]:
-            tracker.start_backend(backend)
-            tracker.finish_backend(backend, success=True, message="Success")
-
-        summary = tracker.get_summary()
-        assert "All 3 backends completed successfully" in summary
-
-    @patch("mcp_template.core.response_formatter.console")
-    def test_progress_tracker_all_failure(self, mock_console):
-        """Test progress tracking with all failures."""
-        tracker = MultiBackendProgressTracker(["docker", "kubernetes"])
-
-        for backend in ["docker", "kubernetes"]:
-            tracker.start_backend(backend)
-            tracker.finish_backend(backend, success=False, message="Failed")
-
-        summary = tracker.get_summary()
-        assert "All 2 backends failed" in summary
-
-    def test_progress_tracker_results_storage(self):
-        """Test that progress tracker stores results correctly."""
-        tracker = MultiBackendProgressTracker(["docker"])
-
-        tracker.start_backend("docker")
-        tracker.finish_backend("docker", success=True, message="Test message")
-
-        assert "docker" in tracker.results
-        assert tracker.results["docker"]["success"] is True
-        assert tracker.results["docker"]["message"] == "Test message"
 
 
 class TestEdgeCases:

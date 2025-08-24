@@ -126,122 +126,6 @@ def format_timestamp(timestamp: Union[str, datetime.datetime, None]) -> str:
         return dt.strftime("%Y-%m-%d")
 
 
-def render_deployments_grouped_by_backend(
-    grouped_deployments: Dict[str, List[Dict]], show_empty: bool = False
-) -> None:
-    """
-    Render deployments grouped by backend with visual separation.
-
-    Args:
-        grouped_deployments: Dictionary mapping backend_type to deployment list
-        show_empty: Whether to show backends with no deployments
-    """
-    if not grouped_deployments and not show_empty:
-        console.print("[dim]No deployments found.[/]")
-        return
-
-    for backend_type in VALID_BACKENDS:  # Production backends only
-        deployments = grouped_deployments.get(backend_type, [])
-
-        if not deployments and not show_empty:
-            continue
-
-        # Backend header
-        backend_indicator = get_backend_indicator(backend_type)
-        count_text = (
-            f"({len(deployments)} deployment{'s' if len(deployments) != 1 else ''})"
-        )
-        header = f"{backend_indicator} {count_text}"
-
-        console.print(f"\n{header}")
-
-        if not deployments:
-            console.print("  No deployments")
-            continue
-
-        # Create table for this backend's deployments
-        table = Table(show_header=True, header_style="cyan", padding=(0, 1))
-        table.add_column("ID", style="cyan", width=15)
-        table.add_column("Template", style="white", width=15)
-        table.add_column("Status", style="white", width=10)
-        table.add_column("Endpoint", style="blue", width=30)
-        table.add_column("Ports", style="blue", width=20)
-        table.add_column("Transport", style="yellow", width=10)
-        table.add_column("Since", style="blue", width=10)
-
-        for deployment in deployments:
-            deployment_id = deployment.get(
-                "id", deployment.get("name", deployment.get("deployment_id", "N/A"))
-            )[:14]
-            template = deployment.get("template", "unknown")
-            status = deployment.get("status", "unknown")
-            endpoint = deployment.get("endpoint", "unknown")
-            ports = deployment.get("ports", deployment.get("port", "unknown"))
-            transport = deployment.get("transport", "unknown")
-            created = format_timestamp(
-                deployment.get("created", deployment.get("since"))
-            )
-
-            # Colorize status
-            status_color = get_status_color(status)
-            status_text = f"[{status_color}]● {status}[/]"
-
-            table.add_row(
-                deployment_id,
-                template,
-                status_text,
-                endpoint,
-                ports,
-                transport,
-                created,
-            )
-
-        console.print(table)
-
-
-def render_deployments_unified_table(
-    deployments: List[Dict[str, Any]], title: str = "All Deployments"
-) -> None:
-    """
-    Render all deployments in a single unified table.
-
-    Args:
-        deployments: List of deployment dictionaries
-        title: Table title
-    """
-    if not deployments:
-        console.print("[dim]No deployments found.[/]")
-        return
-
-    table = Table(title=title, show_header=True, header_style="cyan")
-    table.add_column("Backend", style="white", width=12)
-    table.add_column("ID", style="cyan", width=12)
-    table.add_column("Template", style="white", width=15)
-    table.add_column("Status", style="white", width=10)
-    table.add_column("Created", style="blue", width=10)
-    table.add_column("Transport", style="yellow", width=10)
-
-    for deployment in deployments:
-        backend_type = deployment.get("backend_type", "unknown")
-        backend_indicator = get_backend_indicator(backend_type, include_icon=False)
-
-        deployment_id = deployment.get("id", deployment.get("name", "N/A"))[:11]
-        template = deployment.get("template", "unknown")
-        status = deployment.get("status", "unknown")
-        created = format_timestamp(deployment.get("created"))
-        transport = deployment.get("transport", "N/A")
-
-        # Colorize status
-        status_color = get_status_color(status)
-        status_text = f"[{status_color}]● {status}[/]"
-
-        table.add_row(
-            backend_indicator, deployment_id, template, status_text, created, transport
-        )
-
-    console.print(table)
-
-
 def format_deployment_summary(deployments: List[Dict[str, Any]]) -> str:
     """
     Create a summary string for a list of deployments.
@@ -284,136 +168,6 @@ def format_deployment_summary(deployments: List[Dict[str, Any]]) -> str:
         summary_parts.append(f"({', '.join(backend_parts)})")
 
     return ", ".join(summary_parts)
-
-
-def render_backend_health_status(health_data: Dict[str, Any]) -> None:
-    """
-    Render health status for all backends.
-
-    Args:
-        health_data: Health status data by backend
-    """
-    console.print("\n[bold]Backend Health Status[/]")
-
-    panels = []
-    for backend_type in ["docker", "kubernetes"]:  # Production backends only
-        if backend_type not in health_data:
-            continue
-
-        health = health_data[backend_type]
-        status = health.get("status", "unknown")
-        deployment_count = health.get("deployment_count", 0)
-        error = health.get("error")
-
-        # Choose colors and icons based on status
-        if status == "healthy":
-            status_color = "green"
-            status_icon = "✅"
-        else:
-            status_color = "red"
-            status_icon = "❌"
-
-        backend_icon = get_backend_icon(backend_type)
-        backend_color = get_backend_color(backend_type)
-
-        # Panel content
-        content = f"[{status_color}]{status_icon} {status.upper()}[/]\n"
-        content += f"Deployments: {deployment_count}"
-
-        if error:
-            content += f"\n[red]Error: {error[:40]}[/]"
-
-        panel = Panel(
-            content,
-            title=f"[{backend_color}]{backend_icon} {backend_type.upper()}[/]",
-            border_style=backend_color,
-            width=20,
-        )
-        panels.append(panel)
-
-    if panels:
-        console.print(Columns(panels, equal=True))
-    else:
-        console.print("[dim]No backend health data available.[/]")
-
-
-class MultiBackendProgressTracker:
-    """Track progress of operations across multiple backends."""
-
-    def __init__(self, backends: List[str]):
-        self.backends = backends
-        self.results = {}
-        self.completed = []
-        self.progress = None
-        self.task = None
-
-    def start(self, description: str = "Processing backends"):
-        """Start progress tracking."""
-        self.progress = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        )
-        self.task = self.progress.add_task(description, total=len(self.backends))
-        self.progress.start()
-
-    def start_backend(self, backend_type: str):
-        """Start processing a backend."""
-        console.print(
-            f"[blue]🔄 Starting {get_backend_indicator(backend_type)}...[/blue]"
-        )
-
-    def finish_backend(
-        self, backend_type: str, success: bool = True, message: str = ""
-    ):
-        """Finish processing a backend."""
-        self.completed.append(backend_type)
-        self.results[backend_type] = {"success": success, "message": message}
-
-        if success:
-            console.print(
-                f"[green]✅ {get_backend_indicator(backend_type)} completed: {message}[/green]"
-            )
-        else:
-            console.print(
-                f"[red]❌ {get_backend_indicator(backend_type)} failed: {message}[/red]"
-            )
-
-        if self.progress and self.task:
-            self.progress.update(self.task, advance=1)
-
-    def update_backend(
-        self, backend_type: str, success: bool = True, result: Any = None
-    ):
-        """Update progress for a backend (backward compatibility)."""
-        self.finish_backend(backend_type, success, str(result) if result else "")
-
-    def stop(self):
-        """Stop progress tracking."""
-        if self.progress:
-            self.progress.stop()
-
-    def get_results(self) -> Dict[str, Any]:
-        """Get all results."""
-        return self.results
-
-    def get_summary(self) -> str:
-        """Get a summary of the progress tracking results."""
-        if not self.results:
-            return "No backends processed"
-
-        total = len(self.backends)
-        successful = sum(
-            1 for result in self.results.values() if result.get("success", False)
-        )
-        failed = total - successful
-
-        if failed == 0:
-            return f"All {total} backends completed successfully"
-        elif successful == 0:
-            return f"All {total} backends failed"
-        else:
-            return f"{successful}/{total} backends successful, {failed} failed"
 
 
 class ResponseFormatter:
@@ -1259,3 +1013,125 @@ class ResponseFormatter:
             )
 
         self.console.print(table)
+
+    def beautify_deployed_servers_grouped(
+        self, grouped_deployments: Dict[str, List[Dict]], show_empty: bool = False
+    ) -> None:
+        """
+        Render deployments grouped by backend with visual separation.
+
+        Args:
+            grouped_deployments: Dictionary mapping backend_type to deployment list
+            show_empty: Whether to show backends with no deployments
+        """
+        if not grouped_deployments and not show_empty:
+            self.console.print("[dim]No deployments found.[/]")
+            return
+
+        for backend_type in VALID_BACKENDS:  # Production backends only
+            deployments = grouped_deployments.get(backend_type, [])
+
+            if not deployments and not show_empty:
+                continue
+
+            # Backend header
+            backend_indicator = get_backend_indicator(backend_type)
+            count_text = (
+                f"({len(deployments)} deployment{'s' if len(deployments) != 1 else ''})"
+            )
+            header = f"{backend_indicator} {count_text}"
+
+            self.console.print(f"\n{header}")
+
+            if not deployments:
+                self.console.print("  No deployments")
+                continue
+
+            # Create table for this backend's deployments
+            table = Table(show_header=True, header_style="cyan", padding=(0, 1))
+            table.add_column("ID", style="cyan", width=15)
+            table.add_column("Template", style="white", width=15)
+            table.add_column("Status", style="white", width=10)
+            table.add_column("Endpoint", style="blue", width=30)
+            table.add_column("Ports", style="blue", width=20)
+            table.add_column("Transport", style="yellow", width=10)
+            table.add_column("Since", style="blue", width=10)
+
+            for deployment in deployments:
+                deployment_id = deployment.get(
+                    "id", deployment.get("name", deployment.get("deployment_id", "N/A"))
+                )[:14]
+                template = deployment.get("template", "unknown")
+                status = deployment.get("status", "unknown")
+                endpoint = deployment.get("endpoint", "unknown")
+                ports = deployment.get("ports", deployment.get("port", "unknown"))
+                transport = deployment.get("transport", "unknown")
+                created = format_timestamp(
+                    deployment.get("created", deployment.get("since"))
+                )
+
+                # Colorize status
+                status_color = get_status_color(status)
+                status_text = f"[{status_color}]● {status}[/]"
+
+                table.add_row(
+                    deployment_id,
+                    template,
+                    status_text,
+                    endpoint,
+                    ports,
+                    transport,
+                    created,
+                )
+
+            self.console.print(table)
+
+    def render_backend_health_status(self, health_data: Dict[str, Any]) -> None:
+        """
+        Render health status for all backends.
+
+        Args:
+            health_data: Health status data by backend
+        """
+        self.console.print("\n[bold]Backend Health Status[/]")
+
+        panels = []
+        for backend_type in VALID_BACKENDS:
+            if backend_type not in health_data:
+                continue
+
+            health = health_data[backend_type]
+            status = health.get("status", "unknown")
+            deployment_count = health.get("deployment_count", 0)
+            error = health.get("error")
+
+            # Choose colors and icons based on status
+            if status == "healthy":
+                status_color = "green"
+                status_icon = "✅"
+            else:
+                status_color = "red"
+                status_icon = "❌"
+
+            backend_icon = get_backend_icon(backend_type)
+            backend_color = get_backend_color(backend_type)
+
+            # Panel content
+            content = f"[{status_color}]{status_icon} {status.upper()}[/]\n"
+            content += f"Deployments: {deployment_count}"
+
+            if error:
+                content += f"\n[red]Error: {error[:40]}[/]"
+
+            panel = Panel(
+                content,
+                title=f"[{backend_color}]{backend_icon} {backend_type.upper()}[/]",
+                border_style=backend_color,
+                width=20,
+            )
+            panels.append(panel)
+
+        if panels:
+            self.console.print(Columns(panels, equal=True))
+        else:
+            self.console.print("[dim]No backend health data available.[/]")
