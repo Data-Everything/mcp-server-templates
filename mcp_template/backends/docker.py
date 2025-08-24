@@ -738,7 +738,6 @@ EOF""",
                         # Handle port parsing safely - Podman has different port format
                         ports_str = container.get("Ports", "")
                         ports_display = ""
-
                         if isinstance(ports_str, list):
                             # Podman format: Ports is a list of port objects
                             if ports_str:
@@ -768,6 +767,20 @@ EOF""",
                         else:
                             name = str(names)
 
+                        # Compose endpoint (Docker: always localhost + port if available)
+                        if ports_display:
+                            splitters = ["->", "-", ":", "/"]
+                            for splitter in splitters:
+                                parts = ports_display.split(splitter)
+                                if len(parts) > 1:
+                                    host_port = parts[0].strip()
+                                    break
+                            else:
+                                host_port = ports_display.strip()
+
+                        endpoint = f"http://localhost:{host_port or 'unknown'}"
+                        # Transport: if port is present, assume http, else stdio
+                        transport = "http" if ports_display else "stdio"
                         deployments.append(
                             {
                                 "id": container.get("ID", "unknown"),
@@ -777,6 +790,8 @@ EOF""",
                                 "since": container.get("RunningFor", "unknown"),
                                 "image": container.get("Image", "unknown"),
                                 "ports": ports_display,
+                                "endpoint": endpoint,
+                                "transport": transport,
                             }
                         )
                     except (KeyError, AttributeError) as e:

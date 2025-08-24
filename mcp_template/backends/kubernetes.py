@@ -634,17 +634,26 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                 "mcp-template.io/template-name", "unknown"
             )
 
-            # Try to get service endpoint
+            # Try to get service endpoint and ports
             endpoint = None
+            ports_display = "unknown"
             try:
                 service = self.core_v1.read_namespaced_service(
                     name=deployment_name, namespace=self.namespace
                 )
-                if service.spec.type == "ClusterIP":
-                    endpoint = f"http://{service.metadata.name}.{self.namespace}.svc.cluster.local:{service.spec.ports[0].port}"
-                elif service.spec.type == "NodePort":
-                    # Get node IP (simplified - in practice you'd get actual node IPs)
-                    endpoint = f"http://localhost:{service.spec.ports[0].node_port}"
+                if service.spec.ports and len(service.spec.ports) > 0:
+                    svc_port = service.spec.ports[0].port
+                    if service.spec.type == "ClusterIP":
+                        endpoint = f"http://{service.metadata.name}.{self.namespace}.svc.cluster.local:{svc_port}"
+                        ports_display = str(svc_port)
+                    elif service.spec.type == "NodePort":
+                        node_port = service.spec.ports[0].node_port
+                        endpoint = f"http://localhost:{node_port}"
+                        ports_display = str(node_port)
+                    else:
+                        ports_display = str(svc_port)
+                else:
+                    ports_display = "unknown"
             except ApiException:
                 pass
 
@@ -661,6 +670,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                 "available_replicas": deployment.status.available_replicas or 0,
                 "status": "running" if deployment.status.ready_replicas else "pending",
                 "endpoint": endpoint,
+                "ports": ports_display,
                 "transport": transport,
                 "created": (
                     deployment.metadata.creation_timestamp.isoformat()

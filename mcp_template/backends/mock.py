@@ -91,16 +91,21 @@ class MockDeploymentService(BaseDeploymentBackend):
 
     def list_deployments(self) -> List[Dict[str, Any]]:
         """List mock deployments."""
-        return [
-            {
+        deployments = []
+        for name, info in self.deployments.items():
+            # Mock always uses stdio transport, no real endpoint or ports
+            deployment = {
                 "name": name,
-                "template": info["template_id"],
+                "template": info.get("template_id", "unknown"),
                 "status": "running",
-                "created": info["created_at"],
+                "created": info.get("created_at"),
                 "mock": True,
+                "endpoint": None,
+                "ports": None,
+                "transport": "stdio",
             }
-            for name, info in self.deployments.items()
-        ]
+            deployments.append(deployment)
+        return deployments
 
     def delete_deployment(
         self, deployment_name: str, raise_on_failure: bool = False

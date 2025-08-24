@@ -177,7 +177,7 @@ def render_deployments_grouped_by_backend(
             status = deployment.get("status", "unknown")
             endpoint = deployment.get("endpoint", "unknown")
             ports = deployment.get("ports", deployment.get("port", "unknown"))
-            transport = deployment.get("transport", "http")
+            transport = deployment.get("transport", "unknown")
             created = format_timestamp(
                 deployment.get("created", deployment.get("since"))
             )
