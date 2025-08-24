@@ -161,24 +161,40 @@ def render_deployments_grouped_by_backend(
 
         # Create table for this backend's deployments
         table = Table(show_header=True, header_style="cyan", padding=(0, 1))
-        table.add_column("ID", style="cyan", width=12)
+        table.add_column("ID", style="cyan", width=15)
         table.add_column("Template", style="white", width=15)
         table.add_column("Status", style="white", width=10)
-        table.add_column("Created", style="blue", width=10)
+        table.add_column("Endpoint", style="blue", width=30)
+        table.add_column("Ports", style="blue", width=20)
         table.add_column("Transport", style="yellow", width=10)
+        table.add_column("Since", style="blue", width=10)
 
         for deployment in deployments:
-            deployment_id = deployment.get("id", deployment.get("name", "N/A"))[:11]
+            deployment_id = deployment.get(
+                "id", deployment.get("name", deployment.get("deployment_id", "N/A"))
+            )[:14]
             template = deployment.get("template", "unknown")
             status = deployment.get("status", "unknown")
-            created = format_timestamp(deployment.get("created"))
-            transport = deployment.get("transport", "N/A")
+            endpoint = deployment.get("endpoint", "unknown")
+            ports = deployment.get("ports", deployment.get("port", "unknown"))
+            transport = deployment.get("transport", "http")
+            created = format_timestamp(
+                deployment.get("created", deployment.get("since"))
+            )
 
             # Colorize status
             status_color = get_status_color(status)
             status_text = f"[{status_color}]● {status}[/]"
 
-            table.add_row(deployment_id, template, status_text, created, transport)
+            table.add_row(
+                deployment_id,
+                template,
+                status_text,
+                endpoint,
+                ports,
+                transport,
+                created,
+            )
 
         console.print(table)
 
@@ -1196,3 +1212,50 @@ class ResponseFormatter:
             self.console.print(
                 f"[dim]💡 Using {backend} backend for container operations[/dim]"
             )
+
+    def beautify_deployed_servers(self, servers: List[Dict[str, Any]]) -> None:
+        """Beautify deployed servers list."""
+        if not servers:
+            self.console.print("[yellow]⚠️  No deployed servers found[/yellow]")
+            return
+
+        table = Table(title=f"Deployed MCP Servers ({len(servers)} active)")
+        table.add_column("ID", style="cyan", width=10)
+        table.add_column("Template", style="cyan", width=20)
+        table.add_column("Transport", style="yellow", width=12)
+        table.add_column("Status", style="green", width=10)
+        table.add_column("Endpoint", style="blue", width=30)
+        table.add_column("Ports", style="blue", width=20)
+        table.add_column("Since", style="blue", width=25)
+        table.add_column("Tools", style="magenta", width=10)
+
+        for server in servers:
+            id = server.get("id", "N/A")
+            template_name = server.get("name", "Unknown")
+            transport = server.get("transport", "unknown")
+            status = server.get("status", "unknown")
+            endpoint = server.get("endpoint", "N/A")
+            ports = server.get("ports", "N/A")
+            since = server.get("since", "N/A")
+            tool_count = len(server.get("tools", []))
+
+            # Color status
+            if status == "running":
+                status_text = f"[green]{status}[/green]"
+            elif status == "failed":
+                status_text = f"[red]{status}[/red]"
+            else:
+                status_text = f"[yellow]{status}[/yellow]"
+
+            table.add_row(
+                id,
+                template_name,
+                transport,
+                status_text,
+                endpoint,
+                ports,
+                since,
+                str(tool_count),
+            )
+
+        self.console.print(table)

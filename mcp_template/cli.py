@@ -748,9 +748,6 @@ def list_deployments(
         if output_format == "table" or backend:
             # Single unified table
             response_formatter.beautify_deployed_servers(deployments)
-            render_deployments_unified_table(
-                deployments, title=f"All Deployments ({', '.join(available_backends)})"
-            )
         else:
             # Grouped by backend (default)
             render_deployments_grouped_by_backend(grouped_deployments, show_empty=True)
