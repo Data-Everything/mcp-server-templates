@@ -35,6 +35,10 @@ class MultiBackendManager:
         """
 
         self.enabled_backends = enabled_backends or VALID_BACKENDS
+
+        if isinstance(self.enabled_backends, str):
+            self.enabled_backends = [self.enabled_backends]
+
         self.backends: Dict[str, BaseDeploymentBackend] = {}
         self.deployment_managers: Dict[str, Any] = {}
         self.tool_managers: Dict[str, Any] = {}

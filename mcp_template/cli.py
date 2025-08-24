@@ -582,8 +582,8 @@ def list(
         table.add_column("Name", style="cyan", no_wrap=True)
         table.add_column("Description", style="white")
         table.add_column("Version", style="green")
-
-        available_backends = client.multi_manager.get_available_backends()
+        # This private _multi_manager is method scoped in the client class
+        available_backends = client._multi_manager.get_available_backends()
         if not isinstance(available_backends, builtins.list):
             available_backends = [available_backends]
 

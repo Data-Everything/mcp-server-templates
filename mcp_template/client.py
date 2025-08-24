@@ -91,6 +91,9 @@ class MCPClient:
         self.template_discovery = TemplateDiscovery()
         self.tool_caller = ToolCaller(backend_type)
         self.multi_manager = MultiBackendManager(self.backend_type)
+        # This is a temp MultiBackendManager which is set by methods that
+        # also accept backend as input and set the value scoped for that method
+        self._multi_manager = None
 
     # Template Management
     def list_templates(
@@ -111,9 +114,11 @@ class MCPClient:
 
         if all_backends:
             # Overwrite self.multi_manager to use all backends
-            self.multi_manager = MultiBackendManager(enabled_backends=None)
+            self._multi_manager = MultiBackendManager(enabled_backends=None)
+        else:
+            self._multi_manager = self.multi_manager
 
-        available_backends = self.multi_manager.get_available_backends()
+        available_backends = self._multi_manager.get_available_backends()
 
         # Get templates (backend-agnostic)
         template_manager = TemplateManager(
@@ -123,7 +128,7 @@ class MCPClient:
         templates = template_manager.list_templates(include_deployed_status=False)
         # Get all deployments across backends
         if include_deployed_status:
-            all_deployments = self.multi_manager.get_all_deployments()
+            all_deployments = self._multi_manager.get_all_deployments()
 
             # Count running instances per template per backend
             deployment_info = {}
