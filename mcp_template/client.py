@@ -91,6 +91,7 @@ class MCPClient:
         self.template_discovery = TemplateDiscovery()
         self.tool_caller = ToolCaller(backend_type)
         self.multi_manager = MultiBackendManager(self.backend_type)
+
         # This is a temp MultiBackendManager which is set by methods that
         # also accept backend as input and set the value scoped for that method
         self._multi_manager = None
@@ -208,20 +209,29 @@ class MCPClient:
             return {}
 
     # Server Management
-    def list_servers(self, template_name: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_servers(
+        self, template_name: Optional[str] = None, all_backends: bool = False
+    ) -> List[Dict[str, Any]]:
         """
         List all currently running MCP servers.
 
         Args:
             template_name: Optional filter by template name
+            all_backends: All backend
 
         Returns:
             List of running server information
         """
+        if all_backends:
+            self._multi_manager = MultiBackendManager(enabled_backends=None)
+        else:
+            self._multi_manager = self.multi_manager
+
         try:
-            return self.deployment_manager.find_deployments_by_criteria(
+            all_deployments = self._multi_manager.get_all_deployments(
                 template_name=template_name
             )
+            return all_deployments
         except Exception as e:
             logger.error(f"Failed to list servers: {e}")
             return []

@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Annotated, Any, Dict, List, Optional
 
 import typer
+import yaml
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -568,8 +569,6 @@ def list(
             console.print(json.dumps(templates, indent=2))
             return
         elif output_format == "yaml":
-            import yaml
-
             console.print(yaml.dump(templates, default_flow_style=False))
             return
 
@@ -643,8 +642,8 @@ def list_templates():
     This command shows all templates that can be deployed.
     """
     try:
-        template_manager = TemplateManager(cli_state["backend_type"])
-        templates = template_manager.list_templates()
+        client = MCPClient(backend_type=cli_state["backend_type"])
+        templates = client.list_templates()
 
         if not templates:
             console.print("[yellow]No templates found[/yellow]")
@@ -700,76 +699,18 @@ def list_deployments(
     By default, shows running deployments grouped by backend. Use --backend to limit
     to a specific backend, or --all to include deployments with all statuses.
     """
+
     try:
-        # Single backend mode (backward compatibility)
-        if backend:
-            client = MCPClient(backend_type=backend)
-            all_deployments = client.list_servers()
-
-            # Apply filters
-            deployments = all_deployments
-            if not all_statuses:
-                deployments = [d for d in deployments if d.get("status") == "running"]
-            if status:
-                deployments = [d for d in deployments if d.get("status") == status]
-            if template:
-                deployments = [d for d in deployments if d.get("template") == template]
-
-            if not deployments:
-                status_text = f" with status '{status}'" if status else ""
-                template_text = f" for template '{template}'" if template else ""
-                console.print(
-                    f"[yellow]No deployments found{status_text}{template_text}[/yellow]"
-                )
-                return
-
-            table = Table(
-                title=f"MCP Server Deployments ({backend})",
-                show_header=True,
-                header_style="bold blue",
-            )
-            table.add_column("ID", style="cyan", no_wrap=True)
-            table.add_column("Template", style="white")
-            table.add_column("Status", style="green")
-            table.add_column("Created", style="dim")
-            table.add_column("Endpoint", style="dim")
-
-            for deployment in deployments:
-                status_val = deployment.get("status", "unknown")
-                status_color = (
-                    "green"
-                    if status_val == "running"
-                    else "red" if status_val == "stopped" else "yellow"
-                )
-
-                table.add_row(
-                    deployment.get("id", "unknown")[:12],
-                    deployment.get("template", "unknown"),
-                    f"[{status_color}]{status_val}[/]",
-                    (
-                        deployment.get("created_at", "N/A")[:19]
-                        if deployment.get("created_at")
-                        else "N/A"
-                    ),
-                    deployment.get("endpoint", "N/A"),
-                )
-
-            console.print(table)
-            return
-
-        # Multi-backend mode
-        multi_manager = MultiBackendManager()
-        available_backends = multi_manager.get_available_backends()
+        client = MCPClient(backend_type=backend or cli_state["backend_type"])
+        deployments = client.list_servers(
+            template_name=template, all_backends=not backend
+        )
+        available_backends = client._multi_manager.get_available_backends()
 
         if not available_backends:
             console.print("[red]❌ No backends available[/red]")
             return
 
-        # Get all deployments across backends
-        all_deployments = multi_manager.get_all_deployments(template_name=template)
-
-        # Apply filters
-        deployments = all_deployments
         if not all_statuses:
             deployments = [d for d in deployments if d.get("status") == "running"]
         if status:
@@ -793,8 +734,6 @@ def list_deployments(
             console.print(json.dumps(deployments, indent=2))
             return
         elif output_format == "yaml":
-            import yaml
-
             console.print(yaml.dump(deployments, default_flow_style=False))
             return
 
@@ -806,9 +745,12 @@ def list_deployments(
                 grouped_deployments[backend_type] = []
             grouped_deployments[backend_type].append(deployment)
 
-        if output_format == "table":
+        if output_format == "table" or backend:
             # Single unified table
-            render_deployments_unified_table(deployments)
+            response_formatter.beautify_deployed_servers(deployments)
+            render_deployments_unified_table(
+                deployments, title=f"All Deployments ({', '.join(available_backends)})"
+            )
         else:
             # Grouped by backend (default)
             render_deployments_grouped_by_backend(grouped_deployments, show_empty=True)

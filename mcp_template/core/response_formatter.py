@@ -10,9 +10,8 @@ import datetime
 import json
 import logging
 import traceback
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
-from rich import box
 from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
@@ -20,6 +19,8 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
+
+from mcp_template.backends import VALID_BACKENDS
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,7 @@ def render_deployments_grouped_by_backend(
         console.print("[dim]No deployments found.[/]")
         return
 
-    for backend_type in ["docker", "kubernetes"]:  # Production backends only
+    for backend_type in VALID_BACKENDS:  # Production backends only
         deployments = grouped_deployments.get(backend_type, [])
 
         if not deployments and not show_empty:
@@ -1195,50 +1196,3 @@ class ResponseFormatter:
             self.console.print(
                 f"[dim]💡 Using {backend} backend for container operations[/dim]"
             )
-
-    def beautify_deployed_servers(self, servers: List[Dict[str, Any]]) -> None:
-        """Beautify deployed servers list."""
-        if not servers:
-            self.console.print("[yellow]⚠️  No deployed servers found[/yellow]")
-            return
-
-        table = Table(title=f"Deployed MCP Servers ({len(servers)} active)")
-        table.add_column("ID", style="cyan", width=10)
-        table.add_column("Template", style="cyan", width=20)
-        table.add_column("Transport", style="yellow", width=12)
-        table.add_column("Status", style="green", width=10)
-        table.add_column("Endpoint", style="blue", width=30)
-        table.add_column("Ports", style="blue", width=20)
-        table.add_column("Since", style="blue", width=25)
-        table.add_column("Tools", style="magenta", width=10)
-
-        for server in servers:
-            id = server.get("id", "N/A")
-            template_name = server.get("name", "Unknown")
-            transport = server.get("transport", "unknown")
-            status = server.get("status", "unknown")
-            endpoint = server.get("endpoint", "N/A")
-            ports = server.get("ports", "N/A")
-            since = server.get("since", "N/A")
-            tool_count = len(server.get("tools", []))
-
-            # Color status
-            if status == "running":
-                status_text = f"[green]{status}[/green]"
-            elif status == "failed":
-                status_text = f"[red]{status}[/red]"
-            else:
-                status_text = f"[yellow]{status}[/yellow]"
-
-            table.add_row(
-                id,
-                template_name,
-                transport,
-                status_text,
-                endpoint,
-                ports,
-                since,
-                str(tool_count),
-            )
-
-        self.console.print(table)
