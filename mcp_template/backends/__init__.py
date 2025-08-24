@@ -2,6 +2,8 @@
 Deployment backend interface for managing deployments across different platforms.
 """
 
+from cachetools import TTLCache, cached
+
 from mcp_template.backends.base import BaseDeploymentBackend
 from mcp_template.backends.docker import DockerDeploymentService
 from mcp_template.backends.kubernetes import KubernetesDeploymentService
@@ -17,6 +19,24 @@ __all__ = [
 
 VALID_BACKENDS = ["docker", "kubernetes"]
 ALL_BACKENDS = VALID_BACKENDS + ["mock"]
+VALID_BACKENDS_DICT = {
+    "docker": DockerDeploymentService,
+    "kubernetes": KubernetesDeploymentService,
+}
+
+
+@cached(cache=TTLCache(maxsize=128, ttl=60 * 4))
+def available_valid_backends():
+    """
+    Available valid backend
+    """
+
+    backends = {}
+    for backend_name, backend in VALID_BACKENDS_DICT.items():
+        if backend.is_available:
+            backends[backend_name] = backend
+
+    return backends
 
 
 def get_backend(backend_type: str = "docker", **kwargs) -> BaseDeploymentBackend:

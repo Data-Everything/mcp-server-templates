@@ -39,6 +39,7 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional, Union
 
+from mcp_template.backends import available_valid_backends
 from mcp_template.core import (
     DeploymentManager,
     MCPConnection,
@@ -47,6 +48,7 @@ from mcp_template.core import (
     ToolManager,
 )
 from mcp_template.core.deployment_manager import DeploymentOptions
+from mcp_template.core.multi_backend_manager import MultiBackendManager
 from mcp_template.template.utils.discovery import TemplateDiscovery
 
 logger = logging.getLogger(__name__)
@@ -88,27 +90,69 @@ class MCPClient:
         # Initialize other components
         self.template_discovery = TemplateDiscovery()
         self.tool_caller = ToolCaller(backend_type)
+        self.multi_manager = MultiBackendManager(self.backend_type)
 
     # Template Management
     def list_templates(
-        self, include_deployed_status: bool = False
+        self,
+        include_deployed_status: bool = False,
+        all_backends: bool = False,
     ) -> Dict[str, Dict[str, Any]]:
         """
         List all available MCP server templates.
 
         Args:
             include_deployed_status: Whether to include deployment status
+            all_backends: False
 
         Returns:
             Dictionary mapping template_id to template information
         """
-        try:
-            return self.template_manager.list_templates(
-                include_deployed_status=include_deployed_status
-            )
-        except Exception as e:
-            logger.error(f"Failed to list templates: {e}")
-            return {}
+
+        if all_backends:
+            # Overwrite self.multi_manager to use all backends
+            self.multi_manager = MultiBackendManager(enabled_backends=None)
+
+        available_backends = self.multi_manager.get_available_backends()
+
+        # Get templates (backend-agnostic)
+        template_manager = TemplateManager(
+            available_backends[0]
+        )  # Use any backend for template listing
+
+        templates = template_manager.list_templates(include_deployed_status=False)
+        # Get all deployments across backends
+        if include_deployed_status:
+            all_deployments = self.multi_manager.get_all_deployments()
+
+            # Count running instances per template per backend
+            deployment_info = {}
+            for deployment in all_deployments:
+                if deployment.get("status") == "running":
+                    template_name = deployment.get("template", "unknown")
+                    backend_type = deployment.get("backend_type", "unknown")
+                    deployment_id = deployment.get(
+                        "id", deployment.get("deployment_id", None)
+                    )
+
+                    if template_name not in deployment_info:
+                        deployment_info[template_name] = {}
+                    if backend_type not in deployment_info[template_name]:
+                        deployment_info[template_name][backend_type] = {
+                            "count": 0,
+                            "deployment_ids": [],
+                        }
+                    deployment_info[template_name][backend_type]["count"] += 1
+                    if deployment_id:
+                        deployment_info[template_name][backend_type][
+                            "deployment_ids"
+                        ].append(deployment_id)
+
+            for template_name, template_info in templates.items():
+                template_info["deployments"] = deployment_info.get(template_name, {})
+                templates[template_name] = template_info
+
+        return templates
 
     def get_template_info(self, template_id: str) -> Optional[Dict[str, Any]]:
         """

@@ -23,7 +23,15 @@ class MockDeploymentService(BaseDeploymentBackend):
         """Initialize mock service."""
         super().__init__()
         self.deployments = {}
-        self.backend_type = "mock"
+        self.backend_type = "mock" @ property
+
+    @property
+    def is_available(self):
+        """
+        Ensure backend is available
+        """
+
+        return True
 
     def deploy_template(
         self,

@@ -14,6 +14,7 @@ import socket
 import subprocess
 import time
 import uuid
+from contextlib import suppress
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -52,6 +53,18 @@ class PodmanDeploymentService(BaseDeploymentBackend):
         """
         self._ensure_podman_available()
         super().__init__()
+
+    @property
+    def is_available(self):
+        """
+        Ensure backend is available
+        """
+
+        with suppress(RuntimeError):
+            self._ensure_podman_available()
+            return True
+
+        return False
 
     def _run_command(
         self, command: List[str], check: bool = True

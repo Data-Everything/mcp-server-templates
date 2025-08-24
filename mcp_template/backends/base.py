@@ -20,6 +20,14 @@ class BaseDeploymentBackend(ABC):
 
         self._config = {}
 
+    @property
+    def is_available(self):
+        """
+        Ensure backend is available
+        """
+
+        return False
+
     @abstractmethod
     def deploy_template(
         self,

@@ -9,6 +9,7 @@ import socket
 import subprocess
 import time
 import uuid
+from contextlib import suppress
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -47,6 +48,18 @@ class DockerDeploymentService(BaseDeploymentBackend):
         """Initialize Docker service and verify Docker is available."""
         super().__init__()
         self._ensure_docker_available()
+
+    @property
+    def is_available(self):
+        """
+        Ensure backend is available
+        """
+
+        with suppress(RuntimeError):
+            self._ensure_docker_available()
+            return True
+
+        return False
 
     # Docker Infrastructure Methods
     def _run_command(
@@ -658,7 +671,7 @@ EOF""",
             pass  # Ignore cleanup failures
 
     # Container Management Methods
-    def list_deployments(self) -> List[Dict[str, Any]]:
+    def list_deployments(self, template: Optional[str] = None) -> List[Dict[str, Any]]:
         """List all MCP deployments managed by this Docker service.
 
         Returns:

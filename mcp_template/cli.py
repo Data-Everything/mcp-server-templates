@@ -23,6 +23,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
+from mcp_template.backends import available_valid_backends
 from mcp_template.client import MCPClient
 from mcp_template.core import DeploymentManager, TemplateManager
 from mcp_template.core.multi_backend_manager import MultiBackendManager
@@ -70,7 +71,14 @@ logger = logging.getLogger(__name__)
 
 # Global CLI state
 cli_state = {
-    "backend_type": os.getenv("MCP_BACKEND", "docker"),
+    "backend_type": os.getenv(
+        "MCP_BACKEND",
+        (
+            list(available_valid_backends().keys())[0]
+            if available_valid_backends()
+            else None
+        ),
+    ),
     "verbose": os.getenv("MCP_VERBOSE", "false").lower() == "true",
     "dry_run": os.getenv("MCP_DRY_RUN", "false").lower() == "true",
 }
@@ -445,7 +453,6 @@ def list_tools(
         # Always use single-backend approach with priority-based discovery
         # Use command-level backend if specified, otherwise use global backend, otherwise auto-detect
         effective_backend = backend or cli_state.get("backend_type")
-
         if effective_backend:
             # User specified backend (either command-level or global) - use MCPClient directly
             client = MCPClient(backend_type=effective_backend)
@@ -546,100 +553,24 @@ def list(
         return
 
     try:
-        # Single backend mode (backward compatibility)
-        if backend:
-            client = MCPClient(backend_type=backend)
-
-            # Get templates with deployment status
-            templates = client.list_templates(include_deployed_status=True)
-
-            if not templates:
-                console.print("[yellow]No templates found[/yellow]")
-                return
-
-            table = Table(
-                title=f"Available MCP Server Templates ({backend})",
-                show_header=True,
-                header_style="bold blue",
-            )
-            table.add_column("Name", style="cyan", no_wrap=True)
-            table.add_column("Description", style="white")
-            table.add_column("Version", style="green")
-            table.add_column("Running", style="yellow", justify="center")
-            table.add_column("Image", style="dim")
-
-            for name, info in templates.items():
-                running_count = info.get("running_instances", 0)
-                running_text = str(running_count) if running_count > 0 else "-"
-
-                table.add_row(
-                    name,
-                    info.get("description", "No description"),
-                    info.get("version", "latest"),
-                    running_text,
-                    info.get("docker_image", "N/A"),
-                )
-
-            console.print(table)
-            console.print(
-                "\n💡 [dim]Use 'mcpt deploy <template>' to deploy a template[/dim]"
-            )
-            return
-
         # Multi-backend mode
-        multi_manager = MultiBackendManager()
-        available_backends = multi_manager.get_available_backends()
-
-        if not available_backends:
-            console.print("[red]❌ No backends available[/red]")
-            return
-
-        # Get templates (backend-agnostic)
-        template_manager = TemplateManager(
-            available_backends[0]
-        )  # Use any backend for template listing
-        templates = template_manager.list_templates()
+        client = MCPClient(backend_type=backend or cli_state["backend_type"])
+        templates = client.list_templates(
+            include_deployed_status=True, all_backends=not backend
+        )
 
         if not templates:
             console.print("[yellow]No templates found[/yellow]")
             return
 
-        # Get all deployments across backends
-        all_deployments = multi_manager.get_all_deployments()
-
-        # Count running instances per template per backend
-        running_counts = {}
-        for deployment in all_deployments:
-            if deployment.get("status") == "running":
-                template_name = deployment.get("template", "unknown")
-                backend_type = deployment.get("backend_type", "unknown")
-
-                if template_name not in running_counts:
-                    running_counts[template_name] = {}
-                running_counts[template_name][backend_type] = (
-                    running_counts[template_name].get(backend_type, 0) + 1
-                )
-
         # Output format handling
         if output_format == "json":
-            output_data = {
-                "templates": templates,
-                "deployments": all_deployments,
-                "running_counts": running_counts,
-                "available_backends": available_backends,
-            }
-            console.print(json.dumps(output_data, indent=2))
+            console.print(json.dumps(templates, indent=2))
             return
         elif output_format == "yaml":
             import yaml
 
-            output_data = {
-                "templates": templates,
-                "deployments": all_deployments,
-                "running_counts": running_counts,
-                "available_backends": available_backends,
-            }
-            console.print(yaml.dump(output_data, default_flow_style=False))
+            console.print(yaml.dump(templates, default_flow_style=False))
             return
 
         # Table output with multi-backend view
@@ -652,6 +583,10 @@ def list(
         table.add_column("Description", style="white")
         table.add_column("Version", style="green")
 
+        available_backends = client.multi_manager.get_available_backends()
+        if not isinstance(available_backends, builtins.list):
+            available_backends = [available_backends]
+
         # Add columns for each available backend
         for backend_type in available_backends:
             backend_header = get_backend_indicator(backend_type, include_icon=False)
@@ -659,6 +594,7 @@ def list(
 
         table.add_column("Image", style="dim")
 
+        total_running = 0
         for name, info in templates.items():
             row_data = [
                 name,
@@ -667,9 +603,11 @@ def list(
             ]
 
             # Add running counts for each backend
-            template_counts = running_counts.get(name, {})
             for backend_type in available_backends:
-                count = template_counts.get(backend_type, 0)
+                count = (
+                    info.get("deployments", {}).get(backend_type, {}).get("count", 0)
+                )
+                total_running += count
                 row_data.append(str(count) if count > 0 else "-")
 
             row_data.append(info.get("docker_image", "N/A"))
@@ -677,10 +615,6 @@ def list(
 
         console.print(table)
 
-        # Show backend summary
-        total_running = sum(
-            sum(backend_counts.values()) for backend_counts in running_counts.values()
-        )
         backend_summary = ", ".join(available_backends)
         console.print(
             f"\n📊 [dim]Backends: {backend_summary} | Total running: {total_running}[/dim]"

@@ -5,6 +5,7 @@ Kubernetes deployment backend for managing deployments on Kubernetes clusters.
 import logging
 import time
 import uuid
+from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -40,6 +41,18 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         self.kubeconfig_path = kubeconfig_path
         self._ensure_kubernetes_available()
         self._ensure_namespace_exists()
+
+    @property
+    def is_available(self):
+        """
+        Ensure backend is available
+        """
+
+        with suppress(RuntimeError):
+            self._ensure_kubernetes_available()
+            return True
+
+        return False
 
     def _ensure_kubernetes_available(self):
         """Check if Kubernetes API is available and configure the client."""
