@@ -1189,35 +1189,93 @@ Type [bold]help[/bold] for available commands or [bold]help COMMAND[/bold] for s
                                     "[red]❌ Template name required for deploy command when none selected[/red]"
                                 )
                     elif cmd == "call":
-                        # Smart argument parsing for call command
-                        if len(cmd_args) >= 2:
-                            # Check if first arg is a template name
-                            session = get_session()
-                            available_templates = session.client.list_templates()
+                        # Robust argument parsing for call command
+                        session = get_session()
+                        available_templates = session.client.list_templates()
 
-                            if cmd_args[0] in available_templates:
-                                # call template tool [args...]
-                                template_arg = cmd_args[0]
-                                tool_name = cmd_args[1]
-                                tool_args = cmd_args[2] if len(cmd_args) > 2 else "{}"
-                                call_tool(
-                                    template=template_arg,
-                                    tool_name=tool_name,
-                                    args=tool_args,
+                        # Initialize variables
+                        template_arg = None
+                        tool_name = None
+                        tool_args = "{}"
+                        config_overrides = []
+                        env_vars = []
+
+                        # Parse command line arguments properly
+                        i = 0
+                        positional_args = []
+
+                        while i < len(cmd_args):
+                            arg = cmd_args[i]
+
+                            if arg in ["-C", "--config"]:
+                                # Next argument should be key=value
+                                if i + 1 < len(cmd_args):
+                                    config_overrides.append(cmd_args[i + 1])
+                                    i += 2
+                                else:
+                                    console.print(
+                                        "[red]❌ -C/--config requires a key=value argument[/red]"
+                                    )
+                                    break
+                            elif arg in ["-e", "--env"]:
+                                # Next argument should be key=value
+                                if i + 1 < len(cmd_args):
+                                    env_vars.append(cmd_args[i + 1])
+                                    i += 2
+                                else:
+                                    console.print(
+                                        "[red]❌ -e/--env requires a key=value argument[/red]"
+                                    )
+                                    break
+                            elif arg.startswith("-"):
+                                # Skip unknown flags for now
+                                console.print(
+                                    f"[yellow]⚠️ Ignoring unknown flag: {arg}[/yellow]"
                                 )
+                                i += 1
                             else:
-                                # call tool [args...] (with selected template)
-                                tool_name = cmd_args[0]
-                                tool_args = cmd_args[1] if len(cmd_args) > 1 else "{}"
-                                call_tool(
-                                    template=None, tool_name=tool_name, args=tool_args
-                                )
-                        elif len(cmd_args) >= 1:
-                            # call tool [args...] (with selected template)
-                            tool_name = cmd_args[0]
-                            tool_args = cmd_args[1] if len(cmd_args) > 1 else "{}"
+                                # This is a positional argument
+                                positional_args.append(arg)
+                                i += 1
+
+                        # Now determine template, tool_name, and tool_args from positional args
+                        if not positional_args:
+                            console.print(
+                                "[red]❌ Tool name required for call command[/red]"
+                            )
+                        elif len(positional_args) == 1:
+                            # call tool_name (use selected template, no args)
+                            tool_name = positional_args[0]
+                        elif len(positional_args) == 2:
+                            # Could be: call template tool_name OR call tool_name args
+                            if positional_args[0] in available_templates:
+                                # call template tool_name
+                                template_arg = positional_args[0]
+                                tool_name = positional_args[1]
+                            else:
+                                # call tool_name args
+                                tool_name = positional_args[0]
+                                tool_args = positional_args[1]
+                        elif len(positional_args) >= 3:
+                            # call template tool_name args
+                            if positional_args[0] in available_templates:
+                                template_arg = positional_args[0]
+                                tool_name = positional_args[1]
+                                tool_args = positional_args[2]
+                            else:
+                                # call tool_name args (with extra args - use last one)
+                                tool_name = positional_args[0]
+                                tool_args = positional_args[
+                                    -1
+                                ]  # Use the last argument as JSON
+
+                        if tool_name:
                             call_tool(
-                                template=None, tool_name=tool_name, args=tool_args
+                                template=template_arg,
+                                tool_name=tool_name,
+                                args=tool_args,
+                                config=config_overrides if config_overrides else None,
+                                env=env_vars if env_vars else None,
                             )
                         else:
                             console.print(

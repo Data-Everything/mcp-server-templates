@@ -130,7 +130,7 @@ The interactive CLI supports all standard MCP operations plus enhanced session m
 - `templates` - List available templates
 - `servers` - List running servers
 - `tools [template] [--force-refresh] [--help-info]` - List tools
-- `call <template|tool> <tool> <args>` - Execute a tool
+- `call <template|tool> <tool> <args> [-C key=value] [-e key=value]` - Execute a tool
 - `deploy <template>` - Deploy a template
 - `logs <deployment>` - View deployment logs
 - `stop <deployment>` - Stop a deployment
@@ -143,13 +143,39 @@ The interactive CLI supports all standard MCP operations plus enhanced session m
 - `config [template] <key>=<value>` - Set configuration
 - `exit` / `quit` - Exit interactive session
 
+### Enhanced Call Command Features
+
+The `call` command now supports flexible argument ordering and multiple override options:
+
+**Syntax:**
+```bash
+call [template] <tool_name> [JSON_args] [-C key=value] [-e key=value]
+```
+
+**Examples:**
+```bash
+# Basic usage
+call say_hello '{"name": "Alice"}'
+call demo say_hello '{"name": "Alice"}'
+
+# With config overrides
+call say_hello -C hello_from="Custom" '{"name": "Alice"}'
+call demo say_hello -C hello_from="Custom" '{"name": "Alice"}'
+
+# With environment variables
+call say_hello -e MCP_HELLO_FROM="EnvValue" '{"name": "Alice"}'
+
+# Multiple overrides (flags can appear anywhere)
+call -C github_token="ghp_xxx" github list_pull_requests '{"repo": "owner/repo"}'
+call github list_pull_requests -C github_token="ghp_xxx" -e DEBUG="true" '{"repo": "owner/repo"}'
+```
+
 ### Enhanced Features
+- **Flexible Argument Parsing**: Config overrides (`-C`) and environment variables (`-e`) can appear anywhere in the command
 - **Smart Template Detection**: Commands automatically detect whether the first argument is a template name or parameter
 - **Force Refresh**: Use `--force-refresh` flag with tools command to bypass cache
 - **Rich Output**: All commands feature beautiful tables and colored output
-- **Error Recovery**: Graceful error handling with helpful suggestions
-
-## Benefits
+- **Error Recovery**: Graceful error handling with helpful suggestions## Benefits
 
 - **Faster development**: No need to retype `mcp-template` for each command
 - **Better testing**: Quickly iterate between deploy, test, and debug
