@@ -77,7 +77,7 @@ class ToolManager:
         discovery_method_used = None
 
         if not force_refresh:
-            cached_tools = self.get_cached_tools(template_or_id).get("data", {})
+            cached_tools = (self.get_cached_tools(template_or_id) or {}).get("data", {})
             if cached_tools:
                 tools = cached_tools.get("tools", [])
                 if cached_tools and tools:

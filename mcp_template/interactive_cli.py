@@ -1092,7 +1092,7 @@ class InteractiveCLI(cmd2.Cmd):
         # Parse arguments
         parts = args.strip().split()
         template_name = parts[0]
-        force_server_discovery = "--force-server" in parts
+        force_refresh = "--force-refresh" in parts
         show_help = "--help" in parts
 
         # Handle help request
@@ -1100,66 +1100,9 @@ class InteractiveCLI(cmd2.Cmd):
             self._show_template_help(template_name)
             return
 
-        if force_server_discovery:
-            console.print(
-                "[yellow]🔍 Force server discovery mode - MCP probe only (no static fallback)[/yellow]"
-            )
+        from mcp_template.cli import list_tools
 
-        # Get environment variables for the template
-        config_values = self.session_configs.get(template_name, {})
-
-        # Add environment variables to config_values if available and not already set
-        template_info = self.template_manager.get_template_info(template_name)
-        if template_info:
-            config_schema = template_info.get("config_schema", {})
-            properties = config_schema.get("properties", {})
-
-            for prop_name, prop_config in properties.items():
-                env_mapping = prop_config.get("env_mapping")
-                if (
-                    env_mapping
-                    and env_mapping in os.environ
-                    and prop_name not in config_values
-                ):
-                    config_values[prop_name] = os.environ[env_mapping]
-
-        # Use the shared CLI method - this handles all the logic correctly
-        try:
-            tools_result = self.tool_manager.list_tools(
-                template_or_id=template_name,
-                discovery_method="auto",
-                force_refresh=force_server_discovery,
-                config_values=config_values,
-            )
-
-            # Extract tools and metadata
-            tools = tools_result.get("tools", [])
-            discovery_method = tools_result.get("discovery_method", "unknown")
-            metadata = tools_result.get("metadata", {})
-
-            # Display the tools if we got any
-            if tools:
-                title = f"Template: {template_name} (discovery: {discovery_method})"
-                self.beautifier.beautify_tools_list(tools, title)
-
-                # Show discovery hint
-                if discovery_method in ["cache", "static"]:
-                    console.print(
-                        "[dim]💡 Hint: Use --force-refresh to refresh tools from server[/dim]"
-                    )
-                elif discovery_method == "error":
-                    error_msg = metadata.get("error", "Unknown error")
-                    console.print(f"[yellow]⚠️  Discovery error: {error_msg}[/yellow]")
-            else:
-                console.print(
-                    f"[yellow]⚠️  No tools found for template '{template_name}'[/yellow]"
-                )
-
-        except Exception as e:
-            console.print(
-                f"[red]❌ Exception during tool discovery for template '{template_name}': {e}[/red]"
-            )
-            return
+        return list_tools(template=template_name, force_refresh=force_refresh)
 
     def _show_template_help(self, template_name: str):
         """Show detailed help for a template including configuration and tools."""
