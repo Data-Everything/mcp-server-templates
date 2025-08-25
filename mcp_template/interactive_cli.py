@@ -1146,7 +1146,7 @@ Type [bold]help[/bold] for available commands or [bold]help COMMAND[/bold] for s
                 if not command:
                     continue
 
-                if command in ["exit", "quit"]:
+                if command in ["exit", "quit", "/q"]:
                     # Save command history before exiting
                     if READLINE_AVAILABLE and history_file:
                         try:
