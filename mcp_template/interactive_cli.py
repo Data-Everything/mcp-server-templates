@@ -356,6 +356,12 @@ def call_tool(
         Optional[List[str]],
         typer.Option("--config", "-C", help="Config overrides (KEY=VALUE)"),
     ] = None,
+    backend: Annotated[
+        Optional[str],
+        typer.Option(
+            "--backend", "-b", help="Specific backend to use (docker, kubernetes, mock)"
+        ),
+    ] = None,
     no_pull: Annotated[
         bool, typer.Option("--no-pull", help="Don't pull Docker images")
     ] = False,
@@ -460,6 +466,7 @@ def call_tool(
             config_file=str(config_file) if config_file else None,
             env_vars=env_vars,
             config_values=final_config,
+            all_backends=not backend,
             pull_image=not no_pull,
             force_stdio=force_stdio,
         )
@@ -470,6 +477,16 @@ def call_tool(
                 console.print(json.dumps(result, indent=2))
             else:
                 _display_tool_result(result.get("result"), tool_name, raw=False)
+
+                # Show additional info if available
+                if result.get("backend_type"):
+                    console.print(
+                        f"[dim]Used backend: {result.get('backend_type')}[/dim]"
+                    )
+                if result.get("deployment_id"):
+                    console.print(
+                        f"[dim]Used deployment: {result.get('deployment_id')}[/dim]"
+                    )
         else:
             error_msg = (
                 result.get("error", "Tool execution failed")
@@ -477,6 +494,18 @@ def call_tool(
                 else "Tool execution failed"
             )
             console.print(f"[red]❌ Tool execution failed: {error_msg}[/red]")
+
+            # Show helpful deploy command if template is not deployed and doesn't support stdio
+            if result and not result.get("template_supports_stdio", True):
+                deploy_cmd = result.get("deploy_command")
+                if deploy_cmd:
+                    console.print(
+                        f"[yellow]💡 Try deploying first: {deploy_cmd}[/yellow]"
+                    )
+
+            # Show backend info if available
+            if result and result.get("backend_type"):
+                console.print(f"[dim]Backend used: {result.get('backend_type')}[/dim]")
 
     except Exception as e:
         console.print(f"[red]❌ Failed to execute tool: {e}[/red]")
@@ -1199,6 +1228,7 @@ Type [bold]help[/bold] for available commands or [bold]help COMMAND[/bold] for s
                         tool_args = "{}"
                         config_overrides = []
                         env_vars = []
+                        backend_arg = None
 
                         # Parse command line arguments properly
                         i = 0
@@ -1225,6 +1255,16 @@ Type [bold]help[/bold] for available commands or [bold]help COMMAND[/bold] for s
                                 else:
                                     console.print(
                                         "[red]❌ -e/--env requires a key=value argument[/red]"
+                                    )
+                                    break
+                            elif arg in ["-b", "--backend"]:
+                                # Next argument should be backend name
+                                if i + 1 < len(cmd_args):
+                                    backend_arg = cmd_args[i + 1]
+                                    i += 2
+                                else:
+                                    console.print(
+                                        "[red]❌ -b/--backend requires a backend name[/red]"
                                     )
                                     break
                             elif arg.startswith("-"):
@@ -1276,6 +1316,7 @@ Type [bold]help[/bold] for available commands or [bold]help COMMAND[/bold] for s
                                 args=tool_args,
                                 config=config_overrides if config_overrides else None,
                                 env=env_vars if env_vars else None,
+                                backend=backend_arg,
                             )
                         else:
                             console.print(

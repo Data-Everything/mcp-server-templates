@@ -671,15 +671,18 @@ class MCPClient:
             Tool response or None if failed
         """
         try:
-            return self.tool_manager.call_tool(
-                template_id,
-                tool_name,
-                arguments or {},
+            # Use multi-backend manager for tool calling to support auto-detection
+            # and priority-based discovery across all backends
+            result = self.multi_manager.call_tool(
+                template_name=template_id,
+                tool_name=tool_name,
+                arguments=arguments or {},
                 config_values=server_config,
                 timeout=timeout,
                 pull_image=pull_image,
                 force_stdio=force_stdio,
             )
+            return result
         except Exception as e:
             logger.error(f"Failed to call tool {tool_name}: {e}")
             return None
@@ -692,6 +695,7 @@ class MCPClient:
         config_file: Optional[str] = None,
         env_vars: Optional[Dict[str, str]] = None,
         config_values: Optional[Dict[str, Any]] = None,
+        all_backends: bool = True,
         timeout: int = 30,
         pull_image: bool = True,
         force_stdio: bool = False,
@@ -706,6 +710,7 @@ class MCPClient:
             config_file: Path to configuration file
             env_vars: Environment variables
             config_values: Direct configuration values
+            all_backends: Try all backends
             timeout: Timeout for the call
             pull_image: Whether to pull images for stdio calls
             force_stdio: Force stdio transport
@@ -713,6 +718,12 @@ class MCPClient:
         Returns:
             Tool response or None if failed
         """
+
+        if all_backends:
+            self._multi_manager = MultiBackendManager(enabled_backends=None)
+        else:
+            self._multi_manager = self.multi_manager
+
         try:
             from mcp_template.core.config_processor import ConfigProcessor
 
@@ -732,15 +743,17 @@ class MCPClient:
                 env_vars=env_vars or {},
             )
 
-            return self.call_tool(
-                template_id=template_id,
+            # Use multi-backend manager for better discovery and backend selection
+            result = self._multi_manager.call_tool(
+                template_name=template_id,
                 tool_name=tool_name,
-                arguments=arguments,
-                server_config=final_config,
+                arguments=arguments or {},
+                config_values=final_config,
                 timeout=timeout,
                 pull_image=pull_image,
                 force_stdio=force_stdio,
             )
+            return result
         except Exception as e:
             logger.error(f"Failed to call tool {tool_name} with config: {e}")
             return None

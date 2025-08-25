@@ -345,6 +345,167 @@ class MultiBackendManager:
 
         return all_tools
 
+    def call_tool(
+        self,
+        template_name: str,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        config_values: Optional[Dict[str, Any]] = None,
+        timeout: int = 30,
+        pull_image: bool = True,
+        force_stdio: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Call a tool using multi-backend discovery and priority.
+
+        Discovery Priority:
+        1. If backend_type specified, use that backend only
+        2. Find existing deployment for template and use that backend
+        3. Check if stdio is supported and use first available backend
+        4. Show deployment message if template is not deployed
+
+        Args:
+            template_name: Template name or deployment name
+            tool_name: Name of the tool to call
+            arguments: Tool arguments
+            backend_type: Specific backend to use (optional)
+            config_values: Configuration values for stdio calls
+            timeout: Timeout for the call
+            pull_image: Whether to pull image for stdio calls
+            force_stdio: Force stdio transport
+
+        Returns:
+            Tool call result with backend information
+        """
+
+        # Check if template_name is actually a deployment ID
+        deployment = self.get_deployment_by_id(template_name)
+        if deployment:
+            deployment_backend = deployment.get("backend_type")
+            deployment_template = deployment.get("template", template_name)
+            if deployment_backend in self.tool_managers:
+                try:
+                    tool_manager = self.tool_managers[deployment_backend]
+                    result = tool_manager.call_tool(
+                        deployment_template,
+                        tool_name,
+                        arguments,
+                        config_values=config_values,
+                        timeout=timeout,
+                        pull_image=pull_image,
+                        force_stdio=force_stdio,
+                    )
+                    if isinstance(result, dict):
+                        result["backend_type"] = deployment_backend
+                        result["deployment_id"] = template_name
+                    return result
+                except Exception as e:
+                    return {
+                        "success": False,
+                        "error": str(e),
+                        "backend_type": deployment_backend,
+                        "deployment_id": template_name,
+                    }
+
+        # Priority 1: Find existing deployment for template
+        all_deployments = self.get_all_deployments(template_name=template_name)
+        running_deployments = [
+            d for d in all_deployments if d.get("status") == "running"
+        ]
+
+        if running_deployments:
+            # Use the first running deployment
+            deployment = running_deployments[0]
+            deployment_backend = deployment.get("backend_type")
+            deployment_id = deployment.get("id")
+
+            if deployment_backend in self.tool_managers:
+                try:
+                    tool_manager = self.tool_managers[deployment_backend]
+                    result = tool_manager.call_tool(
+                        template_name,
+                        tool_name,
+                        arguments,
+                        config_values=config_values,
+                        timeout=timeout,
+                        pull_image=pull_image,
+                        force_stdio=force_stdio,
+                    )
+                    if isinstance(result, dict):
+                        result["backend_type"] = deployment_backend
+                        result["deployment_id"] = deployment_id
+                        result["used_existing_deployment"] = True
+                    return result
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to call tool on existing deployment {deployment_id}: {e}"
+                    )
+                    # Fall through to stdio attempt
+
+        # Priority 2: Check if stdio is supported and try backends in order
+        first_backend = next(iter(self.tool_managers.keys()))
+        template_manager = TemplateManager(first_backend)
+
+        try:
+            template_info = template_manager.get_template_info(template_name)
+            if template_info:
+                transport_config = template_info.get("transport", {})
+                supported_transports = transport_config.get("supported", ["http"])
+                default_transport = transport_config.get("default", "http")
+
+                if "stdio" in supported_transports or default_transport == "stdio":
+                    # Try each backend in order
+                    last_error = None
+                    for backend, tool_manager in self.tool_managers.items():
+                        try:
+                            result = tool_manager.call_tool(
+                                template_name,
+                                tool_name,
+                                arguments,
+                                config_values=config_values,
+                                timeout=timeout,
+                                pull_image=pull_image,
+                                force_stdio=True,
+                            )
+                            if isinstance(result, dict):
+                                if result.get("success"):
+                                    result["backend_type"] = backend
+                                    result["used_stdio"] = True
+                                    return result
+                                else:
+                                    last_error = result.get("error", "Unknown error")
+                        except Exception as e:
+                            last_error = str(e)
+                            logger.debug(f"Failed stdio call on {backend}: {e}")
+                            continue
+
+                    # All stdio attempts failed
+                    return {
+                        "success": False,
+                        "error": f"All stdio backends failed. Last error: {last_error}",
+                        "template_supports_stdio": True,
+                    }
+                else:
+                    # Template doesn't support stdio
+                    return {
+                        "success": False,
+                        "error": f"Template '{template_name}' does not support stdio transport and no running deployment found",
+                        "template_supports_stdio": False,
+                        "supported_transports": supported_transports,
+                        "deploy_command": f"mcpt deploy {template_name}",
+                    }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Template '{template_name}' not found",
+                }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to get template info: {e}",
+            }
+
     def stop_deployment(self, deployment_id: str, timeout: int = 30) -> Dict[str, Any]:
         """
         Stop a deployment by auto-detecting its backend.

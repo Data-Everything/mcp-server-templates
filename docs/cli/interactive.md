@@ -149,33 +149,77 @@ The `call` command now supports flexible argument ordering and multiple override
 
 **Syntax:**
 ```bash
-call [template] <tool_name> [JSON_args] [-C key=value] [-e key=value]
+call [template] <tool_name> [JSON_args] [-C key=value] [-e key=value] [-b backend]
 ```
+
+**Multi-Backend Tool Calling:**
+The call command now supports multi-backend tool execution with automatic discovery:
+
+1. **Priority-based execution**: Existing deployment → stdio support → deployment required message
+2. **Backend selection**: Use `--backend` flag to force specific backend (docker, kubernetes, mock)
+3. **Enhanced error reporting**: Shows which backend was used and helpful deployment commands
 
 **Examples:**
 ```bash
-# Basic usage
+# Basic usage (multi-backend auto-discovery)
 call say_hello '{"name": "Alice"}'
 call demo say_hello '{"name": "Alice"}'
 
-# With config overrides
-call say_hello -C hello_from="Custom" '{"name": "Alice"}'
-call demo say_hello -C hello_from="Custom" '{"name": "Alice"}'
+# With config overrides (GitHub integration example)
+call github list_pull_requests -C github_token="ghp_xxx" '{"owner": "Data-Everything", "repo": "mcp-server-templates"}'
+
+# Force specific backend
+call demo say_hello --backend docker
+call demo say_hello --backend kubernetes
 
 # With environment variables
 call say_hello -e MCP_HELLO_FROM="EnvValue" '{"name": "Alice"}'
 
 # Multiple overrides (flags can appear anywhere)
-call -C github_token="ghp_xxx" github list_pull_requests '{"repo": "owner/repo"}'
-call github list_pull_requests -C github_token="ghp_xxx" -e DEBUG="true" '{"repo": "owner/repo"}'
+call -C github_token="ghp_xxx" github list_pull_requests '{"owner": "user", "repo": "project"}'
+call github list_pull_requests -C github_token="ghp_xxx" -e DEBUG="true" '{"owner": "user", "repo": "project"}'
+
+# Complex example with all options
+call github list_pull_requests \
+  -C github_token="ghp_xxx" \
+  -C github_host="api.github.com" \
+  -e DEBUG=true \
+  --backend docker \
+  '{"owner": "Data-Everything", "repo": "mcp-server-templates"}'
+```
+
+**Available Flags:**
+- `-C, --config KEY=VALUE`: Configuration overrides
+- `-e, --env KEY=VALUE`: Environment variables
+- `-b, --backend NAME`: Force specific backend (docker, kubernetes, mock)
+- `--stdio`: Force stdio transport
+- `--raw`: Show raw JSON response
+- `--no-pull`: Don't pull Docker images for stdio calls
+
+**Multi-Backend Error Handling:**
+Enhanced error messages now show:
+- Which backend was attempted
+- Whether template supports stdio transport
+- Exact deployment command if deployment is required
+
+```bash
+# Example error messages
+❌ Tool execution failed: Backend 'kubernetes' not available
+Backend used: kubernetes
+
+❌ Tool execution failed: Template 'github' does not support stdio transport and no running deployment found
+💡 Try deploying first: mcpt deploy github
 ```
 
 ### Enhanced Features
+- **Multi-backend Support**: Automatic discovery and execution across Docker, Kubernetes, and other backends
+- **Backend Selection**: Force specific backend using `--backend` flag
 - **Flexible Argument Parsing**: Config overrides (`-C`) and environment variables (`-e`) can appear anywhere in the command
 - **Smart Template Detection**: Commands automatically detect whether the first argument is a template name or parameter
-- **Force Refresh**: Use `--force-refresh` flag with tools command to bypass cache
-- **Rich Output**: All commands feature beautiful tables and colored output
-- **Error Recovery**: Graceful error handling with helpful suggestions## Benefits
+- **Priority-based Discovery**: Find existing deployments first, fallback to stdio support
+- **Enhanced Error Reporting**: Detailed error messages with backend information and helpful suggestions
+- **Rich Output**: All commands feature beautiful tables and colored output with backend details
+- **Error Recovery**: Graceful error handling with deployment guidance## Benefits
 
 - **Faster development**: No need to retype `mcp-template` for each command
 - **Better testing**: Quickly iterate between deploy, test, and debug
