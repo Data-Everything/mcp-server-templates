@@ -227,6 +227,7 @@ class DeploymentManager:
         Returns:
             Dictionary with stop operation results
         """
+
         start_time = time.time()
 
         try:

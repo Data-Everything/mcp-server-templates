@@ -37,6 +37,7 @@ Example usage:
 
 import asyncio
 import logging
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Union
 
 from mcp_template.backends import available_valid_backends
@@ -210,7 +211,10 @@ class MCPClient:
 
     # Server Management
     def list_servers(
-        self, template_name: Optional[str] = None, all_backends: bool = False
+        self,
+        template_name: Optional[str] = None,
+        all_backends: bool = False,
+        status: str = None,
     ) -> List[Dict[str, Any]]:
         """
         List all currently running MCP servers.
@@ -229,7 +233,7 @@ class MCPClient:
 
         try:
             all_deployments = self._multi_manager.get_all_deployments(
-                template_name=template_name
+                template_name=template_name, status=status
             )
             return all_deployments
         except Exception as e:
@@ -428,6 +432,8 @@ class MCPClient:
         Returns:
             Result of the stop operation
         """
+
+        self._multi_manager = MultiBackendManager(enabled_backends=None)
         try:
             # Disconnect any active connections first
             if deployment_id in self._active_connections:
@@ -446,38 +452,66 @@ class MCPClient:
                     pass
                 del self._active_connections[deployment_id]
 
-            return self.deployment_manager.stop_deployment(deployment_id, timeout)
+            return self.multi_manager.stop_deployment(deployment_id, timeout)
         except Exception as e:
             logger.error(f"Failed to stop server {deployment_id}: {e}")
             return {"success": False, "error": str(e)}
 
-    def stop_all_servers(self, template: str = None) -> bool:
+    def stop_all_servers(
+        self,
+        template: str = None,
+        all_backends: bool = False,
+        timeout: int = 30,
+        force: bool = False,
+    ) -> bool:
         """
         Stop all servers for a specific template.
 
         Args:
             template: Template name to stop all servers. If None, stops all servers.
+            all_backends: Shall all deployments cross banckend be stopped?
 
         Returns:
             True if all servers were stopped successfully, False otherwise
         """
+
+        if all_backends:
+            self._multi_manager = MultiBackendManager(enabled_backends=None)
+        else:
+            self._multi_manager = self.multi_manager
+
         try:
-            targets = self.deployment_manager.find_deployments_by_criteria(
-                template_name=template
+            targets = self.list_servers(
+                template_name=template, all_backends=all_backends, status="running"
             )
 
             if not targets:
-                return True  # No servers to stop is considered success
+                return {None: {"success": True}}
 
-            result = self.deployment_manager.stop_deployments_bulk(
-                [t["id"] for t in targets]
-            )
+            results = {}
+            for deployment in targets:
+                backend = deployment.get("backend_type", "unknown")
+                deployment_id = deployment.get(
+                    "id", deployment.get("deployment_id", deployment.get("name", None))
+                )
+                deployment_manager = self._multi_manager.deployment_managers.get(
+                    backend
+                )
+                result = {"success": False}
+                if backend and deployment_id and deployment_manager:
+                    try:
+                        result = deployment_manager.stop_deployment(
+                            deployment_id, timeout=timeout, force=force
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to stop server {deployment_id}: {e}")
 
-            return result.get("success", False)
+                results[deployment_id] = result
 
         except Exception as e:
             logger.error(f"Failed to stop all servers for template {template}: {e}")
-            return False
+
+        return results
 
     def get_server_info(self, deployment_id: str) -> Optional[Dict[str, Any]]:
         """

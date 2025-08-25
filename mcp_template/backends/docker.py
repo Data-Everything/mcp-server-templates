@@ -777,8 +777,10 @@ EOF""",
                                     break
                             else:
                                 host_port = ports_display.strip()
+                        else:
+                            host_port = "unknown"
 
-                        endpoint = f"http://localhost:{host_port or 'unknown'}"
+                        endpoint = f"http://localhost:{host_port}"
                         # Transport: if port is present, assume http, else stdio
                         transport = "http" if ports_display else "stdio"
                         deployments.append(

@@ -60,7 +60,7 @@ class MultiBackendManager:
         return list(self.backends.keys())
 
     def get_all_deployments(
-        self, template_name: Optional[str] = None
+        self, template_name: Optional[str] = None, status: str = None
     ) -> List[Dict[str, Any]]:
         """
         Get deployments from all backends with backend information.
@@ -76,7 +76,8 @@ class MultiBackendManager:
         for backend_type, deployment_manager in self.deployment_managers.items():
             try:
                 deployments = deployment_manager.find_deployments_by_criteria(
-                    template_name=template_name
+                    template_name=template_name,
+                    status=status,
                 )
 
                 # Add backend information to each deployment
