@@ -546,14 +546,56 @@ class MCPClient:
         Returns:
             Log content or None if failed
         """
+
+        self._multi_manager = MultiBackendManager(enabled_backends=None)
+
         try:
-            result = self.deployment_manager.get_deployment_logs(
+            result = self._multi_manager.get_deployment_logs(
                 deployment_id, lines=lines, follow=follow
             )
             return result.get("logs") if result.get("success") else None
         except Exception as e:
             logger.error(f"Failed to get server logs for {deployment_id}: {e}")
             return None
+
+    def get_template_logs(
+        self,
+        template: str,
+        lines: int = 100,
+        all_backends: bool = False,
+    ) -> Dict[str, List[Dict[str, str]]]:
+        """
+        Get logs for all running deployments of a template, grouped by backend_type.
+
+        Args:
+            template: Template name to filter deployments
+            lines: Number of log lines to retrieve per deployment
+            all_backends: Whether to include all backends
+
+        Returns:
+            Dict of backend_type -> list of {deployment_id: logs}
+        """
+
+        if all_backends:
+            self._multi_manager = MultiBackendManager(enabled_backends=None)
+        else:
+            self._multi_manager = self.multi_manager
+
+        result = defaultdict(list)
+        try:
+            deployments = self.list_servers(
+                template_name=template, all_backends=all_backends, status="running"
+            )
+            for dep in deployments:
+                backend = dep.get("backend_type", "unknown")
+                deployment_id = dep.get(
+                    "id", dep.get("deployment_id", dep.get("name", None))
+                )
+                logs = self.get_server_logs(deployment_id, lines=lines)
+                result[backend].append({deployment_id: logs})
+        except Exception as e:
+            logger.error(f"Failed to get logs for template {template}: {e}")
+        return dict(result)
 
     # Tool Discovery and Management
     def list_tools(

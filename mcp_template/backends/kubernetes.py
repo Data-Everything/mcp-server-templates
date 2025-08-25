@@ -776,8 +776,24 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         except Exception as e:
             return {"error": str(e)}
 
-    def _get_deployment_logs(self, deployment_name: str, lines: int = 10) -> str:
-        """Get logs from deployment pods."""
+    def get_deployment_logs(
+        self,
+        deployment_name: str,
+        lines: int = 10,
+        follow: bool = False,
+        since: str = None,
+        until: str = None,
+    ) -> str:
+        """
+        Get logs from deployment pods, with support for follow, since, and until.
+
+        Args:
+            deployment_name: Name of deployment
+            lines: Number of lines to tail
+            follow: Stream logs if True
+            since: Start time (RFC3339 or seconds)
+            until: End time (RFC3339 or seconds)
+        """
         try:
             pods = self.core_v1.list_namespaced_pod(
                 namespace=self.namespace,
@@ -787,14 +803,22 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             if not pods.items:
                 return "No pods found"
 
-            # Get logs from first pod
             pod = pods.items[0]
-            logs = self.core_v1.read_namespaced_pod_log(
-                name=pod.metadata.name, namespace=self.namespace, tail_lines=lines
-            )
-            return logs
+            kwargs = {
+                "name": pod.metadata.name,
+                "namespace": self.namespace,
+                "tail_lines": lines,
+            }
+            if follow:
+                kwargs["follow"] = True
+            if since:
+                kwargs["since_time"] = since
+            if until:
+                kwargs["until_time"] = until
+            logs = self.core_v1.read_namespaced_pod_log(**kwargs)
+            return {"success": True, "logs": logs}
         except ApiException as e:
-            return f"Failed to get logs: {e}"
+            return {"success": False, "logs": ""}
 
     def connect_to_deployment(self, deployment_id: str):
         """Connect to deployment shell (not implemented for Kubernetes)."""

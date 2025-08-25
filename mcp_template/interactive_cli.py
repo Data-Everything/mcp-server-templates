@@ -1081,7 +1081,7 @@ class InteractiveCLI(cmd2.Cmd):
         Usage: tools <template_name> [--force-server] [--help]
 
         Options:
-            --force-server    Force server discovery (MCP probe only, no static fallback)
+            --force-refresh    Force refresh discovery (no cache used)
             --help           Show detailed help for the template and its tools
         """
         if not args.strip():

@@ -1032,8 +1032,8 @@ def install_completion():
 
 @app.command()
 def logs(
-    deployment_id: Annotated[
-        str, typer.Argument(help="Deployment ID to get logs from")
+    target: Annotated[
+        str, typer.Argument(help="Deployment or template ID to get logs from")
     ],
     backend: Annotated[
         Optional[str],
@@ -1042,9 +1042,6 @@ def logs(
     lines: Annotated[
         int, typer.Option("--lines", "-n", help="Number of log lines to retrieve")
     ] = 100,
-    follow: Annotated[
-        bool, typer.Option("--follow", "-f", help="Follow log output")
-    ] = False,
 ):
     """
     Get logs from a running MCP server deployment.
@@ -1054,67 +1051,31 @@ def logs(
     Use --follow to stream logs in real-time.
     """
     try:
-        # Use multi-backend manager for auto-detection or single backend
-        if backend:
-            # Single backend mode
-            deployment_manager = DeploymentManager(backend)
-
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                task = progress.add_task(f"Getting logs from {backend}...", total=None)
-                result = deployment_manager.get_deployment_logs(
-                    deployment_id, lines=lines, follow=follow
+        client = MCPClient(backend_type=backend or cli_state.get("backend_type"))
+        all_templates = builtins.list(client.list_templates().keys())
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            if target not in all_templates:
+                result = client.get_server_logs(
+                    deployment_id=target,
+                    lines=lines,
                 )
-
-            if result.get("success"):
-                logs = result.get("logs", "No logs available")
-                console.print(
-                    f"[bold]Logs for deployment '{deployment_id}' on {backend}:[/bold]\n"
-                )
-                console.print(logs)
             else:
-                error = result.get("error", "Unknown error")
-                console.print(f"[red]❌ Failed to get logs: {error}[/red]")
-                raise typer.Exit(1)
-        else:
-            # Multi-backend auto-detection mode
-            multi_manager = MultiBackendManager()
-
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                task = progress.add_task(
-                    "Auto-detecting backend and getting logs...", total=None
-                )
-                result = multi_manager.get_deployment_logs(
-                    deployment_id, lines=lines, follow=follow
+                result = client.get_template_logs(
+                    template=target,
+                    lines=lines,
+                    all_backends=not backend,
                 )
 
-            if result.get("success"):
-                backend_type = result.get("backend_type", "unknown")
-                logs = result.get("logs", "No logs available")
-
-                backend_indicator = get_backend_indicator(backend_type)
-
-                console.print(
-                    f"[bold]Logs for deployment '{deployment_id}' on {backend_indicator}:[/bold]\n"
-                )
-                console.print(logs)
+            if result:
+                response_formatter.beautify_logs(result, deployment_id=target)
             else:
-                error = result.get("error", "Unknown error")
-                console.print(f"[red]❌ Failed to get logs: {error}[/red]")
+                console.print(f"[yellow]No logs found for '{target}'[/yellow]")
 
-                # Suggest using --backend flag if auto-detection failed
-                if "not found" in error.lower():
-                    console.print(
-                        "💡 [dim]Try using --backend <name> to specify the backend explicitly[/dim]"
-                    )
-                raise typer.Exit(1)
+            return
 
     except Exception as e:
         console.print(f"[red]❌ Error getting logs: {e}[/red]")

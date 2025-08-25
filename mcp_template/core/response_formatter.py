@@ -78,9 +78,9 @@ def get_backend_indicator(backend_type: str, include_icon: bool = True) -> str:
     name = backend_type.upper()
 
     if include_icon:
-        return f"[{color}]{icon} {name}[/]"
+        return f"[{color}] {icon}  {name.strip()}[/]"
     else:
-        return f"[{color}]{name}[/]"
+        return f"[{color}] {name}[/]"
 
 
 def format_timestamp(timestamp: Union[str, datetime.datetime, None]) -> str:
@@ -1085,6 +1085,68 @@ class ResponseFormatter:
                 )
 
             self.console.print(table)
+
+    def beautify_logs(
+        self,
+        logs: Union[str, Dict[str, List[Dict[str, str]]]],
+        deployment_id: str = None,
+        title: str = "Deployment Logs",
+    ) -> None:
+        """
+        Beautify logs output for single or multiple deployments/backends.
+
+        Args:
+            logs: str for single deployment, or dict of backend -> list of {deployment_id: logs}
+            deployment_id: Optional deployment id for single log
+            title: Title for display
+        """
+        if isinstance(logs, str):
+            panel_title = (
+                f"Logs for Deployment {deployment_id}" if deployment_id else title
+            )
+            self.console.print(Panel(logs, title=panel_title, border_style="blue"))
+            # Show follow hint
+            if deployment_id:
+                self.console.print("[dim]To stream logs, run:[/dim]")
+                self.console.print(f"[blue]docker logs -f {deployment_id}[/blue]")
+            return
+
+        if isinstance(logs, dict):
+            for backend_type, deployments in logs.items():
+                backend_indicator = get_backend_indicator(backend_type)
+                self.console.print(f"\n{backend_indicator} Logs")
+                if not deployments:
+                    self.console.print("  No logs found.")
+                    continue
+                for i, dep in enumerate(deployments):
+                    for dep_id, dep_logs in dep.items():
+                        panel_title = f"Deployment {dep_id}"
+                        self.console.print(
+                            Panel(
+                                dep_logs or "[dim]No logs available[/dim]",
+                                title=panel_title,
+                                border_style=get_backend_color(backend_type),
+                            )
+                        )
+                        self.console.print("[dim]To stream logs, run:[/dim]")
+                        if backend_type == "docker":
+                            self.console.print(f"[blue]docker logs -f {dep_id}[/blue]")
+                        elif backend_type == "kubernetes":
+                            self.console.print(
+                                f"[green]kubectl logs -f {dep_id}[/green]"
+                            )
+                        else:
+                            self.console.print(
+                                f"[yellow]No follow command available for backend '{backend_type}'[/yellow]"
+                            )
+                    # Add a separator between deployments for readability
+                    if i < len(deployments) - 1:
+                        self.console.rule(
+                            "[dim]--- Next Deployment ---[/dim]",
+                            style=get_backend_color(backend_type),
+                        )
+            return
+        self.console.print(Panel(str(logs), title=title, border_style="blue"))
 
     def render_backend_health_status(self, health_data: Dict[str, Any]) -> None:
         """
