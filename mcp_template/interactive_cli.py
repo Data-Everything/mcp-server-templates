@@ -476,7 +476,8 @@ def call_tool(
             if raw:
                 console.print(json.dumps(result, indent=2))
             else:
-                _display_tool_result(result.get("result"), tool_name, raw=False)
+                session.formatter.beautify_tool_response(result)
+                # _display_tool_result(result.get("result"), tool_name, raw=False)
 
                 # Show additional info if available
                 if result.get("backend_type"):

@@ -742,96 +742,68 @@ class ResponseFormatter:
 
     def beautify_tool_response(self, response: Dict[str, Any]) -> None:
         """Beautify tool execution response with enhanced formatting."""
-        if response.get("status") == "completed":
-            stdout = response.get("stdout", "")
-            stderr = response.get("stderr", "")
+        if response.get("used_stdio"):
+            self.console.print(
+                Panel(
+                    f"[dim]⚠️  Note: Tool executed via stdio interface on {response.get('backend_type', 'unknown')} backend.[/dim]",
+                    border_style="yellow",
+                )
+            )
 
-            # Try to parse stdout as JSON-RPC response
+        if response.get("success"):
             try:
-                lines = stdout.strip().split("\n")
-                json_responses = []
+                if "result" in response and response["result"]:
+                    result_data = response["result"]
 
-                for line in lines:
-                    line = line.strip()
+                    # Handle MCP content format - prioritize structuredContent
                     if (
-                        line.startswith('{"jsonrpc"')
-                        or line.startswith('{"result"')
-                        or line.startswith('{"error"')
+                        isinstance(result_data, dict)
+                        and "structuredContent" in result_data
                     ):
-                        try:
-                            json_response = json.loads(line)
-                            json_responses.append(json_response)
-                        except json.JSONDecodeError:
-                            continue
+                        # Use structuredContent when available (already parsed JSON)
+                        structured_data = result_data["structuredContent"]
+                        self.beautify_json(structured_data, "Tool Result")
 
-                # Find tool response
-                tool_response = None
-                for resp in json_responses:
-                    if resp.get("id") == 3:  # Tool call response
-                        tool_response = resp
-                        break
-
-                if not tool_response and json_responses:
-                    tool_response = json_responses[-1]
-
-                if tool_response:
-                    if "result" in tool_response:
-                        result_data = tool_response["result"]
-
-                        # Handle MCP content format - prioritize structuredContent
-                        if (
-                            isinstance(result_data, dict)
-                            and "structuredContent" in result_data
-                        ):
-                            # Use structuredContent when available (already parsed JSON)
-                            structured_data = result_data["structuredContent"]
-                            self.beautify_json(structured_data, "Tool Result")
-
-                        elif isinstance(result_data, dict) and "content" in result_data:
-                            content_items = result_data["content"]
-                            if isinstance(content_items, list) and content_items:
-                                for i, content in enumerate(content_items):
-                                    if isinstance(content, dict) and "text" in content:
-                                        # Try to beautify the text content if it's structured data
-                                        text_content = content["text"]
-                                        try:
-                                            # Try to parse as JSON for better formatting
-                                            parsed_content = json.loads(text_content)
-                                            self.beautify_json(
-                                                parsed_content, f"Tool Result {i+1}"
+                    elif isinstance(result_data, dict) and "content" in result_data:
+                        content_items = result_data["content"]
+                        if isinstance(content_items, list) and content_items:
+                            for i, content in enumerate(content_items):
+                                if isinstance(content, dict) and "text" in content:
+                                    # Try to beautify the text content if it's structured data
+                                    text_content = content["text"]
+                                    try:
+                                        # Try to parse as JSON for better formatting
+                                        parsed_content = json.loads(text_content)
+                                        self.beautify_json(
+                                            parsed_content, f"Tool Result {i+1}"
+                                        )
+                                    except json.JSONDecodeError:
+                                        # Display as text if not JSON
+                                        self.console.print(
+                                            Panel(
+                                                text_content,
+                                                title=f"Tool Result {i+1}",
+                                                border_style="green",
                                             )
-                                        except json.JSONDecodeError:
-                                            # Display as text if not JSON
-                                            self.console.print(
-                                                Panel(
-                                                    text_content,
-                                                    title=f"Tool Result {i+1}",
-                                                    border_style="green",
-                                                )
-                                            )
-                                    else:
-                                        self.beautify_json(content, f"Content {i+1}")
-                            else:
-                                self.beautify_json(result_data, "Tool Result")
+                                        )
+                                else:
+                                    self.beautify_json(content, f"Content {i+1}")
                         else:
                             self.beautify_json(result_data, "Tool Result")
-
-                    elif "error" in tool_response:
-                        error_info = tool_response["error"]
-                        self.console.print(
-                            Panel(
-                                f"Error {error_info.get('code', 'unknown')}: {error_info.get('message', 'Unknown error')}",
-                                title="Tool Error",
-                                border_style="red",
-                            )
-                        )
                     else:
-                        self.beautify_json(tool_response, "MCP Response")
-                else:
-                    # No JSON response found, show raw output
+                        self.beautify_json(result_data, "Tool Result")
+
+                elif "error" in response and response.get("error"):
+                    error_info = response["error"]
                     self.console.print(
-                        Panel(stdout, title="Raw Output", border_style="blue")
+                        Panel(
+                            f"Error {error_info.get('code', 'unknown')}: {error_info.get('message', 'Unknown error')}",
+                            title="Tool Error",
+                            border_style="red",
+                        )
                     )
+                else:
+                    self.beautify_json(response, "MCP Response")
 
             except Exception as e:
                 # Debug the exception and fallback to raw output
@@ -844,25 +816,13 @@ class ResponseFormatter:
                     )
                 # Fallback to raw output
                 self.console.print(
-                    Panel(stdout, title="Tool Output", border_style="blue")
-                )
-
-            # Show stderr if present and contains actual errors
-            if stderr and self._is_actual_error(stderr):
-                self.console.print(
-                    Panel(stderr, title="Standard Error", border_style="yellow")
-                )
-            elif stderr and not self._is_actual_error(stderr):
-                # Show non-error stderr as debug info only if verbose
-                if self.verbose:
-                    self.console.print(
-                        Panel(stderr, title="Debug Info", border_style="dim")
+                    Panel(
+                        response.get("result"), title="Tool Output", border_style="blue"
                     )
-
+                )
         else:
             # Failed execution
             error_msg = response.get("error", "Unknown error")
-            stderr = response.get("stderr", "")
 
             self.console.print(
                 Panel(
@@ -871,11 +831,6 @@ class ResponseFormatter:
                     border_style="red",
                 )
             )
-
-            if stderr:
-                self.console.print(
-                    Panel(stderr, title="Error Details", border_style="red")
-                )
 
     def beautify_tools_list(
         self,
