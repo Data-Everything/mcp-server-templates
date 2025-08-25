@@ -16,7 +16,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, List, Optional
 
 import typer
 import yaml
@@ -26,7 +26,6 @@ from rich.table import Table
 
 from mcp_template.backends import available_valid_backends
 from mcp_template.client import MCPClient
-from mcp_template.core import DeploymentManager
 from mcp_template.core.multi_backend_manager import MultiBackendManager
 from mcp_template.core.response_formatter import (
     ResponseFormatter,
@@ -34,6 +33,7 @@ from mcp_template.core.response_formatter import (
     format_deployment_summary,
     get_backend_indicator,
 )
+from mcp_template.interactive_cli import run_interactive_shell
 
 response_formatter = ResponseFormatter()
 
@@ -949,19 +949,46 @@ def stop(
 
 @app.command(
     "interactive/i",
-    help="Start the intreactive shell for intraction with MCP servers",
+    help="Start the enhanced interactive shell for MCP server management",
 )
 def interactive():
     """
-    Start the interactive CLI mode.
+    Start the enhanced interactive CLI mode.
 
-    This command launches an interactive shell for MCP server management.
+    This command launches an enhanced interactive shell for MCP server management
+    with dynamic command handling using Typer and better integration with the
+    client architecture.
     """
     try:
-        console.print("[cyan]🚀 Starting interactive CLI mode...[/cyan]")
-        console.print("[dim]Type 'help' for available commands, 'quit' to exit[/dim]")
+        console.print("[cyan]🚀 Starting enhanced interactive CLI mode...[/cyan]")
+        run_interactive_shell()
 
-        # Import and start the interactive CLI
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Interactive mode interrupted[/yellow]")
+    except Exception as e:
+        console.print(f"[red]❌ Error in interactive mode: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(
+    "interactive-legacy",
+    help="Start the legacy interactive shell (cmd2-based)",
+)
+def interactive_legacy():
+    """
+    Start the legacy interactive CLI mode (cmd2-based).
+
+    This command launches the old interactive shell for compatibility.
+    Use 'interactive' for the enhanced version.
+    """
+    try:
+        console.print("[cyan]🚀 Starting legacy interactive CLI mode...[/cyan]")
+        console.print("[dim]Type 'help' for available commands, 'quit' to exit[/dim]")
+        console.print(
+            "[yellow]⚠️  Consider using 'mcpt interactive' for the enhanced version[/yellow]"
+        )
+
+        # Import and start the legacy interactive CLI
         from mcp_template.interactive_cli import InteractiveCLI
 
         interactive_cli = InteractiveCLI()

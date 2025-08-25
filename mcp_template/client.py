@@ -648,6 +648,8 @@ class MCPClient:
         deployment_id: Optional[str] = None,
         server_config: Optional[Dict[str, Any]] = None,
         timeout: int = 30,
+        pull_image: bool = True,
+        force_stdio: bool = False,
     ) -> Optional[Dict[str, Any]]:
         """
         Call a tool on an MCP server.
@@ -662,16 +664,85 @@ class MCPClient:
             deployment_id: Existing deployment to use (optional)
             server_config: Configuration for server if starting new instance
             timeout: Timeout for the call
+            pull_image: Whether to pull images for stdio calls
+            force_stdio: Force stdio transport even if HTTP is available
 
         Returns:
             Tool response or None if failed
         """
         try:
             return self.tool_manager.call_tool(
-                template_id, tool_name, arguments or {}, timeout
+                template_id,
+                tool_name,
+                arguments or {},
+                config_values=server_config,
+                timeout=timeout,
+                pull_image=pull_image,
+                force_stdio=force_stdio,
             )
         except Exception as e:
             logger.error(f"Failed to call tool {tool_name}: {e}")
+            return None
+
+    def call_tool_with_config(
+        self,
+        template_id: str,
+        tool_name: str,
+        arguments: Dict[str, Any] = None,
+        config_file: Optional[str] = None,
+        env_vars: Optional[Dict[str, str]] = None,
+        config_values: Optional[Dict[str, Any]] = None,
+        timeout: int = 30,
+        pull_image: bool = True,
+        force_stdio: bool = False,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Call a tool with flexible configuration support for interactive CLI.
+
+        Args:
+            template_id: Template that provides the tool
+            tool_name: Name of the tool to call
+            arguments: Arguments to pass to the tool
+            config_file: Path to configuration file
+            env_vars: Environment variables
+            config_values: Direct configuration values
+            timeout: Timeout for the call
+            pull_image: Whether to pull images for stdio calls
+            force_stdio: Force stdio transport
+
+        Returns:
+            Tool response or None if failed
+        """
+        try:
+            from mcp_template.core.config_processor import ConfigProcessor
+
+            # Get template info for configuration processing
+            template_info = self.get_template_info(template_id)
+            if not template_info:
+                logger.error(f"Template {template_id} not found")
+                return None
+
+            # Merge configuration from all sources
+            config_processor = ConfigProcessor()
+            final_config = config_processor.prepare_configuration(
+                template=template_info,
+                session_config=config_values or {},
+                config_file=config_file,
+                config_values={},  # inline configs handled via config_values param
+                env_vars=env_vars or {},
+            )
+
+            return self.call_tool(
+                template_id=template_id,
+                tool_name=tool_name,
+                arguments=arguments,
+                server_config=final_config,
+                timeout=timeout,
+                pull_image=pull_image,
+                force_stdio=force_stdio,
+            )
+        except Exception as e:
+            logger.error(f"Failed to call tool {tool_name} with config: {e}")
             return None
 
     # Direct Connection Methods
