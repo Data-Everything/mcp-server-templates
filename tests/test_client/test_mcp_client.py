@@ -15,9 +15,9 @@ class TestMCPClient:
     def mock_managers(self):
         """Mock the internal managers."""
         with (
-            patch("mcp_template.client.DeploymentManager") as mock_deployment_manager,
-            patch("mcp_template.client.ToolManager") as mock_tool_manager,
-            patch("mcp_template.client.TemplateManager") as mock_template_manager,
+            patch("mcp_template.core.DeploymentManager") as mock_deployment_manager,
+            patch("mcp_template.core.ToolManager") as mock_tool_manager,
+            patch("mcp_template.core.TemplateManager") as mock_template_manager,
         ):
 
             # Setup mock instances
@@ -295,7 +295,7 @@ class TestMCPClient:
         """Test creating a stdio connection."""
         client = MCPClient()
 
-        with patch("mcp_template.client.MCPConnection") as mock_connection_class:
+        with patch("mcp_template.core.MCPConnection") as mock_connection_class:
             mock_connection = AsyncMock()
             mock_connection.connect_stdio.return_value = True
             mock_connection_class.return_value = mock_connection
@@ -314,7 +314,7 @@ class TestMCPClient:
         """Test stdio connection failure."""
         client = MCPClient()
 
-        with patch("mcp_template.client.MCPConnection") as mock_connection_class:
+        with patch("mcp_template.core.MCPConnection") as mock_connection_class:
             mock_connection = AsyncMock()
             mock_connection.connect_stdio.return_value = False
             mock_connection_class.return_value = mock_connection

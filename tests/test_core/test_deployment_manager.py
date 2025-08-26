@@ -123,9 +123,15 @@ class TestDeploymentManager:
                 }
 
                 with patch.object(
-                    self.deployment_manager.config_processor, "prepare_configuration"
-                ) as mock_prepare:
-                    mock_prepare.return_value = {"invalid": "config"}
+                    self.deployment_manager,
+                    "_validate_and_set_transport",
+                    return_value={"success": True},
+                ):
+                    with patch.object(
+                        self.deployment_manager.config_processor,
+                        "prepare_configuration",
+                    ) as mock_prepare:
+                        mock_prepare.return_value = {"invalid": "config"}
 
                     with patch.object(
                         self.deployment_manager.config_processor,

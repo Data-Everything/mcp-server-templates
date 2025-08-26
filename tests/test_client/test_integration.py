@@ -20,7 +20,7 @@ class TestMCPClientIntegration:
         # This test mocks the deployment backend to avoid Docker dependencies
 
         with (
-            patch("mcp_template.client.ToolManager") as mock_tool_manager,
+            patch("mcp_template.core.ToolManager") as mock_tool_manager,
             patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
         ):
 
@@ -96,7 +96,7 @@ class TestMCPClientIntegration:
         """Test complete server lifecycle with client."""
 
         with (
-            patch("mcp_template.client.ToolManager") as mock_tool_manager,
+            patch("mcp_template.core.ToolManager") as mock_tool_manager,
             patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
         ):
 
@@ -137,8 +137,8 @@ class TestMCPClientIntegration:
         """Test direct connection management."""
 
         with (
-            patch("mcp_template.client.MCPConnection") as mock_connection_class,
-            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.core.MCPConnection") as mock_connection_class,
+            patch("mcp_template.core.ToolManager"),
             patch("mcp_template.client.TemplateDiscovery"),
         ):
 
@@ -189,7 +189,7 @@ class TestMCPClientIntegration:
         """Test client error handling scenarios."""
 
         with (
-            patch("mcp_template.client.ToolManager") as mock_tool_manager,
+            patch("mcp_template.core.ToolManager") as mock_tool_manager,
             patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
         ):
 
@@ -223,7 +223,7 @@ class TestMCPClientIntegration:
         """Test client handling of concurrent operations."""
 
         with (
-            patch("mcp_template.client.ToolManager") as mock_tool_manager,
+            patch("mcp_template.core.ToolManager") as mock_tool_manager,
             patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
         ):
 
@@ -275,8 +275,8 @@ class TestMCPClientIntegration:
         """Test proper resource cleanup."""
 
         with (
-            patch("mcp_template.client.MCPConnection") as mock_connection_class,
-            patch("mcp_template.client.ToolManager"),
+            patch("mcp_template.core.MCPConnection") as mock_connection_class,
+            patch("mcp_template.core.ToolManager"),
             patch("mcp_template.client.TemplateDiscovery"),
         ):
 
