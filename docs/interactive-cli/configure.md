@@ -1,4 +1,4 @@
-# `config` Command
+# `configure` Command
 
 Set configuration for a template interactively.
 
@@ -17,7 +17,7 @@ Set configuration for a template interactively.
 
 ## Example
 ```
-config my_template api_key=12345 endpoint=https://api.example.com
+configure my_template api_key=12345 endpoint=https://api.example.com
 ```
 
 ## When and How to Run
