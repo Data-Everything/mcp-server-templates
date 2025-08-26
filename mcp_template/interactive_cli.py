@@ -50,6 +50,8 @@ COMMANDS = [
     "tools",
     "call",
     "configure",
+    "show-config",
+    "clear-config",
     "servers",
     "deploy",
     "logs",
