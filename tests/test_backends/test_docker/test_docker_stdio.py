@@ -4,8 +4,9 @@ Tests for Docker backend stdio command functionality.
 
 import json
 import subprocess
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import MagicMock, Mock, patch
 
 from mcp_template.backends.docker import DockerDeploymentService
 

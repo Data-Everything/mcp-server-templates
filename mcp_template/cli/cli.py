@@ -25,6 +25,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from mcp_template.backends import available_valid_backends
+from mcp_template.cli.interactive_cli import run_interactive_shell
 from mcp_template.client import MCPClient
 from mcp_template.core.multi_backend_manager import MultiBackendManager
 from mcp_template.core.response_formatter import (
@@ -33,7 +34,6 @@ from mcp_template.core.response_formatter import (
     format_deployment_summary,
     get_backend_indicator,
 )
-from mcp_template.interactive_cli import run_interactive_shell
 
 response_formatter = ResponseFormatter()
 
@@ -989,7 +989,7 @@ def interactive_legacy():
         )
 
         # Import and start the legacy interactive CLI
-        from mcp_template.interactive_cli import InteractiveCLI
+        from mcp_template.cli.interactive_cli import InteractiveCLI
 
         interactive_cli = InteractiveCLI()
         interactive_cli.cmdloop()

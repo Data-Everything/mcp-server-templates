@@ -12,7 +12,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
-from mcp_template.interactive_cli import ResponseBeautifier
+from mcp_template.cli.interactive_cli import ResponseBeautifier
 
 
 @pytest.mark.unit
@@ -182,7 +182,7 @@ class TestResponseBeautifier:
         # Non-dict items
         assert self.beautifier._has_consistent_keys(["a", "b", "c"]) is False
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_create_key_value_table(self, mock_console_class):
         """Test key-value table creation."""
         mock_console = Mock()
@@ -210,7 +210,7 @@ class TestResponseBeautifier:
         # Verify table has correct number of columns
         assert len(table.columns) == 3  # Property, Value, Type
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_create_data_table(self, mock_console_class):
         """Test data table creation from list of dicts."""
         mock_console = Mock()
@@ -249,7 +249,7 @@ class TestResponseBeautifier:
         # Should have 5 columns: id, name, active, score, url
         assert len(table.columns) == 5
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_create_data_table_tabular_dict(self, mock_console_class):
         """Test data table creation from tabular dictionary."""
         mock_console = Mock()
@@ -269,7 +269,7 @@ class TestResponseBeautifier:
         assert table.title == "User Data (3 rows)"
         assert len(table.columns) == 3
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_create_list_display_simple(self, mock_console_class):
         """Test list display for simple values."""
         mock_console = Mock()
@@ -283,7 +283,7 @@ class TestResponseBeautifier:
 
         assert isinstance(display, Columns)
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_create_list_display_large(self, mock_console_class):
         """Test list display for large lists."""
         mock_console = Mock()
@@ -297,7 +297,7 @@ class TestResponseBeautifier:
 
         assert isinstance(display, Panel)
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_display_tree_structure(self, mock_console_class):
         """Test tree structure display."""
         mock_console = Mock()
@@ -317,7 +317,7 @@ class TestResponseBeautifier:
         # Verify console.print was called
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_display_json_syntax(self, mock_console_class):
         """Test JSON syntax display."""
         mock_console = Mock()
@@ -337,7 +337,7 @@ class TestResponseBeautifier:
         # Verify console.print was called
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_display_json_syntax_string_input(self, mock_console_class):
         """Test JSON syntax display with string input."""
         mock_console = Mock()
@@ -351,7 +351,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_display_json_syntax_invalid_json_string(self, mock_console_class):
         """Test JSON syntax display with invalid JSON string."""
         mock_console = Mock()
@@ -365,7 +365,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_json_key_value(self, mock_console_class):
         """Test beautify_json with key-value data."""
         mock_console = Mock()
@@ -379,7 +379,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_json_table(self, mock_console_class):
         """Test beautify_json with tabular data."""
         mock_console = Mock()
@@ -393,7 +393,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_json_tree(self, mock_console_class):
         """Test beautify_json with hierarchical data."""
         mock_console = Mock()
@@ -411,7 +411,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_json_list(self, mock_console_class):
         """Test beautify_json with simple list."""
         mock_console = Mock()
@@ -425,7 +425,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_json_empty(self, mock_console_class):
         """Test beautify_json with empty collection."""
         mock_console = Mock()
@@ -439,7 +439,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_json_text(self, mock_console_class):
         """Test beautify_json with plain text."""
         mock_console = Mock()
@@ -453,7 +453,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_json_tools_list(self, mock_console_class):
         """Test beautify_json with MCP tools list."""
         mock_console = Mock()
@@ -480,7 +480,7 @@ class TestResponseBeautifier:
                 "MCP Server Tools",
             )
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_json_tools_list_names_only(self, mock_console_class):
         """Test beautify_json with tools list that contains only names."""
         mock_console = Mock()
@@ -499,7 +499,7 @@ class TestResponseBeautifier:
             # Should call console.print instead
             mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_tools_list(self, mock_console_class):
         """Test tools list beautification."""
         mock_console = Mock()
@@ -537,7 +537,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_tools_list_empty(self, mock_console_class):
         """Test tools list beautification with empty list."""
         mock_console = Mock()
@@ -551,7 +551,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_deployed_servers(self, mock_console_class):
         """Test deployed servers beautification."""
         mock_console = Mock()
@@ -580,7 +580,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_deployed_servers_empty(self, mock_console_class):
         """Test deployed servers beautification with empty list."""
         mock_console = Mock()
@@ -594,7 +594,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_tool_response_completed(self, mock_console_class):
         """Test tool response beautification for completed execution."""
         mock_console = Mock()
@@ -612,7 +612,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_tool_response_structured_content(self, mock_console_class):
         """Test tool response beautification with structured content."""
         mock_console = Mock()
@@ -630,7 +630,7 @@ class TestResponseBeautifier:
             beautifier.beautify_tool_response(response)
             mock_beautify.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_tool_response_error(self, mock_console_class):
         """Test tool response beautification with error."""
         mock_console = Mock()
@@ -648,7 +648,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_tool_response_failed(self, mock_console_class):
         """Test tool response beautification for failed execution."""
         mock_console = Mock()
@@ -666,7 +666,7 @@ class TestResponseBeautifier:
 
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_tool_response_with_actual_stderr(self, mock_console_class):
         """Test tool response beautification with actual error in stderr."""
         mock_console = Mock()
@@ -685,7 +685,7 @@ class TestResponseBeautifier:
         # Should print both result and error
         assert mock_console.print.call_count >= 2
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_tool_response_with_info_stderr(self, mock_console_class):
         """Test tool response beautification with informational stderr."""
         mock_console = Mock()
@@ -705,7 +705,7 @@ class TestResponseBeautifier:
         # (We can't easily test the verbose condition without setting it)
         mock_console.print.assert_called()
 
-    @patch("mcp_template.interactive_cli.Console")
+    @patch("mcp_template.cli.interactive_cli.Console")
     def test_beautify_tool_response_parsing_error(self, mock_console_class):
         """Test tool response beautification with parsing error."""
         mock_console = Mock()

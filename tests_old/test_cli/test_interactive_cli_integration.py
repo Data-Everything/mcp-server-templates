@@ -2,22 +2,24 @@
 Integration tests for InteractiveCLI.
 """
 
-import pytest
-import unittest.mock as mock
-from unittest.mock import MagicMock, patch, call
-import json
-import sys
 import io
+import json
 import os
-from contextlib import redirect_stdout, redirect_stderr
+import sys
+import unittest.mock as mock
+from contextlib import redirect_stderr, redirect_stdout
+from unittest.mock import MagicMock, call, patch
+
+import pytest
 
 # Add the project to path if not already there
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if project_path not in sys.path:
     sys.path.insert(0, project_path)
 
-from mcp_template.interactive_cli import InteractiveCLI, start_interactive_cli
 from rich.console import Console
+
+from mcp_template.cli.interactive_cli import InteractiveCLI, start_interactive_cli
 
 
 @pytest.mark.integration
@@ -27,7 +29,7 @@ class TestInteractiveCLIIntegration:
     @pytest.fixture
     def cli(self):
         """Create a mock InteractiveCLI instance for testing."""
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli = InteractiveCLI()
             # Mock dependencies to avoid real initialization
             cli.template_manager = MagicMock()
@@ -78,7 +80,7 @@ class TestInteractiveCLIIntegration:
     def test_config_and_tools_workflow(self, cli):
         """Test complete workflow: configure template, then list tools."""
         # Step 1: Configure the template
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_config("github token=test_token")
 
             # Verify config was stored
@@ -87,7 +89,7 @@ class TestInteractiveCLIIntegration:
         # Step 2: List tools using the configuration
         cli.tool_manager.list_tools = MagicMock()
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_tools("github")
 
             # Verify list_tools was called with the stored config
@@ -101,7 +103,7 @@ class TestInteractiveCLIIntegration:
     def test_config_and_call_tool_workflow(self, cli):
         """Test complete workflow: configure template, then call a tool."""
         # Step 1: Configure the template
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_config("github token=test_token url=https://api.github.com")
 
         # Step 2: Test tool calling functionality
@@ -111,9 +113,9 @@ class TestInteractiveCLIIntegration:
             "result": {"repositories": []},
         }
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             with patch(
-                "mcp_template.interactive_cli.merge_config_sources"
+                "mcp_template.cli.interactive_cli.merge_config_sources"
             ) as mock_merge:
                 mock_merge.return_value = {
                     "token": "test_token",
@@ -148,7 +150,7 @@ class TestInteractiveCLIIntegration:
         ]
         cli.deployment_manager.list_deployments.return_value = mock_servers
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_list_servers("")
 
             # Verify servers were stored
@@ -158,7 +160,7 @@ class TestInteractiveCLIIntegration:
         # Step 2: List tools for a template
         cli.tool_manager.list_tools = MagicMock()
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_tools("github")
 
             # Should work with or without server info
@@ -167,12 +169,12 @@ class TestInteractiveCLIIntegration:
     def test_multiple_config_updates_workflow(self, cli):
         """Test workflow: multiple configuration updates for same template."""
         # Initial configuration
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_config("github token=initial_token")
             assert cli.session_configs["github"] == {"token": "initial_token"}
 
         # Update configuration
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_config("github token=updated_token url=https://api.github.com")
             assert cli.session_configs["github"] == {
                 "token": "updated_token",
@@ -180,7 +182,7 @@ class TestInteractiveCLIIntegration:
             }
 
         # Add more config
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_config("github timeout=30")
             expected = {
                 "token": "updated_token",
@@ -192,16 +194,16 @@ class TestInteractiveCLIIntegration:
     def test_show_and_clear_config_workflow(self, cli):
         """Test workflow: configure, show, then clear configuration."""
         # Configure
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_config("github token=secret_token public_key=public_value")
 
         # Show config
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_show_config("github")
             # Config should exist and be shown
 
         # Clear config
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_clear_config("github")
 
             # Verify config was cleared
@@ -213,7 +215,7 @@ class TestInteractiveCLIIntegration:
         with patch.dict("os.environ", {"GITHUB_TOKEN": "env_token_value"}):
             cli.tool_manager.list_tools = MagicMock()
 
-            with patch("mcp_template.interactive_cli.console"):
+            with patch("mcp_template.cli.interactive_cli.console"):
                 cli.do_tools("github")
 
                 # Should use environment variable since no session config
@@ -234,7 +236,7 @@ class TestInteractiveCLIIntegration:
         with patch.dict("os.environ", {"GITHUB_TOKEN": "env_token_value"}):
             cli.tool_manager.list_tools = MagicMock()
 
-            with patch("mcp_template.interactive_cli.console"):
+            with patch("mcp_template.cli.interactive_cli.console"):
                 cli.do_tools("github")
 
                 # Should use session config, not environment variable
@@ -248,12 +250,12 @@ class TestInteractiveCLIIntegration:
     def test_help_and_command_discovery_workflow(self, cli):
         """Test help system and command discovery."""
         # Test main help
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_help("")
             assert mock_console.print.call_count >= 1
 
         # Test specific command help - just verify help system works
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_help("list_servers")
             # Should show help information
             assert (
@@ -261,14 +263,14 @@ class TestInteractiveCLIIntegration:
             )  # Help might be handled differently
 
         # Test templates command
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_templates("")
             assert mock_console.print.call_count >= 1
 
     def test_error_handling_workflow(self, cli):
         """Test error handling in various scenarios."""
         # Test invalid template name
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_tools("nonexistent_template")
             # Should show error about template not found
 
@@ -276,7 +278,7 @@ class TestInteractiveCLIIntegration:
         cli.template_manager.list_templates.return_value = {}
 
         # Test that invalid template is handled gracefully
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             # Simulate trying to get tools for nonexistent template
             cli.do_tools("nonexistent")
             # Should show some output about template not found
@@ -287,7 +289,7 @@ class TestInteractiveCLIIntegration:
             "Connection failed"
         )
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_list_servers("")
             # Should show connection error
 
@@ -304,20 +306,20 @@ class TestInteractiveCLIIntegration:
         assert result is None
 
         # Test default command with empty line
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.default("")
             # Should not print anything for empty lines
             mock_console.print.assert_not_called()
 
         # Test default command with unknown command
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.default("unknown_command arg1 arg2")
             # Should show unknown command error
             mock_console.print.assert_called()
 
     def test_quit_and_exit_workflow(self, cli):
         """Test quit and exit commands."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             result = cli.do_quit("")
             assert result is True
             mock_console.print.assert_called_with(
@@ -335,8 +337,8 @@ class TestInteractiveCLIIntegration:
 class TestStartInteractiveCLI:
     """Test start_interactive_cli function."""
 
-    @patch("mcp_template.interactive_cli.InteractiveCLI")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.InteractiveCLI")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_start_interactive_cli_success(self, mock_console, mock_cli_class):
         """Test successful start of interactive CLI."""
         mock_cli = MagicMock()
@@ -351,8 +353,8 @@ class TestStartInteractiveCLI:
             "[green]🚀 Starting MCP Interactive CLI...[/green]"
         )
 
-    @patch("mcp_template.interactive_cli.InteractiveCLI")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.InteractiveCLI")
+    @patch("mcp_template.cli.interactive_cli.console")
     @patch("sys.exit")
     def test_start_interactive_cli_failure(
         self, mock_exit, mock_console, mock_cli_class
@@ -368,8 +370,8 @@ class TestStartInteractiveCLI:
         )
         mock_exit.assert_called_once_with(1)
 
-    @patch("mcp_template.interactive_cli.InteractiveCLI")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.InteractiveCLI")
+    @patch("mcp_template.cli.interactive_cli.console")
     @pytest.mark.skip(reason="Skipping cmdloop test as it requires interactive input")
     def test_start_interactive_cli_cmdloop_exception(
         self, mock_console, mock_cli_class
@@ -394,7 +396,7 @@ class TestInteractiveCLICmdloop:
     @pytest.fixture
     def cli(self):
         """Create a real InteractiveCLI instance."""
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             # Create CLI without mocking dependencies for cmdloop test
             cli = InteractiveCLI()
             # Only mock the parts that would cause issues
@@ -407,7 +409,7 @@ class TestInteractiveCLICmdloop:
 
     def test_cmdloop_intro_display(self, cli):
         """Test cmdloop displays intro and help."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             with patch.object(cli, "cmdloop") as mock_parent_cmdloop:
                 # Mock parent cmdloop to avoid infinite loop
                 mock_parent_cmdloop.return_value = None
@@ -432,7 +434,7 @@ class TestInteractiveCLICmdloop:
 
     def test_cmdloop_keyboard_interrupt(self, cli):
         """Test cmdloop handles KeyboardInterrupt gracefully."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             with patch("cmd2.Cmd.cmdloop", side_effect=KeyboardInterrupt()):
                 cli.cmdloop()
 

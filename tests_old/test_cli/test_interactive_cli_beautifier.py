@@ -2,20 +2,20 @@
 Unit tests for ResponseBeautifier class.
 """
 
-import pytest
-import unittest.mock as mock
-from unittest.mock import MagicMock, patch
 import json
-from typing import Dict, List, Any
-
-import sys
 import os
+import sys
+import unittest.mock as mock
+from typing import Any, Dict, List
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if project_path not in sys.path:
     sys.path.insert(0, project_path)
 
-from mcp_template.interactive_cli import ResponseBeautifier
+from mcp_template.cli.interactive_cli import ResponseBeautifier
 
 
 @pytest.mark.unit
@@ -25,7 +25,7 @@ class TestResponseBeautifier:
     @pytest.fixture
     def beautifier(self):
         """Create a ResponseBeautifier instance for testing."""
-        with patch("mcp_template.interactive_cli.Console"):
+        with patch("mcp_template.cli.interactive_cli.Console"):
             return ResponseBeautifier()
 
     def test_init(self, beautifier):

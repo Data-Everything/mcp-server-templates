@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 from rich.console import Console
 
-from mcp_template.interactive_cli import ResponseBeautifier
+from mcp_template.cli.interactive_cli import ResponseBeautifier
 
 
 @pytest.mark.unit

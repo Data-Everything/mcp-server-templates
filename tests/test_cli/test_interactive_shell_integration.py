@@ -5,15 +5,12 @@ These tests focus on realistic user workflows and interactions,
 using real or controlled environments where possible.
 """
 
-import io
 import json
-import sys
-from contextlib import redirect_stderr, redirect_stdout
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from mcp_template.interactive_cli import InteractiveSession, get_session, main
+from mcp_template.cli.interactive_cli import InteractiveSession
 
 
 @pytest.mark.integration
@@ -22,7 +19,9 @@ class TestInteractiveSession:
 
     def test_session_persistence(self):
         """Test that session state persists across operations."""
-        with patch("mcp_template.interactive_cli.CacheManager") as mock_cache_manager:
+        with patch(
+            "mcp_template.cli.interactive_cli.CacheManager"
+        ) as mock_cache_manager:
             mock_cache = Mock()
             mock_cache_manager.return_value = mock_cache
             mock_cache.get.return_value = {}
@@ -43,7 +42,9 @@ class TestInteractiveSession:
 
     def test_multiple_templates_config(self):
         """Test managing configuration for multiple templates."""
-        with patch("mcp_template.interactive_cli.CacheManager") as mock_cache_manager:
+        with patch(
+            "mcp_template.cli.interactive_cli.CacheManager"
+        ) as mock_cache_manager:
             mock_cache = Mock()
             mock_cache_manager.return_value = mock_cache
             mock_cache.get.return_value = {}
@@ -75,7 +76,9 @@ class TestInteractiveSession:
 
     def test_template_switching_workflow(self):
         """Test switching between templates."""
-        with patch("mcp_template.interactive_cli.CacheManager") as mock_cache_manager:
+        with patch(
+            "mcp_template.cli.interactive_cli.CacheManager"
+        ) as mock_cache_manager:
             mock_cache = Mock()
             mock_cache_manager.return_value = mock_cache
             mock_cache.get.return_value = {}
@@ -99,13 +102,13 @@ class TestInteractiveSession:
 class TestCommandWorkflows:
     """Integration tests for complete command workflows."""
 
-    @patch("mcp_template.interactive_cli.MCPClient")
-    @patch("mcp_template.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.MCPClient")
+    @patch("mcp_template.cli.interactive_cli.get_session")
     def test_template_selection_and_tools_workflow(
         self, mock_get_session, mock_mcp_client
     ):
         """Test selecting a template and listing its tools."""
-        from mcp_template.interactive_cli import list_tools, select_template
+        from mcp_template.cli.interactive_cli import list_tools, select_template
 
         # Setup mocks
         mock_session = Mock()
@@ -133,10 +136,10 @@ class TestCommandWorkflows:
                 output_format="table",
             )
 
-    @patch("mcp_template.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.get_session")
     def test_configuration_workflow(self, mock_get_session):
         """Test complete configuration workflow."""
-        from mcp_template.interactive_cli import (
+        from mcp_template.cli.interactive_cli import (
             clear_config,
             configure_template,
             show_config,
@@ -151,8 +154,8 @@ class TestCommandWorkflows:
         mock_get_session.return_value = mock_session
 
         with (
-            patch("mcp_template.interactive_cli.console"),
-            patch("mcp_template.interactive_cli.show_config") as mock_show_config,
+            patch("mcp_template.cli.interactive_cli.console"),
+            patch("mcp_template.cli.interactive_cli.show_config") as mock_show_config,
         ):
             # Configure template
             configure_template(
@@ -166,10 +169,10 @@ class TestCommandWorkflows:
             )
             mock_show_config.assert_called_once_with("demo")
 
-    @patch("mcp_template.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.get_session")
     def test_tool_call_workflow(self, mock_get_session):
         """Test calling a tool with configuration."""
-        from mcp_template.interactive_cli import call_tool
+        from mcp_template.cli.interactive_cli import call_tool
 
         # Setup mocks
         mock_session = Mock()
@@ -208,10 +211,10 @@ class TestCommandWorkflows:
         # Verify the client method was called
         mock_client.call_tool_with_config.assert_called_once()
 
-    @patch("mcp_template.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.get_session")
     def test_server_management_workflow(self, mock_get_session):
         """Test server deployment and management workflow."""
-        from mcp_template.interactive_cli import deploy_template
+        from mcp_template.cli.interactive_cli import deploy_template
 
         # Setup mocks
         mock_session = Mock()
@@ -242,12 +245,12 @@ class TestErrorRecovery:
     @patch("mcp_template.cli.list")
     def test_api_error_recovery(self, mock_cli_list):
         """Test recovery from API errors."""
-        from mcp_template.interactive_cli import list_templates
+        from mcp_template.cli.interactive_cli import list_templates
 
         # Setup mock to raise exception
         mock_cli_list.side_effect = Exception("Network error")
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             # Should not raise exception, but handle error gracefully
             list_templates()
 
@@ -259,16 +262,16 @@ class TestErrorRecovery:
             ]
             assert len(error_calls) > 0
 
-    @patch("mcp_template.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.get_session")
     def test_missing_template_error_recovery(self, mock_get_session):
         """Test recovery from missing template errors."""
-        from mcp_template.interactive_cli import list_tools
+        from mcp_template.cli.interactive_cli import list_tools
 
         mock_session = Mock()
         mock_session.get_selected_template.return_value = None
         mock_get_session.return_value = mock_session
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             # Should handle missing template gracefully
             list_tools(template=None)
 
@@ -281,10 +284,10 @@ class TestErrorRecovery:
             ]
             assert len(error_calls) > 0
 
-    @patch("mcp_template.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.get_session")
     def test_invalid_config_format_recovery(self, mock_get_session):
         """Test recovery from invalid configuration format."""
-        from mcp_template.interactive_cli import configure_template
+        from mcp_template.cli.interactive_cli import configure_template
 
         mock_session = Mock()
         mock_client = Mock()
@@ -293,7 +296,7 @@ class TestErrorRecovery:
         mock_session.get_selected_template.return_value = "demo"
         mock_get_session.return_value = mock_session
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             # Should handle invalid format gracefully
             configure_template(template=None, config_pairs=["invalid_format_no_equals"])
 
@@ -311,10 +314,10 @@ class TestErrorRecovery:
 class TestComplexWorkflows:
     """Integration tests for complex, multi-step workflows."""
 
-    @patch("mcp_template.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.get_session")
     def test_complete_user_session(self, mock_get_session):
         """Test a complete user session from start to finish."""
-        from mcp_template.interactive_cli import (
+        from mcp_template.cli.interactive_cli import (
             call_tool,
             configure_template,
             deploy_template,
@@ -345,7 +348,7 @@ class TestComplexWorkflows:
         with (
             patch("mcp_template.cli.list_tools") as mock_cli_list_tools,
             patch("mcp_template.cli.deploy") as mock_cli_deploy,
-            patch("mcp_template.interactive_cli.show_config"),
+            patch("mcp_template.cli.interactive_cli.show_config"),
         ):
 
             # 1. Select template
@@ -396,10 +399,10 @@ class TestComplexWorkflows:
             unselect_template()
             mock_session.unselect_template.assert_called()
 
-    @patch("mcp_template.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.get_session")
     def test_multi_template_workflow(self, mock_get_session):
         """Test working with multiple templates in one session."""
-        from mcp_template.interactive_cli import (
+        from mcp_template.cli.interactive_cli import (
             configure_template,
             list_tools,
             select_template,
@@ -416,7 +419,7 @@ class TestComplexWorkflows:
 
         with (
             patch("mcp_template.cli.list_tools") as mock_cli_list_tools,
-            patch("mcp_template.interactive_cli.show_config"),
+            patch("mcp_template.cli.interactive_cli.show_config"),
         ):
 
             # Work with demo template
@@ -448,7 +451,7 @@ class TestComplexWorkflows:
 class TestPerformanceAndLimits:
     """Integration tests for performance and edge cases."""
 
-    @patch("mcp_template.interactive_cli.CacheManager")
+    @patch("mcp_template.cli.interactive_cli.CacheManager")
     def test_large_configuration_handling(self, mock_cache_manager):
         """Test handling of large configuration sets."""
         mock_cache = Mock()
@@ -499,9 +502,9 @@ class TestPerformanceAndLimits:
 class TestCommandlineArgumentParsing:
     """Test complex command line argument parsing in main interactive loop."""
 
-    @patch("mcp_template.interactive_cli.input")
-    @patch("mcp_template.interactive_cli.console")
-    @patch("mcp_template.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.input")
+    @patch("mcp_template.cli.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.get_session")
     def test_logs_command_backend_flag_parsing(
         self, mock_get_session, mock_console, mock_input
     ):
@@ -512,71 +515,71 @@ class TestCommandlineArgumentParsing:
 
         mock_input.side_effect = ["logs target --backend docker", "exit"]
 
-        with patch("mcp_template.interactive_cli.get_logs") as mock_get_logs:
-            from mcp_template.interactive_cli import run_interactive_shell
+        with patch("mcp_template.cli.interactive_cli.get_logs") as mock_get_logs:
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
             mock_get_logs.assert_called_with(
                 target="target", backend="docker", lines=100
             )
 
-    @patch("mcp_template.interactive_cli.input")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.input")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_logs_command_lines_flag_parsing(self, mock_console, mock_input):
         """Test logs command with --lines flag parsing."""
         mock_input.side_effect = ["logs target --lines 50", "exit"]
 
-        with patch("mcp_template.interactive_cli.get_logs") as mock_get_logs:
-            from mcp_template.interactive_cli import run_interactive_shell
+        with patch("mcp_template.cli.interactive_cli.get_logs") as mock_get_logs:
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
             mock_get_logs.assert_called_with(target="target", backend=None, lines=50)
 
-    @patch("mcp_template.interactive_cli.input")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.input")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_logs_command_lines_flag_invalid_number(self, mock_console, mock_input):
         """Test logs command with invalid --lines number."""
         mock_input.side_effect = ["logs target --lines invalid", "exit"]
 
-        with patch("mcp_template.interactive_cli.get_logs") as mock_get_logs:
-            from mcp_template.interactive_cli import run_interactive_shell
+        with patch("mcp_template.cli.interactive_cli.get_logs") as mock_get_logs:
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
             mock_console.print.assert_any_call(
                 "[red]❌ --lines requires a valid number[/red]"
             )
 
-    @patch("mcp_template.interactive_cli.input")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.input")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_logs_command_backend_flag_missing_value(self, mock_console, mock_input):
         """Test logs command with --backend flag missing value."""
         mock_input.side_effect = ["logs target --backend", "exit"]
 
-        with patch("mcp_template.interactive_cli.get_logs") as mock_get_logs:
-            from mcp_template.interactive_cli import run_interactive_shell
+        with patch("mcp_template.cli.interactive_cli.get_logs") as mock_get_logs:
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
             mock_console.print.assert_any_call(
                 "[red]❌ --backend requires a backend name[/red]"
             )
 
-    @patch("mcp_template.interactive_cli.input")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.input")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_logs_command_unknown_flag_warning(self, mock_console, mock_input):
         """Test logs command with unknown flag shows warning."""
         mock_input.side_effect = ["logs target --unknown-flag", "exit"]
 
-        with patch("mcp_template.interactive_cli.get_logs") as mock_get_logs:
-            from mcp_template.interactive_cli import run_interactive_shell
+        with patch("mcp_template.cli.interactive_cli.get_logs") as mock_get_logs:
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
             mock_console.print.assert_any_call(
                 "[yellow]⚠️ Ignoring unknown flag: --unknown-flag[/yellow]"
             )
 
-    @patch("mcp_template.interactive_cli.input")
-    @patch("mcp_template.interactive_cli.console")
-    @patch("mcp_template.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.input")
+    @patch("mcp_template.cli.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.get_session")
     def test_logs_command_no_target_no_selected_template(
         self, mock_get_session, mock_console, mock_input
     ):
@@ -587,8 +590,8 @@ class TestCommandlineArgumentParsing:
 
         mock_input.side_effect = ["logs", "exit"]
 
-        with patch("mcp_template.interactive_cli.get_logs") as mock_get_logs:
-            from mcp_template.interactive_cli import run_interactive_shell
+        with patch("mcp_template.cli.interactive_cli.get_logs") as mock_get_logs:
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
             mock_console.print.assert_any_call(
@@ -600,10 +603,10 @@ class TestCommandlineArgumentParsing:
 class TestInteractiveLoopMainFlow:
     """Test main interactive loop functionality."""
 
-    @patch("mcp_template.interactive_cli.READLINE_AVAILABLE", True)
-    @patch("mcp_template.interactive_cli.setup_completion")
-    @patch("mcp_template.interactive_cli.get_session")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.READLINE_AVAILABLE", True)
+    @patch("mcp_template.cli.interactive_cli.setup_completion")
+    @patch("mcp_template.cli.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_run_interactive_shell_with_readline(
         self, mock_console, mock_get_session, mock_setup
     ):
@@ -615,7 +618,7 @@ class TestInteractiveLoopMainFlow:
 
         # Mock input to return exit immediately
         with patch("builtins.input", side_effect=["exit"]):
-            from mcp_template.interactive_cli import run_interactive_shell
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
 
@@ -624,9 +627,9 @@ class TestInteractiveLoopMainFlow:
             "[dim]✨ Command history and tab completion enabled[/dim]"
         )
 
-    @patch("mcp_template.interactive_cli.READLINE_AVAILABLE", False)
-    @patch("mcp_template.interactive_cli.get_session")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.READLINE_AVAILABLE", False)
+    @patch("mcp_template.cli.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_run_interactive_shell_no_readline(self, mock_console, mock_get_session):
         """Test interactive shell without readline."""
         mock_session = Mock()
@@ -635,7 +638,7 @@ class TestInteractiveLoopMainFlow:
 
         # Mock input to return exit immediately
         with patch("builtins.input", side_effect=["exit"]):
-            from mcp_template.interactive_cli import run_interactive_shell
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
 
@@ -643,8 +646,8 @@ class TestInteractiveLoopMainFlow:
             "[dim]💡 Install readline for command history and tab completion[/dim]"
         )
 
-    @patch("mcp_template.interactive_cli.get_session")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_interactive_shell_keyboard_interrupt(self, mock_console, mock_get_session):
         """Test keyboard interrupt handling in interactive shell."""
         mock_session = Mock()
@@ -653,7 +656,7 @@ class TestInteractiveLoopMainFlow:
 
         # Mock input to raise KeyboardInterrupt then exit
         with patch("builtins.input", side_effect=[KeyboardInterrupt(), "exit"]):
-            from mcp_template.interactive_cli import run_interactive_shell
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
 
@@ -661,8 +664,8 @@ class TestInteractiveLoopMainFlow:
             "\n[yellow]Use 'exit' or 'quit' to leave the interactive shell[/yellow]"
         )
 
-    @patch("mcp_template.interactive_cli.get_session")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_interactive_shell_eof_error(self, mock_console, mock_get_session):
         """Test EOF error handling in interactive shell."""
         mock_session = Mock()
@@ -671,14 +674,14 @@ class TestInteractiveLoopMainFlow:
 
         # Mock input to raise EOFError
         with patch("builtins.input", side_effect=EOFError()):
-            from mcp_template.interactive_cli import run_interactive_shell
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
 
         mock_console.print.assert_any_call("\n[yellow]Goodbye![/yellow]")
 
-    @patch("mcp_template.interactive_cli.get_session")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_interactive_shell_unknown_command(self, mock_console, mock_get_session):
         """Test unknown command handling."""
         mock_session = Mock()
@@ -686,7 +689,7 @@ class TestInteractiveLoopMainFlow:
         mock_get_session.return_value = mock_session
 
         with patch("builtins.input", side_effect=["unknown_command", "exit"]):
-            from mcp_template.interactive_cli import run_interactive_shell
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
 
@@ -694,8 +697,8 @@ class TestInteractiveLoopMainFlow:
             "[red]❌ Unknown command: unknown_command[/red]"
         )
 
-    @patch("mcp_template.interactive_cli.get_session")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.get_session")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_interactive_shell_empty_command(self, mock_console, mock_get_session):
         """Test empty command handling."""
         mock_session = Mock()
@@ -703,7 +706,7 @@ class TestInteractiveLoopMainFlow:
         mock_get_session.return_value = mock_session
 
         with patch("builtins.input", side_effect=["", "   ", "exit"]):
-            from mcp_template.interactive_cli import run_interactive_shell
+            from mcp_template.cli.interactive_cli import run_interactive_shell
 
             run_interactive_shell()
 
@@ -720,28 +723,28 @@ class TestMainFunctionIntegration:
     """Test main function behavior."""
 
     @patch("sys.argv", ["script", "--help"])
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_main_with_help_flag(self, mock_console):
         """Test main function with --help flag."""
-        from mcp_template import interactive_cli
+        from mcp_template.cli import interactive_cli
 
         interactive_cli.main()
         mock_console.print.assert_any_call("Enhanced MCP Interactive CLI")
 
     @patch("sys.argv", ["script", "-h"])
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_main_with_h_flag(self, mock_console):
         """Test main function with -h flag."""
-        from mcp_template import interactive_cli
+        from mcp_template.cli import interactive_cli
 
         interactive_cli.main()
         mock_console.print.assert_any_call("Enhanced MCP Interactive CLI")
 
     @patch("sys.argv", ["script"])
-    @patch("mcp_template.interactive_cli.run_interactive_shell")
+    @patch("mcp_template.cli.interactive_cli.run_interactive_shell")
     def test_main_without_args(self, mock_run_shell):
         """Test main function without arguments."""
-        from mcp_template import interactive_cli
+        from mcp_template.cli import interactive_cli
 
         interactive_cli.main()
         mock_run_shell.assert_called_once()

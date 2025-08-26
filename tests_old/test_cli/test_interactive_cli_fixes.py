@@ -12,8 +12,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from mcp_template.cli.interactive_cli import InteractiveCLI
 from mcp_template.core.config_processor import ConfigProcessor
-from mcp_template.interactive_cli import InteractiveCLI
 
 
 @pytest.mark.integration

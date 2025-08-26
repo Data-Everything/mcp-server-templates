@@ -2099,7 +2099,7 @@ def main():
     """Main entry point for standalone execution."""
     if len(sys.argv) > 1 and sys.argv[1] in ["--help", "-h"]:
         console.print("Enhanced MCP Interactive CLI")
-        console.print("Usage: python -m mcp_template.interactive_cli_v2")
+        console.print("Usage: python -m mcp_template.cli.interactive_cli_v2")
         console.print("       or: python interactive_cli_v2.py")
         return
 

@@ -7,8 +7,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 from mcp_template.client import MCPClient
+from mcp_template.core.exceptions import ToolCallError
 from mcp_template.core.tool_caller import ToolCallResult
-from mcp_template.exceptions import ToolCallError
 
 
 @pytest.mark.unit

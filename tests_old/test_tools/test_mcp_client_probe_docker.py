@@ -2,9 +2,11 @@
 Unit tests for MCP Client Probe Docker functionality.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+
 from mcp_template.tools.mcp_client_probe import MCPClientProbe
 
 

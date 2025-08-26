@@ -133,7 +133,7 @@ class TestMultiBackendListDeployments:
 
     def test_list_deployments_single_backend_mode(self, cli_runner):
         """Test list deployments with --backend flag uses single backend."""
-        with patch("mcp_template.cli.DeploymentManager") as mock_dm_class:
+        with patch("mcp_template.cli.cli.deploymentManager") as mock_dm_class:
             mock_dm = Mock()
             mock_dm_class.return_value = mock_dm
             mock_dm.list_deployments.return_value = [
@@ -411,7 +411,7 @@ class TestMultiBackendStop:
 
     def test_stop_specific_backend(self, cli_runner):
         """Test stop command with specific backend."""
-        with patch("mcp_template.cli.DeploymentManager") as mock_dm_class:
+        with patch("mcp_template.cli.cli.deploymentManager") as mock_dm_class:
             mock_dm = Mock()
             mock_dm_class.return_value = mock_dm
             mock_dm.stop_deployment.return_value = {"success": True}
@@ -503,7 +503,7 @@ class TestMultiBackendLogs:
 
     def test_logs_specific_backend(self, cli_runner):
         """Test logs command with specific backend."""
-        with patch("mcp_template.cli.DeploymentManager") as mock_dm_class:
+        with patch("mcp_template.cli.cli.deploymentManager") as mock_dm_class:
             mock_dm = Mock()
             mock_dm_class.return_value = mock_dm
             mock_dm.get_deployment_logs.return_value = {
@@ -607,7 +607,7 @@ class TestBackwardCompatibility:
         """Test that --backend flag preserves original single-backend behavior."""
         with (
             patch("mcp_template.cli.TemplateManager") as mock_tm_class,
-            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.cli.deploymentManager") as mock_dm_class,
         ):
 
             mock_tm = Mock()
@@ -632,7 +632,7 @@ class TestBackwardCompatibility:
         """Test that environment variables work for backend selection."""
         with (
             patch.dict("os.environ", {"MCP_BACKEND": "kubernetes"}),
-            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.cli.deploymentManager") as mock_dm_class,
         ):
 
             mock_dm = Mock()
@@ -700,7 +700,7 @@ class TestConfigurationHandling:
         """Test that config precedence works: env vars > CLI config > config file."""
         # Mock deployment manager and template manager
         with (
-            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.cli.deploymentManager") as mock_dm_class,
             patch("mcp_template.cli.TemplateManager") as mock_tm_class,
         ):
 
@@ -779,7 +779,7 @@ class TestConfigurationHandling:
         """Test that JSON object volumes are parsed correctly."""
         # Mock the dependencies directly within the test
         with (
-            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.cli.deploymentManager") as mock_dm_class,
             patch("mcp_template.cli.TemplateManager") as mock_tm_class,
         ):
 
@@ -827,7 +827,7 @@ class TestConfigurationHandling:
         """Test that JSON array volumes are parsed correctly."""
         # Mock the dependencies directly within the test
         with (
-            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.cli.deploymentManager") as mock_dm_class,
             patch("mcp_template.cli.TemplateManager") as mock_tm_class,
         ):
 
@@ -918,7 +918,7 @@ class TestConfigurationHandling:
         """Test that existing --set option still works alongside new --config."""
         # Mock the dependencies directly within the test
         with (
-            patch("mcp_template.cli.DeploymentManager") as mock_dm_class,
+            patch("mcp_template.cli.cli.deploymentManager") as mock_dm_class,
             patch("mcp_template.cli.TemplateManager") as mock_tm_class,
         ):
 
@@ -966,7 +966,7 @@ class TestVolumeMountingCLI:
     @pytest.fixture
     def mock_deployment_manager(self):
         """Mock deployment manager for volume tests."""
-        with patch("mcp_template.cli.DeploymentManager") as mock_dm_class:
+        with patch("mcp_template.cli.cli.deploymentManager") as mock_dm_class:
             mock_dm = Mock()
             # Mock successful deployment with proper DeploymentResult
             from mcp_template.core.deployment_manager import DeploymentResult

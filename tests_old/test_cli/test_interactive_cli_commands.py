@@ -21,7 +21,7 @@ if project_path not in sys.path:
 
 from rich.console import Console
 
-from mcp_template.interactive_cli import (
+from mcp_template.cli.interactive_cli import (
     InteractiveCLI,
     ResponseBeautifier,
     merge_config_sources,
@@ -35,7 +35,7 @@ class TestInteractiveCLICommands:
     @pytest.fixture
     def cli(self):
         """Create a mock InteractiveCLI instance for testing."""
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli = InteractiveCLI()
             # Mock dependencies to avoid real initialization
             cli.enhanced_cli = MagicMock()
@@ -60,7 +60,7 @@ class TestInteractiveCLICommands:
         ]
         cli.deployment_manager.list_deployments.return_value = mock_servers
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_list_servers("")
 
             # Verify deployment manager was called
@@ -86,7 +86,7 @@ class TestInteractiveCLICommands:
             "Connection failed"
         )
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_list_servers("")
 
             # Verify error message was displayed
@@ -96,7 +96,7 @@ class TestInteractiveCLICommands:
 
     def test_do_tools_no_args(self, cli):
         """Test do_tools command with no arguments."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_tools("")
 
             mock_console.print.assert_any_call(
@@ -113,7 +113,7 @@ class TestInteractiveCLICommands:
         }
         cli.tool_manager.list_tools = MagicMock(return_value=mock_response)
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_tools("github")
 
             # Verify list_tools was called with correct arguments
@@ -139,7 +139,7 @@ class TestInteractiveCLICommands:
         }
         cli.tool_manager.list_tools = MagicMock(return_value=mock_response)
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_tools("github")
 
             # Verify list_tools was called with correct arguments
@@ -158,7 +158,7 @@ class TestInteractiveCLICommands:
         cli.enhanced_cli.templates = {"github": {"name": "github"}}
         cli.tool_manager.list_tools = MagicMock()
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_tools("github --force-server")
 
             # Verify force server discovery message
@@ -226,7 +226,7 @@ class TestInteractiveCLICommands:
 
     def test_do_config_no_args(self, cli):
         """Test do_config command with no arguments."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_config("")
 
             mock_console.print.assert_any_call(
@@ -235,7 +235,7 @@ class TestInteractiveCLICommands:
 
     def test_do_config_invalid_format(self, cli):
         """Test do_config command with invalid format."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_config("github invalid_format")
 
             mock_console.print.assert_any_call(
@@ -246,7 +246,7 @@ class TestInteractiveCLICommands:
         """Test do_config command successful configuration."""
         cli.cache.set = MagicMock()
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_config("github token=abc123 url=https://api.github.com")
 
             # Verify config was stored in session
@@ -270,7 +270,7 @@ class TestInteractiveCLICommands:
         cli.session_configs["github"] = {"token": "old_token"}
         cli.cache.set = MagicMock()
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_config("github token=new_token repo=test-repo")
 
             # Verify config was updated
@@ -279,7 +279,7 @@ class TestInteractiveCLICommands:
                 "repo": "test-repo",
             }
 
-    @patch("mcp_template.interactive_cli.merge_config_sources")
+    @patch("mcp_template.cli.interactive_cli.merge_config_sources")
     def test_do_call_basic(self, mock_merge, cli):
         """Test do_call command basic functionality."""
         # The do_call method uses @with_argparser decorator which expects cmd2 Statement
@@ -318,8 +318,8 @@ class TestInteractiveCLICommands:
 
         assert not template_exists
 
-    @patch("mcp_template.interactive_cli.merge_config_sources")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.merge_config_sources")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_display_tool_result_default_table_format(
         self, mock_console, mock_merge, cli
     ):
@@ -341,8 +341,8 @@ class TestInteractiveCLICommands:
         # Verify table display was called
         cli._display_tool_result_table.assert_called_once_with(test_result, "test_tool")
 
-    @patch("mcp_template.interactive_cli.merge_config_sources")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.merge_config_sources")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_display_tool_result_raw_format(self, mock_console, mock_merge, cli):
         """Test that _display_tool_result uses beautifier for raw=True."""
         # Mock setup
@@ -361,8 +361,8 @@ class TestInteractiveCLICommands:
             test_result, "Tool Result: test_tool"
         )
 
-    @patch("mcp_template.interactive_cli.merge_config_sources")
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.merge_config_sources")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_display_tool_result_fallback_on_error(self, mock_console, mock_merge, cli):
         """Test that _display_tool_result falls back to simple display on errors."""
         # Mock setup
@@ -382,7 +382,7 @@ class TestInteractiveCLICommands:
         mock_console.print.assert_any_call("[green]✅ Tool 'test_tool' result:[/green]")
         mock_console.print.assert_any_call(test_result)
 
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_display_tool_result_table_mcp_content(self, mock_console, cli):
         """Test _display_tool_result_table with MCP content structure."""
         # Test MCP content with text
@@ -427,7 +427,7 @@ class TestInteractiveCLICommands:
             # Verify console.print was called with the table
             mock_console.print.assert_called_with(mock_table)
 
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_display_tool_result_table_simple_dict(self, mock_console, cli):
         """Test _display_tool_result_table with simple dictionary."""
         # Test simple dictionary result
@@ -463,7 +463,7 @@ class TestInteractiveCLICommands:
             # Verify console.print was called
             mock_console.print.assert_called_with(mock_table)
 
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_display_tool_result_table_list_data(self, mock_console, cli):
         """Test _display_tool_result_table with list data."""
         # Test list result
@@ -498,7 +498,7 @@ class TestInteractiveCLICommands:
             # Verify console.print was called
             mock_console.print.assert_called_with(mock_table)
 
-    @patch("mcp_template.interactive_cli.console")
+    @patch("mcp_template.cli.interactive_cli.console")
     def test_display_tool_result_table_simple_string(self, mock_console, cli):
         """Test _display_tool_result_table with simple string result."""
         # Test simple string result
@@ -533,7 +533,7 @@ class TestInteractiveCLICommands:
 
     def test_do_show_config_no_template(self, cli):
         """Test do_show_config with no template name."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_show_config("")
 
             mock_console.print.assert_any_call(
@@ -542,7 +542,7 @@ class TestInteractiveCLICommands:
 
     def test_do_show_config_no_config(self, cli):
         """Test do_show_config with template that has no configuration."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_show_config("github")
 
             mock_console.print.assert_any_call(
@@ -556,7 +556,7 @@ class TestInteractiveCLICommands:
             "url": "https://api.github.com",
         }
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_show_config("github")
 
             # Should not show sensitive values
@@ -564,7 +564,7 @@ class TestInteractiveCLICommands:
 
     def test_do_clear_config_no_template(self, cli):
         """Test do_clear_config with no template name."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_clear_config("")
 
             mock_console.print.assert_any_call(
@@ -576,7 +576,7 @@ class TestInteractiveCLICommands:
         cli.session_configs["github"] = {"token": "test"}
         cli.cache.remove = MagicMock()
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_clear_config("github")
 
             # Verify config was cleared
@@ -598,7 +598,7 @@ class TestInteractiveCLICommands:
         }
         cli.enhanced_cli.templates = mock_templates
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_templates("")
 
             # Verify output contains template information
@@ -606,7 +606,7 @@ class TestInteractiveCLICommands:
 
     def test_do_quit(self, cli):
         """Test do_quit command."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             result = cli.do_quit("")
 
             assert result is True
@@ -625,7 +625,7 @@ class TestInteractiveCLICommands:
 
     def test_do_help_no_args(self, cli):
         """Test do_help command with no arguments."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_help("")
 
             # Should show the main help panel
@@ -640,7 +640,7 @@ class TestInteractiveCLICommands:
 
     def test_default_empty_line(self, cli):
         """Test default method with empty line."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.default("")
 
             # Should not print anything for empty lines
@@ -648,7 +648,7 @@ class TestInteractiveCLICommands:
 
     def test_default_unknown_command(self, cli):
         """Test default method with unknown command."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.default("unknown_command")
 
             # Should show error message
@@ -665,7 +665,7 @@ class TestMergeConfigSources:
         """Test merging with only session config."""
         session_config = {"key1": "value1", "key2": "value2"}
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             result = merge_config_sources(session_config)
 
             assert result == session_config
@@ -675,7 +675,7 @@ class TestMergeConfigSources:
         session_config = {"key1": "value1"}
         env_vars = ["key2=env_value2", "key3=env_value3"]
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             result = merge_config_sources(session_config, env_vars=env_vars)
 
             expected = {"key1": "value1", "key2": "env_value2", "key3": "env_value3"}
@@ -687,7 +687,7 @@ class TestMergeConfigSources:
         env_vars = ["key1=env_value"]
         inline_config = ["key1=inline_value"]
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             result = merge_config_sources(
                 session_config, env_vars=env_vars, inline_config=inline_config
             )
@@ -703,7 +703,7 @@ class TestMergeConfigSources:
         file_config = {"key1": "file_value", "key2": "file_value2"}
 
         with patch("builtins.open", mock.mock_open(read_data=json.dumps(file_config))):
-            with patch("mcp_template.interactive_cli.console"):
+            with patch("mcp_template.cli.interactive_cli.console"):
                 result = merge_config_sources(session_config, config_file="config.json")
 
                 expected = {"key1": "file_value", "key2": "file_value2"}
@@ -714,7 +714,7 @@ class TestMergeConfigSources:
         session_config = {"key1": "value1"}
 
         with patch("builtins.open", side_effect=FileNotFoundError()):
-            with patch("mcp_template.interactive_cli.console") as mock_console:
+            with patch("mcp_template.cli.interactive_cli.console") as mock_console:
                 with pytest.raises(FileNotFoundError):
                     merge_config_sources(session_config, config_file="nonexistent.json")
 
@@ -726,7 +726,7 @@ class TestMergeConfigSources:
         inline_config = ["key=inline", "inline_only=inline"]
 
         with patch("builtins.open", mock.mock_open(read_data=json.dumps(file_config))):
-            with patch("mcp_template.interactive_cli.console"):
+            with patch("mcp_template.cli.interactive_cli.console"):
                 result = merge_config_sources(
                     session_config,
                     config_file="config.json",

@@ -185,7 +185,7 @@ pip install mcp-client asyncio
 ```python
 import asyncio
 import json
-from mcp_client import MCPClient
+from mcp_template.client import MCPClient
 
 async def demo_client():
     # Connect to the MCP server

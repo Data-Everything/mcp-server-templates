@@ -2,21 +2,22 @@
 Unit tests for InteractiveCLI helper methods and edge cases.
 """
 
-import pytest
-import unittest.mock as mock
-from unittest.mock import MagicMock, patch, call
-import json
-import sys
 import io
+import json
 import os
-from contextlib import redirect_stdout, redirect_stderr
+import sys
+import unittest.mock as mock
+from contextlib import redirect_stderr, redirect_stdout
+from unittest.mock import MagicMock, call, patch
+
+import pytest
 
 # Add the project to path if not already there
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if project_path not in sys.path:
     sys.path.insert(0, project_path)
 
-from mcp_template.interactive_cli import InteractiveCLI, merge_config_sources
+from mcp_template.cli.interactive_cli import InteractiveCLI, merge_config_sources
 
 
 @pytest.mark.unit
@@ -26,7 +27,7 @@ class TestInteractiveCLIHelpers:
     @pytest.fixture
     def cli(self):
         """Create a mock InteractiveCLI instance for testing."""
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli = InteractiveCLI()
             # Mock dependencies
             cli.enhanced_cli = MagicMock()
@@ -49,7 +50,7 @@ class TestInteractiveCLIHelpers:
             "filesystem": {},
         }
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli._show_template_help("nonexistent")
 
             mock_console.print.assert_any_call(
@@ -69,7 +70,7 @@ class TestInteractiveCLIHelpers:
         cli.enhanced_cli.tool_discovery = MagicMock()
         cli.enhanced_cli.tool_discovery.discover_tools.return_value = []
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli._show_template_help("demo")
 
             # Should display template overview
@@ -102,7 +103,7 @@ class TestInteractiveCLIHelpers:
         cli.enhanced_cli.tool_discovery = MagicMock()
         cli.enhanced_cli.tool_discovery.discover_tools.return_value = []
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli._show_template_help("github")
 
             # Should display config schema table
@@ -136,7 +137,7 @@ class TestInteractiveCLIHelpers:
         cli.enhanced_cli.tool_discovery = MagicMock()
         cli.enhanced_cli.tool_discovery.discover_tools.return_value = mock_tools
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli._show_template_help("github")
 
             # Should display tools information
@@ -158,7 +159,7 @@ class TestInteractiveCLIHelpers:
             "Discovery failed"
         )
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli._show_template_help("github")
 
             # Should show error message (now wrapped in a Panel)
@@ -180,7 +181,9 @@ class TestInteractiveCLIHelpers:
         cli.session_configs["github"] = {"token": "session_token"}
 
         # Test merge_config_sources functionality
-        with patch("mcp_template.interactive_cli.merge_config_sources") as mock_merge:
+        with patch(
+            "mcp_template.cli.interactive_cli.merge_config_sources"
+        ) as mock_merge:
             mock_merge.return_value = {"token": "session_token", "timeout": "30"}
 
             result = merge_config_sources(
@@ -201,7 +204,7 @@ class TestInteractiveCLIHelpers:
             "public_url": "https://api.github.com",
         }
 
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_show_config("github")
 
             # Should mask sensitive values but show others
@@ -214,7 +217,7 @@ class TestInteractiveCLIHelpers:
             "base_url": "existing_url",
         }
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_config("github timeout=30 retries=3")
 
             # Should preserve existing values and add new ones
@@ -229,7 +232,7 @@ class TestInteractiveCLIHelpers:
     def test_cache_integration(self, cli):
         """Test cache integration in config operations."""
         # Test cache set on config
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_config("github token=test")
 
             cli.cache.set.assert_called_once_with(
@@ -238,7 +241,7 @@ class TestInteractiveCLIHelpers:
 
         # Test cache remove on clear (note: method is 'remove', not 'delete')
         cli.cache.remove = MagicMock()
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_clear_config("github")
 
             cli.cache.remove.assert_called_once_with("interactive_config_github")
@@ -270,7 +273,7 @@ class TestInteractiveCLIHelpers:
         with patch.dict(
             "os.environ", {"GITHUB_TOKEN": "env_token", "GITHUB_ORG": "test-org"}
         ):
-            with patch("mcp_template.interactive_cli.console"):
+            with patch("mcp_template.cli.interactive_cli.console"):
                 cli.do_tools("github")
 
                 # Should call tool_manager with correct template
@@ -301,7 +304,7 @@ class TestInteractiveCLIHelpers:
         )
 
         with patch.dict("os.environ", {"GITHUB_TOKEN": "env_token"}):
-            with patch("mcp_template.interactive_cli.console"):
+            with patch("mcp_template.cli.interactive_cli.console"):
                 cli.do_tools("github")
 
                 # Should call tool_manager with correct template
@@ -322,7 +325,7 @@ class TestMergeConfigSourcesEdgeCases:
         session_config = {"key1": "value1"}
         env_vars = ["invalid_format", "valid=value"]
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             result = merge_config_sources(session_config, env_vars=env_vars)
 
             # Should only process valid format
@@ -333,7 +336,7 @@ class TestMergeConfigSourcesEdgeCases:
         session_config = {"key1": "value1"}
         inline_config = ["invalid_format", "valid=value"]
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             result = merge_config_sources(session_config, inline_config=inline_config)
 
             # Should only process valid format
@@ -345,7 +348,7 @@ class TestMergeConfigSourcesEdgeCases:
         env_vars = ["key2="]  # Empty value
         inline_config = ["key3="]  # Empty value
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             result = merge_config_sources(
                 session_config, env_vars=env_vars, inline_config=inline_config
             )
@@ -358,7 +361,7 @@ class TestMergeConfigSourcesEdgeCases:
         session_config = {}
         env_vars = ["url=https://api.example.com/v1?key=value"]
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             result = merge_config_sources(session_config, env_vars=env_vars)
 
             # Should split only on first equals
@@ -369,7 +372,7 @@ class TestMergeConfigSourcesEdgeCases:
         session_config = {"key1": "value1"}
 
         with patch("builtins.open", mock.mock_open(read_data="invalid json")):
-            with patch("mcp_template.interactive_cli.console") as mock_console:
+            with patch("mcp_template.cli.interactive_cli.console") as mock_console:
                 with pytest.raises(json.JSONDecodeError):
                     merge_config_sources(session_config, config_file="invalid.json")
 
@@ -382,7 +385,7 @@ class TestMergeConfigSourcesEdgeCases:
         """Test merge_config_sources with None values."""
         session_config = {"key1": "value1"}
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             result = merge_config_sources(
                 session_config, config_file=None, env_vars=None, inline_config=None
             )
@@ -397,7 +400,7 @@ class TestInteractiveCLIEdgeCases:
     @pytest.fixture
     def cli(self):
         """Create a mock InteractiveCLI instance for testing."""
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli = InteractiveCLI()
             cli.enhanced_cli = MagicMock()
             cli.deployer = MagicMock()
@@ -413,7 +416,7 @@ class TestInteractiveCLIEdgeCases:
 
     def test_default_with_whitespace_command(self, cli):
         """Test default method with whitespace-only command."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.default("   \t  \n  ")
 
             # Should not print anything for whitespace-only lines
@@ -431,7 +434,7 @@ class TestInteractiveCLIEdgeCases:
 
     def test_config_command_single_arg(self, cli):
         """Test config command with only template name."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_config("github")
 
             mock_console.print.assert_any_call(
@@ -440,7 +443,7 @@ class TestInteractiveCLIEdgeCases:
 
     def test_clear_config_nonexistent_template(self, cli):
         """Test clear_config with template that has no configuration."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_clear_config("nonexistent")
 
             # Should print a warning message for nonexistent template
@@ -450,7 +453,7 @@ class TestInteractiveCLIEdgeCases:
 
     def test_show_config_template_name_with_spaces(self, cli):
         """Test show_config with template name containing spaces."""
-        with patch("mcp_template.interactive_cli.console") as mock_console:
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
             cli.do_show_config("template with spaces")
 
             # Should handle gracefully
@@ -462,7 +465,7 @@ class TestInteractiveCLIEdgeCases:
         """Test list_servers when no servers are deployed."""
         cli.deployment_manager.list_deployments.return_value = []
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_list_servers("")
 
             # Should call beautifier with empty list
@@ -476,7 +479,7 @@ class TestInteractiveCLIEdgeCases:
         ]
         cli.deployment_manager.list_deployments.return_value = mock_servers
 
-        with patch("mcp_template.interactive_cli.console"):
+        with patch("mcp_template.cli.interactive_cli.console"):
             cli.do_list_servers("")
 
             # Should filter out non-running servers

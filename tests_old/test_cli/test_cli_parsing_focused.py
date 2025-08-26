@@ -10,7 +10,7 @@ import shlex
 
 import pytest
 
-from mcp_template.interactive_cli import call_parser
+from mcp_template.cli.interactive_cli import call_parser
 
 
 @pytest.mark.unit

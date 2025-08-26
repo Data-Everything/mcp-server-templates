@@ -13,8 +13,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 import requests
 
+from mcp_template.core.exceptions import ToolCallError
 from mcp_template.core.mcp_connection import MCPConnection
-from mcp_template.exceptions import ToolCallError
 
 logger = logging.getLogger(__name__)
 

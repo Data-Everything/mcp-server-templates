@@ -40,7 +40,6 @@ import logging
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Union
 
-from mcp_template.backends import available_valid_backends
 from mcp_template.core import (
     DeploymentManager,
     MCPConnection,

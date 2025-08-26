@@ -157,7 +157,7 @@ class TestCLIOverrideOptions:
         assert "--transport" in result.output
         assert "Transport protocol" in result.output
 
-    @patch("mcp_template.cli.DeploymentManager")
+    @patch("mcp_template.cli.cli.deploymentManager")
     def test_deploy_with_override_processing(
         self, mock_deployment_manager, clear_cache
     ):
@@ -230,7 +230,7 @@ class TestDeploymentResultHandling:
         assert result.deployment_id == "test-123"
         assert result.endpoint == "http://localhost:8125"
 
-    @patch("mcp_template.cli.DeploymentManager")
+    @patch("mcp_template.cli.cli.deploymentManager")
     def test_cli_uses_deployment_result_attributes(
         self, mock_deployment_manager, clear_cache
     ):
@@ -314,7 +314,7 @@ class TestCLIIntegrationEnhancements:
         for option in expected_options:
             assert option in result.output
 
-    @patch("mcp_template.cli.DeploymentManager")
+    @patch("mcp_template.cli.cli.deploymentManager")
     def test_error_handling_with_failed_deployment(self, mock_deployment_manager):
         """Test error handling when deployment fails."""
         mock_manager = Mock()
@@ -346,7 +346,7 @@ class TestCLIIntegrationEnhancements:
 class TestBackwardsCompatibility:
     """Test that new features maintain backwards compatibility."""
 
-    @patch("mcp_template.cli.DeploymentManager")
+    @patch("mcp_template.cli.cli.deploymentManager")
     def test_deploy_without_new_options(self, mock_deployment_manager):
         """Test deploy command works without new options."""
         mock_manager = Mock()
@@ -392,7 +392,7 @@ class TestBackwardsCompatibility:
 class TestEndToEndNewFeatures:
     """Integration tests for new features working together."""
 
-    @patch("mcp_template.cli.DeploymentManager")
+    @patch("mcp_template.cli.cli.deploymentManager")
     def test_full_deployment_with_all_new_options(self, mock_deployment_manager):
         """Test deployment with all new options working together."""
         mock_manager = Mock()

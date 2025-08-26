@@ -99,7 +99,7 @@ class TestStopCommandEnhanced:
         mock_deployment_manager.stop_deployment.return_value = {"success": True}
 
         with patch(
-            "mcp_template.cli.DeploymentManager",
+            "mcp_template.cli.cli.deploymentManager",
             return_value=mock_deployment_manager,
         ):
             result = runner.invoke(
@@ -122,7 +122,7 @@ class TestStopCommandEnhanced:
         mock_deployment_manager.stop_deployment.return_value = {"success": True}
 
         with patch(
-            "mcp_template.cli.DeploymentManager",
+            "mcp_template.cli.cli.deploymentManager",
             return_value=mock_deployment_manager,
         ):
             result = runner.invoke(
@@ -181,7 +181,7 @@ class TestStopCommandEnhanced:
         assert f"Successfully stopped deployment '{deployment_id}'" in result.stdout
         assert mock_manager.stop_deployment.called
 
-    @patch("mcp_template.cli.DeploymentManager")
+    @patch("mcp_template.cli.cli.deploymentManager")
     def test_stop_single_deployment_specific_backend(self, mock_deployment_cls, runner):
         """Test stopping single deployment on specific backend."""
         deployment_id = "abcdef123456789012345678"
@@ -203,7 +203,7 @@ class TestStopCommandEnhanced:
         mock_deployment_manager.list_deployments.return_value = []
 
         with patch(
-            "mcp_template.cli.DeploymentManager",
+            "mcp_template.cli.cli.deploymentManager",
             return_value=mock_deployment_manager,
         ):
             result = runner.invoke(app, ["stop", "--all", "--backend", "docker"])
@@ -253,7 +253,7 @@ class TestStopCommandEdgeCases:
         """Test stop command with custom timeout."""
         deployment_id = "abcdef123456789012345678"
 
-        with patch("mcp_template.cli.DeploymentManager") as mock_dm_cls:
+        with patch("mcp_template.cli.cli.deploymentManager") as mock_dm_cls:
             mock_dm = Mock()
             mock_dm.stop_deployment.return_value = {"success": True}
             mock_dm_cls.return_value = mock_dm
@@ -298,7 +298,7 @@ class TestStopCommandEdgeCases:
         ]
 
         with patch(
-            "mcp_template.cli.DeploymentManager",
+            "mcp_template.cli.cli.deploymentManager",
             return_value=mock_deployment_manager,
         ):
             # Simulate user typing 'n' for no

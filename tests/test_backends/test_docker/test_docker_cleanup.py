@@ -2,9 +2,11 @@
 Tests for Docker backend cleanup functionality.
 """
 
-import pytest
 import subprocess
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
+import pytest
+
 from mcp_template.backends.docker import DockerDeploymentService
 
 
