@@ -188,7 +188,7 @@ class TestKubernetesDeploymentService:
             template_data = {"image": "test-image", "transport": ["http"], "port": 8080}
             config = {"replicas": 1}
 
-            result = service.deploy_template("test", config, template_data)
+            result = service.deploy_template("test", config, template_data, {})
 
             assert result["success"] is True
             assert result["template_id"] == "test"
@@ -222,7 +222,7 @@ class TestKubernetesDeploymentService:
             template_data = {"image": "test-image", "transport": ["http"]}
             config = {"replicas": 1}
 
-            result = service.deploy_template("test", config, template_data)
+            result = service.deploy_template("test", config, template_data, {})
 
             assert result["success"] is False
             assert "error" in result
@@ -367,7 +367,7 @@ class TestKubernetesDeploymentService:
 
             with (
                 patch.object(service, "_get_deployment_details") as mock_get_details,
-                patch.object(service, "_get_deployment_logs") as mock_get_logs,
+                patch.object(service, "get_deployment_logs") as mock_get_logs,
             ):
                 mock_get_details.return_value = {"name": "test", "status": "running"}
                 mock_get_logs.return_value = "Sample log output"

@@ -45,18 +45,31 @@ class TestDeploymentManager:
 
                 # Mock config operations
                 with patch.object(
-                    self.deployment_manager.config_manager, "merge_config_sources"
-                ) as mock_merge:
-                    mock_merge.return_value = {"greeting": "Hello"}
+                    self.deployment_manager.config_processor, "prepare_configuration"
+                ) as mock_prepare:
+                    mock_prepare.return_value = {"greeting": "Hello"}
 
                     with patch.object(
-                        self.deployment_manager.config_manager, "validate_config"
-                    ) as mock_validate:
-                        mock_validate.return_value = ValidationResult(
-                            valid=True, errors=[], warnings=[]
-                        )
+                        self.deployment_manager.config_processor,
+                        "handle_volume_and_args_config_properties",
+                    ) as mock_handle_vol:
+                        mock_handle_vol.return_value = {
+                            "config": {"greeting": "Hello"},
+                            "template": {
+                                "name": "Demo Template",
+                                "docker_image": "demo:latest",
+                                "config_schema": {},
+                            },
+                        }
 
-                        # Mock backend deployment
+                        with patch.object(
+                            self.deployment_manager.config_processor, "validate_config"
+                        ) as mock_validate:
+                            mock_validate.return_value = ValidationResult(
+                                valid=True, errors=[], warnings=[]
+                            )
+
+                            # Mock backend deployment
                         with patch.object(
                             self.deployment_manager.backend, "deploy_template"
                         ) as mock_deploy:
@@ -110,18 +123,31 @@ class TestDeploymentManager:
                 }
 
                 with patch.object(
-                    self.deployment_manager.config_manager, "merge_config_sources"
-                ) as mock_merge:
-                    mock_merge.return_value = {"invalid": "config"}
+                    self.deployment_manager.config_processor, "prepare_configuration"
+                ) as mock_prepare:
+                    mock_prepare.return_value = {"invalid": "config"}
 
                     with patch.object(
-                        self.deployment_manager.config_manager, "validate_config"
-                    ) as mock_validate:
-                        mock_validate.return_value = ValidationResult(
-                            valid=False, errors=["Invalid config"], warnings=[]
-                        )
+                        self.deployment_manager.config_processor,
+                        "handle_volume_and_args_config_properties",
+                    ) as mock_handle_vol:
+                        mock_handle_vol.return_value = {
+                            "config": {"invalid": "config"},
+                            "template": {
+                                "name": "Demo Template",
+                                "docker_image": "demo:latest",
+                                "config_schema": {},
+                            },
+                        }
 
-                        config_sources = {"config_values": {"invalid": "config"}}
+                        with patch.object(
+                            self.deployment_manager.config_processor, "validate_config"
+                        ) as mock_validate:
+                            mock_validate.return_value = ValidationResult(
+                                valid=False, errors=["Invalid config"], warnings=[]
+                            )
+
+                            config_sources = {"config_values": {"invalid": "config"}}
                         options = DeploymentOptions()
 
                         result = self.deployment_manager.deploy_template(
@@ -354,29 +380,42 @@ class TestDeploymentManager:
                 }
 
                 with patch.object(
-                    self.deployment_manager.config_manager, "merge_config_sources"
-                ) as mock_merge:
+                    self.deployment_manager.config_processor, "prepare_configuration"
+                ) as mock_prepare:
                     # Mock merged config with RESERVED_ENV_VARS
                     merged_config = {
                         "hello_from": "Test",
                     }
-                    mock_merge.return_value = merged_config
+                    mock_prepare.return_value = merged_config
 
                     with patch.object(
-                        self.deployment_manager.config_manager, "validate_config"
-                    ) as mock_validate:
-                        mock_validate.return_value = ValidationResult(
-                            valid=True, errors=[], warnings=[]
-                        )
+                        self.deployment_manager.config_processor,
+                        "handle_volume_and_args_config_properties",
+                    ) as mock_handle_vol:
+                        mock_handle_vol.return_value = {
+                            "config": merged_config,
+                            "template": {
+                                "name": "Demo Template",
+                                "docker_image": "demo:latest",
+                                "config_schema": {},
+                            },
+                        }
 
                         with patch.object(
-                            self.deployment_manager.backend, "deploy_template"
-                        ) as mock_deploy:
-                            mock_deploy.return_value = {
-                                "success": True,
-                                "deployment_id": "test-123",
-                                "container_id": "container-123",
-                            }
+                            self.deployment_manager.config_processor, "validate_config"
+                        ) as mock_validate:
+                            mock_validate.return_value = ValidationResult(
+                                valid=True, errors=[], warnings=[]
+                            )
+
+                            with patch.object(
+                                self.deployment_manager.backend, "deploy_template"
+                            ) as mock_deploy:
+                                mock_deploy.return_value = {
+                                    "success": True,
+                                    "deployment_id": "test-123",
+                                    "container_id": "container-123",
+                                }
 
                             # Deploy with RESERVED_ENV_VARS in config
                             result = self.deployment_manager.deploy_template(
@@ -440,30 +479,43 @@ class TestDeploymentManager:
                 }
 
                 with patch.object(
-                    self.deployment_manager.config_manager, "merge_config_sources"
-                ) as mock_merge:
+                    self.deployment_manager.config_processor, "prepare_configuration"
+                ) as mock_prepare:
                     merged_config = {
                         "hello_from": "Partial Test",
                     }
-                    mock_merge.return_value = merged_config
+                    mock_prepare.return_value = merged_config
 
                     with patch.object(
-                        self.deployment_manager.config_manager, "validate_config"
-                    ) as mock_validate:
-                        mock_validate.return_value = ValidationResult(
-                            valid=True, errors=[], warnings=[]
-                        )
+                        self.deployment_manager.config_processor,
+                        "handle_volume_and_args_config_properties",
+                    ) as mock_handle_vol:
+                        mock_handle_vol.return_value = {
+                            "config": merged_config,
+                            "template": {
+                                "name": "Demo Template",
+                                "docker_image": "demo:latest",
+                                "config_schema": {},
+                            },
+                        }
 
                         with patch.object(
-                            self.deployment_manager.backend, "deploy_template"
-                        ) as mock_deploy:
-                            mock_deploy.return_value = {
-                                "success": True,
-                                "deployment_id": "test-partial-123",
-                                "container_id": "container-partial-123",
-                            }
+                            self.deployment_manager.config_processor, "validate_config"
+                        ) as mock_validate:
+                            mock_validate.return_value = ValidationResult(
+                                valid=True, errors=[], warnings=[]
+                            )
 
-                            # Deploy with partial RESERVED_ENV_VARS
+                            with patch.object(
+                                self.deployment_manager.backend, "deploy_template"
+                            ) as mock_deploy:
+                                mock_deploy.return_value = {
+                                    "success": True,
+                                    "deployment_id": "test-partial-123",
+                                    "container_id": "container-partial-123",
+                                }
+
+                                # Deploy with partial RESERVED_ENV_VARS
                             result = self.deployment_manager.deploy_template(
                                 template_name, config_sources, options
                             )

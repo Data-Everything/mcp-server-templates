@@ -769,8 +769,12 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             details = self._get_deployment_details(deployment_name)
 
             if include_logs:
-                logs = self._get_deployment_logs(deployment_name, lines)
-                details["logs"] = logs
+                logs_result = self.get_deployment_logs(deployment_name, lines)
+                details["logs"] = (
+                    logs_result.get("logs", "")
+                    if isinstance(logs_result, dict)
+                    else logs_result
+                )
 
             return details
         except Exception as e:

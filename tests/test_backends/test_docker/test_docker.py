@@ -42,7 +42,7 @@ class TestDockerDeploymentService:
         }
         config = {"param1": "value1"}
 
-        result = service.deploy_template("test", config, template_data)
+        result = service.deploy_template("test", config, template_data, {})
 
         assert result["template_id"] == "test"
         assert result["status"] == "deployed"
@@ -63,7 +63,7 @@ class TestDockerDeploymentService:
         service = DockerDeploymentService()
         template_data = {"image": "test-image:latest"}
 
-        service.deploy_template("test", {}, template_data, pull_image=True)
+        service.deploy_template("test", {}, template_data, {}, pull_image=True)
 
         # Verify pull command was called
         assert mock_run_command.call_count == 2
@@ -82,7 +82,7 @@ class TestDockerDeploymentService:
         template_data = {"image": "test-image:latest"}
 
         with pytest.raises(Exception):
-            service.deploy_template("test", {}, template_data)
+            service.deploy_template("test", {}, template_data, {})
 
     @patch(
         "mcp_template.backends.docker.DockerDeploymentService._ensure_docker_available"

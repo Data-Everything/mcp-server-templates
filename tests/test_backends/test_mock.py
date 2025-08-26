@@ -24,7 +24,7 @@ class TestMockDeploymentService:
         template_data = {"image": "test-image:latest"}
         config = {"param1": "value1"}
 
-        result = service.deploy_template("test", config, template_data)
+        result = service.deploy_template("test", config, template_data, {})
 
         assert result["template_id"] == "test"
         assert result["status"] == "deployed"
@@ -36,7 +36,7 @@ class TestMockDeploymentService:
         service = MockDeploymentService()
 
         # Deploy a template first
-        service.deploy_template("test", {}, {"image": "test:latest"})
+        service.deploy_template("test", {}, {"image": "test:latest"}, {})
 
         deployments = service.list_deployments()
         assert len(deployments) == 1
@@ -48,7 +48,7 @@ class TestMockDeploymentService:
         service = MockDeploymentService()
 
         # Deploy first
-        result = service.deploy_template("test", {}, {"image": "test:latest"})
+        result = service.deploy_template("test", {}, {"image": "test:latest"}, {})
         deployment_name = result["deployment_name"]
 
         # Delete
@@ -68,7 +68,7 @@ class TestMockDeploymentService:
         service = MockDeploymentService()
 
         # Deploy first
-        result = service.deploy_template("test", {}, {"image": "test:latest"})
+        result = service.deploy_template("test", {}, {"image": "test:latest"}, {})
         deployment_name = result["deployment_name"]
 
         # Get status with logs
