@@ -188,701 +188,733 @@ class TestGetAllDeployments:
             mock_deployment_manager.find_deployments_by_criteria.call_count == 2
         )  # Called once per backend
 
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
     def test_get_all_deployments_with_template_filter(
-        self, mock_managers, sample_deployments
+        self, mock_tm_class, mock_dm_class, mock_get_backend
     ):
         """Test getting deployments filtered by template."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            for backend_type, deployments in sample_deployments.items():
-                mock_managers[backend_type][
-                    "deployment"
-                ].find_deployments_by_criteria.return_value = deployments
+        # Setup deployment manager mocks
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.return_value = [
+            {"id": "demo-deploy-1", "template": "demo", "status": "running"}
+        ]
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.get_all_deployments(template_name="demo")
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            # Verify template filter was passed only to production backend managers
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.assert_called_once_with(template_name="demo")
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.assert_called_once_with(template_name="demo")
-            # Mock backend should not be called
-            mock_managers["mock"][
-                "deployment"
-            ].find_deployments_by_criteria.assert_not_called()
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.get_all_deployments(template_name="demo")
 
-    def test_get_all_deployments_with_backend_failure(self, mock_managers):
+        # Verify that mocks were used
+        assert mock_get_backend.called
+        assert mock_dm_class.called
+        assert mock_tm_class.called
+
+        # Verify result contains expected deployments (2 backends × 1 deployment each = 2 total)
+        assert (
+            len(result) == 2
+        )  # 1 deployment from docker backend + 1 from kubernetes backend
+
+        # Verify template filter was passed to deployment manager (called once per backend)
+        assert mock_deployment_manager.find_deployments_by_criteria.call_count == 2
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_get_all_deployments_with_backend_failure(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test getting deployments when one backend fails."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup one backend to fail
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = [
+        # Setup deployment manager mocks - one that succeeds, one that fails
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.side_effect = [
+            [
                 {"id": "docker-123", "template": "demo", "status": "running"}
-            ]
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.side_effect = Exception("K8s failed")
-            mock_managers["mock"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
+            ],  # First backend succeeds
+            Exception("K8s failed"),  # Second backend fails
+        ]
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.get_all_deployments()
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            # Should still get deployments from working backends
-            assert len(result) == 1
-            assert result[0]["backend_type"] == "docker"
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.get_all_deployments()
+
+        # Should still get deployments from working backends
+        assert len(result) == 1
+        assert result[0]["backend_type"] == "docker"
 
 
 class TestBackendDetection:
     """Test backend detection functionality."""
 
-    def test_detect_backend_for_deployment_success(self, mock_managers):
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_detect_backend_for_deployment_success(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test successful detection of backend for a deployment."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup: docker returns empty, kubernetes finds the deployment, mock returns empty
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = [
+        # Setup deployment manager mocks to return different results for each backend call
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.side_effect = [
+            [],  # First backend (docker) returns empty
+            [
                 {"id": "k8s-789", "template": "demo", "status": "running"}
-            ]
-            mock_managers["mock"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
+            ],  # Second backend (kubernetes) finds the deployment
+        ]
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.detect_backend_for_deployment("k8s-789")
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            assert result == "kubernetes"
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.detect_backend_for_deployment("k8s-789")
 
-    def test_detect_backend_for_deployment_not_found(self, mock_managers):
+        assert result == "kubernetes"
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_detect_backend_for_deployment_not_found(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test detection when deployment is not found in any backend."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup all backends to return empty
-            for backend_managers in mock_managers.values():
-                backend_managers[
-                    "deployment"
-                ].find_deployments_by_criteria.return_value = []
+        # Setup deployment manager mocks to return empty for all backends
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.return_value = []
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.detect_backend_for_deployment("non-existent-123")
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            assert result is None
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.detect_backend_for_deployment("non-existent-123")
 
-    def test_get_deployment_by_id_success(self, mock_managers):
+        assert result is None
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_get_deployment_by_id_success(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test getting deployment by ID with auto-detection."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup kubernetes to find the deployment
-            deployment_data = {"id": "k8s-789", "template": "demo", "status": "running"}
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = [deployment_data]
-            mock_managers["mock"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
+        # Setup deployment manager mocks
+        deployment_data = {"id": "k8s-789", "template": "demo", "status": "running"}
+        mock_deployment_manager = Mock()
 
-            manager = MultiBackendManager()
-            result = manager.get_deployment_by_id("k8s-789")
+        # Mock find_deployments_by_criteria to return:
+        # - Empty for docker (first call)
+        # - Deployment for kubernetes (second call)
+        # - Empty for mock (third call - not reached)
+        # - Then return deployment for the actual get call
+        mock_deployment_manager.find_deployments_by_criteria.side_effect = [
+            [],  # docker backend - detect call
+            [deployment_data],  # kubernetes backend - detect call (finds it)
+            [deployment_data],  # kubernetes backend - get call
+        ]
+        mock_dm_class.return_value = mock_deployment_manager
 
-            assert result is not None
-            assert result["backend_type"] == "kubernetes"
-            assert result["id"] == "k8s-789"
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
+
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.get_deployment_by_id("k8s-789")
+
+        assert result is not None
+        assert result["backend_type"] == "kubernetes"
+        assert result["id"] == "k8s-789"
 
 
 class TestStopDeployment:
     """Test stopping deployments with auto-detection."""
 
-    def test_stop_deployment_success(self, mock_managers):
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_stop_deployment_success(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test successful stop deployment with auto-detection."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup detection to find deployment in kubernetes
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = [
-                {"id": "k8s-789", "template": "demo", "status": "running"}
-            ]
-            mock_managers["mock"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
+        # Setup deployment manager mocks
+        deployment_data = {"id": "k8s-789", "template": "demo", "status": "running"}
+        mock_deployment_manager = Mock()
 
-            # Setup stop operation to succeed
-            mock_managers["kubernetes"]["deployment"].stop_deployment.return_value = {
-                "success": True
-            }
+        # Mock find_deployments_by_criteria for detection:
+        # - Empty for docker (first call)
+        # - Deployment for kubernetes (second call - finds it)
+        mock_deployment_manager.find_deployments_by_criteria.side_effect = [
+            [],  # docker backend - detect call
+            [deployment_data],  # kubernetes backend - detect call (finds it)
+        ]
 
-            manager = MultiBackendManager()
-            result = manager.stop_deployment("k8s-789", timeout=30)
+        # Mock stop operation to succeed
+        mock_deployment_manager.stop_deployment.return_value = {"success": True}
+        mock_dm_class.return_value = mock_deployment_manager
 
-            assert result["success"] is True
-            assert result["backend_type"] == "kubernetes"
-            mock_managers["kubernetes"][
-                "deployment"
-            ].stop_deployment.assert_called_once_with("k8s-789", 30)
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-    def test_stop_deployment_not_found(self, mock_managers):
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.stop_deployment("k8s-789", timeout=30)
+
+        assert result["success"] is True
+        assert result["backend_type"] == "kubernetes"
+        mock_deployment_manager.stop_deployment.assert_called_once_with("k8s-789", 30)
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_stop_deployment_not_found(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test stop deployment when deployment is not found."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup all backends to return empty (deployment not found)
-            for backend_managers in mock_managers.values():
-                backend_managers[
-                    "deployment"
-                ].find_deployments_by_criteria.return_value = []
+        # Setup deployment manager mocks to return empty for all backends
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.return_value = []
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.stop_deployment("non-existent-123")
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            assert result["success"] is False
-            assert "not found in any backend" in result["error"]
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.stop_deployment("non-existent-123")
 
-    def test_stop_deployment_operation_failure(self, mock_managers):
+        assert result["success"] is False
+        assert "not found in any backend" in result["error"]
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_stop_deployment_operation_failure(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test stop deployment when the stop operation fails."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup detection to find deployment in docker
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = [
-                {"id": "docker-123", "template": "demo", "status": "running"}
-            ]
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
-            mock_managers["mock"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
+        # Setup deployment manager mocks
+        deployment_data = {"id": "docker-123", "template": "demo", "status": "running"}
+        mock_deployment_manager = Mock()
 
-            # Setup stop operation to fail
-            mock_managers["docker"]["deployment"].stop_deployment.side_effect = (
-                Exception("Stop failed")
-            )
+        # Mock find_deployments_by_criteria for detection:
+        mock_deployment_manager.find_deployments_by_criteria.side_effect = [
+            [deployment_data],  # docker backend - detect call (finds it)
+        ]
 
-            manager = MultiBackendManager()
-            result = manager.stop_deployment("docker-123")
+        # Mock stop operation to fail
+        mock_deployment_manager.stop_deployment.side_effect = Exception("Stop failed")
+        mock_dm_class.return_value = mock_deployment_manager
 
-            assert result["success"] is False
-            assert "Stop failed" in result["error"]
-            assert result["backend_type"] == "docker"
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
+
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.stop_deployment("docker-123")
+
+        assert result["success"] is False
+        assert "Stop failed" in result["error"]
+        assert result["backend_type"] == "docker"
 
 
 class TestGetDeploymentLogs:
     """Test getting deployment logs with auto-detection."""
 
-    def test_get_deployment_logs_success(self, mock_managers):
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_get_deployment_logs_success(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test successful log retrieval with auto-detection."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup detection to find deployment in docker
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = [
-                {"id": "docker-123", "template": "demo", "status": "running"}
-            ]
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
-            mock_managers["mock"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
+        # Setup deployment manager mocks
+        deployment_data = {"id": "docker-123", "template": "demo", "status": "running"}
+        mock_deployment_manager = Mock()
 
-            # Setup log retrieval to succeed
-            mock_managers["docker"]["deployment"].get_deployment_logs.return_value = {
-                "success": True,
-                "logs": "Application log output\nAnother log line",
-            }
+        # Mock find_deployments_by_criteria for detection:
+        mock_deployment_manager.find_deployments_by_criteria.side_effect = [
+            [deployment_data],  # docker backend - detect call (finds it)
+        ]
 
-            manager = MultiBackendManager()
-            result = manager.get_deployment_logs("docker-123", lines=50, follow=True)
+        # Mock log retrieval to succeed
+        mock_deployment_manager.get_deployment_logs.return_value = {
+            "success": True,
+            "logs": "Application log output\nAnother log line",
+        }
+        mock_dm_class.return_value = mock_deployment_manager
 
-            assert result["success"] is True
-            assert result["backend_type"] == "docker"
-            assert "Application log output" in result["logs"]
-            mock_managers["docker"][
-                "deployment"
-            ].get_deployment_logs.assert_called_once_with(
-                "docker-123", lines=50, follow=True
-            )
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-    def test_get_deployment_logs_not_found(self, mock_managers):
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.get_deployment_logs("docker-123", lines=50, follow=True)
+
+        assert result["success"] is True
+        assert result["backend_type"] == "docker"
+        assert "Application log output" in result["logs"]
+        mock_deployment_manager.get_deployment_logs.assert_called_once_with(
+            "docker-123", lines=50, follow=True
+        )
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_get_deployment_logs_not_found(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test log retrieval when deployment is not found."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup all backends to return empty (deployment not found)
-            for backend_managers in mock_managers.values():
-                backend_managers[
-                    "deployment"
-                ].find_deployments_by_criteria.return_value = []
+        # Setup deployment manager mocks to return empty for all backends
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.return_value = []
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.get_deployment_logs("non-existent-123")
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            assert result["success"] is False
-            assert "not found in any backend" in result["error"]
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.get_deployment_logs("non-existent-123")
+
+        assert result["success"] is False
+        assert "not found in any backend" in result["error"]
 
 
 class TestGetAllTools:
     """Test getting tools from all backends and templates."""
 
-    def test_get_all_tools_success(self, mock_managers):
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    @patch("mcp_template.core.multi_backend_manager.TemplateManager")
+    def test_get_all_tools_success(
+        self, mock_template_class, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test successful tool retrieval from all sources."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager") as mock_tm_class,
-            patch(
-                "mcp_template.core.template_manager.TemplateManager"
-            ) as mock_template_class,
-        ):
 
-            # Setup manager mocks
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
-            mock_tm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["tool"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            mock_template_manager = Mock()
-            mock_template_class.return_value = mock_template_manager
+        # Setup template manager mocks
+        mock_template_manager = Mock()
+        mock_template_manager.list_templates.return_value = {
+            "demo": {"description": "Demo template"},
+            "github": {"description": "GitHub integration"},
+        }
+        mock_template_class.return_value = mock_template_manager
 
-            # Setup template manager to return templates
-            mock_template_manager.list_templates.return_value = {
-                "demo": {"description": "Demo template"},
-                "github": {"description": "GitHub integration"},
-            }
-
-            # Setup tool manager to return static tools
-            mock_managers["docker"]["tool"].list_tools.side_effect = [
-                {
-                    "tools": [{"name": "echo", "description": "Echo tool"}]
-                },  # demo template
-                {
-                    "tools": [{"name": "create_issue", "description": "Create issue"}]
-                },  # github template
-            ]
-
-            # Setup deployment managers to return deployments
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = [
-                {"id": "docker-123", "template": "demo", "status": "running"}
-            ]
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = [
+        # Setup deployment manager mocks
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.side_effect = [
+            [{"id": "docker-123", "template": "demo", "status": "running"}],  # docker
+            [
                 {"id": "k8s-456", "template": "github", "status": "running"}
-            ]
-            mock_managers["mock"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
+            ],  # kubernetes
+            [],  # mock backend
+        ]
+        mock_dm_class.return_value = mock_deployment_manager
 
-            # Setup tool managers to return dynamic tools
-            mock_managers["docker"]["tool"].list_tools.return_value = {
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tool_manager.list_tools.side_effect = [
+            {
                 "tools": [{"name": "echo", "description": "Echo tool"}]
-            }
-            mock_managers["kubernetes"]["tool"].list_tools.return_value = {
+            },  # demo template static
+            {
                 "tools": [{"name": "create_issue", "description": "Create issue"}]
-            }
-            mock_managers["mock"]["tool"].list_tools.return_value = {"tools": []}
+            },  # github template static
+            {
+                "tools": [{"name": "echo", "description": "Echo tool"}]
+            },  # docker deployment dynamic
+            {
+                "tools": [{"name": "create_issue", "description": "Create issue"}]
+            },  # kubernetes deployment dynamic
+            {"tools": []},  # mock deployment dynamic
+        ]
+        mock_tm_class.return_value = mock_tool_manager
 
-            manager = MultiBackendManager()
-            result = manager.get_all_tools()
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.get_all_tools()
 
-            # Verify result structure
-            assert "static_tools" in result
-            assert "dynamic_tools" in result
-            assert "backend_summary" in result
+        # Verify result structure
+        assert "static_tools" in result
+        assert "dynamic_tools" in result
+        assert "backend_summary" in result
 
-            # Check that we have both static and dynamic tools
-            assert len(result["static_tools"]) > 0
-            assert len(result["dynamic_tools"]) > 0
+        # Check that we have both static and dynamic tools
+        assert len(result["static_tools"]) > 0
+        assert len(result["dynamic_tools"]) > 0
 
-    def test_get_all_tools_with_template_filter(self, mock_managers):
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    @patch("mcp_template.core.multi_backend_manager.TemplateManager")
+    def test_get_all_tools_with_template_filter(
+        self, mock_template_class, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test tool retrieval with template filter."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager") as mock_tm_class,
-            patch(
-                "mcp_template.core.template_manager.TemplateManager"
-            ) as mock_template_class,
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
-            mock_tm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["tool"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            mock_template_manager = Mock()
-            mock_template_class.return_value = mock_template_manager
-            mock_template_manager.list_templates.return_value = {
-                "demo": {"description": "Demo template"}
-            }
+        # Setup template manager mocks
+        mock_template_manager = Mock()
+        mock_template_manager.list_templates.return_value = {
+            "demo": {"description": "Demo template"}
+        }
+        mock_template_class.return_value = mock_template_manager
 
-            # Setup deployments to be filtered by template
-            for backend_type in ["docker", "kubernetes"]:
-                mock_managers[backend_type][
-                    "deployment"
-                ].find_deployments_by_criteria.return_value = []
+        # Setup deployment manager mocks to return filtered results
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.return_value = []
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.get_all_tools(template_name="demo")
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            # Verify template filter was applied only to production backend deployment queries
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.assert_called_with(template_name="demo")
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.assert_called_with(template_name="demo")
-            # Mock backend should not be called
-            mock_managers["mock"][
-                "deployment"
-            ].find_deployments_by_criteria.assert_not_called()
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.get_all_tools(template_name="demo")
+
+        # Verify template filter was applied - should be called 2 times for production backends
+        assert mock_deployment_manager.find_deployments_by_criteria.call_count == 2
+        # Check that calls were made with template filter
+        calls = mock_deployment_manager.find_deployments_by_criteria.call_args_list
+        for call_obj in calls:
+            assert call_obj[1]["template_name"] == "demo"
 
 
 class TestCleanupOperations:
     """Test cleanup operations across all backends."""
 
-    def test_cleanup_all_backends_success(self, mock_managers):
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_cleanup_all_backends_success(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test successful cleanup across all backends."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup cleanup operations to succeed for production backends
-            mock_managers["docker"]["deployment"].cleanup_deployments.return_value = {
-                "success": True
-            }
-            mock_managers["kubernetes"][
-                "deployment"
-            ].cleanup_deployments.return_value = {"success": True}
+        # Setup deployment manager mocks
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.cleanup_deployments.return_value = {"success": True}
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.cleanup_all_backends(force=True)
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            # Verify production backends were cleaned up
-            mock_managers["docker"][
-                "deployment"
-            ].cleanup_deployments.assert_called_once_with(force=True)
-            mock_managers["kubernetes"][
-                "deployment"
-            ].cleanup_deployments.assert_called_once_with(force=True)
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.cleanup_all_backends(force=True)
 
-            # Check summary (should be 2 production backends)
-            assert result["summary"]["total_backends"] == 2
-            assert result["summary"]["successful_cleanups"] == 2
-            assert result["summary"]["failed_cleanups"] == 0
+        # Verify cleanup was called for production backends (should be 2 calls - docker and kubernetes)
+        assert mock_deployment_manager.cleanup_deployments.call_count == 2
+        # Check that all calls were made with force=True
+        for call_obj in mock_deployment_manager.cleanup_deployments.call_args_list:
+            assert call_obj[1]["force"] is True
 
-    def test_cleanup_all_backends_partial_failure(self, mock_managers):
+        # Check summary (should be 2 production backends)
+        assert result["summary"]["total_backends"] == 2
+        assert result["summary"]["successful_cleanups"] == 2
+        assert result["summary"]["failed_cleanups"] == 0
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_cleanup_all_backends_partial_failure(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test cleanup when some backends fail."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup mixed success/failure - only production backends
-            mock_managers["docker"]["deployment"].cleanup_deployments.return_value = {
-                "success": True
-            }
-            mock_managers["kubernetes"][
-                "deployment"
-            ].cleanup_deployments.side_effect = Exception("Cleanup failed")
+        # Setup deployment manager mocks with mixed results
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.cleanup_deployments.side_effect = [
+            {"success": True},  # First backend (docker) succeeds
+            Exception("Cleanup failed"),  # Second backend (kubernetes) fails
+        ]
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.cleanup_all_backends()
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            # Check individual results
-            assert result["docker"]["success"] is True
-            assert result["kubernetes"]["success"] is False
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.cleanup_all_backends()
 
-            # Check summary - only production backends
-            assert result["summary"]["successful_cleanups"] == 1
-            assert result["summary"]["failed_cleanups"] == 1
+        # Check individual results
+        assert result["docker"]["success"] is True
+        assert result["kubernetes"]["success"] is False
+
+        # Check summary - only production backends
+        assert result["summary"]["successful_cleanups"] == 1
+        assert result["summary"]["failed_cleanups"] == 1
 
 
 class TestBackendHealth:
     """Test backend health checking."""
 
-    def test_get_backend_health_all_healthy(self, mock_managers):
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_get_backend_health_all_healthy(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test health check when all backends are healthy."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup production backends to return deployments (indicating health)
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = [
-                {"id": "docker-123", "status": "running"}
-            ]
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = []
+        # Setup deployment manager mocks
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.side_effect = [
+            [{"id": "docker-123", "status": "running"}],  # docker
+            [],  # kubernetes
+        ]
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.get_backend_health()
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            # Production backends should be marked as healthy
-            assert result["docker"]["status"] == "healthy"
-            assert result["docker"]["deployment_count"] == 1
-            assert result["kubernetes"]["status"] == "healthy"
-            assert result["kubernetes"]["deployment_count"] == 0
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.get_backend_health()
 
-    def test_get_backend_health_with_failures(self, mock_managers):
+        # Production backends should be marked as healthy
+        assert result["docker"]["status"] == "healthy"
+        assert result["docker"]["deployment_count"] == 1
+        assert result["kubernetes"]["status"] == "healthy"
+        assert result["kubernetes"]["deployment_count"] == 0
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_get_backend_health_with_failures(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test health check when some backends have issues."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup mixed health states
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.return_value = [
-                {"id": "docker-123", "status": "running"}
-            ]
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.side_effect = Exception("Connection failed")
+        # Setup deployment manager mocks
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.side_effect = [
+            [{"id": "docker-123", "status": "running"}],  # docker - healthy
+            Exception("Connection failed"),  # kubernetes - unhealthy
+        ]
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.get_backend_health()
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            # Check health states
-            assert result["docker"]["status"] == "healthy"
-            assert result["kubernetes"]["status"] == "unhealthy"
-            assert result["kubernetes"]["error"] == "Connection failed"
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.get_backend_health()
+
+        # Check health states
+        assert result["docker"]["status"] == "healthy"
+        assert result["kubernetes"]["status"] == "unhealthy"
+        assert result["kubernetes"]["error"] == "Connection failed"
 
 
 class TestExecuteOnBackend:
     """Test executing operations on specific backends."""
 
-    def test_execute_on_backend_success(self, mock_managers):
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_execute_on_backend_success(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test successful execution on specific backend."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup deployment manager method
-            mock_managers["docker"]["deployment"].list_deployments.return_value = [
-                {"id": "docker-123", "status": "running"}
-            ]
+        # Setup deployment manager mocks
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.list_deployments.return_value = [
+            {"id": "docker-123", "status": "running"}
+        ]
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.execute_on_backend(
-                "docker", "deployment", "list_deployments"
-            )
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            assert len(result) == 1
-            assert result[0]["id"] == "docker-123"
-            mock_managers["docker"]["deployment"].list_deployments.assert_called_once()
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.execute_on_backend("docker", "deployment", "list_deployments")
 
-    def test_execute_on_backend_invalid_backend(self, mock_managers):
+        assert len(result) == 1
+        assert result[0]["id"] == "docker-123"
+        mock_deployment_manager.list_deployments.assert_called_once()
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_execute_on_backend_invalid_backend(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test execution on invalid backend."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch("mcp_template.core.deployment_manager.DeploymentManager"),
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            manager = MultiBackendManager()
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            with pytest.raises(ValueError, match="Backend invalid not available"):
-                manager.execute_on_backend("invalid", "deployment", "list_deployments")
+        # Setup deployment manager mocks
+        mock_deployment_manager = Mock()
+        mock_dm_class.return_value = mock_deployment_manager
 
-    def test_execute_on_backend_invalid_manager(self, mock_managers):
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
+
+        # Create the manager
+        manager = MultiBackendManager()
+
+        with pytest.raises(ValueError, match="Backend invalid not available"):
+            manager.execute_on_backend("invalid", "deployment", "list_deployments")
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_execute_on_backend_invalid_manager(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test execution with invalid manager type."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch("mcp_template.core.deployment_manager.DeploymentManager"),
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            manager = MultiBackendManager()
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            with pytest.raises(ValueError, match="Invalid manager type: invalid"):
-                manager.execute_on_backend("docker", "invalid", "some_method")
+        # Setup deployment manager mocks
+        mock_deployment_manager = Mock()
+        mock_dm_class.return_value = mock_deployment_manager
 
-    def test_execute_on_backend_invalid_method(self):
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
+
+        # Create the manager
+        manager = MultiBackendManager()
+
+        with pytest.raises(ValueError, match="Invalid manager type: invalid"):
+            manager.execute_on_backend("docker", "invalid", "some_method")
+
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_execute_on_backend_invalid_method(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test execution with invalid method."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
+
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
+
+        # Create a mock that doesn't auto-create attributes
+        mock_deployment_manager = Mock(spec=[])  # No methods available
+        mock_dm_class.return_value = mock_deployment_manager
+
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
+
+        # Create the manager
+        manager = MultiBackendManager()
+
+        with pytest.raises(
+            AttributeError, match="Manager deployment has no method invalid_method"
         ):
-
-            # Create a mock that doesn't auto-create attributes
-            mock_deployment_manager = Mock(spec=[])  # No methods available
-            mock_dm_class.return_value = mock_deployment_manager
-
-            manager = MultiBackendManager()
-
-            with pytest.raises(
-                AttributeError, match="Manager deployment has no method invalid_method"
-            ):
-                manager.execute_on_backend("docker", "deployment", "invalid_method")
+            manager.execute_on_backend("docker", "deployment", "invalid_method")
