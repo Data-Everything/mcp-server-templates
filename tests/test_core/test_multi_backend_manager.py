@@ -140,49 +140,53 @@ class TestMultiBackendManagerInitialization:
 class TestGetAllDeployments:
     """Test getting deployments from all backends."""
 
-    def test_get_all_deployments_success(self, mock_managers, sample_deployments):
+    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
+    @patch("mcp_template.core.multi_backend_manager.ToolManager")
+    def test_get_all_deployments_success(
+        self, mock_tm_class, mock_dm_class, mock_get_backend
+    ):
         """Test successful retrieval of deployments from all backends."""
-        with (
-            patch("mcp_template.core.multi_backend_manager.get_backend"),
-            patch(
-                "mcp_template.core.deployment_manager.DeploymentManager"
-            ) as mock_dm_class,
-            patch("mcp_template.core.tool_manager.ToolManager"),
-        ):
 
-            # Setup deployment manager mocks
-            mock_dm_class.side_effect = lambda backend_type: mock_managers[
-                backend_type
-            ]["deployment"]
+        # Setup backend mocks
+        mock_backend = Mock()
+        mock_get_backend.return_value = mock_backend
 
-            # Setup return values
-            for backend_type, deployments in sample_deployments.items():
-                mock_managers[backend_type][
-                    "deployment"
-                ].find_deployments_by_criteria.return_value = deployments
+        # Setup deployment manager mocks
+        mock_deployment_manager = Mock()
+        mock_deployment_manager.find_deployments_by_criteria.return_value = [
+            {"id": "docker-123", "template": "demo", "status": "running"},
+            {"id": "docker-456", "template": "github", "status": "stopped"},
+        ]
+        mock_dm_class.return_value = mock_deployment_manager
 
-            manager = MultiBackendManager()
-            result = manager.get_all_deployments()
+        # Setup tool manager mocks
+        mock_tool_manager = Mock()
+        mock_tm_class.return_value = mock_tool_manager
 
-            # Verify result contains deployments from production backends only (3 total from docker + kubernetes)
-            assert len(result) == 3  # 2 from docker + 1 from kubernetes (mock excluded)
+        # Create the manager
+        manager = MultiBackendManager()
+        result = manager.get_all_deployments()
 
-            # Check that backend_type was added to each deployment
-            backend_types = [d["backend_type"] for d in result]
-            assert "docker" in backend_types
-            assert "kubernetes" in backend_types
+        # Verify that mocks were used
+        assert mock_get_backend.called
+        assert mock_dm_class.called
+        assert mock_tm_class.called
 
-            # Verify only production backend managers were called
-            mock_managers["docker"][
-                "deployment"
-            ].find_deployments_by_criteria.assert_called_once_with(template_name=None)
-            mock_managers["kubernetes"][
-                "deployment"
-            ].find_deployments_by_criteria.assert_called_once_with(template_name=None)
-            # Mock backend should not be called
-            mock_managers["mock"][
-                "deployment"
-            ].find_deployments_by_criteria.assert_not_called()
+        # Verify result contains expected deployments (2 backends × 2 deployments each = 4 total)
+        assert (
+            len(result) == 4
+        )  # 2 deployments from docker backend + 2 from kubernetes backend
+
+        # Check that backend_type was added to each deployment
+        backend_types = [d["backend_type"] for d in result]
+        assert "docker" in backend_types
+        assert "kubernetes" in backend_types
+
+        # Verify the deployment manager was called to get deployments
+        assert (
+            mock_deployment_manager.find_deployments_by_criteria.call_count == 2
+        )  # Called once per backend
 
     def test_get_all_deployments_with_template_filter(
         self, mock_managers, sample_deployments

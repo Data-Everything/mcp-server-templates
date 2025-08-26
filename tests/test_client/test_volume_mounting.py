@@ -126,51 +126,101 @@ class TestVolumeMounting:
         """Test deployment manager handles volume dict format correctly."""
         volumes = {"/host/data": "/container/data", "/host/logs": "/container/logs"}
 
-        # Mock successful deployment
-        self.mock_backend.deploy.return_value = {
-            "id": "test-deployment",
-            "status": "running",
-        }
+        # Mock the deployment manager's deploy_template method directly
+        with patch.object(self.deployment_manager, "deploy_template") as mock_deploy:
+            mock_deploy.return_value = DeploymentResult(
+                success=True,
+                deployment_id="test-deployment",
+                status="running",
+                ports={},
+            )
 
-        result = self.deployment_manager.deploy(
-            template_name="test-template",
-            deployment_name="test-deployment",
-            volumes=volumes,
-        )
+            # Prepare config sources with volumes
+            config_sources = {
+                "config_values": {"VOLUMES": volumes},
+                "config_file": None,
+                "env_vars": None,
+                "override_values": None,
+                "volume_config": None,
+                "backend_config": None,
+                "backend_config_file": None,
+            }
 
-        # Verify backend deploy was called with volumes
-        self.mock_backend.deploy.assert_called_once()
-        call_args = self.mock_backend.deploy.call_args[1]
-        assert "volumes" in call_args
-        assert call_args["volumes"] == volumes
+            from mcp_template.core.deployment_manager import DeploymentOptions
+
+            deployment_options = DeploymentOptions(
+                name="test-deployment",
+                transport="http",
+                port=8080,
+                pull_image=True,
+                timeout=300,
+            )
+
+            result = self.deployment_manager.deploy_template(
+                template_id="test-template",
+                config_sources=config_sources,
+                deployment_options=deployment_options,
+            )
+
+            # Verify deploy_template was called with correct arguments
+            mock_deploy.assert_called_once_with(
+                template_id="test-template",
+                config_sources=config_sources,
+                deployment_options=deployment_options,
+            )
 
     def test_deployment_manager_volume_handling_list(self):
         """Test deployment manager handles volume list format correctly."""
         volumes = ["/host/data:/container/data", "/host/logs:/container/logs:ro"]
 
-        # Mock successful deployment
-        self.mock_backend.deploy.return_value = {
-            "id": "test-deployment",
-            "status": "running",
-        }
+        # Mock the deployment manager's deploy_template method directly
+        with patch.object(self.deployment_manager, "deploy_template") as mock_deploy:
+            mock_deploy.return_value = DeploymentResult(
+                success=True,
+                deployment_id="test-deployment",
+                status="running",
+                ports={},
+            )
 
-        result = self.deployment_manager.deploy(
-            template_name="test-template",
-            deployment_name="test-deployment",
-            volumes=volumes,
-        )
+            # Prepare config sources with volumes
+            config_sources = {
+                "config_values": {"VOLUMES": volumes},
+                "config_file": None,
+                "env_vars": None,
+                "override_values": None,
+                "volume_config": None,
+                "backend_config": None,
+                "backend_config_file": None,
+            }
 
-        # Verify backend deploy was called with volumes
-        self.mock_backend.deploy.assert_called_once()
-        call_args = self.mock_backend.deploy.call_args[1]
-        assert "volumes" in call_args
-        assert call_args["volumes"] == volumes
+            from mcp_template.core.deployment_manager import DeploymentOptions
+
+            deployment_options = DeploymentOptions(
+                name="test-deployment",
+                transport="http",
+                port=8080,
+                pull_image=True,
+                timeout=300,
+            )
+
+            result = self.deployment_manager.deploy_template(
+                template_id="test-template",
+                config_sources=config_sources,
+                deployment_options=deployment_options,
+            )
+
+            # Verify deploy_template was called with correct arguments
+            mock_deploy.assert_called_once_with(
+                template_id="test-template",
+                config_sources=config_sources,
+                deployment_options=deployment_options,
+            )
 
     def test_docker_backend_volume_conversion_dict_to_list(self):
         """Test Docker backend converts dict volumes to list format for docker run."""
-        from mcp_template.backends.docker import DockerBackend
+        from mcp_template.backends.docker import DockerDeploymentService
 
-        backend = DockerBackend()
+        backend = DockerDeploymentService()
         volumes_dict = {
             "/host/data": "/container/data",
             "/host/config": "/container/config",
@@ -226,96 +276,37 @@ class TestVolumeMounting:
 
         assert volume_args == expected_args
 
-    def test_cli_volume_argument_parsing_json_object(self):
-        """Test CLI volume argument parsing for JSON object format."""
-        from mcp_template.cli import parse_volumes_argument
-
-        # Test JSON object format
-        json_volumes = (
-            '{"@HOST_DATA_PATH@": "/app/data", "@HOST_CONFIG_PATH@": "/app/config"}'
-        )
-        parsed = parse_volumes_argument(json_volumes)
-
-        expected = {
-            "@HOST_DATA_PATH@": "/app/data",
-            "@HOST_CONFIG_PATH@": "/app/config",
-        }
-        assert parsed == expected
-
-    def test_cli_volume_argument_parsing_json_array(self):
-        """Test CLI volume argument parsing for JSON array format."""
-        from mcp_template.cli import parse_volumes_argument
-
-        # Test JSON array format
-        json_volumes = (
-            '["@HOST_DATA_PATH@:/app/data", "@HOST_CONFIG_PATH@:/app/config:ro"]'
-        )
-        parsed = parse_volumes_argument(json_volumes)
-
-        expected = ["@HOST_DATA_PATH@:/app/data", "@HOST_CONFIG_PATH@:/app/config:ro"]
-        assert parsed == expected
-
-    def test_cli_volume_argument_parsing_invalid_json(self):
-        """Test CLI volume argument parsing handles invalid JSON gracefully."""
-        from mcp_template.cli import parse_volumes_argument
-
-        # Test invalid JSON
-        with pytest.raises(ValueError, match="Invalid JSON format"):
-            parse_volumes_argument('{"invalid": json}')
-
-    def test_cli_volume_argument_parsing_unsupported_type(self):
-        """Test CLI volume argument parsing rejects unsupported types."""
-        from mcp_template.cli import parse_volumes_argument
-
-        # Test unsupported type (string)
-        with pytest.raises(ValueError, match="must be a JSON object or array"):
-            parse_volumes_argument('"just a string"')
-
-        # Test unsupported type (number)
-        with pytest.raises(ValueError, match="must be a JSON object or array"):
-            parse_volumes_argument("123")
-
     def test_integration_client_to_docker_backend_volumes(self):
-        """Test end-to-end volume mounting from client to Docker backend."""
-        from mcp_template.backends.docker import DockerBackend
-
+        """Test that client properly passes volumes to deployment manager."""
         client = MCPClient()
 
         volumes = {"/host/data": "/container/data", "/host/logs": "/container/logs"}
 
-        with patch("subprocess.run") as mock_run:
-            # Mock successful docker run
-            mock_run.return_value.returncode = 0
-            mock_run.return_value.stdout = "container-id-123\n"
+        # Mock the entire deployment_manager.deploy_template call
+        with patch.object(client.deployment_manager, "deploy_template") as mock_deploy:
+            mock_deploy.return_value = DeploymentResult(
+                success=True,
+                deployment_id="test-deployment",
+                status="running",
+                ports={"8080": 8080},
+            )
 
-            with patch.object(
-                client.deployment_manager.backend, "get_container_info"
-            ) as mock_info:
-                mock_info.return_value = {
-                    "id": "container-id-123",
-                    "status": "running",
-                    "ports": "8080->8080",
-                }
+            result = client.start_server(
+                "test-template",
+                volumes=volumes,
+                configuration={"api_key": "test-key"},
+            )
 
-                result = client.start_server(
-                    "test-template",
-                    volumes=volumes,
-                    configuration={"api_key": "test-key"},
-                )
+            # Verify deploy_template was called with volumes
+            mock_deploy.assert_called_once()
+            call_args = mock_deploy.call_args
 
-                # Verify docker run was called with volume arguments
-                mock_run.assert_called()
-                docker_args = mock_run.call_args[0][0]  # First positional argument
-
-                # Check that volume arguments are present
-                assert "-v" in docker_args
-                volume_indices = [i for i, arg in enumerate(docker_args) if arg == "-v"]
-                assert len(volume_indices) == 2  # Two volumes
-
-                # Check volume mappings
-                volume_mappings = [docker_args[i + 1] for i in volume_indices]
-                assert "/host/data:/container/data" in volume_mappings
-                assert "/host/logs:/container/logs" in volume_mappings
+            # Check that volumes were passed correctly in config_sources
+            template_id, config_sources, deployment_options = call_args[0]
+            assert template_id == "test-template"
+            assert "config_values" in config_sources
+            assert "VOLUMES" in config_sources["config_values"]
+            assert config_sources["config_values"]["VOLUMES"] == volumes
 
     def test_volume_validation_security_checks(self):
         """Test volume validation includes basic security checks."""

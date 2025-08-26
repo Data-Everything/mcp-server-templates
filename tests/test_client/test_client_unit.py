@@ -559,7 +559,7 @@ class TestMCPClientConnections:
         """Test successful stdio connection."""
         mock_connection = AsyncMock()
 
-        with patch("mcp_template.core.MCPConnection") as mock_conn_class:
+        with patch("mcp_template.client.client.MCPConnection") as mock_conn_class:
             mock_conn_class.return_value = mock_connection
             mock_connection.connect_stdio.return_value = True
 
@@ -574,7 +574,7 @@ class TestMCPClientConnections:
         """Test stdio connection failure."""
         mock_connection = AsyncMock()
 
-        with patch("mcp_template.core.MCPConnection") as mock_conn_class:
+        with patch("mcp_template.client.client.MCPConnection") as mock_conn_class:
             mock_conn_class.return_value = mock_connection
             mock_connection.connect_stdio.return_value = False
 
@@ -821,6 +821,9 @@ class TestMCPClientConfigurationHandling:
         mock_deployment_manager = Mock()
         mock_deployment_manager_class.return_value = mock_deployment_manager
 
+        # Replace the client's deployment manager with our mock
+        self.client.deployment_manager = mock_deployment_manager
+
         mock_result = Mock()
         mock_result.success = True
         mock_result.to_dict.return_value = {"deployment_id": "test123", "success": True}
@@ -858,6 +861,9 @@ class TestMCPClientConfigurationHandling:
         mock_deployment_manager = Mock()
         mock_deployment_manager_class.return_value = mock_deployment_manager
 
+        # Replace the client's deployment manager with our mock
+        self.client.deployment_manager = mock_deployment_manager
+
         mock_result = Mock()
         mock_result.success = True
         mock_result.to_dict.return_value = {"deployment_id": "test123", "success": True}
@@ -884,6 +890,9 @@ class TestMCPClientConfigurationHandling:
         """Test that deploy_template handles JSON object volumes correctly."""
         mock_deployment_manager = Mock()
         mock_deployment_manager_class.return_value = mock_deployment_manager
+
+        # Replace the client's deployment manager with our mock
+        self.client.deployment_manager = mock_deployment_manager
 
         mock_result = Mock()
         mock_result.success = True
@@ -912,6 +921,9 @@ class TestMCPClientConfigurationHandling:
         """Test that deploy_template handles JSON array volumes correctly."""
         mock_deployment_manager = Mock()
         mock_deployment_manager_class.return_value = mock_deployment_manager
+
+        # Replace the client's deployment manager with our mock
+        self.client.deployment_manager = mock_deployment_manager
 
         mock_result = Mock()
         mock_result.success = True
@@ -953,6 +965,9 @@ class TestMCPClientConfigurationHandling:
         mock_deployment_manager = Mock()
         mock_deployment_manager_class.return_value = mock_deployment_manager
 
+        # Replace the client's deployment manager with our mock
+        self.client.deployment_manager = mock_deployment_manager
+
         mock_result = Mock()
         mock_result.success = True
         mock_result.to_dict.return_value = {"deployment_id": "test123", "success": True}
@@ -981,6 +996,9 @@ class TestMCPClientConfigurationHandling:
         """Test start_server with all new configuration features."""
         mock_deployment_manager = Mock()
         mock_deployment_manager_class.return_value = mock_deployment_manager
+
+        # Replace the client's deployment manager with our mock
+        self.client.deployment_manager = mock_deployment_manager
 
         mock_result = Mock()
         mock_result.success = True

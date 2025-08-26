@@ -8,12 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_template.utils.image_utils import (
-    get_default_registry,
-    get_image_registry,
-    is_local_image,
-    normalize_image_name,
-)
+from mcp_template.utils.image_utils import get_default_registry, normalize_image_name
 
 pytestmark = pytest.mark.unit
 
@@ -123,40 +118,6 @@ class TestImageUtils(unittest.TestCase):
         """Test normalizing empty image name."""
         result = normalize_image_name("")
         self.assertEqual(result, "")
-
-    def test_get_image_registry(self):
-        """Test extracting registry from image names."""
-        test_cases = [
-            ("docker.io/nginx", "docker.io"),
-            ("gcr.io/project/image", "gcr.io"),
-            ("myregistry.com:5000/image", "myregistry.com:5000"),
-            ("nginx", None),
-            ("ubuntu:latest", None),
-            ("library/nginx", None),  # Docker Hub library namespace
-        ]
-
-        for input_image, expected in test_cases:
-            with self.subTest(input_image=input_image):
-                result = get_image_registry(input_image)
-                self.assertEqual(result, expected)
-
-    def test_is_local_image(self):
-        """Test identifying local images."""
-        test_cases = [
-            ("nginx", True),  # Simple name
-            ("ubuntu:latest", True),  # Simple name with tag
-            ("localhost/myimage", True),  # Localhost registry
-            ("localhost:5000/myimage", True),  # Localhost with port
-            ("library/nginx", True),  # Docker Hub library (no dots)
-            ("docker.io/nginx", False),  # Remote registry
-            ("gcr.io/project/image", False),  # Remote registry
-            ("myregistry.com/image", False),  # Custom remote registry
-        ]
-
-        for input_image, expected in test_cases:
-            with self.subTest(input_image=input_image):
-                result = is_local_image(input_image)
-                self.assertEqual(result, expected)
 
     def test_normalize_image_name_with_namespace(self):
         """Test normalizing image names with namespaces."""

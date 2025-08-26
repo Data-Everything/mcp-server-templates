@@ -36,6 +36,7 @@ Example usage:
 """
 
 import asyncio
+import json
 import logging
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Union
@@ -295,6 +296,12 @@ class MCPClient:
         if backend_config or backend_config_file:
             raise ValueError("Backend config support to be added in future")
 
+        # Validate volume format early
+        if volumes and not isinstance(volumes, (dict, list)):
+            raise TypeError(
+                f"Invalid volume type: {type(volumes).__name__}. Expected dict or list"
+            )
+
         try:
 
             if not configuration:
@@ -358,7 +365,7 @@ class MCPClient:
         config: Optional[Dict[str, str]] = None,
         env_vars: Optional[Dict[str, str]] = None,
         overrides: Optional[Dict[str, str]] = None,
-        volumes: Optional[Union[Dict[str, str], List[str]]] = None,
+        volumes: Optional[Union[Dict[str, str], List[str], str]] = None,
         transport: Optional[str] = None,
         pull_image: bool = True,
         name: Optional[str] = None,
@@ -376,7 +383,7 @@ class MCPClient:
             config_file: Path to configuration file
             config: Configuration key=value pairs
             env_vars: Environment variables (highest precedence)
-            volumes: Volume mounts - dict {host_path: container_path} or list of paths
+            volumes: Volume mounts - dict {host_path: container_path}, list of paths, or JSON string
             transport: Transport protocol (http, stdio)
             pull_image: Whether to pull the latest image
             name: Custom deployment name
@@ -397,6 +404,20 @@ class MCPClient:
                     processed_volumes = volumes
                 elif isinstance(volumes, list):
                     processed_volumes = {path: path for path in volumes}
+                elif isinstance(volumes, str):
+                    # Try to parse as JSON
+                    try:
+                        parsed = json.loads(volumes)
+                        if isinstance(parsed, dict):
+                            processed_volumes = parsed
+                        elif isinstance(parsed, list):
+                            processed_volumes = {path: path for path in parsed}
+                        else:
+                            raise ValueError(
+                                "Invalid volume format. Expected dict or list"
+                            )
+                    except json.JSONDecodeError:
+                        raise ValueError("Invalid JSON format for volumes")
                 else:
                     raise ValueError("Invalid volume format. Expected dict or list")
 

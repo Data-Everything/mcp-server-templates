@@ -52,3 +52,17 @@ class TestTemplateDiscovery:
 
         # Should skip invalid template
         assert "invalid-template" not in templates
+
+    def test_template_validation(self):
+        """Test template validation logic."""
+        discovery = TemplateDiscovery()
+        templates = discovery.discover_templates()
+
+        for name, template in templates.items():
+            # Test required fields
+            assert "name" in template
+            assert "description" in template
+            assert "image" in template
+
+            # Test image format
+            assert ":" in template["image"], f"Template {name} image should include tag"
