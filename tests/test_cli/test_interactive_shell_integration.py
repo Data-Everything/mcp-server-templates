@@ -12,6 +12,8 @@ import pytest
 
 from mcp_template.cli.interactive_cli import InteractiveSession
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.integration
 class TestInteractiveSession:
@@ -748,3 +750,326 @@ class TestMainFunctionIntegration:
 
         interactive_cli.main()
         mock_run_shell.assert_called_once()
+
+
+class TestStopCommandEnhanced:
+    """Enhanced tests for stop command functionality in Interactive CLI."""
+
+    @patch("mcp_template.cli.interactive_cli.get_session")
+    @patch("mcp_template.cli.stop")
+    def test_stop_server_no_target_with_session_template(
+        self, mock_cli_stop, mock_get_session
+    ):
+        """Test stop command with no target uses session template."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        # Mock session with selected template
+        mock_session = Mock()
+        mock_session.get_selected_template.return_value = "demo"
+        mock_get_session.return_value = mock_session
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server()
+
+            # Should call CLI stop with session template as target
+            mock_cli_stop.assert_called_once_with(
+                target="demo",
+                backend=None,
+                all=False,
+                template=None,
+                dry_run=False,
+                timeout=30,
+                force=False,
+            )
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_server_dry_run_mode(self, mock_cli_stop):
+        """Test stop command in dry-run mode."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server(all=True, dry_run=True)
+
+            # Should call CLI stop with dry_run enabled
+            mock_cli_stop.assert_called_once_with(
+                target=None,
+                backend=None,
+                all=True,
+                template=None,
+                dry_run=True,
+                timeout=30,
+                force=False,
+            )
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_all_servers_with_force(self, mock_cli_stop):
+        """Test stopping all servers with force option."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server(all=True, force=True, timeout=60)
+
+            # Should call CLI stop with all and force options
+            mock_cli_stop.assert_called_once_with(
+                target=None,
+                backend=None,
+                all=True,
+                template=None,
+                dry_run=False,
+                timeout=60,
+                force=True,
+            )
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_specific_template_servers(self, mock_cli_stop):
+        """Test stopping all servers for a specific template."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server(template="demo", force=True)
+
+            # Should call CLI stop with template option
+            mock_cli_stop.assert_called_once_with(
+                target=None,
+                backend=None,
+                all=False,
+                template="demo",
+                dry_run=False,
+                timeout=30,
+                force=True,
+            )
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_specific_deployment_id(self, mock_cli_stop):
+        """Test stopping a specific deployment by ID."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server(target="deployment-123", force=True)
+
+            # Should call CLI stop with specific target
+            mock_cli_stop.assert_called_once_with(
+                target="deployment-123",
+                backend=None,
+                all=False,
+                template=None,
+                dry_run=False,
+                timeout=30,
+                force=True,
+            )
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_with_backend_specification(self, mock_cli_stop):
+        """Test stopping servers with specific backend."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server(all=True, backend="docker", force=True)
+
+            # Should call CLI stop with backend specification
+            mock_cli_stop.assert_called_once_with(
+                target=None,
+                backend="docker",
+                all=True,
+                template=None,
+                dry_run=False,
+                timeout=30,
+                force=True,
+            )
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_no_running_servers_delegation(self, mock_cli_stop):
+        """Test stop command delegation when no target specified."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        # Mock CLI stop to raise an exception to test error handling
+        mock_cli_stop.side_effect = Exception("No servers found")
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            with patch("mcp_template.cli.interactive_cli.get_session") as mock_session:
+                mock_session.return_value.get_selected_template.return_value = None
+
+                stop_server()
+
+                # Should display error message without calling CLI stop
+                mock_cli_stop.assert_not_called()
+                mock_console.print.assert_called()
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_server_error_handling(self, mock_cli_stop):
+        """Test stop command handling CLI function errors."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        # Mock CLI stop to raise an exception
+        mock_cli_stop.side_effect = Exception("Stop operation failed")
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server(target="server-1", force=True)
+
+            # Should attempt to call CLI stop
+            mock_cli_stop.assert_called_once()
+
+            # Should display error message
+            mock_console.print.assert_called()
+            call_args = mock_console.print.call_args[0][0]
+            assert "Error stopping server" in call_args
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_with_custom_timeout(self, mock_cli_stop):
+        """Test stop command with custom timeout."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server(target="server-1", timeout=120, force=True)
+
+            # Should call CLI stop with custom timeout
+            mock_cli_stop.assert_called_once_with(
+                target="server-1",
+                backend=None,
+                all=False,
+                template=None,
+                dry_run=False,
+                timeout=120,
+                force=True,
+            )
+
+    @patch("mcp_template.cli.interactive_cli.get_session")
+    @patch("mcp_template.cli.stop")
+    def test_stop_session_template_fallback(self, mock_cli_stop, mock_get_session):
+        """Test stop command falling back to session template when no args."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        # Mock session with selected template
+        mock_session = Mock()
+        mock_session.get_selected_template.return_value = "github"
+        mock_get_session.return_value = mock_session
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server()
+
+            # Should use session template as target
+            mock_cli_stop.assert_called_once_with(
+                target="github",
+                backend=None,
+                all=False,
+                template=None,
+                dry_run=False,
+                timeout=30,
+                force=False,
+            )
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_template_with_dry_run(self, mock_cli_stop):
+        """Test stopping template servers in dry-run mode."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server(template="demo", dry_run=True)
+
+            # Should call CLI stop with both template and dry_run
+            mock_cli_stop.assert_called_once_with(
+                target=None,
+                backend=None,
+                all=False,
+                template="demo",
+                dry_run=True,
+                timeout=30,
+                force=False,
+            )
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_with_all_parameters(self, mock_cli_stop):
+        """Test stop command with all parameters specified."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server(
+                target="test-deployment",
+                backend="kubernetes",
+                all=False,
+                template=None,
+                dry_run=True,
+                timeout=90,
+                force=True,
+            )
+
+            # Should call CLI stop with all parameters
+            mock_cli_stop.assert_called_once_with(
+                target="test-deployment",
+                backend="kubernetes",
+                all=False,
+                template=None,
+                dry_run=True,
+                timeout=90,
+                force=True,
+            )
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_function_parameter_passing(self, mock_cli_stop):
+        """Test that all parameters are correctly passed to CLI function."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            # Test with complex parameter combination
+            stop_server(
+                target="complex-test",
+                backend="podman",
+                all=True,  # This combination might be unusual but should pass through
+                template="filesystem",
+                dry_run=False,
+                timeout=45,
+                force=False,
+            )
+
+            # Verify exact parameter mapping
+            mock_cli_stop.assert_called_once_with(
+                target="complex-test",
+                backend="podman",
+                all=True,
+                template="filesystem",
+                dry_run=False,
+                timeout=45,
+                force=False,
+            )
+
+    @patch("mcp_template.cli.interactive_cli.get_session")
+    @patch("mcp_template.cli.stop")
+    def test_stop_no_session_template_error(self, mock_cli_stop, mock_get_session):
+        """Test stop command when no target and no session template."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        # Mock session with no selected template
+        mock_session = Mock()
+        mock_session.get_selected_template.return_value = None
+        mock_get_session.return_value = mock_session
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            stop_server()
+
+            # Should not call CLI stop
+            mock_cli_stop.assert_not_called()
+
+            # Should display error message
+            mock_console.print.assert_called()
+            call_args = mock_console.print.call_args[0][0]
+            assert "Target required" in call_args
+
+    @patch("mcp_template.cli.stop")
+    def test_stop_delegation_preserves_defaults(self, mock_cli_stop):
+        """Test that default parameter values are preserved in delegation."""
+        from mcp_template.cli.interactive_cli import stop_server
+
+        with patch("mcp_template.cli.interactive_cli.console") as mock_console:
+            # Call with minimal parameters
+            stop_server(target="minimal-test")
+
+            # Should call CLI stop with default values
+            mock_cli_stop.assert_called_once_with(
+                target="minimal-test",
+                backend=None,  # Default
+                all=False,  # Default
+                template=None,  # Default
+                dry_run=False,  # Default
+                timeout=30,  # Default
+                force=False,  # Default
+            )
