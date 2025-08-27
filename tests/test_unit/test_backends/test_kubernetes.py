@@ -1,5 +1,8 @@
 """
-Test Kubernetes backend functionality.
+Unit tests for Kubernetes backend functionality.
+
+Tests the KubernetesDeploymentService class with comprehensive mocking
+of Kubernetes client libraries and APIs.
 """
 
 from unittest.mock import MagicMock, Mock, patch
@@ -9,8 +12,9 @@ from kubernetes.client.rest import ApiException
 
 from mcp_template.backends.kubernetes import KubernetesDeploymentService
 
+pytestmark = pytest.mark.unit
 
-@pytest.mark.unit
+
 class TestKubernetesDeploymentService:
     """Test Kubernetes deployment service."""
 
@@ -448,14 +452,3 @@ class TestKubernetesDeploymentService:
 
             assert "message" in result
             assert "not applicable" in result["message"]
-
-
-@pytest.mark.integration
-class TestKubernetesIntegration:
-    """Integration tests for Kubernetes backend."""
-
-    @pytest.mark.skip(reason="Requires Kubernetes cluster")
-    def test_full_deployment_lifecycle(self):
-        """Test complete deployment lifecycle against real cluster."""
-        # This would test against a real Kubernetes cluster (kind, minikube, etc.)
-        pass
