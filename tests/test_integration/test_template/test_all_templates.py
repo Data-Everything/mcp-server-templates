@@ -4,15 +4,15 @@ import json
 from pathlib import Path
 
 import pytest
-
-# Add src to Python path for testing
-from mcp_template.template.utils.discovery import TemplateDiscovery
-from mcp_template.utils import TEMPLATES_DIR
 from tests_old.utils.mcp_test_utils import (
     get_template_list,
     run_template_tests,
     validate_template_structure,
 )
+
+# Add src to Python path for testing
+from mcp_template.template.utils.discovery import TemplateDiscovery
+from mcp_template.utils import TEMPLATES_DIR
 
 
 class TestAllTemplates:
