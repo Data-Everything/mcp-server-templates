@@ -109,11 +109,15 @@ class TestCLIWorkflows:
         )
         assert result.exit_code == 0
 
+    @patch("mcp_template.backends.available_valid_backends")
     @patch("mcp_template.cli.cli.MCPClient")
-    def test_template_discovery_workflow(self, mock_client_class):
+    def test_template_discovery_workflow(
+        self, mock_client_class, mock_available_backends
+    ):
         """Test template discovery and information workflow."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
+        mock_available_backends.return_value = {"mock": {}, "docker": {}}
 
         # Mock template listing
         mock_client.list_templates.return_value = {
@@ -140,39 +144,43 @@ class TestCLIWorkflows:
         }
 
         # Mock tools listing
-        mock_client.list_tools.return_value = [
-            {
-                "name": "search_repositories",
-                "description": "Search GitHub repositories",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string"},
-                        "sort": {
-                            "type": "string",
-                            "enum": ["stars", "forks", "updated"],
+        mock_client.list_tools.return_value = {
+            "tools": [
+                {
+                    "name": "search_repositories",
+                    "description": "Search GitHub repositories",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string"},
+                            "sort": {
+                                "type": "string",
+                                "enum": ["stars", "forks", "updated"],
+                            },
                         },
                     },
                 },
-            },
-            {
-                "name": "create_issue",
-                "description": "Create a new GitHub issue",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "title": {"type": "string"},
-                        "body": {"type": "string"},
+                {
+                    "name": "create_issue",
+                    "description": "Create a new GitHub issue",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "body": {"type": "string"},
+                        },
                     },
                 },
-            },
-        ]
+            ],
+            "discovery_method": "docker",
+            "source": "test",
+        }
 
         # Step 1: List available templates
         result = self.runner.invoke(app, ["list-templates"])
         assert result.exit_code == 0
-        assert "Demo Template" in result.output
-        assert "GitHub Template" in result.output
+        assert "demo" in result.output
+        assert "github" in result.output
 
         # Step 2: List tools for a specific template
         result = self.runner.invoke(app, ["list-tools", "github"])
@@ -186,7 +194,7 @@ class TestCLIWorkflows:
         )
 
         # Step 3: Use generic list command
-        result = self.runner.invoke(app, ["list", "templates"])
+        result = self.runner.invoke(app, ["list-templates"])
         assert result.exit_code == 0
 
     @patch("mcp_template.cli.cli.MCPClient")
