@@ -738,7 +738,11 @@ class TestMCPClientEdgeCases:
 class TestMCPClientIntegration:
     """Integration tests for client functionality."""
 
-    def test_complete_workflow(self):
+    @patch("mcp_template.client.client.TemplateManager")
+    @patch("mcp_template.client.client.MultiBackendManager")
+    def test_complete_workflow(
+        self, mock_multi_manager_class, mock_template_manager_class
+    ):
         """Test a complete workflow using the client."""
         client = MCPClient(backend_type="mock")
 
@@ -746,6 +750,22 @@ class TestMCPClientIntegration:
         client.template_manager = Mock()
         client.deployment_manager = Mock()
         client.tool_manager = Mock()
+        client.multi_manager = Mock()
+
+        # Mock the backends for list_templates
+        mock_backend = Mock()
+        client.multi_manager.get_available_backends.return_value = [mock_backend]
+
+        # Mock the class instances that are created internally
+        mock_template_manager_instance = Mock()
+        mock_template_manager_class.return_value = mock_template_manager_instance
+        mock_template_manager_instance.list_templates.return_value = {
+            "demo": {"name": "demo"}
+        }
+
+        mock_multi_manager_instance = Mock()
+        mock_multi_manager_class.return_value = mock_multi_manager_instance
+        mock_multi_manager_instance.get_available_backends.return_value = [mock_backend]
 
         # Set up mock responses
         client.template_manager.list_templates.return_value = {"demo": {"name": "demo"}}
@@ -768,13 +788,13 @@ class TestMCPClientIntegration:
             "discovery_method": "static",
             "metadata": {"hints": "Tools found in static configuration"},
         }
-        client.tool_manager.call_tool.return_value = {
+        client.multi_manager.call_tool.return_value = {
             "success": True,
             "result": {"output": "Hello"},
         }
 
         # Mock stop_deployment to return a dictionary directly
-        client.deployment_manager.stop_deployment.return_value = {
+        client.multi_manager.stop_deployment.return_value = {
             "success": True,
             "message": "Stopped",
         }

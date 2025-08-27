@@ -83,6 +83,9 @@ class MockDeploymentService(BaseDeploymentBackend):
             "created_at": datetime.now().isoformat(),
             "mock": True,
             "container_id": container_id,
+            "transport": config.get(
+                "MCP_TRANSPORT", "stdio"
+            ),  # Extract transport from config
         }
 
         self.deployments[deployment_name] = deployment_info

@@ -168,6 +168,9 @@ class TestMCPConnection:
         """Test successful tool listing."""
         conn = MCPConnection()
         conn.process = AsyncMock()
+        conn.transport_type = (
+            "stdio"  # Set up transport type to simulate active connection
+        )
 
         tools_response = {
             "jsonrpc": "2.0",
@@ -210,6 +213,9 @@ class TestMCPConnection:
         """Test successful tool call."""
         conn = MCPConnection()
         conn.process = AsyncMock()
+        conn.transport_type = (
+            "stdio"  # Set up transport type to simulate active connection
+        )
 
         tool_response = {
             "jsonrpc": "2.0",
@@ -343,6 +349,7 @@ class TestMCPConnection:
         mock_process = Mock()
         mock_process.returncode = None
         conn.process = mock_process
+        conn.transport_type = "stdio"  # Set transport type to complete connection state
 
         assert conn.is_connected() is True
 

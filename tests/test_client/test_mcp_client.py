@@ -84,26 +84,32 @@ class TestMCPClient:
 
     def test_list_servers(self, mock_managers):
         """Test listing running servers."""
-        client = MCPClient()
+        # Use mock backend to avoid real Docker calls
+        client = MCPClient(backend_type="mock")
 
         expected_servers = [
             {"id": "demo-1", "template": "demo", "status": "running"},
             {"id": "filesystem-1", "template": "filesystem", "status": "running"},
         ]
-        mock_managers[
-            "deployment_manager"
-        ].find_deployments_by_criteria.return_value = expected_servers
+
+        # Create a mock for multi_manager instead
+        mock_multi_manager = Mock()
+        mock_multi_manager.get_all_deployments.return_value = expected_servers
+        client.multi_manager = mock_multi_manager
 
         result = client.list_servers()
 
         assert result == expected_servers
-        mock_managers[
-            "deployment_manager"
-        ].find_deployments_by_criteria.assert_called_once_with(template_name=None)
+        mock_multi_manager.get_all_deployments.assert_called_once_with(
+            template_name=None, status=None
+        )
 
     def test_start_server(self, mock_managers):
         """Test starting a new server."""
-        client = MCPClient()
+        client = MCPClient(backend_type="mock")
+
+        # Replace deployment manager with mock
+        client.deployment_manager = mock_managers["deployment_manager"]
 
         # Mock a successful DeploymentResult
         from mcp_template.core.deployment_manager import DeploymentResult
@@ -127,6 +133,7 @@ class TestMCPClient:
     def test_start_server_without_config(self, mock_managers):
         """Test starting a server without configuration."""
         client = MCPClient()
+        client.deployment_manager = mock_managers["deployment_manager"]
 
         # Mock a successful DeploymentResult
         from mcp_template.core.deployment_manager import DeploymentResult
@@ -150,43 +157,44 @@ class TestMCPClient:
         """Test stopping a server."""
         client = MCPClient()
 
+        # Mock the multi_manager directly
+        mock_multi_manager = Mock()
+        client.multi_manager = mock_multi_manager
+
         mock_stop_result = {"success": True, "deployment_id": "demo-1"}
-        mock_managers["deployment_manager"].stop_deployment.return_value = (
-            mock_stop_result
-        )
+        mock_multi_manager.stop_deployment.return_value = mock_stop_result
 
         result = client.stop_server("demo-1")
 
         assert result["success"] is True
         assert result["deployment_id"] == "demo-1"
-        mock_managers["deployment_manager"].stop_deployment.assert_called_once_with(
-            "demo-1", 30
-        )
+        mock_multi_manager.stop_deployment.assert_called_once_with("demo-1", 30)
 
     def test_stop_server_with_active_connection(self, mock_managers):
         """Test stopping a server with active connection."""
         client = MCPClient()
+
+        # Mock the multi_manager directly
+        mock_multi_manager = Mock()
+        client.multi_manager = mock_multi_manager
 
         # Create mock connection
         mock_connection = AsyncMock()
         client._active_connections["demo-1"] = mock_connection
 
         mock_stop_result = {"success": True, "deployment_id": "demo-1"}
-        mock_managers["deployment_manager"].stop_deployment.return_value = (
-            mock_stop_result
-        )
+        mock_multi_manager.stop_deployment.return_value = mock_stop_result
 
         result = client.stop_server("demo-1")
 
         assert result["success"] is True
         assert "demo-1" not in client._active_connections
-        mock_managers["deployment_manager"].stop_deployment.assert_called_once_with(
-            "demo-1", 30
-        )
+        mock_multi_manager.stop_deployment.assert_called_once_with("demo-1", 30)
 
     def test_get_server_info(self, mock_managers):
         """Test getting server information."""
         client = MCPClient()
+        client.deployment_manager = mock_managers["deployment_manager"]
 
         expected_info = [{"id": "demo-1", "template": "demo", "status": "running"}]
         mock_managers[
@@ -204,43 +212,126 @@ class TestMCPClient:
         """Test getting server logs."""
         client = MCPClient()
 
+        # Mock the MultiBackendManager that gets created in get_server_logs
+        mock_multi_manager = Mock()
         expected_logs = "Server started successfully\nProcessing requests..."
         log_result = {"success": True, "logs": expected_logs}
-        mock_managers["deployment_manager"].get_deployment_logs.return_value = (
-            log_result
-        )
+        mock_multi_manager.get_deployment_logs.return_value = log_result
 
-        result = client.get_server_logs("demo-1")
+        with patch(
+            "mcp_template.client.client.MultiBackendManager",
+            return_value=mock_multi_manager,
+        ):
+            result = client.get_server_logs("demo-1")
 
-        assert result == expected_logs
-        mock_managers["deployment_manager"].get_deployment_logs.assert_called_once_with(
-            "demo-1", lines=100, follow=False
-        )
+            assert result == expected_logs
+            mock_multi_manager.get_deployment_logs.assert_called_once_with(
+                "demo-1", lines=100, follow=False
+            )
 
     def test_get_server_logs_custom_lines(self, mock_managers):
         """Test getting server logs with custom line count."""
         client = MCPClient()
 
+        # Mock the MultiBackendManager that gets created in get_server_logs
+        mock_multi_manager = Mock()
         expected_logs = "Recent logs..."
         log_result = {"success": True, "logs": expected_logs}
-        mock_managers["deployment_manager"].get_deployment_logs.return_value = (
-            log_result
-        )
+        mock_multi_manager.get_deployment_logs.return_value = log_result
 
-        result = client.get_server_logs("demo-1", lines=50)
+        with patch(
+            "mcp_template.client.client.MultiBackendManager",
+            return_value=mock_multi_manager,
+        ):
+            result = client.get_server_logs("demo-1", lines=50)
 
-        assert result == expected_logs
-        mock_managers["deployment_manager"].get_deployment_logs.assert_called_once_with(
-            "demo-1", lines=50, follow=False
-        )
+            assert result == expected_logs
+            mock_multi_manager.get_deployment_logs.assert_called_once_with(
+                "demo-1", lines=50, follow=False
+            )
 
     def test_list_tools_cached(self, mock_managers):
         """Test listing tools with cached results."""
         client = MCPClient()
+        client.tool_manager = mock_managers["tool_manager"]
 
         expected_tools = [
-            {"name": "echo", "description": "Echo a message"},
-            {"name": "greet", "description": "Greet someone"},
+            {
+                "name": "say_hello",
+                "description": 'Generate a personalized greeting message.\n\nPATTERN 1: Uses standard config from config_schema\n- hello_from: Set via --config hello_from="value" or MCP_HELLO_FROM env var\n\nPATTERN 2: Uses template data that can be overridden\n- Tool behavior can be modified via --tools__0__greeting_style="formal"\n\nArgs:\n    name: Name of the person to greet\n\nReturns:\n    A personalized greeting message',
+                "category": "mcp",
+                "parameters": {
+                    "properties": {
+                        "name": {"default": "World", "title": "Name", "type": "string"}
+                    },
+                    "type": "object",
+                },
+                "mcp_info": {
+                    "input_schema": {
+                        "properties": {
+                            "name": {
+                                "default": "World",
+                                "title": "Name",
+                                "type": "string",
+                            }
+                        },
+                        "type": "object",
+                    },
+                    "output_schema": {
+                        "properties": {"result": {"title": "Result", "type": "string"}},
+                        "required": ["result"],
+                        "title": "_WrappedResult",
+                        "type": "object",
+                        "x-fastmcp-wrap-result": True,
+                    },
+                },
+            },
+            {
+                "name": "get_server_info",
+                "description": "Get information about the demo server.\n\nShows both standard config and template data that may be overridden.\n\nReturns:\n    Dictionary containing server information",
+                "category": "mcp",
+                "parameters": {"properties": {}, "type": "object"},
+                "mcp_info": {
+                    "input_schema": {"properties": {}, "type": "object"},
+                    "output_schema": {"additionalProperties": True, "type": "object"},
+                },
+            },
+            {
+                "name": "echo_message",
+                "description": "Echo back a message with server identification.\n\nDemonstrates template data override for tool behavior.\n\nArgs:\n    message: Message to echo back\n\nReturns:\n    Echoed message with server identification",
+                "category": "mcp",
+                "parameters": {
+                    "properties": {"message": {"title": "Message", "type": "string"}},
+                    "required": ["message"],
+                    "type": "object",
+                },
+                "mcp_info": {
+                    "input_schema": {
+                        "properties": {
+                            "message": {"title": "Message", "type": "string"}
+                        },
+                        "required": ["message"],
+                        "type": "object",
+                    },
+                    "output_schema": {
+                        "properties": {"result": {"title": "Result", "type": "string"}},
+                        "required": ["result"],
+                        "title": "_WrappedResult",
+                        "type": "object",
+                        "x-fastmcp-wrap-result": True,
+                    },
+                },
+            },
+            {
+                "name": "demonstrate_overrides",
+                "description": "Demonstrate the two configuration patterns.\n\nReturns:\n    Examples of both configuration patterns",
+                "category": "mcp",
+                "parameters": {"properties": {}, "type": "object"},
+                "mcp_info": {
+                    "input_schema": {"properties": {}, "type": "object"},
+                    "output_schema": {"additionalProperties": True, "type": "object"},
+                },
+            },
         ]
 
         mock_managers["tool_manager"].list_tools.return_value = {
@@ -252,16 +343,49 @@ class TestMCPClient:
         result = client.list_tools("demo")
         assert result == expected_tools
         mock_managers["tool_manager"].list_tools.assert_called_once_with(
-            "demo", discovery_method="auto", force_refresh=False
+            "demo", static=True, dynamic=True, force_refresh=False
         )
 
     def test_list_tools_force_refresh(self, mock_managers):
         """Test listing tools with forced refresh."""
         client = MCPClient()
 
+        # Replace internal managers with mocks
+        client.tool_manager = mock_managers["tool_manager"]
+
         expected_tools = [
-            {"name": "echo", "description": "Echo a message"},
-            {"name": "greet", "description": "Greet someone"},
+            {
+                "name": "say_hello",
+                "description": "Say hello with a personalized greeting",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Name to greet"}
+                    },
+                    "required": ["name"],
+                },
+            },
+            {
+                "name": "get_server_info",
+                "description": "Get information about the MCP server",
+                "inputSchema": {"type": "object", "properties": {}},
+            },
+            {
+                "name": "echo_message",
+                "description": "Echo back the provided message",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "message": {"type": "string", "description": "Message to echo"}
+                    },
+                    "required": ["message"],
+                },
+            },
+            {
+                "name": "demonstrate_overrides",
+                "description": "Demonstrate MCP template override capabilities",
+                "inputSchema": {"type": "object", "properties": {}},
+            },
         ]
 
         mock_managers["tool_manager"].list_tools.return_value = {
@@ -277,7 +401,7 @@ class TestMCPClient:
             template_name="demo"
         )
         mock_managers["tool_manager"].list_tools.assert_called_once_with(
-            "demo", discovery_method="auto", force_refresh=True
+            "demo", static=True, dynamic=True, force_refresh=True
         )
 
     def test_list_tools_template_not_found(self, mock_managers):
@@ -295,7 +419,7 @@ class TestMCPClient:
         """Test creating a stdio connection."""
         client = MCPClient()
 
-        with patch("mcp_template.core.MCPConnection") as mock_connection_class:
+        with patch("mcp_template.client.client.MCPConnection") as mock_connection_class:
             mock_connection = AsyncMock()
             mock_connection.connect_stdio.return_value = True
             mock_connection_class.return_value = mock_connection
@@ -314,7 +438,7 @@ class TestMCPClient:
         """Test stdio connection failure."""
         client = MCPClient()
 
-        with patch("mcp_template.core.MCPConnection") as mock_connection_class:
+        with patch("mcp_template.client.client.MCPConnection") as mock_connection_class:
             mock_connection = AsyncMock()
             mock_connection.connect_stdio.return_value = False
             mock_connection_class.return_value = mock_connection
