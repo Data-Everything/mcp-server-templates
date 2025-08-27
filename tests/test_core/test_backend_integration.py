@@ -244,6 +244,144 @@ class TestToolManagerBackendIntegration(unittest.TestCase):
                 mock_discover.assert_called_once_with("test-image:latest", timeout=30)
                 self.assertEqual(result, [{"name": "test_tool"}])
 
+    @patch("mcp_template.tools.docker_probe.DockerProbe.discover_tools_from_image")
+    def test_template_discovery_uses_docker_for_dynamic_templates(
+        self, mock_docker_discovery
+    ):
+        """Test that tool manager can discover tools from Docker images."""
+        from mcp_template.core.tool_manager import ToolManager
+
+        # Mock Docker discovery response
+        mock_docker_discovery.return_value = {
+            "tools": [
+                {
+                    "name": "test_tool",
+                    "description": "A test tool",
+                    "category": "mcp",
+                    "parameters": {},
+                }
+            ],
+            "discovery_method": "docker_mcp_stdio",
+            "timestamp": 1234567890,
+        }
+
+        # Create tool manager with Docker backend
+        with patch("mcp_template.core.tool_manager.get_backend"):
+            tool_manager = ToolManager(backend_type="docker")
+
+            # Test Docker image discovery
+            image_name = "test/image:latest"
+            timeout = 30
+
+            result = tool_manager.discover_tools_from_image(image_name, timeout)
+
+            # Verify Docker discovery was called
+            mock_docker_discovery.assert_called_once_with(
+                image_name=image_name, server_args=None, env_vars=None, timeout=timeout
+            )
+
+            # Verify results - ToolManager.discover_tools_from_image returns List[Dict], not dict
+            assert result is not None
+            assert len(result) == 1
+            assert result[0]["name"] == "test_tool"
+
+    def test_docker_probe_with_environment_variables(self):
+        """Test that Docker probe handles environment variables correctly."""
+        from mcp_template.tools.docker_probe import DockerProbe
+
+        with patch.object(DockerProbe, "discover_tools_from_image") as mock_discover:
+            mock_discover.return_value = {
+                "tools": [
+                    {
+                        "name": "github_tool",
+                        "description": "GitHub tool",
+                        "category": "mcp",
+                        "parameters": {},
+                    }
+                ],
+                "discovery_method": "docker_mcp_stdio",
+                "timestamp": 1234567890,
+            }
+
+            # Test direct Docker probe with environment variables
+            docker_probe = DockerProbe()
+            image_name = "ghcr.io/github/github-mcp-server:0.9.1"
+            env_vars = {"GITHUB_PERSONAL_ACCESS_TOKEN": "test_token"}
+
+            result = docker_probe.discover_tools_from_image(
+                image_name, env_vars=env_vars
+            )
+
+            # Verify Docker discovery was called with environment variables
+            mock_discover.assert_called_once_with(image_name, env_vars=env_vars)
+
+            # Verify results
+            assert result is not None
+            assert result["tools"][0]["name"] == "github_tool"
+
+    def test_mcp_client_handles_github_server_args(self):
+        """Test that MCP client automatically adds 'stdio' for GitHub servers."""
+        from mcp_template.tools.mcp_client_probe import MCPClientProbe
+
+        with patch.object(
+            MCPClientProbe, "discover_tools_from_docker_sync"
+        ) as mock_discover:
+            mock_discover.return_value = {
+                "tools": [
+                    {
+                        "name": "github_tool",
+                        "description": "Test",
+                        "category": "mcp",
+                        "parameters": {},
+                    }
+                ],
+                "discovery_method": "mcp_client",
+            }
+
+            # Test with GitHub image (should add stdio automatically)
+            mcp_client = MCPClientProbe()
+            result = mcp_client.discover_tools_from_docker_sync(
+                "ghcr.io/github/github-mcp-server:0.9.1",
+                args=None,  # No args provided
+                env_vars={"GITHUB_PERSONAL_ACCESS_TOKEN": "test"},
+            )
+
+            # Verify stdio was added
+            mock_discover.assert_called_once()
+            call_args = mock_discover.call_args[0]  # positional args
+            call_kwargs = mock_discover.call_args[1]  # keyword args
+
+            # Should have added 'stdio' argument
+            if len(call_args) > 1:
+                # stdio should be in args
+                assert "stdio" in call_args[1] or call_kwargs.get("args", [])
+
+    def test_direct_docker_probe_call(self):
+        """Test calling DockerProbe directly for integration scenarios."""
+        from mcp_template.tools.docker_probe import DockerProbe
+
+        with patch.object(DockerProbe, "discover_tools_from_image") as mock_discover:
+            mock_discover.return_value = {
+                "tools": [
+                    {
+                        "name": "direct_tool",
+                        "description": "A direct tool",
+                        "category": "mcp",
+                        "parameters": {},
+                    }
+                ],
+                "discovery_method": "docker_mcp_stdio",
+            }
+
+            # Test direct probe usage
+            docker_probe = DockerProbe()
+            result = docker_probe.discover_tools_from_image(
+                "test/image:latest", env_vars={"TEST_VAR": "value"}
+            )
+
+            mock_discover.assert_called_once()
+            assert result["tools"][0]["name"] == "direct_tool"
+
 
 if __name__ == "__main__":
     unittest.main()

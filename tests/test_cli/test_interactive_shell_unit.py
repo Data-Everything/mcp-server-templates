@@ -1397,3 +1397,200 @@ class TestErrorPaths:
             except (NameError, TypeError):
                 # Function doesn't exist or has different signature, skip test
                 pass
+
+
+@pytest.mark.unit
+class TestInteractiveCLIParsing:
+    """Test interactive CLI command parsing functionality."""
+
+    def test_shlex_handles_quoted_spaces_correctly(self):
+        """Test that shlex correctly handles quoted space-separated values."""
+        import shlex
+
+        # This is the core functionality for handling quoted arguments
+        command = 'call -C allowed_dirs="/path1 /path2" filesystem list_directory'
+        tokens = shlex.split(command)
+
+        expected = [
+            "call",
+            "-C",
+            "allowed_dirs=/path1 /path2",
+            "filesystem",
+            "list_directory",
+        ]
+        assert tokens == expected
+
+    def test_shlex_handles_complex_quoted_paths(self):
+        """Test shlex with complex paths containing spaces."""
+        import shlex
+
+        command = 'call -C allowed_dirs="/home/sam/data-everything/mcp-platform/mcp-server-templates/scripts /home/sam/data-everything/mcp-platform/mcp-server-templates/mcp_template/tools" filesystem list_directory'
+        tokens = shlex.split(command)
+
+        expected = [
+            "call",
+            "-C",
+            "allowed_dirs=/home/sam/data-everything/mcp-platform/mcp-server-templates/scripts /home/sam/data-everything/mcp-platform/mcp-server-templates/mcp_template/tools",
+            "filesystem",
+            "list_directory",
+        ]
+        assert tokens == expected
+
+    def test_shlex_handles_json_arguments(self):
+        """Test that shlex handles JSON arguments properly."""
+        import shlex
+
+        command = 'call filesystem list_directory \'{"path": "/tmp"}\''
+        tokens = shlex.split(command)
+
+        expected = ["call", "filesystem", "list_directory", '{"path": "/tmp"}']
+        assert tokens == expected
+
+    def test_shlex_handles_multiple_config_arguments(self):
+        """Test shlex with multiple -C config arguments."""
+        import shlex
+
+        command = "call -C key1=value1 -C key2=value2 filesystem list_directory"
+        tokens = shlex.split(command)
+
+        expected = [
+            "call",
+            "-C",
+            "key1=value1",
+            "-C",
+            "key2=value2",
+            "filesystem",
+            "list_directory",
+        ]
+        assert tokens == expected
+
+    def test_shlex_handles_environment_variables(self):
+        """Test shlex with environment variable arguments."""
+        import shlex
+
+        command = "call -e KEY1=value1 -e KEY2=value2 filesystem list_directory"
+        tokens = shlex.split(command)
+
+        expected = [
+            "call",
+            "-e",
+            "KEY1=value1",
+            "-e",
+            "KEY2=value2",
+            "filesystem",
+            "list_directory",
+        ]
+        assert tokens == expected
+
+    def test_shlex_handles_complex_command_combination(self):
+        """Test shlex with complex argument combinations."""
+        import shlex
+
+        command = 'call -C allowed_dirs="/path1 /path2" -e LOG_LEVEL=DEBUG --no-pull filesystem list_directory \'{"path": "/tmp"}\''
+        tokens = shlex.split(command)
+
+        expected = [
+            "call",
+            "-C",
+            "allowed_dirs=/path1 /path2",
+            "-e",
+            "LOG_LEVEL=DEBUG",
+            "--no-pull",
+            "filesystem",
+            "list_directory",
+            '{"path": "/tmp"}',
+        ]
+        assert tokens == expected
+
+    def test_quote_detection_logic(self):
+        """Test logic for detecting when special parsing is needed."""
+        # Commands with quotes and spaces need careful handling
+        command_with_quotes = (
+            'call -C allowed_dirs="/path1 /path2" filesystem list_directory'
+        )
+        assert '"' in command_with_quotes and " " in command_with_quotes
+
+        # Simple commands are straightforward
+        simple_command = "templates"
+        assert not ('"' in simple_command and len(simple_command.split()) > 1)
+
+    def test_config_argument_parsing(self):
+        """Test parsing configuration arguments from command tokens."""
+        import shlex
+
+        command = (
+            'call -C key1=value1 -C key2="value with spaces" filesystem list_directory'
+        )
+        tokens = shlex.split(command)
+
+        # Simulate extracting config arguments
+        config_args = []
+        i = 0
+        while i < len(tokens):
+            if tokens[i] == "-C" and i + 1 < len(tokens):
+                config_args.append(tokens[i + 1])
+                i += 2
+            else:
+                i += 1
+
+        expected_config = ["key1=value1", "key2=value with spaces"]
+        assert config_args == expected_config
+
+    def test_env_argument_parsing(self):
+        """Test parsing environment variable arguments from command tokens."""
+        import shlex
+
+        command = (
+            'call -e KEY1=value1 -e KEY2="value with spaces" filesystem list_directory'
+        )
+        tokens = shlex.split(command)
+
+        # Simulate extracting env arguments
+        env_args = []
+        i = 0
+        while i < len(tokens):
+            if tokens[i] == "-e" and i + 1 < len(tokens):
+                env_args.append(tokens[i + 1])
+                i += 2
+            else:
+                i += 1
+
+        expected_env = ["KEY1=value1", "KEY2=value with spaces"]
+        assert env_args == expected_env
+
+    def test_json_argument_extraction(self):
+        """Test extracting JSON arguments from parsed tokens."""
+        import shlex
+
+        command = (
+            'call filesystem list_directory \'{"path": "/tmp", "recursive": true}\''
+        )
+        tokens = shlex.split(command)
+
+        # Find the JSON argument (starts with { or [)
+        json_args = []
+        for token in tokens:
+            if token.startswith("{") or token.startswith("["):
+                json_args.append(token)
+
+        assert len(json_args) == 1
+        assert json_args[0] == '{"path": "/tmp", "recursive": true}'
+
+    def test_command_parsing_edge_cases(self):
+        """Test edge cases in command parsing."""
+        import shlex
+
+        # Empty quotes
+        command = 'call -C key="" filesystem list_directory'
+        tokens = shlex.split(command)
+        assert "key=" in tokens
+
+        # Escaped quotes
+        command = 'call -C key="value with \\"quotes\\"" filesystem list_directory'
+        tokens = shlex.split(command)
+        assert 'key=value with "quotes"' in tokens
+
+        # Mixed quotes
+        command = "call -C key='value with spaces' filesystem list_directory"
+        tokens = shlex.split(command)
+        assert "key=value with spaces" in tokens

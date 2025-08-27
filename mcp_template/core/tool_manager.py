@@ -191,11 +191,14 @@ class ToolManager:
         Returns:
             Dict with tools list and metadata about discovery method and source
         """
+
         # 1. PRIORITY: Check cache first (unless force_refresh)
         if not force_refresh:
             cached_tools = self.get_cached_tools(template_or_deployment)
             if cached_tools:
                 logger.info(f"✓ Found tools in cache for {template_or_deployment}")
+                if "data" in cached_tools:
+                    cached_tools = cached_tools["data"]
                 return {
                     "tools": cached_tools.get("tools"),
                     "discovery_method": cached_tools.get("discovery_method", "cache"),

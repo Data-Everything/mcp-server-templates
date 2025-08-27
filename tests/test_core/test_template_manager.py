@@ -149,6 +149,106 @@ class TestTemplateManager:
         assert info["name"] == "Demo Template"
         assert info["version"] == "1.0.0"
 
+    def test_template_manager_with_cache(self):
+        """Test template manager initializes with cache manager."""
+        template_manager = TemplateManager(backend_type="mock")
+
+        # Should have cache manager
+        assert hasattr(template_manager, "cache_manager")
+        assert template_manager.cache_manager is not None
+
+    def test_template_cache_integration(self):
+        """Test that template manager uses cache correctly."""
+        mock_templates = {
+            "demo": {"id": "demo", "name": "Demo Template"},
+            "github": {"id": "github", "name": "GitHub Template"},
+        }
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ) as mock_discovery:
+            # First call should discover templates
+            templates = self.template_manager.list_templates()
+            assert len(templates) >= 2  # At least our mock templates
+
+            # Second call should use cache (no additional discovery calls)
+            templates2 = self.template_manager.list_templates()
+            assert len(templates2) >= 2
+
+            # Discovery should be called exactly once due to caching
+            assert mock_discovery.call_count == 1
+
+    def test_template_cache_refresh(self):
+        """Test template cache refresh functionality."""
+        mock_templates = {"demo": {"id": "demo", "name": "Demo Template"}}
+
+        with patch.object(
+            self.template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
+            # Clear cache and refresh
+            self.template_manager.cache_manager.delete("templates")
+            self.template_manager.refresh_cache()
+
+            # Should have rediscovered templates
+            templates = self.template_manager.list_templates()
+            assert len(templates) >= 1
+
+    def test_template_manager_without_cache_integration(self):
+        """Test template manager can work without cache if needed."""
+        template_manager = TemplateManager(backend_type="mock")
+
+        # Clear cache to test fallback
+        template_manager.cache_manager.clear_all()
+
+        # Should still be able to list templates
+        mock_templates = {"demo": {"id": "demo", "name": "Demo Template"}}
+        with patch.object(
+            template_manager.template_discovery,
+            "discover_templates",
+            return_value=mock_templates,
+        ):
+            templates = template_manager.list_templates()
+            assert len(templates) >= 1
+
+    def test_cache_and_template_manager_integration(self):
+        """Test cache system and template manager working together."""
+        import tempfile
+
+        from mcp_template.core.cache import CacheManager
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create template manager with custom cache dir
+            template_manager = TemplateManager(backend_type="mock")
+            template_manager.cache_manager = CacheManager(cache_dir=Path(temp_dir))
+
+            # Mock discovery
+            mock_templates = {
+                "demo": {"id": "demo", "name": "Demo Template"},
+                "github": {"id": "github", "name": "GitHub Template"},
+            }
+
+            with patch.object(
+                template_manager.template_discovery,
+                "discover_templates",
+                return_value=mock_templates,
+            ) as mock_discovery:
+                # First call - should cache
+                templates1 = template_manager.list_templates()
+
+                # Second call - should use cache
+                templates2 = template_manager.list_templates()
+
+                # Should be the same
+                assert len(templates1) >= 2
+                assert len(templates2) >= 2
+
+                # Discovery should only be called once due to caching
+                assert mock_discovery.call_count == 1
+
     def test_get_template_info_nonexistent(self):
         """Test getting info for non-existent template."""
         mock_templates = {}
