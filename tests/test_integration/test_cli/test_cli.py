@@ -43,6 +43,24 @@ class TestCLIWorkflows:
             "ports": {"8080": 8080},
         }
         mock_client.start_server.return_value = mock_deploy_result
+        mock_client.deploy_template.return_value = mock_deploy_result
+
+        # Mock template info
+        mock_client.get_template_info.return_value = {
+            "name": "Demo Template",
+            "transport": {"default": "http", "supported": ["http", "stdio"]},
+            "config_schema": {},
+        }
+
+        # Mock template listing (needed by logs command)
+        mock_client.list_templates.return_value = {
+            "demo": {
+                "name": "Demo Template",
+                "description": "Simple demonstration MCP server",
+                "image": "unknown",
+                "config_schema": {},
+            }
+        }
 
         # Mock listing deployments
         mock_client.list_servers.return_value = [
@@ -64,23 +82,31 @@ class TestCLIWorkflows:
         # Mock stop
         mock_client.stop_server.return_value = {"success": True}
 
+        # Mock _multi_manager for backend availability check in list-deployments
+        mock_client._multi_manager = Mock()
+        mock_client._multi_manager.get_available_backends.return_value = ["mock"]
+
         # Step 1: Deploy
-        result = self.runner.invoke(app, ["deploy", "demo", "--backend", "mock"])
+        result = self.runner.invoke(app, ["--backend", "mock", "deploy", "demo"])
         assert result.exit_code == 0
-        mock_client.start_server.assert_called()
+        mock_client.deploy_template.assert_called()
 
         # Step 2: List deployments
-        result = self.runner.invoke(app, ["list_deployments"])
+        result = self.runner.invoke(app, ["list-deployments"])
         assert result.exit_code == 0
         mock_client.list_servers.assert_called()
 
         # Step 3: Get logs
-        result = self.runner.invoke(app, ["logs", "demo-integration-test"])
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "logs", "demo-integration-test"]
+        )
         assert result.exit_code == 0
         mock_client.get_server_logs.assert_called()
 
         # Step 4: Stop deployment
-        result = self.runner.invoke(app, ["stop", "demo-integration-test"])
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "stop", "demo-integration-test"]
+        )
         assert result.exit_code == 0
 
     @patch("mcp_template.cli.cli.MCPClient")
@@ -143,15 +169,21 @@ class TestCLIWorkflows:
         ]
 
         # Step 1: List available templates
-        result = self.runner.invoke(app, ["list_templates"])
+        result = self.runner.invoke(app, ["list-templates"])
         assert result.exit_code == 0
         assert "Demo Template" in result.output
         assert "GitHub Template" in result.output
 
         # Step 2: List tools for a specific template
-        result = self.runner.invoke(app, ["list_tools", "github"])
+        result = self.runner.invoke(app, ["list-tools", "github"])
         assert result.exit_code == 0
-        mock_client.list_tools.assert_called_with("github")
+        mock_client.list_tools.assert_called_with(
+            "github",
+            static=True,
+            dynamic=True,
+            force_refresh=False,
+            include_metadata=True,
+        )
 
         # Step 3: Use generic list command
         result = self.runner.invoke(app, ["list", "templates"])
@@ -212,7 +244,9 @@ class TestCLIWorkflows:
             "demo-mock": {"success": False, "error": "Already stopped"},
         }
 
-        result = self.runner.invoke(app, ["stop", "--all", "--force"])
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "stop", "--all", "--force"]
+        )
         assert result.exit_code == 0
 
     @patch("mcp_template.cli.cli.MCPClient")
@@ -329,19 +363,31 @@ class TestCLIWorkflows:
         mock_client.start_server.side_effect = [mock_result_fail, mock_result_success]
 
         # First deployment attempt - should fail
-        result = self.runner.invoke(app, ["deploy", "demo", "--backend", "mock"])
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "deploy", "demo", "--backend", "mock"]
+        )
         assert result.exit_code != 0
 
         # Retry with different port - should succeed
         result = self.runner.invoke(
-            app, ["deploy", "demo", "--config", "port=8081", "--backend", "mock"]
+            app,
+            [
+                "--backend",
+                "mock",
+                "deploy",
+                "demo",
+                "--config",
+                "port=8081",
+                "--backend",
+                "mock",
+            ],
         )
         assert result.exit_code == 0
 
         # Test handling of backend unavailable
         mock_client.list_servers.side_effect = Exception("Backend unavailable")
 
-        result = self.runner.invoke(app, ["list_deployments"])
+        result = self.runner.invoke(app, ["list-deployments"])
         assert result.exit_code != 0
 
     @patch("mcp_template.cli.cli.MCPClient")
@@ -364,16 +410,20 @@ class TestCLIWorkflows:
         mock_client.get_server_logs.return_value = mock_logs
 
         # Test basic log retrieval
-        result = self.runner.invoke(app, ["logs", "github-123"])
+        result = self.runner.invoke(app, ["--backend", "mock", "logs", "github-123"])
         assert result.exit_code == 0
         mock_client.get_server_logs.assert_called()
 
         # Test log streaming (follow mode)
-        result = self.runner.invoke(app, ["logs", "github-123", "--follow"])
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "logs", "github-123", "--follow"]
+        )
         assert result.exit_code == 0
 
         # Test log filtering by lines
-        result = self.runner.invoke(app, ["logs", "github-123", "--lines", "50"])
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "logs", "github-123", "--lines", "50"]
+        )
         assert result.exit_code == 0
 
     @patch("mcp_template.cli.cli.MCPClient")
@@ -408,14 +458,17 @@ class TestCLIWorkflows:
 
         # Test deploy dry-run
         result = self.runner.invoke(
-            app, ["deploy", "demo", "--dry-run", "--backend", "mock"]
+            app,
+            ["--backend", "mock", "deploy", "demo", "--dry-run", "--backend", "mock"],
         )
         assert result.exit_code == 0
         # Verify no actual deployment occurred
         mock_client.start_server.assert_not_called()
 
         # Test stop dry-run
-        result = self.runner.invoke(app, ["stop", "demo-123", "--dry-run"])
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "stop", "demo-123", "--dry-run"]
+        )
         assert result.exit_code == 0
 
     @patch("mcp_template.cli.cli.MCPClient")
@@ -430,7 +483,7 @@ class TestCLIWorkflows:
         ]
 
         # Test table output (default)
-        result = self.runner.invoke(app, ["list_deployments"])
+        result = self.runner.invoke(app, ["list-deployments"])
         assert result.exit_code == 0
 
         # Test JSON output
@@ -456,7 +509,9 @@ class TestCLIIntegrationEdgeCases:
         assert result.exit_code != 0
 
         # Test invalid arguments
-        result = self.runner.invoke(app, ["deploy"])  # Missing template name
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "deploy"]
+        )  # Missing template name
         assert result.exit_code != 0
 
     @patch("mcp_template.cli.cli.MCPClient")
@@ -470,7 +525,7 @@ class TestCLIIntegrationEdgeCases:
 
         mock_client.list_servers.side_effect = socket.timeout("Connection timed out")
 
-        result = self.runner.invoke(app, ["list_deployments"])
+        result = self.runner.invoke(app, ["list-deployments"])
         assert result.exit_code != 0
 
     @patch("mcp_template.cli.cli.MCPClient")
@@ -489,7 +544,7 @@ class TestCLIIntegrationEdgeCases:
         }
         mock_client.start_server.return_value = mock_result
 
-        result = self.runner.invoke(app, ["deploy", "demo"])
+        result = self.runner.invoke(app, ["--backend", "mock", "deploy", "demo"])
         assert result.exit_code != 0
 
     def test_config_file_validation(self):
@@ -501,7 +556,15 @@ class TestCLIIntegrationEdgeCases:
 
         try:
             result = self.runner.invoke(
-                app, ["deploy", "demo", "--config-file", invalid_json_file]
+                app,
+                [
+                    "--backend",
+                    "mock",
+                    "deploy",
+                    "demo",
+                    "--config-file",
+                    invalid_json_file,
+                ],
             )
             # Should handle invalid JSON gracefully
             assert result.exit_code != 0
@@ -510,7 +573,15 @@ class TestCLIIntegrationEdgeCases:
 
         # Test with non-existent config file
         result = self.runner.invoke(
-            app, ["deploy", "demo", "--config-file", "/path/that/does/not/exist.json"]
+            app,
+            [
+                "--backend",
+                "mock",
+                "deploy",
+                "demo",
+                "--config-file",
+                "/path/that/does/not/exist.json",
+            ],
         )
         assert result.exit_code != 0
 

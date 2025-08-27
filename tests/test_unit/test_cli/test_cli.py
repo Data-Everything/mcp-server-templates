@@ -147,7 +147,7 @@ class TestCLICommands:
             "github": {"name": "GitHub", "description": "GitHub template"},
         }
 
-        result = self.runner.invoke(app, ["list_templates"])
+        result = self.runner.invoke(app, ["list-templates"])
 
         assert result.exit_code == 0
         mock_client.list_templates.assert_called_once()
@@ -162,7 +162,7 @@ class TestCLICommands:
             {"id": "github-1", "template": "github", "status": "stopped"},
         ]
 
-        result = self.runner.invoke(app, ["list_deployments"])
+        result = self.runner.invoke(app, ["list-deployments"])
 
         assert result.exit_code == 0
         mock_client.list_servers.assert_called_once()
@@ -172,6 +172,13 @@ class TestCLICommands:
         """Test deploy command with successful deployment."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
+
+        # Mock template info
+        mock_client.get_template_info.return_value = {
+            "name": "Demo Template",
+            "description": "Demo server",
+            "image": "demo:latest",
+        }
 
         # Mock successful deployment
         mock_result = Mock()
@@ -183,12 +190,12 @@ class TestCLICommands:
             "status": "running",
             "success": True,
         }
-        mock_client.start_server.return_value = mock_result
+        mock_client.deploy_template.return_value = mock_result
 
-        result = self.runner.invoke(app, ["deploy", "demo"])
+        result = self.runner.invoke(app, ["--backend", "mock", "deploy", "demo"])
 
         assert result.exit_code == 0
-        mock_client.start_server.assert_called_once()
+        mock_client.deploy_template.assert_called_once()
 
     @patch("mcp_template.cli.cli.MCPClient")
     def test_deploy_command_failure(self, mock_client_class):
@@ -196,30 +203,36 @@ class TestCLICommands:
         mock_client = Mock()
         mock_client_class.return_value = mock_client
 
-        # Mock failed deployment
-        mock_result = Mock()
-        mock_result.success = False
-        mock_result.error = "Deployment failed"
-        mock_result.to_dict.return_value = {
-            "success": False,
-            "error": "Deployment failed",
+        # Mock template info
+        mock_client.get_template_info.return_value = {
+            "name": "Demo Template",
+            "description": "Demo server",
+            "image": "demo:latest",
         }
-        mock_client.start_server.return_value = mock_result
 
-        result = self.runner.invoke(app, ["deploy", "demo"])
+        # Mock failed deployment - return None to indicate failure
+        mock_client.deploy_template.return_value = None
+
+        result = self.runner.invoke(app, ["--backend", "mock", "deploy", "demo"])
 
         # Should exit with error code
         assert result.exit_code != 0
-        mock_client.start_server.assert_called_once()
+        mock_client.deploy_template.assert_called_once()
 
     @patch("mcp_template.cli.cli.MCPClient")
     def test_stop_command(self, mock_client_class):
         """Test stop command."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
+
+        # Mock list_templates (needed by stop command for validation)
+        mock_client.list_templates.return_value = {
+            "demo": {"name": "Demo", "description": "Demo template"}
+        }
+
         mock_client.stop_server.return_value = {"success": True}
 
-        result = self.runner.invoke(app, ["stop", "demo-123"])
+        result = self.runner.invoke(app, ["--backend", "mock", "stop", "demo-123"])
 
         assert result.exit_code == 0
         mock_client.stop_server.assert_called()
@@ -229,12 +242,18 @@ class TestCLICommands:
         """Test logs command."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
+
+        # Mock list_templates (needed by logs command)
+        mock_client.list_templates.return_value = {
+            "demo": {"name": "Demo", "description": "Demo template"}
+        }
+
         mock_client.get_server_logs.return_value = [
             "2024-01-01 10:00:00 INFO: Server started",
             "2024-01-01 10:00:01 INFO: Ready to serve requests",
         ]
 
-        result = self.runner.invoke(app, ["logs", "demo-123"])
+        result = self.runner.invoke(app, ["--backend", "mock", "logs", "demo-123"])
 
         assert result.exit_code == 0
         mock_client.get_server_logs.assert_called()
@@ -263,40 +282,55 @@ class TestCLICommands:
         """Test list_tools command."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
-        mock_client.list_tools.return_value = [
-            {"name": "search", "description": "Search repositories"},
-            {"name": "create_issue", "description": "Create an issue"},
-        ]
+        mock_client.list_tools.return_value = {
+            "tools": [
+                {"name": "search", "description": "Search repositories"},
+                {"name": "create_issue", "description": "Create an issue"},
+            ],
+            "discovery_method": "docker",
+            "source": "test",
+        }
 
-        result = self.runner.invoke(app, ["list_tools", "github"])
+        result = self.runner.invoke(app, ["list-tools", "github"])
 
         assert result.exit_code == 0
-        mock_client.list_tools.assert_called_with("github")
+        mock_client.list_tools.assert_called_with(
+            "github",
+            static=True,
+            dynamic=True,
+            force_refresh=False,
+            include_metadata=True,
+        )
 
     @patch("mcp_template.cli.cli.MCPClient")
     def test_list_command_servers(self, mock_client_class):
-        """Test list command for servers."""
+        """Test list-deployments command (lists servers/deployments)."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
+
+        # Mock _multi_manager for backend availability
+        mock_client._multi_manager = Mock()
+        mock_client._multi_manager.get_available_backends.return_value = ["mock"]
+
         mock_client.list_servers.return_value = [
             {"id": "demo-1", "template": "demo", "status": "running"}
         ]
 
-        result = self.runner.invoke(app, ["list", "servers"])
+        result = self.runner.invoke(app, ["list-deployments"])
 
         assert result.exit_code == 0
         mock_client.list_servers.assert_called()
 
     @patch("mcp_template.cli.cli.MCPClient")
     def test_list_command_templates(self, mock_client_class):
-        """Test list command for templates."""
+        """Test list-templates command."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
         mock_client.list_templates.return_value = {
             "demo": {"name": "Demo", "description": "Demo template"}
         }
 
-        result = self.runner.invoke(app, ["list", "templates"])
+        result = self.runner.invoke(app, ["list-templates"])
 
         assert result.exit_code == 0
         mock_client.list_templates.assert_called()
@@ -338,7 +372,7 @@ class TestCLIErrorHandling:
         mock_client_class.return_value = mock_client
         mock_client.start_server.side_effect = Exception("Template not found")
 
-        result = self.runner.invoke(app, ["deploy", "nonexistent"])
+        result = self.runner.invoke(app, ["--backend", "mock", "deploy", "nonexistent"])
 
         # Should handle error gracefully
         assert result.exit_code != 0
@@ -348,7 +382,7 @@ class TestCLIErrorHandling:
         """Test handling of client initialization errors."""
         mock_client_class.side_effect = Exception("Failed to initialize client")
 
-        result = self.runner.invoke(app, ["list_templates"])
+        result = self.runner.invoke(app, ["list-templates"])
 
         # Should handle error gracefully
         assert result.exit_code != 0
@@ -360,7 +394,7 @@ class TestCLIErrorHandling:
         mock_client_class.return_value = mock_client
         mock_client.list_servers.side_effect = Exception("Backend unavailable")
 
-        result = self.runner.invoke(app, ["list_deployments"])
+        result = self.runner.invoke(app, ["list-deployments"])
 
         # Should handle error gracefully
         assert result.exit_code != 0
@@ -379,7 +413,9 @@ class TestCLIDryRunMode:
         mock_client = Mock()
         mock_client_class.return_value = mock_client
 
-        result = self.runner.invoke(app, ["deploy", "demo", "--dry-run"])
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "deploy", "demo", "--dry-run"]
+        )
 
         # In dry-run mode, should not actually call start_server
         assert result.exit_code == 0
@@ -392,7 +428,9 @@ class TestCLIDryRunMode:
         mock_client = Mock()
         mock_client_class.return_value = mock_client
 
-        result = self.runner.invoke(app, ["stop", "demo-123", "--dry-run"])
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "stop", "demo-123", "--dry-run"]
+        )
 
         assert result.exit_code == 0
 
@@ -415,7 +453,9 @@ class TestCLIConfigurationOptions:
         mock_result.to_dict.return_value = {"success": True}
         mock_client.start_server.return_value = mock_result
 
-        result = self.runner.invoke(app, ["deploy", "demo", "--backend", "mock"])
+        result = self.runner.invoke(
+            app, ["--backend", "mock", "deploy", "demo", "--backend", "mock"]
+        )
 
         assert result.exit_code == 0
         # Verify backend was passed to client
@@ -441,7 +481,8 @@ class TestCLIConfigurationOptions:
 
         try:
             result = self.runner.invoke(
-                app, ["deploy", "demo", "--config-file", config_file]
+                app,
+                ["--backend", "mock", "deploy", "demo", "--config-file", config_file],
             )
             assert result.exit_code == 0
         finally:
