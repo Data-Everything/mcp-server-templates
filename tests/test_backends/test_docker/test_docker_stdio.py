@@ -10,6 +10,8 @@ import pytest
 
 from mcp_template.backends.docker import DockerDeploymentService
 
+pytestmark = [pytest.mark.unit, pytest.mark.docker]
+
 
 @pytest.fixture
 def docker_service():

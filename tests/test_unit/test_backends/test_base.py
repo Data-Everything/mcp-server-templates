@@ -8,6 +8,8 @@ import pytest
 
 from mcp_template.backends.base import BaseDeploymentBackend
 
+pytestmark = pytest.mark.unit
+
 
 class ConcreteBackend(BaseDeploymentBackend):
     """Concrete implementation of BaseDeploymentBackend for testing."""
@@ -29,29 +31,37 @@ class ConcreteBackend(BaseDeploymentBackend):
             "status": "running",
         }
 
-    def stop_deployment(self, deployment_id):
-        """Concrete implementation for testing."""
-        return {"success": True, "deployment_id": deployment_id}
-
-    def get_deployment_status(self, deployment_id):
-        """Concrete implementation for testing."""
-        return {"deployment_id": deployment_id, "status": "running"}
-
     def list_deployments(self):
         """Concrete implementation for testing."""
         return [{"deployment_id": "test-1", "status": "running"}]
 
-    def get_deployment_logs(self, deployment_id, lines=None):
+    def delete_deployment(self, deployment_name):
         """Concrete implementation for testing."""
-        return ["log line 1", "log line 2"]
+        return True
 
-    def execute_tool(self, deployment_id, tool_name, parameters):
+    def stop_deployment(self, deployment_name, force=False):
         """Concrete implementation for testing."""
-        return {"result": "success", "output": "tool executed"}
+        return True
 
-    def health_check(self):
+    def get_deployment_info(self, deployment_name, include_logs=False, lines=10):
         """Concrete implementation for testing."""
-        return {"status": "healthy"}
+        return {
+            "deployment_id": deployment_name,
+            "status": "running",
+            "logs": ["log line 1", "log line 2"] if include_logs else None,
+        }
+
+    def connect_to_deployment(self, deployment_id):
+        """Concrete implementation for testing."""
+        return {"connected": True, "deployment_id": deployment_id}
+
+    def cleanup_stopped_containers(self, template_name=None):
+        """Concrete implementation for testing."""
+        return {"cleaned": True, "count": 2}
+
+    def cleanup_dangling_images(self):
+        """Concrete implementation for testing."""
+        return {"cleaned": True, "count": 1}
 
 
 class TestBaseDeploymentBackend:
@@ -68,9 +78,8 @@ class TestBaseDeploymentBackend:
 
     def test_is_available_default(self):
         """Test default is_available property."""
-        # Base implementation returns False
-        base_backend = BaseDeploymentBackend()
-        assert base_backend.is_available is False
+        # Cannot instantiate abstract class directly, test through concrete implementation
+        assert self.backend.is_available is False
 
     def test_is_available_can_be_overridden(self):
         """Test that is_available can be overridden in subclasses."""
@@ -80,8 +89,29 @@ class TestBaseDeploymentBackend:
             def is_available(self):
                 return True
 
-            def deploy_template(self, *args, **kwargs):
+            async def deploy_template(self, *args, **kwargs):
+                pass
+
+            async def list_deployments(self, *args, **kwargs):
+                return []
+
+            async def delete_deployment(self, *args, **kwargs):
+                pass
+
+            async def stop_deployment(self, *args, **kwargs):
+                pass
+
+            async def get_deployment_info(self, *args, **kwargs):
                 return {}
+
+            async def connect_to_deployment(self, *args, **kwargs):
+                pass
+
+            async def cleanup_stopped_containers(self, *args, **kwargs):
+                pass
+
+            async def cleanup_dangling_images(self, *args, **kwargs):
+                pass
 
         backend = AvailableBackend()
         assert backend.is_available is True
@@ -163,6 +193,29 @@ class TestBaseDeploymentBackendInheritance:
             ):
                 return {"working": True, "template_id": template_id}
 
+            def list_deployments(self):
+                return []
+
+            def delete_deployment(self, deployment_name):
+                return True
+
+            def stop_deployment(self, deployment_name, force=False):
+                return True
+
+            def get_deployment_info(
+                self, deployment_name, include_logs=False, lines=10
+            ):
+                return {"deployment_id": deployment_name}
+
+            def connect_to_deployment(self, deployment_id):
+                return {"connected": True}
+
+            def cleanup_stopped_containers(self, template_name=None):
+                return {"cleaned": True}
+
+            def cleanup_dangling_images(self):
+                return {"cleaned": True}
+
         backend = WorkingBackend()
         result = backend.deploy_template("test", {}, {}, {})
         assert result["working"] is True
@@ -182,12 +235,33 @@ class TestBaseDeploymentBackendInheritance:
             ):
                 return {"minimal": True}
 
+            def list_deployments(self):
+                return []
+
+            def delete_deployment(self, deployment_name):
+                return True
+
+            def stop_deployment(self, deployment_name, force=False):
+                return True
+
+            def get_deployment_info(
+                self, deployment_name, include_logs=False, lines=10
+            ):
+                return {"deployment_id": deployment_name}
+
+            def connect_to_deployment(self, deployment_id):
+                return {"connected": True}
+
+            def cleanup_stopped_containers(self, template_name=None):
+                return {"cleaned": True}
+
+            def cleanup_dangling_images(self):
+                return {"cleaned": True}
+
         backend = MinimalBackend()
 
         # Should be able to create instance with just required method
         assert backend is not None
-
-        # Optional methods might not be implemented
         # This depends on whether they're abstract or have default implementations
 
     def test_multiple_inheritance_compatibility(self):
@@ -208,6 +282,29 @@ class TestBaseDeploymentBackendInheritance:
                 dry_run=False,
             ):
                 return {"multi": True}
+
+            def list_deployments(self):
+                return []
+
+            def delete_deployment(self, deployment_name):
+                return True
+
+            def stop_deployment(self, deployment_name, force=False):
+                return True
+
+            def get_deployment_info(
+                self, deployment_name, include_logs=False, lines=10
+            ):
+                return {"deployment_id": deployment_name}
+
+            def connect_to_deployment(self, deployment_id):
+                return {"connected": True}
+
+            def cleanup_stopped_containers(self, template_name=None):
+                return {"cleaned": True}
+
+            def cleanup_dangling_images(self):
+                return {"cleaned": True}
 
         backend = MultiInheritanceBackend()
         assert backend.deploy_template("test", {}, {}, {})["multi"] is True
@@ -305,6 +402,29 @@ class TestBaseDeploymentBackendErrorHandling:
                 if template_id == "error":
                     raise Exception("Test error")
                 return {"success": True}
+
+            def list_deployments(self):
+                return []
+
+            def delete_deployment(self, deployment_name):
+                return True
+
+            def stop_deployment(self, deployment_name, force=False):
+                return True
+
+            def get_deployment_info(
+                self, deployment_name, include_logs=False, lines=10
+            ):
+                return {"deployment_id": deployment_name}
+
+            def connect_to_deployment(self, deployment_id):
+                return {"connected": True}
+
+            def cleanup_stopped_containers(self, template_name=None):
+                return {"cleaned": True}
+
+            def cleanup_dangling_images(self):
+                return {"cleaned": True}
 
         backend = ErrorBackend()
 

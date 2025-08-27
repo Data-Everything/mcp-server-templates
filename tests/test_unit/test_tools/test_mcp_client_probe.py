@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 from mcp_template.tools.mcp_client_probe import MCPClientProbe
 
 

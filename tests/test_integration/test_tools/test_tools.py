@@ -12,6 +12,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 from mcp_template.tools.base_probe import BaseProbe
 from mcp_template.tools.docker_probe import DockerProbe
 from mcp_template.tools.kubernetes_probe import KubernetesProbe

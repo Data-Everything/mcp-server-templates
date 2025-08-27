@@ -10,6 +10,8 @@ from unittest.mock import Mock, patch
 import pytest
 from kubernetes.client.rest import ApiException
 
+pytestmark = pytest.mark.unit
+
 from mcp_template.tools.kubernetes_probe import KubernetesProbe
 
 

@@ -12,6 +12,8 @@ import pytest
 
 from mcp_template.backends.podman import PodmanDeploymentService
 
+pytestmark = pytest.mark.unit
+
 
 class TestPodmanDeploymentService:
     """Test the PodmanDeploymentService class."""

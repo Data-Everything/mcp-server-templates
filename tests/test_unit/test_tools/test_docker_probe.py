@@ -12,6 +12,8 @@ from unittest.mock import Mock, call, patch
 import pytest
 import requests
 
+pytestmark = pytest.mark.unit
+
 from mcp_template.tools.docker_probe import DockerProbe
 
 

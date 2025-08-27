@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 from mcp_template.tools.base_probe import (
     CONTAINER_HEALTH_CHECK_TIMEOUT,
     CONTAINER_PORT_RANGE,

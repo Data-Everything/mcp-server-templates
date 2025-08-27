@@ -12,6 +12,8 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+pytestmark = pytest.mark.unit
+
 from mcp_template.cli.cli import (
     AliasGroup,
     app,
@@ -20,8 +22,6 @@ from mcp_template.cli.cli import (
     setup_logging,
     split_command_args,
 )
-
-pytestmark = pytest.mark.unit
 
 
 class TestCLIUtilities:
