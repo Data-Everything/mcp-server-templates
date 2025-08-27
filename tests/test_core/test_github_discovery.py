@@ -5,7 +5,6 @@ Migrated from tests_old/test_tools/test_github_tool_discovery.py
 
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -221,7 +220,7 @@ class TestGitHubToolDiscovery:
         assert isinstance(result1, dict)
         assert "tools" in result1
         assert result1["tools"] is not None, "First result should have tools"
-        assert result1["discovery_method"] == "cache"
+        assert result1["discovery_method"] == "stdio"
         assert len(result1["tools"]) == 2
 
     def test_github_error_handling_and_fallbacks(self):

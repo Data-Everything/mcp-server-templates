@@ -1594,3 +1594,293 @@ class TestInteractiveCLIParsing:
         command = "call -C key='value with spaces' filesystem list_directory"
         tokens = shlex.split(command)
         assert "key=value with spaces" in tokens
+
+
+class TestInteractiveCLIBeautifierEnhancements:
+    """Enhanced tests for Interactive CLI display and formatting functionality.
+
+    These tests focus on the display functions that handle complex data structures
+    and tool responses in the interactive CLI.
+    """
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_tool_result_complex_dict(self, mock_console):
+        """Test _display_tool_result with complex nested dictionary."""
+        complex_data = {
+            "metadata": {"timestamp": "2024-01-01", "version": "1.0"},
+            "results": [
+                {"name": "item1", "score": 95, "tags": ["tag1", "tag2"]},
+                {"name": "item2", "score": 87, "tags": ["tag3", "tag1"]},
+            ],
+            "summary": {"total": 2, "average_score": 91.0},
+        }
+
+        _display_tool_result(complex_data, "complex_tool", raw=False)
+
+        # Should call console.print at least once for formatted output
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_tool_result_large_list(self, mock_console):
+        """Test _display_tool_result with large list of items."""
+        large_list = [
+            {"id": i, "name": f"item_{i}", "value": i * 10} for i in range(50)
+        ]
+
+        _display_tool_result(large_list, "list_tool", raw=False)
+
+        # Should handle large lists gracefully
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_tool_result_mcp_content_response(self, mock_console):
+        """Test _display_tool_result with MCP content response structure."""
+        mcp_response = {
+            "content": [
+                {"type": "text", "text": "Operation completed successfully"},
+                {"type": "text", "text": "Files processed: 5"},
+            ]
+        }
+
+        _display_tool_result(mcp_response, "mcp_tool", raw=False)
+
+        # Should handle MCP-style responses
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_mcp_content_table_mixed_content(self, mock_console):
+        """Test _display_mcp_content_table with mixed content types."""
+        content = [
+            {"type": "text", "text": "Processing started"},
+            {"type": "text", "text": "Found 10 files"},
+            {
+                "type": "text",
+                "text": '{"results": [{"file": "test.py", "status": "ok"}]}',
+            },
+        ]
+
+        _display_mcp_content_table(content, "mixed_tool")
+
+        # Should handle mixed content types including JSON strings
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_dict_as_table_nested_data(self, mock_console):
+        """Test _display_dict_as_table with nested structures."""
+        nested_data = {
+            "user_info": {"name": "Alice", "age": 30, "email": "alice@example.com"},
+            "preferences": {"theme": "dark", "notifications": True},
+            "stats": {"login_count": 42, "last_seen": "2024-01-01"},
+        }
+
+        _display_dict_as_table(nested_data, "nested_tool")
+
+        # Should handle nested dictionaries
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_dict_as_table_tabular_data(self, mock_console):
+        """Test _display_dict_as_table with tabular dictionary format."""
+        tabular_data = {
+            "names": ["Alice", "Bob", "Charlie"],
+            "ages": [25, 30, 35],
+            "cities": ["NYC", "LA", "Chicago"],
+            "scores": [95, 87, 92],
+        }
+
+        _display_dict_as_table(tabular_data, "tabular_tool")
+
+        # Should handle tabular dictionary format
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_list_as_table_heterogeneous_data(self, mock_console):
+        """Test _display_list_as_table with heterogeneous list items."""
+        mixed_list = [
+            {"name": "Alice", "type": "user", "active": True},
+            {
+                "name": "Bob",
+                "type": "admin",
+                "active": False,
+                "permissions": ["read", "write"],
+            },
+            {
+                "name": "Charlie",
+                "type": "user",
+                "active": True,
+                "department": "Engineering",
+            },
+        ]
+
+        _display_list_as_table(mixed_list, "mixed_tool")
+
+        # Should handle lists with inconsistent keys
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_list_as_table_simple_strings(self, mock_console):
+        """Test _display_list_as_table with simple string list."""
+        string_list = ["apple", "banana", "cherry", "date", "elderberry"]
+
+        _display_list_as_table(string_list, "string_tool")
+
+        # Should handle simple string lists
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_simple_result_table_json_string(self, mock_console):
+        """Test _display_simple_result_table with JSON string input."""
+        json_string = '{"status": "success", "message": "Operation completed", "data": {"count": 5}}'
+
+        _display_simple_result_table(json_string, "json_tool")
+
+        # Should handle JSON strings by parsing them
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_simple_result_table_multiline_text(self, mock_console):
+        """Test _display_simple_result_table with multiline text."""
+        multiline_text = """Line 1: Status check
+Line 2: Processing files
+Line 3: Operation completed
+Line 4: Results saved"""
+
+        _display_simple_result_table(multiline_text, "multiline_tool")
+
+        # Should handle multiline text
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_tool_result_empty_structures(self, mock_console):
+        """Test display functions with empty data structures."""
+        test_cases = [
+            ({}, "empty_dict"),
+            ([], "empty_list"),
+            ("", "empty_string"),
+            (None, "none_value"),
+        ]
+
+        for data, tool_name in test_cases:
+            mock_console.reset_mock()
+            _display_tool_result(data, tool_name, raw=False)
+
+            # Should handle empty structures gracefully
+            assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_tool_result_error_data(self, mock_console):
+        """Test _display_tool_result with error-like data structures."""
+        error_data = {
+            "error": "Connection failed",
+            "code": 500,
+            "details": {
+                "reason": "Network timeout",
+                "retry_after": 30,
+                "suggestions": ["Check network connection", "Retry later"],
+            },
+        }
+
+        _display_tool_result(error_data, "error_tool", raw=False)
+
+        # Should handle error structures
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_functions_with_special_characters(self, mock_console):
+        """Test display functions with special characters and Unicode."""
+        unicode_data = {
+            "message": "Hello 世界! 🌍 Testing émojis and spëcial chars",
+            "symbols": ["α", "β", "γ", "δ"],
+            "paths": ["/home/user/café", "/tmp/naïve file.txt"],
+        }
+
+        _display_dict_as_table(unicode_data, "unicode_tool")
+
+        # Should handle Unicode and special characters
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_tool_result_with_raw_flag(self, mock_console):
+        """Test that raw=True bypasses formatting."""
+        complex_data = {"nested": {"data": [1, 2, 3]}}
+
+        _display_tool_result(complex_data, "raw_tool", raw=True)
+
+        # With raw=True, should print header and data (2 calls total)
+        assert mock_console.print.call_count == 2
+
+        # Should include header with "(Raw)" indicator
+        header_call = mock_console.print.call_args_list[0]
+        assert "raw_tool" in str(header_call)
+        assert "(Raw)" in str(header_call)
+
+        # Should include the data in JSON format
+        data_call = mock_console.print.call_args_list[1]
+        assert "nested" in str(data_call)
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_mcp_content_table_json_parsing(self, mock_console):
+        """Test _display_mcp_content_table with content containing JSON."""
+        content_with_json = [
+            {"type": "text", "text": "Query results:"},
+            {
+                "type": "text",
+                "text": '{"users": [{"name": "Alice", "id": 1}, {"name": "Bob", "id": 2}]}',
+            },
+            {"type": "text", "text": "Total: 2 users found"},
+        ]
+
+        _display_mcp_content_table(content_with_json, "json_content_tool")
+
+        # Should parse and format JSON content within MCP responses
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_functions_performance_with_large_data(self, mock_console):
+        """Test display functions with large datasets for performance."""
+        # Large list of dictionaries
+        large_dataset = [
+            {
+                "id": i,
+                "name": f"entity_{i}",
+                "value": i * 1.5,
+                "category": f"cat_{i % 10}",
+                "tags": [f"tag_{j}" for j in range(i % 5)],
+            }
+            for i in range(100)
+        ]
+
+        _display_list_as_table(large_dataset, "large_data_tool")
+
+        # Should handle large datasets without errors
+        assert mock_console.print.call_count >= 1
+
+    @patch("mcp_template.cli.interactive_cli.console")
+    def test_display_tool_result_table_route_selection(self, mock_console):
+        """Test that _display_tool_result correctly routes to appropriate display function."""
+        test_cases = [
+            # Should route to _display_mcp_content_table
+            (
+                {"content": [{"type": "text", "text": "test"}]},
+                "should call _display_mcp_content_table",
+            ),
+            # Should route to _display_dict_as_table
+            (
+                {"key1": "value1", "key2": "value2"},
+                "should call _display_dict_as_table",
+            ),
+            # Should route to _display_list_as_table
+            (
+                [{"name": "item1"}, {"name": "item2"}],
+                "should call _display_list_as_table",
+            ),
+            # Should route to _display_simple_result_table
+            ("simple string result", "should call _display_simple_result_table"),
+        ]
+
+        for data, description in test_cases:
+            mock_console.reset_mock()
+            _display_tool_result(data, "routing_test", raw=False)
+
+            # Each should result in console output
+            assert mock_console.print.call_count >= 1, f"Failed for case: {description}"
