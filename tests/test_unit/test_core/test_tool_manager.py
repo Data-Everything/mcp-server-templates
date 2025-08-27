@@ -1,5 +1,7 @@
 """
-Tests for GitHub tool discovery functionality.
+Tests for ToolManager functionality.
+
+Tests the ToolManager class including GitHub-specific tool discovery.
 Migrated from tests_old/test_tools/test_github_tool_discovery.py
 """
 
