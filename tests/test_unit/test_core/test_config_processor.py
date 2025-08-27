@@ -18,95 +18,10 @@ from mcp_template.core.config_processor import ConfigProcessor
 class TestConfigProcessor:
     """Test ConfigProcessor class for unified configuration processing."""
 
-    @pytest.fixture
-    def config_processor(self):
-        """Create a ConfigProcessor instance for testing."""
-        return ConfigProcessor()
-
-    @pytest.fixture
-    def sample_template(self):
-        """Create a sample template for testing."""
-        return {
-            "config_schema": {
-                "type": "object",
-                "properties": {
-                    "log_level": {
-                        "type": "string",
-                        "description": "Logging level",
-                        "default": "INFO",
-                        "env_mapping": "LOG_LEVEL",
-                    },
-                    "allowed_dirs": {
-                        "type": "string",
-                        "description": "Allowed directories",
-                        "env_mapping": "ALLOWED_DIRS",
-                        "volume_mount": True,
-                        "command_arg": True,
-                    },
-                    "read_only_mode": {
-                        "type": "boolean",
-                        "description": "Read-only mode",
-                        "default": False,
-                        "env_mapping": "READ_ONLY_MODE",
-                    },
-                    "port": {
-                        "type": "integer",
-                        "description": "Port number",
-                        "default": 8080,
-                        "env_mapping": "PORT",
-                    },
-                    "timeout": {
-                        "type": "number",
-                        "description": "Timeout in seconds",
-                        "default": 30.0,
-                        "env_mapping": "TIMEOUT",
-                    },
-                    "tags": {
-                        "type": "array",
-                        "description": "List of tags",
-                        "env_mapping": "TAGS",
-                    },
-                },
-                "required": ["allowed_dirs"],
-            },
-            "env_vars": {
-                "LOG_LEVEL": "DEBUG",
-                "DEFAULT_VALUE": "template_default",
-            },
-            "volumes": {
-                "~/mcp-data": "/data",
-            },
-            "command": ["--template-arg"],
-        }
-
 
 @pytest.mark.unit
 class TestConfigProcessorPrepareConfiguration:
     """Test ConfigProcessor.prepare_configuration method."""
-
-    @pytest.fixture
-    def config_processor(self):
-        """Create a ConfigProcessor instance for testing."""
-        return ConfigProcessor()
-
-    @pytest.fixture
-    def sample_template(self):
-        """Create a sample template for testing."""
-        return {
-            "config_schema": {
-                "properties": {
-                    "log_level": {
-                        "type": "string",
-                        "env_mapping": "LOG_LEVEL",
-                    },
-                    "allowed_dirs": {
-                        "type": "string",
-                        "env_mapping": "ALLOWED_DIRS",
-                    },
-                }
-            },
-            "env_vars": {"LOG_LEVEL": "INFO"},
-        }
 
     def test_prepare_configuration_template_defaults_only(
         self, config_processor, sample_template
@@ -242,11 +157,6 @@ class TestConfigProcessorPrepareConfiguration:
 @pytest.mark.unit
 class TestConfigProcessorVolumeAndCommandArgs:
     """Test ConfigProcessor.handle_volume_and_args_config_properties method."""
-
-    @pytest.fixture
-    def config_processor(self):
-        """Create a ConfigProcessor instance for testing."""
-        return ConfigProcessor()
 
     def test_handle_volume_mount_property(self, config_processor):
         """Test handling of volume mount properties."""
@@ -532,11 +442,6 @@ class TestConfigProcessorVolumeAndCommandArgs:
 class TestConfigProcessorTypeConversion:
     """Test ConfigProcessor type conversion functionality."""
 
-    @pytest.fixture
-    def config_processor(self):
-        """Create a ConfigProcessor instance for testing."""
-        return ConfigProcessor()
-
     def test_convert_boolean_values(self, config_processor):
         """Test conversion of boolean values."""
         template = {
@@ -667,11 +572,6 @@ class TestConfigProcessorTypeConversion:
 class TestConfigProcessorNestedConfiguration:
     """Test ConfigProcessor nested configuration handling."""
 
-    @pytest.fixture
-    def config_processor(self):
-        """Create a ConfigProcessor instance for testing."""
-        return ConfigProcessor()
-
     def test_handle_nested_cli_config_two_parts(self, config_processor):
         """Test handling of double underscore notation with two parts."""
         properties = {
@@ -746,11 +646,6 @@ class TestConfigProcessorNestedConfiguration:
 @pytest.mark.unit
 class TestConfigProcessorFileMapping:
     """Test ConfigProcessor file mapping functionality."""
-
-    @pytest.fixture
-    def config_processor(self):
-        """Create a ConfigProcessor instance for testing."""
-        return ConfigProcessor()
 
     def test_map_file_config_to_env_direct_mapping(self, config_processor):
         """Test direct property name mapping from file config."""
@@ -832,11 +727,6 @@ class TestConfigProcessorFileMapping:
 @pytest.mark.unit
 class TestConfigProcessorTemplateOverrides:
     """Test template override functionality in ConfigProcessor."""
-
-    @pytest.fixture
-    def config_processor(self):
-        """Create a ConfigProcessor instance for testing."""
-        return ConfigProcessor()
 
     def test_simple_override(self, config_processor):
         """Test simple field override."""

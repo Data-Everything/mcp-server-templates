@@ -15,52 +15,12 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.fixture
-def mock_backends():
-    """Fixture for mocked backend instances."""
-    docker_backend = Mock()
-    k8s_backend = Mock()
-    mock_backend = Mock()
-
-    return {"docker": docker_backend, "kubernetes": k8s_backend, "mock": mock_backend}
-
-
-@pytest.fixture
 def mock_managers():
     """Fixture for mocked manager instances."""
     return {
         "docker": {"deployment": Mock(), "tool": Mock()},
         "kubernetes": {"deployment": Mock(), "tool": Mock()},
         "mock": {"deployment": Mock(), "tool": Mock()},
-    }
-
-
-@pytest.fixture
-def sample_deployments():
-    """Sample deployment data for testing."""
-    return {
-        "docker": [
-            {
-                "id": "docker-123",
-                "template": "demo",
-                "status": "running",
-                "created_at": "2024-01-01T10:00:00Z",
-            },
-            {
-                "id": "docker-456",
-                "template": "github",
-                "status": "stopped",
-                "created_at": "2024-01-01T09:00:00Z",
-            },
-        ],
-        "kubernetes": [
-            {
-                "id": "k8s-789",
-                "template": "demo",
-                "status": "running",
-                "created_at": "2024-01-01T11:00:00Z",
-            }
-        ],
-        "mock": [],
     }
 
 
