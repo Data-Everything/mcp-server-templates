@@ -4,13 +4,11 @@ Unit tests for the Kubernetes probe module (mcp_template.tools.kubernetes_probe)
 Tests Kubernetes pod-based MCP server tool discovery functionality.
 """
 
-import time
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
-from kubernetes.client.rest import ApiException
 
-pytestmark = pytest.mark.unit
+pytestmark = [pytest.mark.unit, pytest.mark.kubernetes]
 
 from mcp_template.tools.kubernetes_probe import KubernetesProbe
 

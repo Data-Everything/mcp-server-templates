@@ -5,14 +5,14 @@ Tests the KubernetesDeploymentService class with comprehensive mocking
 of Kubernetes client libraries and APIs.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from kubernetes.client.rest import ApiException
 
 from mcp_template.backends.kubernetes import KubernetesDeploymentService
 
-pytestmark = pytest.mark.unit
+pytestmark = [pytest.mark.unit, pytest.mark.kubernetes]
 
 
 class TestKubernetesDeploymentService:

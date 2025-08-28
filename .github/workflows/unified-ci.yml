@@ -11,8 +11,8 @@ env:
   PYTHON_VERSION: '3.11'
 
 jobs:
-  # Quick validation tests - fastest feedback
-  quick-tests:
+  # Fast feedback - basic validation (always runs first)
+  quick-validation:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -28,7 +28,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
-    - name: Test import availability
+    - name: Check basic imports and functionality
       run: |
         python -c "
         from mcp_template import TemplateDiscovery, DockerDeploymentService, DeploymentManager
@@ -43,55 +43,12 @@ jobs:
         print('✅ DeploymentManager initialized')
         "
 
-  # Core system tests
-  core-tests:
-    runs-on: ubuntu-latest
-    needs: quick-tests
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: Install dependencies
+    - name: Run basic unit tests (no external dependencies)
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        python -m pytest tests/test_unit -m "unit and not docker and not kubernetes" \
+          -x --tb=short --disable-warnings
 
-    - name: Run unit tests
-      run: |
-        python tests/runner.py --unit
-
-  # Template tests
-  template-tests:
-    runs-on: ubuntu-latest
-    needs: quick-tests
-    strategy:
-      matrix:
-        template: [demo]
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-
-    - name: Test template ${{ matrix.template }}
-      run: |
-        cd mcp_template/template/templates/${{ matrix.template }}
-        python -m pytest tests/ -v --tb=short --cov-fail-under=0
-
-  # Code quality checks
+  # Code quality checks (runs in parallel with quick validation)
   code-quality:
     runs-on: ubuntu-latest
     steps:
@@ -108,26 +65,243 @@ jobs:
         pip install black isort flake8 bandit
 
     - name: Check code formatting
-      run: |
-        black --check mcp_template/ tests/ || echo "⚠️ Code formatting issues found"
+      run: black --check mcp_template/ tests/
 
     - name: Check import sorting
-      run: |
-        isort --check-only mcp_template/ tests/ || echo "⚠️ Import sorting issues found"
+      run: isort --check-only mcp_template/ tests/
 
     - name: Run linting
-      run: |
-        flake8 mcp_template/ tests/ --max-line-length=100 --extend-ignore=E203,W503 || echo "⚠️ Linting issues found"
+      run: flake8 mcp_template/ tests/ --max-line-length=100 --extend-ignore=E203,W503
 
     - name: Run security scan
-      run: |
-        bandit -r mcp_template/ --exit-zero || echo "⚠️ Security issues found"
+      run: bandit -r mcp_template/ --exit-zero
 
-  # Multi-Python version testing (on main branch only)
+  # Comprehensive unit tests (needs quick validation to pass)
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Run all unit tests
+      run: |
+        python -m pytest tests/test_unit -m "unit" \
+          --cov=mcp_template \
+          --cov-report=term-missing \
+          --cov-report=xml \
+          --cov-fail-under=20 \
+          --tb=short
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+
+  # Docker tests (needs Docker environment)
+  docker-tests:
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Run Docker-specific tests
+      run: |
+        python -m pytest tests/ -m "docker" \
+          --tb=short \
+          --disable-warnings
+
+  # Kubernetes tests (needs k8s environment)
+  kubernetes-tests:
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Setup Kubernetes (kind)
+      uses: helm/kind-action@v1.10.0
+      with:
+        cluster_name: mcp-test-cluster
+        kubectl_version: v1.29.0
+
+    - name: Run Kubernetes-specific tests
+      run: |
+        python -m pytest tests/ -m "kubernetes" \
+          --tb=short \
+          --disable-warnings
+
+  # Template-specific tests
+  template-tests:
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    strategy:
+      matrix:
+        template: [demo, filesystem, zendesk]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Test template ${{ matrix.template }}
+      run: |
+        if [ -d "mcp_template/template/templates/${{ matrix.template }}/tests" ]; then
+          python -m pytest mcp_template/template/templates/${{ matrix.template }}/tests/ -v --tb=short --cov-fail-under=0
+        else
+          echo "No tests found for template ${{ matrix.template }}"
+        fi
+
+  # Full integration tests (only on PRs to main and main branch)
+  integration-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    needs: [unit-tests, docker-tests, kubernetes-tests]
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Setup Kubernetes (kind)
+      uses: helm/kind-action@v1.10.0
+      with:
+        cluster_name: mcp-test-cluster
+        kubectl_version: v1.29.0
+
+    - name: Run full integration tests
+      run: |
+        python -m pytest tests/test_integration/ -m "integration" \
+          --tb=short \
+          --disable-warnings \
+          || echo "⚠️ Some integration tests failed (non-blocking)"
+
+  # Full test suite (only on PRs to main and main branch)
+  full-test-suite:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    needs: [unit-tests, docker-tests, kubernetes-tests, template-tests]
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Setup Kubernetes (kind)
+      uses: helm/kind-action@v1.10.0
+      with:
+        cluster_name: mcp-test-cluster
+        kubectl_version: v1.29.0
+
+    - name: Run complete test suite
+      run: |
+        echo "🧪 Running complete test suite..."
+        python -m pytest tests/ \
+          --cov=mcp_template \
+          --cov-report=term-missing \
+          --cov-report=html \
+          --cov-report=xml \
+          --cov-fail-under=20 \
+          --tb=short \
+          --timeout=300
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: htmlcov/
+
+  # Multi-Python version testing (only on main branch and release tags)
   multi-python-tests:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || contains(github.ref, 'release-pypi-')
-    needs: [quick-tests, core-tests]
+    needs: [quick-validation]
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
@@ -145,11 +319,17 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
+    - name: Run core tests on Python ${{ matrix.python-version }}
+      run: |
+        python -m pytest tests/test_unit -m "unit and not docker and not kubernetes" \
+          --tb=short \
+          --disable-warnings
+
   # PyPI deployment (only on release tags)
   deploy-pypi:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/release-pypi-')
-    needs: [quick-tests, core-tests, template-tests, code-quality]
+    needs: [full-test-suite, code-quality, multi-python-tests]
     environment:
       name: pypi
       url: https://pypi.org/p/mcp-template
@@ -179,10 +359,6 @@ jobs:
       run: |
         python -c "from mcp_template import __version__; print(f'PyPI version from git tag: {__version__}')"
 
-    - name: Run final tests before deploy
-      run: |
-        python tests/runner.py --unit
-
     - name: Check version from setuptools_scm
       run: |
         VERSION=$(python -m setuptools_scm)
@@ -204,27 +380,3 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         verbose: true
-
-  # Integration tests (optional, on main branch)
-  integration-tests:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    needs: [core-tests, template-tests]
-    continue-on-error: true  # Don't fail the entire pipeline
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-
-    - name: Run integration tests
-      run: |
-        python tests/runner.py --integration || echo "⚠️ Some integration tests failed"
