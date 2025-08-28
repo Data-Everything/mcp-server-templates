@@ -24,7 +24,7 @@ class TestMain:
         import importlib.util
 
         main_module_path = (
-            Path(__file__).parent.parent.parent / "mcp_template" / "__main__.py"
+            Path(__file__).parent.parent.parent.parent / "mcp_template" / "__main__.py"
         )
         spec = importlib.util.spec_from_file_location("__main__", main_module_path)
         main_module = importlib.util.module_from_spec(spec)
@@ -38,7 +38,7 @@ class TestMain:
     def test_main_module_structure(self):
         """Test that __main__ module has correct structure."""
         main_module_path = (
-            Path(__file__).parent.parent.parent / "mcp_template" / "__main__.py"
+            Path(__file__).parent.parent.parent.parent / "mcp_template" / "__main__.py"
         )
 
         # Read the file content

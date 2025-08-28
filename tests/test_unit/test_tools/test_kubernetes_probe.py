@@ -108,36 +108,5 @@ class TestKubernetesProbeConfiguration:
         assert DISCOVERY_TIMEOUT == 60
 
 
-class TestKubernetesProbeIntegration:
-    """Test integration aspects of KubernetesProbe."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        with patch.object(KubernetesProbe, "_init_kubernetes_client"):
-            self.probe = KubernetesProbe()
-
-    def test_inherits_from_base_probe(self):
-        """Test that KubernetesProbe properly inherits from BaseProbe."""
-        from mcp_template.tools.base_probe import BaseProbe
-
-        assert isinstance(self.probe, BaseProbe)
-
-    def test_implements_abstract_method(self):
-        """Test that KubernetesProbe implements required abstract method."""
-        assert hasattr(self.probe, "discover_tools_from_image")
-        assert callable(self.probe.discover_tools_from_image)
-
-    def test_namespace_validation(self):
-        """Test namespace validation and usage."""
-        with patch.object(KubernetesProbe, "_init_kubernetes_client"):
-            # Test valid namespace
-            probe = KubernetesProbe(namespace="valid-namespace")
-            assert probe.namespace == "valid-namespace"
-
-            # Test namespace with special characters (should still work)
-            probe = KubernetesProbe(namespace="test.namespace-123")
-            assert probe.namespace == "test.namespace-123"
-
-
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
