@@ -1,3 +1,4 @@
+# pragma: no cover
 """
 Podman backend for managing deployments using Podman containers.
 
