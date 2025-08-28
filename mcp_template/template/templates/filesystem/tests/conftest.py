@@ -2,9 +2,10 @@
 Pytest configuration for Filesystem template tests.
 """
 
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add template directory to Python path
 template_dir = Path(__file__).parent.parent

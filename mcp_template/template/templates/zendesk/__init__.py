@@ -13,8 +13,8 @@ A comprehensive Zendesk integration MCP server providing:
 This package uses FastMCP for modern MCP protocol implementation.
 """
 
-from .server import ZendeskMCPServer
 from .config import ZendeskServerConfig
+from .server import ZendeskMCPServer
 
 __all__ = ["ZendeskMCPServer", "ZendeskServerConfig"]
 __version__ = "1.0.0"

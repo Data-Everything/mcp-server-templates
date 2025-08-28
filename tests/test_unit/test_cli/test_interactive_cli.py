@@ -53,12 +53,16 @@ class TestInteractiveSession:
             mock_cache_manager.return_value = mock_cache
             mock_cache.get.return_value = {}
 
-            session = InteractiveSession()
-
-            assert session.backend_type == "docker"
-            assert session.selected_template is None
-            assert session.session_configs == {}
-            mock_cache_manager.assert_called_once()
+            with patch(
+                "mcp_template.cli.interactive_cli.MCPClient"
+            ) as mock_mcp_client_class:
+                mock_mcp_client = Mock()
+                mock_mcp_client_class.return_value = mock_mcp_client
+                session = InteractiveSession()
+                assert session.backend_type == "docker"
+                assert session.selected_template is None
+                assert session.session_configs == {}
+                mock_cache_manager.assert_called_once()
 
     def test_init_custom_backend(self):
         """Test session initialization with custom backend."""
@@ -68,10 +72,15 @@ class TestInteractiveSession:
             mock_cache = Mock()
             mock_cache_manager.return_value = mock_cache
             mock_cache.get.return_value = {}
+            with patch(
+                "mcp_template.cli.interactive_cli.MCPClient"
+            ) as mock_mcp_client_class:
+                # Return a fake MCPClient instance so it won't attempt real K8s access
+                mock_mcp_client = Mock()
+                mock_mcp_client_class.return_value = mock_mcp_client
+                session = InteractiveSession(backend_type="kubernetes")
 
-            session = InteractiveSession(backend_type="kubernetes")
-
-            assert session.backend_type == "kubernetes"
+                assert session.backend_type == "kubernetes"
 
     def test_select_template(self):
         """Test template selection."""
