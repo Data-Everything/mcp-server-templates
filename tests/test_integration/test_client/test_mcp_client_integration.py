@@ -1,6 +1,5 @@
 """Integration tests for MCP Client with real templates."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,7 +22,6 @@ class TestMCPClientIntegration:
             patch("mcp_template.core.TemplateManager") as mock_template_manager_class,
             patch("mcp_template.core.ToolManager") as mock_tool_manager_class,
         ):
-
             # Set up mock managers
             mock_template_mgr = MagicMock()
             mock_tool_mgr = MagicMock()
@@ -106,7 +104,6 @@ class TestMCPClientIntegration:
             patch("mcp_template.core.TemplateManager") as mock_template_manager_class,
             patch("mcp_template.core.ToolManager") as mock_tool_manager_class,
         ):
-
             # Set up mock managers
             mock_template_mgr = MagicMock()
             mock_tool_mgr = MagicMock()
@@ -194,7 +191,6 @@ class TestMCPClientIntegration:
             patch("mcp_template.core.ToolManager"),
             patch("mcp_template.client.TemplateDiscovery"),
         ):
-
             # Setup mock connection
             mock_connection = MagicMock()
             mock_connection.connect_stdio = AsyncMock(return_value=True)
@@ -245,7 +241,6 @@ class TestMCPClientIntegration:
             patch("mcp_template.core.ToolManager") as mock_tool_manager,
             patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
         ):
-
             # Setup mocks with failures
             mock_tool_mgr = MagicMock()
             mock_template_disc = MagicMock()
@@ -279,7 +274,6 @@ class TestMCPClientIntegration:
             patch("mcp_template.core.ToolManager") as mock_tool_manager,
             patch("mcp_template.client.TemplateDiscovery") as mock_template_discovery,
         ):
-
             # Setup mocks
             mock_tool_mgr = MagicMock()
             mock_template_disc = MagicMock()
@@ -332,7 +326,6 @@ class TestMCPClientIntegration:
             patch("mcp_template.core.ToolManager"),
             patch("mcp_template.client.TemplateDiscovery"),
         ):
-
             # Setup multiple mock connections
             mock_connections = []
             for i in range(3):

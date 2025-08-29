@@ -6,9 +6,6 @@ without requiring complex template management infrastructure.
 """
 
 import json
-from typing import Any, Dict
-
-import pytest
 
 
 class TestGitLabTemplateConfiguration:

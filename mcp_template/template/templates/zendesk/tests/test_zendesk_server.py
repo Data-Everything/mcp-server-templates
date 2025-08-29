@@ -10,11 +10,10 @@ import asyncio
 import json
 import os
 import sys
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from aiohttp import ClientResponse, ClientSession
+from aiohttp import ClientSession
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 

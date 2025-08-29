@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Union
 from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
@@ -355,7 +354,7 @@ class ResponseFormatter:
 
     def _create_key_value_table(self, data: dict, title: str = "Data") -> Table:
         """Create a key-value table for simple dictionaries with intelligent formatting."""
-        analysis = self._analyze_data_types(data)
+        self._analyze_data_types(data)
 
         table = Table(
             title=f"{title} ({len(data)} properties)",
@@ -775,19 +774,19 @@ class ResponseFormatter:
                                         # Try to parse as JSON for better formatting
                                         parsed_content = json.loads(text_content)
                                         self.beautify_json(
-                                            parsed_content, f"Tool Result {i+1}"
+                                            parsed_content, f"Tool Result {i + 1}"
                                         )
                                     except json.JSONDecodeError:
                                         # Display as text if not JSON
                                         self.console.print(
                                             Panel(
                                                 text_content,
-                                                title=f"Tool Result {i+1}",
+                                                title=f"Tool Result {i + 1}",
                                                 border_style="green",
                                             )
                                         )
                                 else:
-                                    self.beautify_json(content, f"Content {i+1}")
+                                    self.beautify_json(content, f"Content {i + 1}")
                         else:
                             self.beautify_json(result_data, "Tool Result")
                     else:

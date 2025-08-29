@@ -754,8 +754,6 @@ class PodmanDeploymentService(BaseDeploymentBackend):
         Raises:
             ValueError: If Dockerfile is missing for the template.
         """
-        import os
-        from pathlib import Path
 
         from mcp_template.template.utils.discovery import TemplateDiscovery
 

@@ -69,7 +69,6 @@ class TestMultiBackendManagerInitialization:
             patch("mcp_template.core.deployment_manager.DeploymentManager"),
             patch("mcp_template.core.tool_manager.ToolManager"),
         ):
-
             manager = MultiBackendManager()
 
             # Should only have docker backend (kubernetes failed, mock excluded by default)
@@ -86,7 +85,6 @@ class TestMultiBackendManagerInitialization:
             patch("mcp_template.core.deployment_manager.DeploymentManager"),
             patch("mcp_template.core.tool_manager.ToolManager"),
         ):
-
             mock_get_backend.return_value = Mock()
 
             manager = MultiBackendManager(enabled_backends=["docker", "mock"])
@@ -608,7 +606,7 @@ class TestGetAllTools:
 
         # Create the manager
         manager = MultiBackendManager()
-        result = manager.get_all_tools(template_name="demo")
+        manager.get_all_tools(template_name="demo")
 
         # Verify template filter was applied - should be called 2 times for production backends
         assert mock_deployment_manager.find_deployments_by_criteria.call_count == 2

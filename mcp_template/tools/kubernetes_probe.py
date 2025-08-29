@@ -160,7 +160,7 @@ class KubernetesProbe(BaseProbe):
             )
 
             # Create the pod
-            pod = self.k8s_core_v1.create_namespaced_pod(
+            self.k8s_core_v1.create_namespaced_pod(
                 namespace=self.namespace, body=pod_manifest
             )
 

@@ -7,7 +7,6 @@ and metadata operations, consolidating functionality from CLI and MCPClient.
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 

@@ -5,10 +5,6 @@ These tests focus on validating the GitLab template structure and expected
 tool categories without requiring complex mocking of the MCP client.
 """
 
-from pathlib import Path
-
-import pytest
-
 
 class TestGitLabToolValidation:
     """Test GitLab template tool validation and categorization."""

@@ -39,7 +39,6 @@ response_formatter = ResponseFormatter()
 
 
 class AliasGroup(typer.core.TyperGroup):
-
     _CMD_SPLIT_P = re.compile(r"[,/] ?")
 
     def get_command(self, ctx, cmd_name):
@@ -354,7 +353,7 @@ def deploy(
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Deploying template...", total=None)
+            progress.add_task("Deploying template...", total=None)
             # Use MCPClient's deploy method
             deployment = client.deploy_template(
                 template_id=template,
@@ -471,7 +470,7 @@ def list_tools(
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task(
+            progress.add_task(
                 f"Discovering tools using {backend_name} backend...", total=None
             )
 
@@ -899,7 +898,7 @@ def stop(
                 TextColumn("[progress.description]{task.description}"),
                 console=console,
             ) as progress:
-                task = progress.add_task(
+                progress.add_task(
                     f"Stopping deployment {('on ' + backend) if backend else 'across backends'}...",
                     total=None,
                 )
@@ -1084,7 +1083,7 @@ def logs(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             console=console,
-        ) as progress:
+        ):
             if target not in all_templates:
                 result = client.get_server_logs(
                     deployment_id=target,
@@ -1131,7 +1130,7 @@ def status(
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Checking backend health...", total=None)
+            progress.add_task("Checking backend health...", total=None)
 
             health_data = multi_manager.get_backend_health()
             all_deployments = multi_manager.get_all_deployments()

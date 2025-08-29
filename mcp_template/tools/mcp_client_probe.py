@@ -206,7 +206,8 @@ class MCPClientProbe:
         for attempt in range(max_attempts):
             try:
                 response_line = await asyncio.wait_for(
-                    process.stdout.readline(), timeout=2  # Shorter timeout per line
+                    process.stdout.readline(),
+                    timeout=2,  # Shorter timeout per line
                 )
 
                 if not response_line:

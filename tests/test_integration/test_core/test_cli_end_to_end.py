@@ -23,7 +23,6 @@ class TestEndToEndScenarios:
                 "mcp_template.backends.docker.DockerDeploymentService._ensure_docker_available"
             ),
         ):
-
             # Mock docker commands
             mock_run.side_effect = [
                 # List containers

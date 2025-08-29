@@ -74,7 +74,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             self.autoscaling_v1 = client.AutoscalingV1Api()
 
             # Test connection
-            version = self.core_v1.get_api_resources()
+            self.core_v1.get_api_resources()
             logger.info("Connected to Kubernetes API")
 
         except Exception as e:
@@ -208,7 +208,6 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             raise RuntimeError(f"Helm chart not found at {chart_dir}")
 
         # Load templates
-        templates_dir = chart_dir / "templates"
         manifests = []
 
         # Template context
@@ -821,7 +820,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                 kwargs["until_time"] = until
             logs = self.core_v1.read_namespaced_pod_log(**kwargs)
             return {"success": True, "logs": logs}
-        except ApiException as e:
+        except ApiException:
             return {"success": False, "logs": ""}
 
     def connect_to_deployment(self, deployment_id: str):

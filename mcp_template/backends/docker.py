@@ -611,7 +611,7 @@ class DockerDeploymentService(BaseDeploymentBackend):
             bash_command = [
                 "/bin/bash",
                 "-c",
-                f"""docker run -i --rm {' '.join(env_vars)} {' '.join(volumes)} {' '.join(['--label', f'template={template_id}'])} {image_name} {' '.join(command_args)} << 'EOF'
+                f"""docker run -i --rm {" ".join(env_vars)} {" ".join(volumes)} {" ".join(["--label", f"template={template_id}"])} {image_name} {" ".join(command_args)} << 'EOF'
 {full_input}
 EOF""",
             ]

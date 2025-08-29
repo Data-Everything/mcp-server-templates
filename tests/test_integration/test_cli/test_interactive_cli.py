@@ -141,11 +141,7 @@ class TestCommandWorkflows:
     @patch("mcp_template.cli.interactive_cli.get_session")
     def test_configuration_workflow(self, mock_get_session):
         """Test complete configuration workflow."""
-        from mcp_template.cli.interactive_cli import (
-            clear_config,
-            configure_template,
-            show_config,
-        )
+        from mcp_template.cli.interactive_cli import configure_template
 
         # Setup mocks
         mock_session = Mock()
@@ -352,7 +348,6 @@ class TestComplexWorkflows:
             patch("mcp_template.cli.deploy") as mock_cli_deploy,
             patch("mcp_template.cli.interactive_cli.show_config"),
         ):
-
             # 1. Select template
             select_template("demo")
             mock_session.select_template.assert_called_with("demo")
@@ -423,7 +418,6 @@ class TestComplexWorkflows:
             patch("mcp_template.cli.list_tools") as mock_cli_list_tools,
             patch("mcp_template.cli.interactive_cli.show_config"),
         ):
-
             # Work with demo template
             mock_session.get_selected_template.return_value = "demo"
             select_template("demo")

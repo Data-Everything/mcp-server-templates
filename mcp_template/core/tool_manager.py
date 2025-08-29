@@ -330,7 +330,7 @@ class ToolManager:
                 return []
 
             if not len(docker_image.split(":")) > 1:
-                docker_image += f':{template_info.get("docker_tag", "latest")}'
+                docker_image += f":{template_info.get('docker_tag', 'latest')}"
 
             # Generate environment variables with dummy values for discovery
             env_vars = self._generate_discovery_env_vars(template_info, config_values)

@@ -284,9 +284,7 @@ class MCPConnection:
             headers: HTTP headers
         """
         try:
-            async with self.http_session.post(
-                url, json=notification, headers=headers
-            ) as response:
+            async with self.http_session.post(url, json=notification, headers=headers):
                 # Notification, we don't need to process the response
                 pass
         except Exception as e:

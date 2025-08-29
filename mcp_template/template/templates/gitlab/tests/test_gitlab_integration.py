@@ -6,7 +6,6 @@ without requiring full deployment infrastructure.
 """
 
 import json
-import os
 from pathlib import Path
 
 import pytest

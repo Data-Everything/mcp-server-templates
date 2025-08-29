@@ -167,7 +167,6 @@ class TestKubernetesDeploymentService:
             patch("mcp_template.backends.kubernetes.client.CoreV1Api") as mock_core,
             patch("mcp_template.backends.kubernetes.client.AutoscalingV1Api"),
         ):
-
             # Setup mocks
             mock_core_instance = Mock()
             mock_apps_instance = Mock()
@@ -207,7 +206,6 @@ class TestKubernetesDeploymentService:
             patch("mcp_template.backends.kubernetes.client.CoreV1Api") as mock_core,
             patch("mcp_template.backends.kubernetes.client.AutoscalingV1Api"),
         ):
-
             mock_core_instance = Mock()
             mock_apps_instance = Mock()
             mock_core.return_value = mock_core_instance
@@ -239,7 +237,6 @@ class TestKubernetesDeploymentService:
             patch("mcp_template.backends.kubernetes.client.CoreV1Api") as mock_core,
             patch("mcp_template.backends.kubernetes.client.AutoscalingV1Api"),
         ):
-
             mock_core_instance = Mock()
             mock_apps_instance = Mock()
             mock_core.return_value = mock_core_instance
@@ -276,7 +273,6 @@ class TestKubernetesDeploymentService:
             patch("mcp_template.backends.kubernetes.client.CoreV1Api") as mock_core,
             patch("mcp_template.backends.kubernetes.client.AutoscalingV1Api"),
         ):
-
             mock_core_instance = Mock()
             mock_apps_instance = Mock()
             mock_core.return_value = mock_core_instance
@@ -301,7 +297,6 @@ class TestKubernetesDeploymentService:
             patch("mcp_template.backends.kubernetes.client.CoreV1Api") as mock_core,
             patch("mcp_template.backends.kubernetes.client.AutoscalingV1Api"),
         ):
-
             mock_core_instance = Mock()
             mock_apps_instance = Mock()
             mock_core.return_value = mock_core_instance
@@ -331,7 +326,6 @@ class TestKubernetesDeploymentService:
             patch("mcp_template.backends.kubernetes.client.CoreV1Api") as mock_core,
             patch("mcp_template.backends.kubernetes.client.AutoscalingV1Api"),
         ):
-
             mock_core_instance = Mock()
             mock_apps_instance = Mock()
             mock_core.return_value = mock_core_instance
@@ -358,7 +352,6 @@ class TestKubernetesDeploymentService:
             patch("mcp_template.backends.kubernetes.client.CoreV1Api") as mock_core,
             patch("mcp_template.backends.kubernetes.client.AutoscalingV1Api"),
         ):
-
             mock_core_instance = Mock()
             mock_apps_instance = Mock()
             mock_core.return_value = mock_core_instance
@@ -406,7 +399,6 @@ class TestKubernetesDeploymentService:
             patch("mcp_template.backends.kubernetes.client.CoreV1Api") as mock_core,
             patch("mcp_template.backends.kubernetes.client.AutoscalingV1Api"),
         ):
-
             mock_core_instance = Mock()
             mock_apps_instance = Mock()
             mock_core.return_value = mock_core_instance

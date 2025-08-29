@@ -43,7 +43,6 @@ class TestMCPConnection:
                 conn, "_initialize_mcp_session", return_value=True
             ) as mock_init,
         ):
-
             result = await conn.connect_stdio(["python", "server.py"])
 
             assert result is True
@@ -64,7 +63,6 @@ class TestMCPConnection:
             patch.object(conn, "_initialize_mcp_session", return_value=False),
             patch.object(conn, "disconnect") as mock_disconnect,
         ):
-
             result = await conn.connect_stdio(["python", "server.py"])
 
             assert result is False
@@ -84,7 +82,6 @@ class TestMCPConnection:
             patch.object(conn, "_initialize_mcp_session", return_value=True),
             patch("os.environ") as mock_environ,
         ):
-
             mock_environ.copy.return_value = {"PATH": "/usr/bin"}
             env_vars = {"API_KEY": "secret"}
 
@@ -109,7 +106,6 @@ class TestMCPConnection:
             ),
             patch.object(conn, "disconnect") as mock_disconnect,
         ):
-
             result = await conn.connect_stdio(["python", "server.py"])
 
             assert result is False
@@ -141,7 +137,6 @@ class TestMCPConnection:
             ) as mock_send,
             patch.object(conn, "_send_notification") as mock_notify,
         ):
-
             result = await conn._initialize_mcp_session()
 
             assert result is True

@@ -561,7 +561,6 @@ class ConfigProcessor:
 
             # Load based on extension
             if config_path.suffix.lower() in [".yaml", ".yml"]:
-
                 with open(config_path, "r") as f:
                     file_config = yaml.safe_load(f)
             else:

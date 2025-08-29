@@ -17,7 +17,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Annotated, Any, Dict, List, Optional, Union
+from typing import Annotated, Any, Dict, List, Optional
 
 try:
     import readline
@@ -1299,7 +1299,6 @@ def _display_tool_result(result: Any, tool_name: str, raw: bool = False):
 
 def _display_tool_result_table(result: Any, tool_name: str):
     """Display tool result in a user-friendly tabular format."""
-    from rich import box
 
     # Handle different types of results
     if isinstance(result, dict):

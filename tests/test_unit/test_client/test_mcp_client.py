@@ -5,7 +5,6 @@ This module contains extensive unit tests for all MCPClient methods,
 including edge cases, error conditions, and integration scenarios.
 """
 
-import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -52,24 +51,6 @@ class TestMCPClientTemplates:
 
     def test_list_templates_success(self):
         """Test successful template listing."""
-        # Mock the template manager to return actual template structure
-        # Update test to match refactored template manager behavior
-        expected_templates = {
-            "demo": {
-                "name": "Demo",
-                "description": "Simple demonstration MCP server with greeting capabilities",
-                "docker_image": "dataeverything/mcp-demo",
-                "config_schema": {},
-                # Add more fields as needed to match actual structure
-            },
-            "github": {
-                "name": "Github",
-                "description": "Official github MCP server implementation",
-                "docker_image": "dataeverything/mcp-github",
-                "config_schema": {},
-                # Add more fields as needed to match actual structure
-            },
-        }
 
         # Instead of mocking, let the actual template manager run
         # since the refactor changed its behavior
@@ -973,7 +954,8 @@ class TestMCPClientConfigurationHandling:
         mock_deployment_manager_class.return_value = mock_deployment_manager
 
         result = self.client.deploy_template(
-            template_id="demo", volumes='{"invalid": json}'  # Invalid JSON
+            template_id="demo",
+            volumes='{"invalid": json}',  # Invalid JSON
         )
 
         # Should return None on failure

@@ -14,7 +14,6 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
-from mcp_template.tools.base_probe import BaseProbe
 from mcp_template.tools.docker_probe import DockerProbe
 from mcp_template.tools.kubernetes_probe import KubernetesProbe
 from mcp_template.tools.mcp_client_probe import MCPClientProbe
@@ -178,7 +177,7 @@ class TestToolsIntegrationWorkflows:
 
             # Verify each got different tools
             for i, result in enumerate(tasks):
-                assert result["tools"][0]["name"] == f"tool_from_server_{i+1}"
+                assert result["tools"][0]["name"] == f"tool_from_server_{i + 1}"
 
     def test_configuration_driven_discovery_workflow(self):
         """Test tool discovery driven by configuration files."""

@@ -59,7 +59,6 @@ class TestDockerConnect:
             patch("mcp_template.backends.docker.subprocess.run") as mock_run,
             patch("mcp_template.backends.docker.os.execvp") as mock_execvp,
         ):
-
             # Mock successful shell detection for bash
             mock_run.return_value = Mock(returncode=0)
 
@@ -87,7 +86,6 @@ class TestDockerConnect:
             patch("mcp_template.backends.docker.subprocess.run") as mock_run,
             patch("mcp_template.backends.docker.os.execvp") as mock_execvp,
         ):
-
             # Mock shell detection failure, forcing fallback
             mock_run.side_effect = subprocess.CalledProcessError(1, "which")
 
@@ -114,7 +112,6 @@ class TestDockerConnect:
                 side_effect=Exception("Connection failed"),
             ),
         ):
-
             # Mock shell detection failure
             mock_run.side_effect = subprocess.CalledProcessError(1, "which")
 
@@ -136,7 +133,6 @@ class TestDockerConnect:
             patch("mcp_template.backends.docker.subprocess.run") as mock_run,
             patch("mcp_template.backends.docker.os.execvp") as mock_execvp,
         ):
-
             # Mock timeout during shell detection
             mock_run.side_effect = subprocess.TimeoutExpired("which", 5)
 
@@ -158,7 +154,6 @@ class TestDockerConnect:
             patch("mcp_template.backends.docker.subprocess.run") as mock_run,
             patch("mcp_template.backends.docker.os.execvp") as mock_execvp,
         ):
-
             # Mock successful detection of bash (first shell to try)
             def mock_run_side_effect(cmd, **kwargs):
                 if "bash" in cmd:
@@ -188,7 +183,6 @@ class TestDockerConnect:
             patch("mcp_template.backends.docker.subprocess.run") as mock_run,
             patch("mcp_template.backends.docker.os.execvp") as mock_execvp,
         ):
-
             # Mock both bash and sh being available
             mock_run.return_value = Mock(returncode=0)
 

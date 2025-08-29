@@ -1,6 +1,6 @@
 [flake8]
 max-line-length = 90
-extend-ignore = E203, W503, E501, F401, F811, F841, F403, E402, E902, W293, E722
+extend-ignore = E203, W503, E501, F811, F403, E402, E902, W293, E722
 exclude =
     backend/*/migrations/*.py,
     backend/manage.py,

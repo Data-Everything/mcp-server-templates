@@ -303,7 +303,6 @@ class MCPClient:
             )
 
         try:
-
             if not configuration:
                 configuration = {}
 
