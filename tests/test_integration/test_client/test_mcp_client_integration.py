@@ -281,22 +281,6 @@ class TestMCPClientIntegration:
             mock_tool_manager.return_value = mock_tool_mgr
             mock_template_discovery.return_value = mock_template_disc
 
-            # Mock responses with delays to test concurrency
-            def delayed_start_server(
-                template_id,
-                configuration=None,
-                pull_image=True,
-                transport="http",
-                port=12345,
-            ):
-                return {
-                    "id": f"{template_id}-1",
-                    "success": True,
-                    "pull_image": pull_image,
-                    "transport": transport,
-                    "port": port,
-                }
-
             client = MCPClient()
 
             # Test concurrent server starts (these are now sync operations)
