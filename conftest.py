@@ -312,6 +312,33 @@ def mock_filesystem():
         }
 
 
+# Prevent unit tests from attempting to contact a real Kubernetes cluster.
+# Tests that require Kubernetes should be marked with @pytest.mark.kubernetes
+@pytest.fixture(autouse=True)
+def _mock_kubernetes_service_for_unit_tests(request):
+    """
+    Autouse fixture that replaces the real KubernetesDeploymentService with a MagicMock
+    for tests that are NOT marked with the 'kubernetes' marker. This prevents
+    accidental attempts to load kubeconfig or contact the API server during
+    fast unit test runs or in CI environments that don't provide a cluster.
+    """
+    # If the test explicitly needs kubernetes, don't mock
+    if "kubernetes" in request.keywords:
+        yield
+        return
+
+    try:
+        with patch(
+            "mcp_template.backends.kubernetes.KubernetesDeploymentService", MagicMock()
+        ):
+            yield
+    except Exception:
+        # If patching fails for any reason, just proceed without mocking to
+        # avoid hiding errors in CI; tests that require Kubernetes should
+        # be explicitly marked.
+        yield
+
+
 @pytest.fixture
 def clear_cache():
     """

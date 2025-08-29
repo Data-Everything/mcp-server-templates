@@ -367,7 +367,7 @@ class TestStopDeployment:
         assert result["backend_type"] == "kubernetes"
         mock_deployment_manager.stop_deployment.assert_called_once_with("k8s-789", 30)
 
-    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.backends.get_backend")
     @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
     @patch("mcp_template.core.multi_backend_manager.ToolManager")
     def test_stop_deployment_not_found(
@@ -395,7 +395,7 @@ class TestStopDeployment:
         assert result["success"] is False
         assert "not found in any backend" in result["error"]
 
-    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.backends.get_backend")
     @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
     @patch("mcp_template.core.multi_backend_manager.ToolManager")
     def test_stop_deployment_operation_failure(
@@ -436,7 +436,7 @@ class TestStopDeployment:
 class TestGetDeploymentLogs:
     """Test getting deployment logs with auto-detection."""
 
-    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.backends.get_backend")
     @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
     @patch("mcp_template.core.multi_backend_manager.ToolManager")
     def test_get_deployment_logs_success(
@@ -479,7 +479,7 @@ class TestGetDeploymentLogs:
             "docker-123", lines=50, follow=True
         )
 
-    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.backends.get_backend")
     @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
     @patch("mcp_template.core.multi_backend_manager.ToolManager")
     def test_get_deployment_logs_not_found(
@@ -511,7 +511,7 @@ class TestGetDeploymentLogs:
 class TestGetAllTools:
     """Test getting tools from all backends and templates."""
 
-    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.backends.get_backend")
     @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
     @patch("mcp_template.core.multi_backend_manager.ToolManager")
     @patch("mcp_template.core.multi_backend_manager.TemplateManager")
@@ -575,7 +575,7 @@ class TestGetAllTools:
         assert len(result["static_tools"]) > 0
         assert len(result["dynamic_tools"]) > 0
 
-    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.backends.get_backend")
     @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
     @patch("mcp_template.core.multi_backend_manager.ToolManager")
     @patch("mcp_template.core.multi_backend_manager.TemplateManager")
@@ -619,7 +619,7 @@ class TestGetAllTools:
 class TestCleanupOperations:
     """Test cleanup operations across all backends."""
 
-    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.backends.get_backend")
     @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
     @patch("mcp_template.core.multi_backend_manager.ToolManager")
     def test_cleanup_all_backends_success(
@@ -655,7 +655,7 @@ class TestCleanupOperations:
         assert result["summary"]["successful_cleanups"] == 2
         assert result["summary"]["failed_cleanups"] == 0
 
-    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.backends.get_backend")
     @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
     @patch("mcp_template.core.multi_backend_manager.ToolManager")
     def test_cleanup_all_backends_partial_failure(
@@ -695,7 +695,7 @@ class TestCleanupOperations:
 class TestBackendHealth:
     """Test backend health checking."""
 
-    @patch("mcp_template.core.multi_backend_manager.get_backend")
+    @patch("mcp_template.backends.get_backend")
     @patch("mcp_template.core.multi_backend_manager.DeploymentManager")
     @patch("mcp_template.core.multi_backend_manager.ToolManager")
     def test_get_backend_health_all_healthy(
