@@ -1,15 +1,41 @@
-# MCP Server Templates
+# 🚀 This Project Has Moved!
+
+> ## ⚠️ **IMPORTANT: This repository has been renamed and moved to [MCP Platform](https://github.com/Data-Everything/MCP-Platform)**
+>
+> **What changed:**
+> - **New Repository**: [`Data-Everything/MCP-Platform`](https://github.com/Data-Everything/MCP-Platform)
+> - **New Package**: `pip install mcp-platform` (replaces `mcp-templates`)
+> - **New CLI**: `mcpp` command (replaces `mcpt`)
+> - **Enhanced Features**: Improved architecture and expanded capabilities
+>
+> **Migration is easy:**
+> ```bash
+> # Uninstall old package
+> pip uninstall mcp-templates
+>
+> # Install new package
+> pip install mcp-platform
+>
+> # Use new command (all your configs work the same!)
+> mcpp deploy demo  # instead of mcpt deploy demo
+> ```
+>
+> **📚 [Complete Migration Guide](https://github.com/Data-Everything/MCP-Platform#migration-from-mcp-templates)** | **🆕 [New Documentation](https://data-everything.github.io/MCP-Platform/)**
+
+---
+
+# MCP Server Templates (Legacy)
+
+> **⚠️ This version is in maintenance mode. Please migrate to [MCP Platform](https://github.com/Data-Everything/MCP-Platform) for latest features and updates.**
 
 [![Version](https://img.shields.io/pypi/v/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/mcp-templates.svg)](https://pypi.org/project/mcp-templates/)
 [![License](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/discord/XXXXX?color=7289da&logo=discord&logoColor=white)](https://discord.gg/55Cfxe9gnr)
 
-[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/Data-Everything/mcp-server-templates)](https://archestra.ai/mcp-catalog/data-everything__mcp-server-templates)
-
 <div align="center">
 
-**[📚 Documentation](https://data-everything.github.io/mcp-server-templates/)** • **[💬 Discord Community](https://discord.gg/55Cfxe9gnr)** • **[🚀 Quick Start](#-quick-start)**
+**� [Migrate to MCP Platform](https://github.com/Data-Everything/MCP-Platform)** • **[💬 Discord Community](https://discord.gg/55Cfxe9gnr)** • **[� Legacy Docs](#-quick-start)**
 
 </div>
 
@@ -237,7 +263,56 @@ mcpt deploy filesystem --config-file myconfig.json
 
 ---
 
-## 📖 Documentation
+## � Migration to MCP Platform
+
+**This repository has evolved into MCP Platform with enhanced features and better architecture.**
+
+### Why We Moved
+
+1. **Better Naming**: "MCP Platform" better reflects the comprehensive nature of the project
+2. **Enhanced Architecture**: Improved codebase structure and performance
+3. **Expanded Features**: More deployment options, better tooling, enhanced templates
+4. **Future Growth**: Better positioned for upcoming MCP ecosystem developments
+
+### What Stays the Same
+
+- ✅ All your existing configurations work unchanged
+- ✅ Same Docker images and templates
+- ✅ Same deployment workflows
+- ✅ Full backward compatibility during transition
+
+### Migration Steps
+
+1. **Install new package:**
+   ```bash
+   pip uninstall mcp-templates
+   pip install mcp-platform
+   ```
+
+2. **Update commands:**
+   ```bash
+   # Old command
+   mcpt deploy demo
+
+   # New command (everything else identical)
+   mcpp deploy demo
+   ```
+
+3. **Update documentation bookmarks:**
+   - New docs: https://data-everything.github.io/MCP-Platform/
+   - New repository: https://github.com/Data-Everything/MCP-Platform
+
+### Support Timeline
+
+- **Current (Legacy) Package**: Security updates only through 2025
+- **New Platform**: Active development, new features, full support
+- **Migration Support**: Available through Discord and GitHub issues
+
+**🚀 [Start your migration now →](https://github.com/Data-Everything/MCP-Platform)**
+
+---
+
+## �📖 Documentation (Legacy)
 
 - **[Getting Started](https://data-everything.github.io/mcp-server-templates/getting-started/)** - Installation and first deployment
 - **[CLI Reference](https://data-everything.github.io/mcp-server-templates/cli/)** - Complete command documentation
