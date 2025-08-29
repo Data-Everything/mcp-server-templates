@@ -114,10 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !(github.event_name == 'pull_request' || github.ref == 'refs/heads/main') }}
     needs: quick-validation
-    services:
-      docker:
-        image: docker:dind
-        options: --privileged
+
     steps:
     - uses: actions/checkout@v4
 
@@ -220,10 +217,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !(github.event_name == 'pull_request' || github.ref == 'refs/heads/main') }}
     needs: quick-validation
-    services:
-      docker:
-        image: docker:dind
-        options: --privileged
+
     steps:
     - uses: actions/checkout@v4
 
@@ -250,6 +244,9 @@ jobs:
     - name: Build demo Docker image
       run: |
         docker build -t dataeverything/mcp-demo:latest ./mcp_template/template/templates/demo
+
+    - name: Ensure Docker is logged out
+      run: docker logout || true
 
     - name: Run full integration tests
       run: |
@@ -288,6 +285,9 @@ jobs:
     - name: Build demo Docker image
       run: |
         docker build -t dataeverything/mcp-demo:latest ./mcp_template/template/templates/demo
+
+    - name: Ensure Docker is logged out
+      run: docker logout || true
 
     - name: Run complete test suite
       run: |
