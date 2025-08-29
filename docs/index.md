@@ -1,5 +1,26 @@
 
-# MCP Server Templates
+!!! warning "Project Moved to MCP Platform"
+
+    ## 🚀 This project has evolved into **[MCP Platform](https://github.com/Data-Everything/MCP-Platform)**
+
+    **What's new:**
+    - Enhanced architecture and performance
+    - Better naming that reflects the platform's capabilities
+    - Expanded template library and deployment options
+    - Improved documentation and developer experience
+
+    **Migration is simple:**
+    ```bash
+    pip uninstall mcp-templates && pip install mcp-platform
+    # Replace 'mcpt' with 'mcpp' in your commands
+    ```
+
+    **📚 [Complete Migration Guide](https://data-everything.github.io/MCP-Platform/migration/)** | **🆕 [New Documentation](https://data-everything.github.io/MCP-Platform/)**
+
+# MCP Server Templates (Legacy Documentation)
+
+!!! note "Legacy Version"
+    This documentation covers the legacy `mcp-templates` package. For the latest features and updates, please visit **[MCP Platform](https://github.com/Data-Everything/MCP-Platform)**.
 
 **Production-ready Model Context Protocol (MCP) server templates for instant, zero-configuration deployment.**
 

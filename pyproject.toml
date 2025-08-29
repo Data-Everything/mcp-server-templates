@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mcp-templates"
 dynamic = ["version"]
-description = "MCP-Server-Templates: Easy, zero-config deployment for Model Context Protocol servers"
+description = "DEPRECATED: This package has moved to 'mcp-platform'. Please install 'pip install mcp-platform' instead. MCP-Server-Templates: Easy, zero-config deployment for Model Context Protocol servers"
 readme = "README.md"
 authors = [
     { name = "Sam Arora", email = "tooling@dataeverything.com" },
