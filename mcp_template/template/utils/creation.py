@@ -560,8 +560,6 @@ CMD ["python", "server.py"]
 
     def _create_server_py(self):
         """Create the main server.py file."""
-        self.template_data.get("capabilities", [])
-        self.template_data.get("config_schema", {}).get("properties", {})
         class_name = (
             "".join(word.capitalize() for word in self.template_data["id"].split("-"))
             + "MCPServer"

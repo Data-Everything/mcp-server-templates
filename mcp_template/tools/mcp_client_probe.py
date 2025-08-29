@@ -148,7 +148,7 @@ class MCPClientProbe:
     async def _initialize_mcp_session(
         self, process: asyncio.subprocess.Process
     ) -> Optional[Dict[str, Any]]:
-        """Initialize MCP session with the server using official protocol."""
+        """Initialize MCP session with the server using MCP protocol version 2025-03-26."""
         try:
             # Send initialize request with proper MCP 2025-03-26 protocol
             init_request = {

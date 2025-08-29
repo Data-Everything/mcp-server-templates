@@ -5,6 +5,7 @@ Kubernetes probe for discovering MCP server tools from Kubernetes pods.
 import asyncio
 import json
 import logging
+import subprocess
 import time
 from typing import Any, Dict, List, Optional
 
@@ -606,8 +607,6 @@ class KubernetesProbe(BaseProbe):
     ) -> Optional[Dict[str, Any]]:
         """Execute MCP protocol handshake via kubectl attach to pod's stdin."""
         try:
-            import json
-            import subprocess
 
             # Use kubectl attach to connect to the pod's stdin/stdout
             kubectl_cmd = ["kubectl", "attach", "-i", pod_name, "-n", self.namespace]
@@ -672,7 +671,6 @@ class KubernetesProbe(BaseProbe):
     def _parse_mcp_responses(self, output: str) -> Optional[Dict[str, Any]]:
         """Parse MCP server responses from kubectl exec output."""
         try:
-            import json
 
             lines = output.strip().split("\n")
             tools = []

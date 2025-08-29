@@ -6,7 +6,6 @@ import asyncio
 import logging
 import socket
 import subprocess
-import threading
 import time
 from typing import Any, Dict, List, Optional
 
@@ -30,38 +29,6 @@ class DockerProbe(BaseProbe):
     def __init__(self):
         """Initialize Docker probe."""
         super().__init__()
-
-    def _cleanup_container(self, container_name: str, timeout: int = 10):
-        """Clean up container with background task if timeout occurs."""
-
-        def cleanup_task():
-            try:
-                logger.debug(f"Starting cleanup for container {container_name}")
-                # Try normal removal first
-                subprocess.run(
-                    ["docker", "rm", "-f", container_name],
-                    capture_output=True,
-                    timeout=timeout,
-                    check=True,
-                )
-                logger.debug(f"Successfully cleaned up container {container_name}")
-            except subprocess.TimeoutExpired:
-                logger.warning(
-                    f"Cleanup timeout for container {container_name}, scheduling background cleanup"
-                )
-                # Schedule background cleanup
-                background_cleanup = threading.Thread(
-                    target=self._background_cleanup, args=(container_name,), daemon=True
-                )
-                background_cleanup.start()
-            except subprocess.CalledProcessError as e:
-                logger.debug(f"Cleanup failed for {container_name}: {e}")
-            except Exception as e:
-                logger.debug(f"Unexpected cleanup error for {container_name}: {e}")
-
-        # Run cleanup in separate thread to not block main discovery
-        cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
-        cleanup_thread.start()
 
     def _background_cleanup(self, container_name: str, max_retries: int = 3):
         """Background cleanup with retries."""
