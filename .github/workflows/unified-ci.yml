@@ -9,9 +9,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-
 jobs:
-  # Fast feedback - basic validation (always runs first)
   quick-validation:
     runs-on: ubuntu-latest
     steps:
@@ -34,7 +32,6 @@ jobs:
         from mcp_template import TemplateDiscovery, DockerDeploymentService, DeploymentManager
         print('✅ All imports successful')
 
-        # Test basic functionality
         discovery = TemplateDiscovery()
         templates = discovery.discover_templates()
         print(f'✅ Found {len(templates)} templates')
@@ -48,7 +45,6 @@ jobs:
         python -m pytest tests/test_unit -m "unit and not docker and not kubernetes" \
           -x --tb=short --disable-warnings
 
-  # Code quality checks (runs in parallel with quick validation)
   code-quality:
     runs-on: ubuntu-latest
     steps:
@@ -76,9 +72,9 @@ jobs:
     - name: Run security scan
       run: bandit -r mcp_template/ --exit-zero
 
-  # Comprehensive unit tests (needs quick validation to pass)
   unit-tests:
     runs-on: ubuntu-latest
+    if: ${{ !(github.event_name == 'pull_request' || github.ref == 'refs/heads/main') }}
     needs: quick-validation
     steps:
     - uses: actions/checkout@v4
@@ -106,9 +102,9 @@ jobs:
         file: ./coverage.xml
         fail_ci_if_error: false
 
-  # Docker tests (needs Docker environment)
   docker-tests:
     runs-on: ubuntu-latest
+    if: ${{ !(github.event_name == 'pull_request' || github.ref == 'refs/heads/main') }}
     needs: quick-validation
     services:
       docker:
@@ -137,9 +133,9 @@ jobs:
           --tb=short \
           --disable-warnings
 
-  # Kubernetes tests (needs k8s environment)
   kubernetes-tests:
     runs-on: ubuntu-latest
+    if: ${{ !(github.event_name == 'pull_request' || github.ref == 'refs/heads/main') }}
     needs: quick-validation
     steps:
     - uses: actions/checkout@v4
@@ -167,9 +163,9 @@ jobs:
           --tb=short \
           --disable-warnings
 
-  # Template-specific tests
   template-tests:
     runs-on: ubuntu-latest
+    if: ${{ !(github.event_name == 'pull_request' || github.ref == 'refs/heads/main') }}
     needs: quick-validation
     strategy:
       matrix:
@@ -196,11 +192,10 @@ jobs:
           echo "No tests found for template ${{ matrix.template }}"
         fi
 
-  # Full integration tests (only on PRs to main and main branch)
   integration-tests:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    needs: [unit-tests, docker-tests, kubernetes-tests]
+    needs: quick-validation
     services:
       docker:
         image: docker:dind
@@ -235,11 +230,10 @@ jobs:
           --disable-warnings \
           || echo "⚠️ Some integration tests failed (non-blocking)"
 
-  # Full test suite (only on PRs to main and main branch)
   full-test-suite:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    needs: [unit-tests, docker-tests, kubernetes-tests, template-tests]
+    needs: quick-validation
     services:
       docker:
         image: docker:dind
@@ -275,7 +269,7 @@ jobs:
           --cov-report=term-missing \
           --cov-report=html \
           --cov-report=xml \
-          --cov-fail-under=40 \
+          --cov-fail-under=50 \
           --tb=short \
           --timeout=300
 
@@ -292,6 +286,67 @@ jobs:
       with:
         name: coverage-report
         path: htmlcov/
+
+    - name: Upload coverage XML
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-xml
+        path: coverage.xml
+
+  coverage-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    needs: [full-test-suite]
+    steps:
+    - name: Download coverage XML
+      uses: actions/download-artifact@v4
+      with:
+        name: coverage-xml
+
+    - name: Check coverage threshold
+      run: |
+        python - <<'PY'
+        import sys
+        import xml.etree.ElementTree as ET
+
+        try:
+            tree = ET.parse('coverage.xml')
+        except Exception as e:
+            print('ERROR: failed to read coverage.xml:', e)
+            sys.exit(1)
+
+        root = tree.getroot()
+
+        pct = None
+        lr = root.get('line-rate')
+        if lr:
+            try:
+                pct = float(lr) * 100.0
+            except Exception:
+                pct = None
+
+        if pct is None:
+            totals = root.find('totals')
+            if totals is not None:
+                lines = totals.find('lines')
+                if lines is not None and 'percent' in lines.attrib:
+                    try:
+                        pct = float(lines.attrib['percent'])
+                    except Exception:
+                        pct = None
+
+        if pct is None:
+            print('Could not determine total coverage from coverage.xml')
+            sys.exit(1)
+
+        print(f'Total coverage: {pct:.2f}%')
+        REQUIRED = 50.0
+        if pct < REQUIRED:
+            print(f'FAIL: Required test coverage of {REQUIRED}% not reached.')
+            sys.exit(1)
+        print('Coverage requirement satisfied')
+        PY
 
   # Multi-Python version testing (only on main branch and release tags)
   multi-python-tests:
