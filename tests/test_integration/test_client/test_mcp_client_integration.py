@@ -290,7 +290,7 @@ class TestMCPClientIntegration:
                 ("filesystem", {"instance": 2}),
                 ("demo", {"instance": 3}),
             ]:
-                result = client.start_server(template_id, config)
+                result = client.start_server(template_id, config, pull_image=False)
                 results.append(result)
 
             # Verify all operations completed

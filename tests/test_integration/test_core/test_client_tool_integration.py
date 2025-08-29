@@ -119,7 +119,7 @@ class TestIntegration:
         try:
             # Test CLI help
             result = subprocess.run(
-                ["python", "-m", "mcp_template", "--help"],
+                ["mcp_template", "--help"],
                 capture_output=True,
                 text=True,
                 timeout=10,
