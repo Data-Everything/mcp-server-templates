@@ -322,20 +322,50 @@ def _mock_kubernetes_service_for_unit_tests(request):
     accidental attempts to load kubeconfig or contact the API server during
     fast unit test runs or in CI environments that don't provide a cluster.
     """
-    # If the test explicitly needs kubernetes, don't mock
-    if "kubernetes" in request.keywords:
+    # If the test explicitly needs kubernetes, don't mock.
+    # Use get_closest_marker for robust detection (module/class/function markers).
+    if request.node.get_closest_marker("kubernetes") is not None:
+        yield
+        return
+
+    # Allow CI to disable the mock globally by setting env var
+    # e.g. CI_DISABLE_K8S_MOCK=1 will skip the autouse mocking.
+    import os
+
+    if os.environ.get("CI_DISABLE_K8S_MOCK") == "1":
         yield
         return
 
     try:
-        with patch(
-            "mcp_template.backends.kubernetes.KubernetesDeploymentService", MagicMock()
+        # Patch the internal methods that touch kubeconfig / API so creating
+        # the service is safe in CI when no cluster is present. Tests that
+        # require real Kubernetes behavior should use @pytest.mark.kubernetes
+        # and will not have these patches applied.
+        # Patch both the class object referenced from the package namespace
+        # (`mcp_template.backends.KubernetesDeploymentService`) and the
+        # original module path (`mcp_template.backends.kubernetes...`) so the
+        # patch works regardless of import ordering in CI.
+        with (
+            patch(
+                "mcp_template.backends.KubernetesDeploymentService._ensure_kubernetes_available",
+                new=lambda self: True,
+            ),
+            patch(
+                "mcp_template.backends.KubernetesDeploymentService._ensure_namespace_exists",
+                new=lambda self, dry_run=False: None,
+            ),
+            patch(
+                "mcp_template.backends.kubernetes.KubernetesDeploymentService._ensure_kubernetes_available",
+                new=lambda self: True,
+            ),
+            patch(
+                "mcp_template.backends.kubernetes.KubernetesDeploymentService._ensure_namespace_exists",
+                new=lambda self, dry_run=False: None,
+            ),
         ):
             yield
     except Exception:
-        # If patching fails for any reason, just proceed without mocking to
-        # avoid hiding errors in CI; tests that require Kubernetes should
-        # be explicitly marked.
+        # If patching fails, yield to allow tests to surface real errors.
         yield
 
 
