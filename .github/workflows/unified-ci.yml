@@ -68,7 +68,7 @@ jobs:
       run: black --check mcp_template/ tests/
 
     - name: Check import sorting
-      run: isort --check-only mcp_template/ tests/
+      run: isort --check-only --profile black mcp_template/ tests/
 
     - name: Run linting
       run: flake8 mcp_template/ tests/ --max-line-length=100 --extend-ignore=E203,W503
