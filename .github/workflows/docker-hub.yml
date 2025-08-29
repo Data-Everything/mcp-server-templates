@@ -238,7 +238,9 @@ jobs:
 
   build-and-push:
     needs: [detect-changes, test-templates]
-    if: ${{ needs.detect-changes.outputs.templates != '[]' && needs.test-templates.result == 'success' }}
+    # Run builds whenever templates changed and tests passed (including PRs from the same repo).
+    # Skip forked PRs for security reasons (secrets/exposed resources).
+    if: ${{ needs.detect-changes.outputs.templates != '[]' && needs.test-templates.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
@@ -284,12 +286,40 @@ jobs:
             type=sha,format=short
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push to Docker Hub
+      - name: Build (PRs / non-main - single-arch, capture logs)
+        if: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          cd mcp_template/template/templates/${{ matrix.template }}
+          if [ -f "Dockerfile" ]; then
+            mkdir -p build-logs
+            echo "🐳 Building single-arch image for ${{ matrix.template }} (logs -> build-logs/build-${{ matrix.template }}.log)"
+            # Use single-arch docker build for PRs / non-main to save time
+            docker build -t test-${{ matrix.template }} . 2>&1 | tee build-logs/build-${{ matrix.template }}.log
+            BUILD_EXIT=${PIPESTATUS[0]}
+            echo "Build exit code: $BUILD_EXIT"
+            if [ "$BUILD_EXIT" -ne 0 ]; then
+              exit $BUILD_EXIT
+            fi
+          else
+            echo "No Dockerfile found" | tee build-logs/build-${{ matrix.template }}.log
+            exit 1
+          fi
+
+      - name: Upload build logs (PRs / non-main)
+        if: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ matrix.template }}
+          path: mcp_template/template/templates/${{ matrix.template }}/build-logs/build-${{ matrix.template }}.log
+
+      - name: Build and push to Docker Hub (main branch)
+        if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
         uses: docker/build-push-action@v5
         with:
           context: ./mcp_template/template/templates/${{ matrix.template }}
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

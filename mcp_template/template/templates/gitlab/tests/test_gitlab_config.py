@@ -5,9 +5,7 @@ Tests the GitLab template's configuration schema and validation
 without requiring complex template management infrastructure.
 """
 
-import pytest
 import json
-from typing import Dict, Any
 
 
 class TestGitLabTemplateConfiguration:

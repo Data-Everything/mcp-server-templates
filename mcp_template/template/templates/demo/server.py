@@ -63,6 +63,7 @@ class DemoMCPServer:
             name=self.template_data.get("name", "demo-server"),
             instructions="Demo server showing config patterns",
             version=self.template_data.get("version", "1.0.0"),
+            host=os.getenv("MCP_HOST", "0.0.0.0"),
             port=(
                 int(
                     os.getenv(

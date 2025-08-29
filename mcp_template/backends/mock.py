@@ -21,15 +21,26 @@ class MockDeploymentService(BaseDeploymentBackend):
 
     def __init__(self):
         """Initialize mock service."""
+        super().__init__()
         self.deployments = {}
         self.backend_type = "mock"
+
+    @property
+    def is_available(self):
+        """
+        Ensure backend is available
+        """
+
+        return True
 
     def deploy_template(
         self,
         template_id: str,
         config: Dict[str, Any],
         template_data: Dict[str, Any],
+        backend_config: Dict[str, Any],
         pull_image: bool = True,
+        dry_run: bool = False,
     ) -> Dict[str, Any]:
         """Mock template deployment."""
         # Validate template_data has required fields
@@ -72,6 +83,9 @@ class MockDeploymentService(BaseDeploymentBackend):
             "created_at": datetime.now().isoformat(),
             "mock": True,
             "container_id": container_id,
+            "transport": config.get(
+                "MCP_TRANSPORT", "stdio"
+            ),  # Extract transport from config
         }
 
         self.deployments[deployment_name] = deployment_info
@@ -80,16 +94,21 @@ class MockDeploymentService(BaseDeploymentBackend):
 
     def list_deployments(self) -> List[Dict[str, Any]]:
         """List mock deployments."""
-        return [
-            {
+        deployments = []
+        for name, info in self.deployments.items():
+            # Mock always uses stdio transport, no real endpoint or ports
+            deployment = {
                 "name": name,
-                "template": info["template_id"],
+                "template": info.get("template_id", "unknown"),
                 "status": "running",
-                "created": info["created_at"],
+                "created": info.get("created_at"),
                 "mock": True,
+                "endpoint": None,
+                "ports": None,
+                "transport": "stdio",
             }
-            for name, info in self.deployments.items()
-        ]
+            deployments.append(deployment)
+        return deployments
 
     def delete_deployment(
         self, deployment_name: str, raise_on_failure: bool = False

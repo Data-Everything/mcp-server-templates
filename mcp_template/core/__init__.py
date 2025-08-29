@@ -13,20 +13,16 @@ Business Logic Modules:
 
 Infrastructure Components:
 - mcp_connection: MCP server connection management
-- server_manager: Server lifecycle management
 - tool_caller: Tool execution infrastructure
 """
 
 # Business Logic Modules (new refactored components)
 from .cache import CacheManager
-from .config_manager import ConfigManager
 from .deployment_manager import DeploymentManager
+from .mcp_connection import MCPConnection
 
 # Infrastructure Components (legacy components, kept for compatibility)
-from .mcp_connection import MCPConnection
 from .multi_backend_manager import MultiBackendManager
-from .output_formatter import OutputFormatter
-from .server_manager import ServerManager
 from .template_manager import TemplateManager
 from .tool_caller import ToolCaller
 from .tool_manager import ToolManager
@@ -36,11 +32,9 @@ __all__ = [
     "CacheManager",
     "TemplateManager",
     "DeploymentManager",
-    "ConfigManager",
     "ToolManager",
-    "OutputFormatter",
     # Infrastructure
     "MCPConnection",
-    "ServerManager",
+    "MultiBackendManager",
     "ToolCaller",
 ]

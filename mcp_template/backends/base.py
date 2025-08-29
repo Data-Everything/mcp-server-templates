@@ -13,13 +13,30 @@ class BaseDeploymentBackend(ABC):
     ensuring consistency across Docker, Kubernetes, and other deployment targets.
     """
 
+    def __init__(self):
+        """
+        Initialize
+        """
+
+        self._config = {}
+
+    @property
+    def is_available(self):
+        """
+        Ensure backend is available
+        """
+
+        return False
+
     @abstractmethod
     def deploy_template(
         self,
         template_id: str,
         config: Dict[str, Any],
         template_data: Dict[str, Any],
+        backend_config: Dict[str, Any],
         pull_image: bool = True,
+        dry_run: bool = False,
     ) -> Dict[str, Any]:
         """Deploy a template using the backend.
 
@@ -27,7 +44,9 @@ class BaseDeploymentBackend(ABC):
             template_id: Unique identifier for the template
             config: Configuration parameters for the deployment
             template_data: Template metadata and configuration
+            backend_config: Any banckend specific configuration
             pull_image: Whether to pull the container image before deployment
+            dry_run: Whether to performm actual depolyment. False means yes, True means No
 
         Returns:
             Dict containing deployment information including name, status, etc.
@@ -120,3 +139,15 @@ class BaseDeploymentBackend(ABC):
             Dict with cleanup results
         """
         pass
+
+    def set_config(self, config: Dict[str, Any]) -> None:
+        """SSet backend config.
+
+        All backend can configure this should they need to
+
+        Args:
+            config: Dictionary containing Kubernetes configuration like
+                       replicas, service_type, resources, etc.
+        """
+
+        self._config = config

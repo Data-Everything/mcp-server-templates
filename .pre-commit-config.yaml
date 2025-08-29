@@ -25,3 +25,5 @@ repos:
     rev: 7.1.1
     hooks:
     -   id: flake8
+        files: ^mcp_template/.*
+        args: ["--exclude=mcp_template/**/tests,tests"]

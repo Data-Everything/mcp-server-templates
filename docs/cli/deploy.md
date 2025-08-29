@@ -29,6 +29,16 @@ The `deploy` command is the core functionality of MCP Templates, allowing you to
 | `--config-dir PATH` | Custom configuration directory | Template default |
 | `--no-pull` | Skip pulling Docker image (use local) | Pull latest |
 
+### Volume Mounting Options
+
+| Option | Description | Format |
+|--------|-------------|--------|
+| `--volumes JSON` | Mount host directories into container | JSON object or array |
+
+**Volume Formats:**
+- **Object format**: `--volumes '{"./host/path": "/container/path", "./data": "/app/data"}'`
+- **Array format**: `--volumes '["/host/path1", "/host/path2"]'` (maps to same path in container)
+
 ### Configuration Options
 
 | Option | Description | Format |
@@ -148,6 +158,34 @@ mcpt deploy filesystem \
   --config-file base-config.json \
   --config log_level=warning \
   --env MCP_READ_ONLY=true
+```
+
+### Volume Mounting Examples
+
+```bash
+# Mount single directory (object format)
+mcpt deploy filesystem \
+  --volumes '{"./workspace": "/app/workspace"}'
+
+# Mount multiple directories (object format)
+mcpt deploy filesystem \
+  --volumes '{"./data": "/app/data", "./config": "/app/config", "./logs": "/app/logs"}'
+
+# Mount directories with same path (array format)
+mcpt deploy filesystem \
+  --volumes '["/shared/workspace", "/shared/data"]'
+
+# Complex deployment with volumes and config
+mcpt deploy filesystem \
+  --volumes '{"./project": "/workspace", "./storage": "/data"}' \
+  --config allowed_dirs='["/workspace", "/data"]' \
+  --config read_only_mode=false
+
+# Mount host directories for development
+mcpt deploy demo \
+  --volumes '{"./src": "/app/src", "./tests": "/app/tests"}' \
+  --config debug=true \
+  --env MCP_LOG_LEVEL=debug
 ```
 
 ### Advanced Deployment

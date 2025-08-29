@@ -7,7 +7,6 @@ and metadata operations, consolidating functionality from CLI and MCPClient.
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -37,7 +36,9 @@ class TemplateManager:
         self._cache_valid = False
 
     def list_templates(
-        self, include_deployed_status: bool = False, filter_deployed_only: bool = False
+        self,
+        include_deployed_status: bool = False,
+        filter_deployed_only: bool = False,
     ) -> Dict[str, Dict]:
         """
         List all available templates with optional deployment status.

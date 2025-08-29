@@ -6,19 +6,18 @@ Test suite for the main server functionality including tool operations,
 API interactions, rate limiting, and caching.
 """
 
-import os
-import pytest
 import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
-from aiohttp import ClientResponse, ClientSession
-from datetime import datetime
-
+import os
 import sys
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from aiohttp import ClientSession
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from server import ZendeskMCPServer, RateLimiter, CacheEntry
+from server import CacheEntry, RateLimiter, ZendeskMCPServer
 
 
 class TestRateLimiter:

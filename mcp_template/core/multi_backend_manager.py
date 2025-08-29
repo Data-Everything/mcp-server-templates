@@ -6,9 +6,12 @@ enabling CLI commands to show aggregate views and auto-detect backend contexts.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from mcp_template.backends import BaseDeploymentBackend, get_backend
+from mcp_template.backends import VALID_BACKENDS, BaseDeploymentBackend, get_backend
+from mcp_template.core.deployment_manager import DeploymentManager
+from mcp_template.core.template_manager import TemplateManager
+from mcp_template.core.tool_manager import ToolManager
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +33,12 @@ class MultiBackendManager:
             enabled_backends: List of backend types to enable.
                             Defaults to ["docker", "kubernetes"] (production backends only)
         """
-        # Import here to avoid circular imports
-        from mcp_template.core.deployment_manager import DeploymentManager
-        from mcp_template.core.tool_manager import ToolManager
 
-        self.enabled_backends = enabled_backends or ["docker", "kubernetes"]
+        self.enabled_backends = enabled_backends or VALID_BACKENDS
+
+        if isinstance(self.enabled_backends, str):
+            self.enabled_backends = [self.enabled_backends]
+
         self.backends: Dict[str, BaseDeploymentBackend] = {}
         self.deployment_managers: Dict[str, Any] = {}
         self.tool_managers: Dict[str, Any] = {}
@@ -56,7 +60,7 @@ class MultiBackendManager:
         return list(self.backends.keys())
 
     def get_all_deployments(
-        self, template_name: Optional[str] = None
+        self, template_name: Optional[str] = None, status: str = None
     ) -> List[Dict[str, Any]]:
         """
         Get deployments from all backends with backend information.
@@ -72,7 +76,8 @@ class MultiBackendManager:
         for backend_type, deployment_manager in self.deployment_managers.items():
             try:
                 deployments = deployment_manager.find_deployments_by_criteria(
-                    template_name=template_name
+                    template_name=template_name,
+                    status=status,
                 )
 
                 # Add backend information to each deployment
@@ -183,6 +188,8 @@ class MultiBackendManager:
         template_name: Optional[str] = None,
         discovery_method: str = "auto",
         force_refresh: bool = False,
+        include_static: bool = True,
+        include_dynamic: bool = True,
     ) -> Dict[str, Any]:
         """
         Get tools from all backends and templates.
@@ -191,6 +198,8 @@ class MultiBackendManager:
             template_name: Optional filter by template name
             discovery_method: Tool discovery method
             force_refresh: Force refresh of tool cache
+            include_static: Include static tools from template definitions
+            include_dynamic: Include dynamic tools from running deployments
 
         Returns:
             Dictionary with tools organized by source
@@ -201,87 +210,301 @@ class MultiBackendManager:
             "backend_summary": {},  # Summary by backend
         }
 
-        # Get static tools from templates (backend-agnostic)
-        try:
-            from mcp_template.core.template_manager import TemplateManager
-            from mcp_template.core.tool_manager import ToolManager
+        # Use first available backend for template info (backend agnostic)
+        first_backend = next(iter(self.tool_managers.keys()))
+        template_manager = TemplateManager(first_backend)
+        # Get dynamic tools from running deployments if requested
+        if include_dynamic:
+            deployments_found = False
 
-            template_manager = TemplateManager(
-                "docker"
-            )  # Backend doesn't matter for templates
-            templates = template_manager.list_templates()
-
-            if template_name:
-                templates = {k: v for k, v in templates.items() if k == template_name}
-
-            for template_id, template_info in templates.items():
-                tool_manager = ToolManager(
-                    "docker"
-                )  # Use any backend for static discovery
+            for backend_type, tool_manager in self.tool_managers.items():
                 try:
-                    result = tool_manager.list_tools(
-                        template_id,
-                        discovery_method="static",
-                        force_refresh=force_refresh,
+                    # Get deployments for this backend
+                    deployments = self.deployment_managers[
+                        backend_type
+                    ].find_deployments_by_criteria(
+                        template_name=template_name, status="running"
                     )
-                    tools = result.get("tools", [])
-                    if tools:
-                        all_tools["static_tools"][template_id] = {
-                            "tools": tools,
-                            "source": "template_definition",
+
+                    backend_tools = []
+                    for deployment in deployments:
+                        try:
+                            template_id = deployment.get("template", "unknown")
+                            result = tool_manager.list_tools(
+                                template_id,
+                                discovery_method=discovery_method,
+                                force_refresh=force_refresh,
+                            )
+                            tools = result.get("tools", [])
+                            if tools:
+                                backend_tools.extend(
+                                    [
+                                        {
+                                            **tool,
+                                            "deployment_id": deployment.get("id"),
+                                            "template": template_id,
+                                            "backend": backend_type,
+                                        }
+                                        for tool in tools
+                                    ]
+                                )
+                        except Exception as e:
+                            logger.debug(
+                                f"Failed to get tools from deployment {deployment.get('id')}: {e}"
+                            )
+
+                    if backend_tools:
+                        deployments_found = True
+                        all_tools["dynamic_tools"][backend_type] = backend_tools
+                        all_tools["backend_summary"][backend_type] = {
+                            "tool_count": len(backend_tools),
+                            "deployment_count": len(deployments),
                         }
+
                 except Exception as e:
-                    logger.debug(f"Failed to get static tools for {template_id}: {e}")
+                    logger.warning(f"Failed to get tools from {backend_type}: {e}")
 
-        except Exception as e:
-            logger.warning(f"Failed to get template tools: {e}")
+            # If no running deployments found and a specific template is requested,
+            # try dynamic discovery by creating a temporary container
+            if not deployments_found and template_name and not include_static:
+                logger.info(
+                    f"No running deployments found for {template_name}, attempting dynamic discovery"
+                )
+                try:
+                    # Check if template exists and supports dynamic discovery
+                    template_info = template_manager.get_template_info(template_name)
+                    if template_info:
+                        # Try dynamic discovery on available backends in order
+                        for backend_type, tool_manager in self.tool_managers.items():
+                            try:
+                                result = tool_manager.list_tools(
+                                    template_name,
+                                    discovery_method="auto",  # Let it choose stdio/http
+                                    force_refresh=force_refresh,
+                                )
+                                tools = result.get("tools", [])
+                                if tools:
+                                    all_tools["dynamic_tools"][backend_type] = [
+                                        {
+                                            **tool,
+                                            "deployment_id": "temporary_discovery",
+                                            "template": template_name,
+                                            "backend": backend_type,
+                                        }
+                                        for tool in tools
+                                    ]
+                                    all_tools["backend_summary"][backend_type] = {
+                                        "tool_count": len(tools),
+                                        "deployment_count": 0,  # No permanent deployment
+                                    }
+                                    logger.info(
+                                        f"Dynamic discovery found {len(tools)} tools for {template_name} on {backend_type}"
+                                    )
+                                    break  # Stop after first successful discovery
+                            except Exception as e:
+                                logger.debug(
+                                    f"Dynamic discovery failed on {backend_type}: {e}"
+                                )
+                                continue
 
-        # Get dynamic tools from running deployments
-        for backend_type, tool_manager in self.tool_managers.items():
+                except Exception as e:
+                    logger.warning(f"Dynamic discovery failed for {template_name}: {e}")
+
+        # Get static tools from templates (backend-agnostic) if requested
+        if include_static:
             try:
-                # Get deployments for this backend
-                deployments = self.deployment_managers[
-                    backend_type
-                ].find_deployments_by_criteria(template_name=template_name)
+                templates = template_manager.list_templates()
 
-                backend_tools = []
-                for deployment in deployments:
+                if template_name:
+                    templates = {
+                        k: v for k, v in templates.items() if k == template_name
+                    }
+
+                for template_id, template_info in templates.items():
+                    # Use first available backend for static discovery
+                    tool_manager = ToolManager(first_backend)
                     try:
-                        template_id = deployment.get("template", "unknown")
                         result = tool_manager.list_tools(
                             template_id,
-                            discovery_method=discovery_method,
+                            discovery_method="static",
                             force_refresh=force_refresh,
                         )
                         tools = result.get("tools", [])
                         if tools:
-                            backend_tools.extend(
-                                [
-                                    {
-                                        **tool,
-                                        "deployment_id": deployment.get("id"),
-                                        "template": template_id,
-                                        "backend": backend_type,
-                                    }
-                                    for tool in tools
-                                ]
-                            )
+                            all_tools["static_tools"][template_id] = {
+                                "tools": tools,
+                                "source": "template_definition",
+                            }
                     except Exception as e:
                         logger.debug(
-                            f"Failed to get tools from deployment {deployment.get('id')}: {e}"
+                            f"Failed to get static tools for {template_id}: {e}"
                         )
 
-                if backend_tools:
-                    all_tools["dynamic_tools"][backend_type] = backend_tools
-                    all_tools["backend_summary"][backend_type] = {
-                        "tool_count": len(backend_tools),
-                        "deployment_count": len(deployments),
-                    }
-
             except Exception as e:
-                logger.warning(f"Failed to get tools from {backend_type}: {e}")
+                logger.warning(f"Failed to get template tools: {e}")
 
         return all_tools
+
+    def call_tool(
+        self,
+        template_name: str,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        config_values: Optional[Dict[str, Any]] = None,
+        timeout: int = 30,
+        pull_image: bool = True,
+        force_stdio: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Call a tool using multi-backend discovery and priority.
+
+        Discovery Priority:
+        1. If backend_type specified, use that backend only
+        2. Find existing deployment for template and use that backend
+        3. Check if stdio is supported and use first available backend
+        4. Show deployment message if template is not deployed
+
+        Args:
+            template_name: Template name or deployment name
+            tool_name: Name of the tool to call
+            arguments: Tool arguments
+            backend_type: Specific backend to use (optional)
+            config_values: Configuration values for stdio calls
+            timeout: Timeout for the call
+            pull_image: Whether to pull image for stdio calls
+            force_stdio: Force stdio transport
+
+        Returns:
+            Tool call result with backend information
+        """
+
+        # Check if template_name is actually a deployment ID
+        deployment = self.get_deployment_by_id(template_name)
+        if deployment:
+            deployment_backend = deployment.get("backend_type")
+            deployment_template = deployment.get("template", template_name)
+            if deployment_backend in self.tool_managers:
+                try:
+                    tool_manager = self.tool_managers[deployment_backend]
+                    result = tool_manager.call_tool(
+                        deployment_template,
+                        tool_name,
+                        arguments,
+                        config_values=config_values,
+                        timeout=timeout,
+                        pull_image=pull_image,
+                        force_stdio=force_stdio,
+                    )
+                    if isinstance(result, dict):
+                        result["backend_type"] = deployment_backend
+                        result["deployment_id"] = template_name
+                    return result
+                except Exception as e:
+                    return {
+                        "success": False,
+                        "error": str(e),
+                        "backend_type": deployment_backend,
+                        "deployment_id": template_name,
+                    }
+
+        # Priority 1: Find existing deployment for template
+        all_deployments = self.get_all_deployments(template_name=template_name)
+        running_deployments = [
+            d for d in all_deployments if d.get("status") == "running"
+        ]
+
+        if running_deployments:
+            # Use the first running deployment
+            deployment = running_deployments[0]
+            deployment_backend = deployment.get("backend_type")
+            deployment_id = deployment.get("id")
+
+            if deployment_backend in self.tool_managers:
+                try:
+                    tool_manager = self.tool_managers[deployment_backend]
+                    result = tool_manager.call_tool(
+                        template_name,
+                        tool_name,
+                        arguments,
+                        config_values=config_values,
+                        timeout=timeout,
+                        pull_image=pull_image,
+                        force_stdio=force_stdio,
+                    )
+                    if isinstance(result, dict):
+                        result["backend_type"] = deployment_backend
+                        result["deployment_id"] = deployment_id
+                        result["used_existing_deployment"] = True
+                    return result
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to call tool on existing deployment {deployment_id}: {e}"
+                    )
+                    # Fall through to stdio attempt
+
+        # Priority 2: Check if stdio is supported and try backends in order
+        first_backend = next(iter(self.tool_managers.keys()))
+        template_manager = TemplateManager(first_backend)
+
+        try:
+            template_info = template_manager.get_template_info(template_name)
+            if template_info:
+                transport_config = template_info.get("transport", {})
+                supported_transports = transport_config.get("supported", ["http"])
+                default_transport = transport_config.get("default", "http")
+
+                if "stdio" in supported_transports or default_transport == "stdio":
+                    # Try each backend in order
+                    last_error = None
+                    for backend, tool_manager in self.tool_managers.items():
+                        try:
+                            result = tool_manager.call_tool(
+                                template_name,
+                                tool_name,
+                                arguments,
+                                config_values=config_values,
+                                timeout=timeout,
+                                pull_image=pull_image,
+                                force_stdio=True,
+                            )
+                            if isinstance(result, dict):
+                                if result.get("success"):
+                                    result["backend_type"] = backend
+                                    result["used_stdio"] = True
+                                    return result
+                                else:
+                                    last_error = result.get("error", "Unknown error")
+                        except Exception as e:
+                            last_error = str(e)
+                            logger.debug(f"Failed stdio call on {backend}: {e}")
+                            continue
+
+                    # All stdio attempts failed
+                    return {
+                        "success": False,
+                        "error": f"All stdio backends failed. Last error: {last_error}",
+                        "template_supports_stdio": True,
+                    }
+                else:
+                    # Template doesn't support stdio
+                    return {
+                        "success": False,
+                        "error": f"Template '{template_name}' does not support stdio transport and no running deployment found",
+                        "template_supports_stdio": False,
+                        "supported_transports": supported_transports,
+                        "deploy_command": f"mcpt deploy {template_name}",
+                    }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Template '{template_name}' not found",
+                }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to get template info: {e}",
+            }
 
     def stop_deployment(self, deployment_id: str, timeout: int = 30) -> Dict[str, Any]:
         """

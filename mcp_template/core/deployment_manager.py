@@ -10,9 +10,8 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 
 from mcp_template.backends import get_backend
-from mcp_template.core.config_manager import ConfigManager
+from mcp_template.core.config_processor import RESERVED_ENV_VARS, ConfigProcessor
 from mcp_template.core.template_manager import TemplateManager
-from mcp_template.utils.config_processor import ConfigProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,7 @@ class DeploymentOptions:
         config_dir: Optional[str] = None,
         pull_image: bool = True,
         timeout: int = 300,
+        dry_run: bool = False,
     ):
         self.name = name
         self.transport = transport
@@ -37,6 +37,7 @@ class DeploymentOptions:
         self.config_dir = config_dir
         self.pull_image = pull_image
         self.timeout = timeout
+        self.dry_run = dry_run
 
 
 class DeploymentResult:
@@ -104,7 +105,7 @@ class DeploymentManager:
         self.backend_type = backend_type
         self.backend = get_backend(backend_type, **backend_kwargs)
         self.template_manager = TemplateManager(backend_type)
-        self.config_manager = ConfigManager()
+        self.config_processor = ConfigProcessor()
 
     def deploy_template(
         self,
@@ -154,34 +155,34 @@ class DeploymentManager:
                     duration=time.time() - start_time,
                 )
 
-            # Process and merge configuration
-            final_config = self.config_manager.merge_config_sources(
-                template_config=template_info, **config_sources
+            # Prepare configuration using the unified config processor
+            volume_config = config_sources.pop("volume_config", None)
+            config = self.config_processor.prepare_configuration(
+                template=template_info,
+                config_values=config_sources.get("config_values", {}),
+                env_vars=config_sources.get("env_vars", {}),
+                config_file=config_sources.get("config_file", None),
+                override_values=config_sources.get("override_values", None),
             )
 
-            # Process Kubernetes-specific configuration if backend is Kubernetes
-            k8s_config = {}
-            if self.backend == "kubernetes":
-                k8s_config = self.config_manager.merge_k8s_config_sources(
-                    k8s_config_file=config_sources.get("k8s_config_file"),
-                    k8s_config_values=config_sources.get("k8s_config_values"),
+            backend_config = config_sources.get("backend_config", None)
+            if not backend_config and config_sources.get("backend_config_file"):
+                backend_config = self.config_processor._load_json_yaml_config_file(
+                    config_sources.get("backend_config_file")
                 )
-                # Set the Kubernetes configuration on the backend
-                if hasattr(self.backend, "set_k8s_config"):
-                    self.backend.set_k8s_config(k8s_config)
 
-            # Apply config value mapping (e.g., log_level -> MCP_LOG_LEVEL)
-            if config_sources.get("config_values"):
-                config_processor = ConfigProcessor()
-                mapped_config = config_processor._map_file_config_to_env(
-                    config_sources["config_values"], template_info
+            # Handle volume mounts and command arguments
+            template_config_dict = (
+                self.config_processor.handle_volume_and_args_config_properties(
+                    template_info, config, volume_config
                 )
-                # Merge the mapped config back into final_config
-                final_config.update(mapped_config)
+            )
+            config = template_config_dict.get("config", config)
+            template_info = template_config_dict.get("template", template_info)
 
             # Validate final configuration
-            validation_result = self.config_manager.validate_config(
-                final_config, template_info.get("config_schema", {})
+            validation_result = self.config_processor.validate_config(
+                config, template_info.get("config_schema", {})
             )
 
             if not validation_result.valid:
@@ -192,10 +193,14 @@ class DeploymentManager:
                 )
 
             # Prepare deployment specification
-            deployment_spec = self._prepare_deployment_spec(
-                template_id, template_info, final_config, deployment_options
-            )
 
+            deployment_spec = {
+                "template_id": template_id,
+                "template_info": template_info,
+                "config": config,
+                "backend_config": backend_config or {},
+                "options": vars(deployment_options),
+            }
             # Execute deployment
             deployment_result = self._execute_deployment(deployment_spec)
             deployment_result.duration = time.time() - start_time
@@ -222,6 +227,7 @@ class DeploymentManager:
         Returns:
             Dictionary with stop operation results
         """
+
         start_time = time.time()
 
         try:
@@ -468,44 +474,30 @@ class DeploymentManager:
         # Return the first matching deployment
         return deployments[0].get("id")
 
-    def _prepare_deployment_spec(
-        self,
-        template_id: str,
-        template_info: Dict[str, Any],
-        config: Dict[str, Any],
-        options: DeploymentOptions,
-    ) -> Dict[str, Any]:
-        """Prepare deployment specification for backend."""
-        return {
-            "template_id": template_id,
-            "template_info": template_info,
-            "config": config,
-            "options": options.__dict__,
-        }
-
     def _execute_deployment(self, deployment_spec: Dict[str, Any]) -> DeploymentResult:
         """Execute the actual deployment using the backend."""
         try:
             # Extract the spec components for the backend interface
             template_id = deployment_spec["template_id"]
-            template_info = deployment_spec["template_info"]
-            config = deployment_spec["config"]
-            options = deployment_spec["options"]
+            template_info = deployment_spec.get("template_info", {})
+            config = deployment_spec.get("config", {})
+            backend_config = deployment_spec.get("backend_config", {})
+            options = deployment_spec.get("options", {})
 
             # Apply deployment options to config using RESERVED_ENV_VARS mapping
-            from mcp_template.utils.config_processor import RESERVED_ENV_VARS
-
-            # Add deployment options as environment variables
             for option_key, env_var_key in RESERVED_ENV_VARS.items():
                 if option_key in options and options[option_key] is not None:
                     config[env_var_key] = options[option_key]
 
+            self.backend.set_config(backend_config)
             # Call the correct backend method
             result = self.backend.deploy_template(
                 template_id=template_id,
                 config=config,
                 template_data=template_info,
+                backend_config=backend_config,
                 pull_image=options.get("pull_image", True),
+                dry_run=options.get("dry_run", False),
             )
 
             # If deployment returned a result without exception, consider it successful

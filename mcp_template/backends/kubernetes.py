@@ -5,6 +5,7 @@ Kubernetes deployment backend for managing deployments on Kubernetes clusters.
 import logging
 import time
 import uuid
+from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -34,20 +35,24 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             namespace: Kubernetes namespace for deployments
             kubeconfig_path: Path to kubeconfig file (optional)
         """
+
+        super().__init__()
         self.namespace = namespace
         self.kubeconfig_path = kubeconfig_path
-        self._k8s_config = {}  # Store Kubernetes-specific configuration
         self._ensure_kubernetes_available()
         self._ensure_namespace_exists()
 
-    def set_k8s_config(self, k8s_config: Dict[str, Any]) -> None:
-        """Set Kubernetes-specific configuration for deployments.
-
-        Args:
-            k8s_config: Dictionary containing Kubernetes configuration like
-                       replicas, service_type, resources, etc.
+    @property
+    def is_available(self):
         """
-        self._k8s_config = k8s_config or {}
+        Ensure backend is available
+        """
+
+        with suppress(RuntimeError):
+            self._ensure_kubernetes_available()
+            return True
+
+        return False
 
     def _ensure_kubernetes_available(self):
         """Check if Kubernetes API is available and configure the client."""
@@ -69,16 +74,19 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             self.autoscaling_v1 = client.AutoscalingV1Api()
 
             # Test connection
-            version = self.core_v1.get_api_resources()
+            self.core_v1.get_api_resources()
             logger.info("Connected to Kubernetes API")
 
         except Exception as e:
             logger.error(f"Failed to connect to Kubernetes API: {e}")
             raise RuntimeError(f"Kubernetes backend unavailable: {e}")
 
-    def _ensure_namespace_exists(self):
+    def _ensure_namespace_exists(self, dry_run: bool = False):
         """Ensure the target namespace exists."""
         try:
+            if dry_run:
+                logger.info(f"[DRY RUN] Would check/create namespace {self.namespace}")
+                return
             self.core_v1.read_namespace(name=self.namespace)
             logger.debug(f"Namespace {self.namespace} exists")
         except ApiException as e:
@@ -90,8 +98,11 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                         labels={"app.kubernetes.io/managed-by": "mcp-templates"},
                     )
                 )
-                self.core_v1.create_namespace(body=namespace_body)
-                logger.info(f"Created namespace {self.namespace}")
+                if dry_run:
+                    logger.info(f"[DRY RUN] Would create namespace {self.namespace}")
+                else:
+                    self.core_v1.create_namespace(body=namespace_body)
+                    logger.info(f"Created namespace {self.namespace}")
             else:
                 raise
 
@@ -109,10 +120,13 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         template_id: str,
         config: Dict[str, Any],
         template_data: Dict[str, Any],
-        k8s_config: Dict[str, Any],
+        k8s_config: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         """Create Helm values from template configuration and Kubernetes configuration."""
         # Extract image information
+        if not k8s_config:
+            k8s_config = self._config
+
         image_repo = template_data.get("docker_image", template_id)
         image_repo = normalize_image_name(image_repo)
         if image_repo and len(image_repo.split(":")) > 1:
@@ -121,16 +135,32 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         else:
             image_tag = template_data.get("tag", "latest")
 
-        # Determine MCP server type
-        server_type = "http"  # Default to HTTP
-        port = 8080
-        command = []
-
-        if "stdio" in template_data.get("transport", []):
-            server_type = "stdio"
-            command = template_data.get("command", [])
-        elif "http" in template_data.get("transport", []):
+        # Determine MCP server type from transport configuration
+        transport_config = template_data.get("transport", {})
+        if isinstance(transport_config, dict):
+            # New format: {"default": "http", "supported": [...], "port": 7071}
+            server_type = transport_config.get("default", "http")
+            port = transport_config.get("port", 8080)
+        else:
+            # Legacy format: ["stdio", "http"] or just "http"
+            server_type = "http"  # Default to HTTP
             port = template_data.get("port", 8080)
+            if "stdio" in transport_config:
+                server_type = "stdio"
+            elif "http" in transport_config:
+                port = template_data.get("port", 8080)
+
+        command = template_data.get("command", [])
+
+        # Build environment variables for the deployment
+        env_vars = config.get("env", {}).copy()
+
+        # Add transport-specific environment variables
+        if server_type == "http":
+            env_vars["MCP_TRANSPORT"] = "http"
+            env_vars["MCP_PORT"] = str(port)
+        else:
+            env_vars["MCP_TRANSPORT"] = "stdio"
 
         # Build Helm values with defaults and Kubernetes configuration overrides
         values = {
@@ -149,7 +179,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                 "type": server_type,
                 "port": port,
                 "command": command,
-                "env": config.get("env", {}),  # Template environment variables
+                "env": env_vars,  # Template environment variables with transport config
                 "config": config,  # Template configuration (will be passed as env vars)
             },
             "service": {
@@ -178,7 +208,6 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             raise RuntimeError(f"Helm chart not found at {chart_dir}")
 
         # Load templates
-        templates_dir = chart_dir / "templates"
         manifests = []
 
         # Template context
@@ -349,7 +378,9 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
         template_id: str,
         config: Dict[str, Any],
         template_data: Dict[str, Any],
+        backend_config: Dict[str, Any],
         pull_image: bool = True,
+        dry_run: bool = False,
     ) -> Dict[str, Any]:
         """Deploy a template to Kubernetes.
 
@@ -357,7 +388,9 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             template_id: Unique identifier for the template
             config: Template configuration parameters (passed as env vars to container)
             template_data: Template metadata and configuration
+            backend_config: Any banckend specific configuration
             pull_image: Whether to pull the container image before deployment
+            dry_run: Whether to performm actual depolyment. False means yes, True means No
 
         Returns:
             Dict containing deployment information
@@ -368,7 +401,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
 
             # Create Helm values using both template config and Kubernetes config
             values = self._create_helm_values(
-                template_id, config, template_data, self._k8s_config
+                template_id, config, template_data, self._config
             )
             values["image"]["pullPolicy"] = "Always" if pull_image else "IfNotPresent"
 
@@ -378,6 +411,14 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             created_resources = []
             for manifest in manifests:
                 try:
+                    if dry_run:
+                        logger.info(
+                            f"[DRY RUN] Would create {manifest['kind']} {manifest['metadata']['name']} in namespace {manifest['metadata']['namespace']}"
+                        )
+                        created_resources.append(
+                            (manifest["kind"], manifest["metadata"]["name"])
+                        )
+                        continue
                     if manifest["kind"] == "Deployment":
                         # Convert manifest dict to proper Kubernetes object
                         deployment_obj = client.V1Deployment(
@@ -501,11 +542,14 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                     self._cleanup_resources(created_resources)
                     raise
 
-            # Wait for deployment to be ready
-            self._wait_for_deployment_ready(deployment_name)
+            if not dry_run:
+                # Wait for deployment to be ready
+                self._wait_for_deployment_ready(deployment_name)
 
-            # Get deployment info
-            deployment_info = self._get_deployment_details(deployment_name)
+                # Get deployment info
+                deployment_info = self._get_deployment_details(deployment_name)
+            else:
+                deployment_info = {"endpoint": None}
 
             return {
                 "success": True,
@@ -513,7 +557,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                 "deployment_name": deployment_name,
                 "deployment_id": deployment_name,
                 "namespace": self.namespace,
-                "status": "deployed",
+                "status": "deployed" if not dry_run else "dry-run",
                 "created_resources": created_resources,
                 "endpoint": deployment_info.get("endpoint"),
                 "replicas": values["replicaCount"],
@@ -589,17 +633,26 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                 "mcp-template.io/template-name", "unknown"
             )
 
-            # Try to get service endpoint
+            # Try to get service endpoint and ports
             endpoint = None
+            ports_display = "unknown"
             try:
                 service = self.core_v1.read_namespaced_service(
                     name=deployment_name, namespace=self.namespace
                 )
-                if service.spec.type == "ClusterIP":
-                    endpoint = f"http://{service.metadata.name}.{self.namespace}.svc.cluster.local:{service.spec.ports[0].port}"
-                elif service.spec.type == "NodePort":
-                    # Get node IP (simplified - in practice you'd get actual node IPs)
-                    endpoint = f"http://localhost:{service.spec.ports[0].node_port}"
+                if service.spec.ports and len(service.spec.ports) > 0:
+                    svc_port = service.spec.ports[0].port
+                    if service.spec.type == "ClusterIP":
+                        endpoint = f"http://{service.metadata.name}.{self.namespace}.svc.cluster.local:{svc_port}"
+                        ports_display = str(svc_port)
+                    elif service.spec.type == "NodePort":
+                        node_port = service.spec.ports[0].node_port
+                        endpoint = f"http://localhost:{node_port}"
+                        ports_display = str(node_port)
+                    else:
+                        ports_display = str(svc_port)
+                else:
+                    ports_display = "unknown"
             except ApiException:
                 pass
 
@@ -616,6 +669,7 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
                 "available_replicas": deployment.status.available_replicas or 0,
                 "status": "running" if deployment.status.ready_replicas else "pending",
                 "endpoint": endpoint,
+                "ports": ports_display,
                 "transport": transport,
                 "created": (
                     deployment.metadata.creation_timestamp.isoformat()
@@ -714,15 +768,35 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             details = self._get_deployment_details(deployment_name)
 
             if include_logs:
-                logs = self._get_deployment_logs(deployment_name, lines)
-                details["logs"] = logs
+                logs_result = self.get_deployment_logs(deployment_name, lines)
+                details["logs"] = (
+                    logs_result.get("logs", "")
+                    if isinstance(logs_result, dict)
+                    else logs_result
+                )
 
             return details
         except Exception as e:
             return {"error": str(e)}
 
-    def _get_deployment_logs(self, deployment_name: str, lines: int = 10) -> str:
-        """Get logs from deployment pods."""
+    def get_deployment_logs(
+        self,
+        deployment_name: str,
+        lines: int = 10,
+        follow: bool = False,
+        since: str = None,
+        until: str = None,
+    ) -> str:
+        """
+        Get logs from deployment pods, with support for follow, since, and until.
+
+        Args:
+            deployment_name: Name of deployment
+            lines: Number of lines to tail
+            follow: Stream logs if True
+            since: Start time (RFC3339 or seconds)
+            until: End time (RFC3339 or seconds)
+        """
         try:
             pods = self.core_v1.list_namespaced_pod(
                 namespace=self.namespace,
@@ -732,14 +806,22 @@ class KubernetesDeploymentService(BaseDeploymentBackend):
             if not pods.items:
                 return "No pods found"
 
-            # Get logs from first pod
             pod = pods.items[0]
-            logs = self.core_v1.read_namespaced_pod_log(
-                name=pod.metadata.name, namespace=self.namespace, tail_lines=lines
-            )
-            return logs
-        except ApiException as e:
-            return f"Failed to get logs: {e}"
+            kwargs = {
+                "name": pod.metadata.name,
+                "namespace": self.namespace,
+                "tail_lines": lines,
+            }
+            if follow:
+                kwargs["follow"] = True
+            if since:
+                kwargs["since_time"] = since
+            if until:
+                kwargs["until_time"] = until
+            logs = self.core_v1.read_namespaced_pod_log(**kwargs)
+            return {"success": True, "logs": logs}
+        except ApiException:
+            return {"success": False, "logs": ""}
 
     def connect_to_deployment(self, deployment_id: str):
         """Connect to deployment shell (not implemented for Kubernetes)."""
