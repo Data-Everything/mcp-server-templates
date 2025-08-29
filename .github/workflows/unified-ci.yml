@@ -26,6 +26,10 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
+    - name: Install package
+      run: |
+        python -m pip install -e .
+
     - name: Check basic imports and functionality
       run: |
         python -c "
@@ -90,6 +94,10 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
+    - name: Install package
+      run: |
+        python -m pip install -e .
+
     - name: Run all unit tests
       run: |
         python -m pytest tests/test_unit -m "unit" \
@@ -124,8 +132,16 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
+    - name: Install package
+      run: |
+        python -m pip install -e .
+
     - name: Setup Docker Buildx
       uses: docker/setup-buildx-action@v3
+
+    - name: Build demo Docker image
+      run: |
+        docker build -t dataeverything/mcp-demo:latest ./mcp_template/template/templates/demo
 
     - name: Run Docker-specific tests
       run: |
@@ -151,11 +167,19 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
+    - name: Install package
+      run: |
+        python -m pip install -e .
+
     - name: Setup Kubernetes (kind)
       uses: helm/kind-action@v1.10.0
       with:
         cluster_name: mcp-test-cluster
         kubectl_version: v1.29.0
+
+    - name: Build demo Docker image
+      run: |
+        docker build -t dataeverything/mcp-demo:latest ./mcp_template/template/templates/demo
 
     - name: Run Kubernetes-specific tests
       run: |
@@ -223,6 +247,10 @@ jobs:
         cluster_name: mcp-test-cluster
         kubectl_version: v1.29.0
 
+    - name: Build demo Docker image
+      run: |
+        docker build -t dataeverything/mcp-demo:latest ./mcp_template/template/templates/demo
+
     - name: Run full integration tests
       run: |
         python -m pytest tests/test_integration/ -m "integration" \
@@ -260,6 +288,10 @@ jobs:
       with:
         cluster_name: mcp-test-cluster
         kubectl_version: v1.29.0
+
+    - name: Build demo Docker image
+      run: |
+        docker build -t dataeverything/mcp-demo:latest ./mcp_template/template/templates/demo
 
     - name: Run complete test suite
       run: |
