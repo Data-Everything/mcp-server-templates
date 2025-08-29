@@ -97,10 +97,6 @@ jobs:
     - name: Run all unit tests
       run: |
         python -m pytest tests/test_unit -m "unit" \
-          --cov=mcp_template \
-          --cov-report=term-missing \
-          --cov-report=xml \
-          --cov-fail-under=20 \
           --tb=short
 
     - name: Upload coverage to Codecov
@@ -279,7 +275,7 @@ jobs:
           --cov-report=term-missing \
           --cov-report=html \
           --cov-report=xml \
-          --cov-fail-under=20 \
+          --cov-fail-under=40 \
           --tb=short \
           --timeout=300
 
